@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { AuthState , User } from '../types/auth';
+import { User, AuthState } from '../types/auth';
 
 const STORAGE_KEY = 'admin_portal_user';
 
@@ -14,6 +14,7 @@ export const useAuth = () => {
     user: null,
     isAuthenticated: false,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -26,6 +27,7 @@ export const useAuth = () => {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
+    setIsLoading(false);
   }, []);
 
   const login = (username: string, password: string): boolean => {
@@ -55,6 +57,7 @@ export const useAuth = () => {
 
   return {
     ...authState,
+    isLoading,
     login,
     logout,
   };

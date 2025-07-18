@@ -7,14 +7,18 @@ import { Button } from '../components/ui/button';
 import { LogOut } from 'lucide-react';
 
 const Home = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!isLoading && (!isAuthenticated || !user)) {
       navigate('/login');
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, isLoading]);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   if (!isAuthenticated || !user) {
     return null;
