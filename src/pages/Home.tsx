@@ -5,6 +5,7 @@ import { AppSidebar } from '../components/AppSidebar';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { LogOut } from 'lucide-react';
+import AssignGeoLocation from './AssignUserPermission';
 
 const Home = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -64,17 +65,13 @@ const Home = () => {
           {/* Main Content */}
           <main className="p-6">
             <div className="rounded-lg border bg-card p-6">
-              <h2 className="text-lg font-semibold mb-4 text-card-foreground">
-                Welcome to {portalTitle}
-              </h2>
-              <p className="text-muted-foreground">
-                Select a section from the sidebar to get started.
-              </p>
+              <AssignGeoLocation />
             </div>
           </main>
         </div>
       </div>
     </SidebarProvider>
+
   );
 };
 
