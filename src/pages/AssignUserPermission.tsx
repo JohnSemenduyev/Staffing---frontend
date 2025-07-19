@@ -7,7 +7,6 @@ import {
   managers as mockManagers,
   notificationOptions as mockNotificationOptions,
 } from "../data";
-import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
 import AssignmentReport from "../components/AssignmentReport";
 
@@ -71,17 +70,14 @@ const AssignGeoLocation: React.FC = () => {
 
   const accessOptions = useMemo<("View" | "Edit")[]>(() => {
     if (!selectedRole) return [];
-    if (selectedRole === "Admin" || selectedRole === "Manager") return ["Edit"];
-    return ["View"];
+    return selectedRole === "Admin" || selectedRole === "Manager" ? ["Edit"] : ["View"];
   }, [selectedRole]);
 
   useEffect(() => {
     const current = watch("access");
     if (!selectedRole) {
       setValue("access", "");
-      return;
-    }
-    if (selectedRole === "Admin" || selectedRole === "Manager") {
+    } else if (selectedRole === "Admin" || selectedRole === "Manager") {
       if (current !== "Edit") setValue("access", "Edit");
     } else {
       if (current !== "View") setValue("access", "View");
@@ -117,7 +113,7 @@ const AssignGeoLocation: React.FC = () => {
   const notifLabel =
     selectedNotifications.length > 0
       ? selectedNotifications.join(", ")
-      : "Select Notifications";
+      : "Select Notifications *";
 
   const onSubmit = (data: AssignGeoLocationFormValues) => {
     const clientId = Number(data.clientId);
@@ -144,78 +140,65 @@ const AssignGeoLocation: React.FC = () => {
     };
 
     setAssignments((prev) => [...prev, record]);
-    alert("Record added successfully!");
+    reset();
   };
 
-  const handleReset = () =>
-    reset({
-      clientId: "",
-      location: "",
-      userId: "",
-      role: "",
-      access: "",
-      notifiedManagerId: "",
-      notifications: [],
-    });
-
   return (
-    <div className="max-w-7xl mx-auto px-2 py-2 space-y-4">
-      <div className="bg-white border border-gray-200 shadow-md rounded-2xl p-8">
-        <div className="mb-8 border-b pb-4">
-          <h1 className="text-3xl font-semibold text-gray-800">Assign User Permissions</h1>
-          <p className="text-gray-500 text-sm mt-1">Fill in the form below to assign permissions to a user.</p>
+    <>
+      <div className="bg-white border border-gray-200 shadow-md rounded-s p-4 mb-3">
+        <div className="mb-6 border-b ">
+          <h1 className="text-xl font-semibold text-gray-800">Assign User Permissions</h1>
+          <p className="text-gray-500 text-sm">Fill in the form below to assign permissions.</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            {/* Each form field (Client, Location, etc.) */}
+        <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-1">
             {[
               {
-                label: "Select Client *",
                 name: "clientId",
                 options: mockClients.map((c) => ({ value: c.id, label: c.name })),
                 error: errors.clientId?.message,
+                placeholder: "Select Client *",
               },
               {
-                label: "Location *",
                 name: "location",
                 options: availableLocations.map((l) => ({ value: l, label: l })),
                 error: errors.location?.message,
+                placeholder: "Select Location *",
               },
               {
-                label: "Select User *",
                 name: "userId",
                 options: mockUsers.map((u) => ({ value: u.id, label: u.name })),
                 error: errors.userId?.message,
+                placeholder: "Select User *",
               },
               {
-                label: "Select Role *",
                 name: "role",
                 options: ["Admin", "Manager", "Guard", "Client"].map((r) => ({ value: r, label: r })),
                 error: errors.role?.message,
+                placeholder: "Select Role *",
               },
               {
-                label: "Select Access *",
                 name: "access",
                 options: accessOptions.map((a) => ({ value: a, label: a })),
                 error: errors.access?.message,
+                placeholder: "Select Access *",
               },
               {
-                label: "User Notified *",
                 name: "notifiedManagerId",
                 options: mockManagers.map((m) => ({ value: m.id, label: m.name })),
                 error: errors.notifiedManagerId?.message,
+                placeholder: "User Notified *",
               },
-            ].map(({ label, name, options, error }) => (
+            ].map(({ name, options, error, placeholder }) => (
               <div key={name}>
-                <Label>{label}</Label>
                 <select
                   {...register(name as keyof AssignGeoLocationFormValues, {
-                    required: `${label.replace("*", "").trim()} is required`,
+                    required: `${placeholder.replace("*", "").trim()} is required`,
                   })}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border rounded px-1 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">-- {label.replace("*", "").trim()} --</option>
+                  <option value="">{placeholder}</option>
                   {options.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -226,22 +209,21 @@ const AssignGeoLocation: React.FC = () => {
               </div>
             ))}
 
-            {/* Notifications */}
-            <div className="col-span-1 md:col-span-2 relative" ref={notifRef}>
-              <Label>Select Notification(s)</Label>
-              <Button
+            {/* Notifications Field */}
+            <div className="relative" ref={notifRef}>
+              <button
                 type="button"
                 onClick={() => setNotifOpen((o) => !o)}
-                className="w-full border rounded px-3 py-2 text-left bg-white hover:shadow-sm transition"
+                className="w-full border rounded px-1 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
               >
                 {notifLabel}
-              </Button>
+              </button>
               {notifOpen && (
                 <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow-lg max-h-48 overflow-auto">
                   {mockNotificationOptions.map((opt) => (
-                    <Label
+                    <label
                       key={opt}
-                      className="flex items-center px-3 py-2 hover:bg-gray-100 text-sm cursor-pointer"
+                      className="flex items-center px-2 py-2 hover:bg-gray-100 text-sm cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -250,35 +232,29 @@ const AssignGeoLocation: React.FC = () => {
                         onChange={() => toggleNotification(opt as NotificationOption)}
                       />
                       {opt}
-                    </Label>
+                    </label>
                   ))}
                 </div>
+              )}
+              {errors.notifications && (
+                <p className="text-red-500 text-xs mt-1">Select at least one notification</p>
               )}
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-4 pt-4">
-            <Button
-              type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-            >
+          {/* Submit Button */}
+          <div className="flex justify-end pt-5">
+            <Button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
               Submit
-            </Button>
-            <Button
-              type="button"
-              onClick={handleReset}
-              className="border border-gray-300 px-6 py-2 rounded hover:bg-gray-100 transition"
-            >
-              Reset
             </Button>
           </div>
         </form>
+              <AssignmentReport assignments={assignments} />
+
       </div>
 
-      {/* Assignment Report Table */}
-      <AssignmentReport assignments={assignments} />
-    </div>
+      {/* Assignment Table */}
+    </>
   );
 };
 
