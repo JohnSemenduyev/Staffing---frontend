@@ -67,9 +67,10 @@ const AssignmentReport: React.FC<Props> = ({ assignments }) => {
   }, [assignments, clientFilter, locationFilter, userFilter, roleFilter, accessFilter, managerFilter, createdFilter]);
 
   return (
-    <div className="bg-white shadow-xl rounded-2xl p-4 mt-8">
-      <h2 className="text-lg font-semibold mb-4">Assignments Report</h2>
-
+    <div className=" p-2">
+<div className="mb-6 border-b ">
+          <h1 className="text-xl font-semibold mb-2 text-gray-800">Assignment History</h1>
+        </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm border">
           <thead className="bg-gray-100">
