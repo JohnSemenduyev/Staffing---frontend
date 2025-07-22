@@ -486,3 +486,328 @@ const AssignmentUI = () => {
                 <div className="flex items-end gap-2">
                   {editingRecord && (
                     <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="flex-1 bg-gray-500 text-white px-4 py-2 hover:bg-gray-600 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="flex-1 bg-teal-600 text-white px-4 py-2 hover:bg-teal-700 transition-colors"
+                  >
+                    {editingRecord ? 'Update Assignment' : 'Submit'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Assignment List Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-normal text-gray-800">Assignment History</h2>
+            
+            <div className="flex items-center space-x-4">
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-4 pr-12 py-2 border border-gray-300 bg-white text-gray-700 focus:outline-none focus:border-gray-400 w-64"
+                />
+                <button className="absolute right-0 top-0 h-full px-3 bg-teal-600 text-white hover:bg-teal-700 transition-colors">
+                  <Search className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* View Toggle */}
+              <div className="flex border border-gray-300">
+                <button 
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 ${viewMode === "grid" ? "bg-gray-200" : "bg-white hover:bg-gray-50"}`}
+                >
+                  <Grid className="w-4 h-4 text-gray-600" />
+                </button>
+                <button 
+                  onClick={() => setViewMode("table")}
+                  className={`p-2 border-l border-gray-300 ${viewMode === "table" ? "bg-gray-200" : "bg-white hover:bg-gray-50"}`}
+                >
+                  <List className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Table or Grid View */}
+        {viewMode === "table" ? (
+          <div className="bg-white border border-gray-200 shadow-sm">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Access</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manager</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notifications</th>
+                  <th className="px-6 py-3"></th>
+                </tr>
+                
+                {/* Filter Row */}
+                <tr className="bg-white border-b border-gray-100">
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={filters.client}
+                      onChange={(e) => setFilters(prev => ({ ...prev, client: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={filters.location}
+                      onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={filters.user}
+                      onChange={(e) => setFilters(prev => ({ ...prev, user: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={filters.role}
+                      onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={filters.access}
+                      onChange={(e) => setFilters(prev => ({ ...prev, access: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      value={filters.manager}
+                      onChange={(e) => setFilters(prev => ({ ...prev, manager: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2">
+                    <input
+                      type="text"
+                      placeholder="Filter..."
+                      className="w-full text-sm border border-gray-200 px-2 py-1 focus:outline-none focus:border-gray-400"
+                    />
+                  </th>
+                  <th className="px-6 py-2"></th>
+                </tr>
+              </thead>
+              
+              <tbody className="bg-white divide-y divide-gray-100">
+                {filteredAssignments.map((record) => (
+                  <tr key={record.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-teal-600">{record.clientName}</div>
+                      <div className="text-xs text-gray-500">{record.clientId}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{record.location || "-"}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{record.userName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{record.role}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{record.access}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{record.notifiedManagerName}</div>
+                      <div className="text-xs text-gray-500">{record.notifiedManagerId}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {record.notifications.map((notif, i) => (
+                          <span key={i} className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800">
+                            {notif}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="relative">
+                        <button 
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={() => setDropdownOpen(dropdownOpen === record.id ? null : record.id)}
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                        
+                        {dropdownOpen === record.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg z-10">
+                            <button
+                              onClick={() => {
+                                handleEdit(record);
+                                setDropdownOpen(null);
+                              }}
+                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              Edit Assignment
+                            </button>
+                            <button
+                              onClick={() => handleDelete(record)}
+                              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              Delete Assignment
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Grid View */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAssignments.map((record) => (
+              <div key={record.id} className="bg-white border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-medium text-teal-600">{record.clientName}</h3>
+                    <p className="text-sm text-gray-500">ID: {record.clientId}</p>
+                  </div>
+                  <div className="relative">
+                    <button 
+                      className="text-gray-400 hover:text-gray-600"
+                      onClick={() => setDropdownOpen(dropdownOpen === record.id ? null : record.id)}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    
+                    {dropdownOpen === record.id && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-lg z-10">
+                        <button
+                          onClick={() => {
+                            handleEdit(record);
+                            setDropdownOpen(null);
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Edit Assignment
+                        </button>
+                        <button
+                          onClick={() => handleDelete(record)}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          Delete Assignment
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</p>
+                    <p className="text-sm text-gray-900">{record.location || "Not specified"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">User</p>
+                    <p className="text-sm text-gray-900">{record.userName}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Role</p>
+                      <p className="text-sm text-gray-900">{record.role}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Access</p>
+                      <p className="text-sm text-gray-900">{record.access}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Manager</p>
+                    <p className="text-sm text-gray-900">{record.notifiedManagerName}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Notifications</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {record.notifications.map((notif, i) => (
+                        <span key={i} className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800">
+                          {notif}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500">
+                      Created: {new Date(record.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-500">
+            {filteredAssignments.length} assignments
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button className="p-1 text-gray-400 hover:text-gray-600">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button className="px-3 py-1 bg-gray-200 text-gray-700">1</button>
+            <button className="px-3 py-1 text-gray-700 hover:bg-gray-100">2</button>
+            <button className="px-3 py-1 text-gray-700 hover:bg-gray-100">3</button>
+            <span className="text-gray-400">...</span>
+            <button className="px-3 py-1 text-gray-700 hover:bg-gray-100">9</button>
+            <button className="px-3 py-1 text-gray-700 hover:bg-gray-100">10</button>
+            <button className="p-1 text-gray-400 hover:text-gray-600">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AssignmentUI;
