@@ -10,10 +10,11 @@ import { Toaster } from "./components/ui/toaster";
 import AuthRedirect from "./pages/AuthRedirect";
 import AppLayout from "./pages/AppLayout";
 import { SchedulingAndGeolocation } from "./pages/Admin/Scheduling&Geolocation";
-import AssignUserPermission from "./pages/Admin/AssignUserPermission";
+import AssignUserPermission from "./pages/Admin/Assignment";
 import { GeoLocationSetup } from "./pages/Admin/GeoLocationSetup";
 import { TimeSetup } from "./pages/Admin/TimeSetup";
 import { PostAssignment } from "./pages/Admin/PostAssignment";
+import AssignmentCard from "./pages/Admin/Assignment";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +29,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route element={<AppLayout />}>
             <Route path="/scheduling-geolocation" element={<SchedulingAndGeolocation />} />
-            <Route path="/assign-user-permission" element={<AssignUserPermission />} />
+            <Route path="/assign-user-permission" element={<AssignmentCard />} />
             <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
             <Route path="/time-setup" element={<TimeSetup />} />
             <Route path="/post-assignment" element={<PostAssignment />} />
