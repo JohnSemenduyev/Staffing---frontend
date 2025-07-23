@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Eye, Trash2, Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, ChevronUp, ChevronDown } from "lucide-react";
 
-// Mock data
+// Mock data - Updated to have single locations per client
 const mockClients = [
-  { id: 1, name: "Acme Corp", locations: ["New York Office", "Boston Branch", "Chicago Hub"] },
-  { id: 2, name: "TechFlow Inc", locations: ["San Francisco HQ", "Austin Office", "Seattle Branch"] },
-  { id: 3, name: "Global Industries", locations: ["London Office", "Paris Branch", "Berlin Hub"] }
+  { id: 1, name: "Acme Corp", location: "New York Office" },
+  { id: 2, name: "TechFlow Inc", location: "San Francisco HQ" },
+  { id: 3, name: "Global Industries", location: "London Office" }
 ];
 
 const mockUsers = [
@@ -130,10 +130,10 @@ const AssignmentUI = () => {
   // Refs
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Computed values
-  const availableLocations = useMemo(() => {
+  // Computed values - Updated for single location per client
+  const selectedClientLocation = useMemo(() => {
     const client = mockClients.find((c) => c.id === Number(formData.clientId));
-    return client ? client.locations : [];
+    return client ? client.location : "";
   }, [formData.clientId]);
 
   const accessOptions = useMemo<("View" | "Edit")[]>(() => {
@@ -173,7 +173,13 @@ const AssignmentUI = () => {
     return filtered;
   }, [assignments, searchTerms, sortConfig]);
 
-  // Effects
+  // Effects - Auto-populate location when client changes
+  useEffect(() => {
+    if (formData.clientId && selectedClientLocation) {
+      setFormData(prev => ({ ...prev, location: selectedClientLocation }));
+    }
+  }, [formData.clientId, selectedClientLocation]);
+
   useEffect(() => {
     if (!formData.role) {
       setFormData(prev => ({ ...prev, access: "" }));
@@ -329,11 +335,12 @@ const AssignmentUI = () => {
   };
 
   return (
+    <div className="min-h-screen bg-gray-100 p-6 font-sans">
       <div className="max-w-6xl mx-auto">
         
         {/* Form Section */}
         <div className="bg-white rounded-lg border border-gray-200 mb-8 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6 font-sans">
             {editingRecord ? 'Edit Assignment' : 'General Assignment Information'}
           </h2>
           
@@ -345,44 +352,47 @@ const AssignmentUI = () => {
                 onChange={(e) => {
                   const value = e.target.value === "" ? "" : Number(e.target.value);
                   handleInputChange("clientId", value);
-                  handleInputChange("location", "");
                 }}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
+                className={`w-full px-3 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm bg-white appearance-none font-sans ${
+                  formData.clientId === "" ? "text-gray-400" : "text-gray-700"
+                }`}
+                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               >
-                <option value="">Select Client</option>
+                <option value="" disabled hidden style={{ color: '#9CA3AF' }}>Select Client</option>
                 {mockClients.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id} style={{ color: '#374151' }}>{c.name}</option>
                 ))}
               </select>
-              {errors.clientId && <p className="text-red-500 text-xs mt-1">{errors.clientId}</p>}
+              {errors.clientId && <p className="text-red-500 text-xs mt-1 font-sans">{errors.clientId}</p>}
             </div>
 
             <div>
-              <select
+              <input
+                type="text"
+                placeholder="Location"
                 value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
-              >
-                <option value="">Select Location</option>
-                {availableLocations.map(l => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-              {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
+                readOnly
+                className="w-full px-3 py-0.5 border border-gray-300 rounded-md bg-gray-50 text-gray-700 placeholder:text-gray-400 cursor-not-allowed text-sm font-sans"
+                style={{ WebkitAppearance: 'none' }}
+              />
+              {errors.location && <p className="text-red-500 text-xs mt-1 font-sans">{errors.location}</p>}
             </div>
 
             <div>
               <select
                 value={formData.userId}
                 onChange={(e) => handleInputChange("userId", e.target.value === "" ? "" : Number(e.target.value))}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
+                className={`w-full px-3 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm bg-white appearance-none font-sans ${
+                  formData.userId === "" ? "text-gray-400" : "text-gray-700"
+                }`}
+                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               >
-                <option value="">Select User</option>
+                <option value="" disabled hidden style={{ color: '#9CA3AF' }}>Select User</option>
                 {mockUsers.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
+                  <option key={u.id} value={u.id} style={{ color: '#374151' }}>{u.name}</option>
                 ))}
               </select>
-              {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId}</p>}
+              {errors.userId && <p className="text-red-500 text-xs mt-1 font-sans">{errors.userId}</p>}
             </div>
 
             {/* Second Row */}
@@ -390,42 +400,51 @@ const AssignmentUI = () => {
               <select
                 value={formData.role}
                 onChange={(e) => handleInputChange("role", e.target.value)}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
+                className={`w-full px-3 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm bg-white appearance-none font-sans ${
+                  formData.role === "" ? "text-gray-400" : "text-gray-700"
+                }`}
+                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               >
-                <option value="">Select Role</option>
+                <option value="" disabled hidden style={{ color: '#9CA3AF' }}>Select Role</option>
                 {["Admin", "Manager", "Guard", "Client"].map(r => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r} style={{ color: '#374151' }}>{r}</option>
                 ))}
               </select>
-              {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}
+              {errors.role && <p className="text-red-500 text-xs mt-1 font-sans">{errors.role}</p>}
             </div>
 
             <div>
               <select
                 value={formData.access}
                 onChange={(e) => handleInputChange("access", e.target.value)}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
+                className={`w-full px-3 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm bg-white appearance-none font-sans ${
+                  formData.access === "" ? "text-gray-400" : "text-gray-700"
+                }`}
+                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               >
-                <option value="">Select Access</option>
+                <option value="" disabled hidden style={{ color: '#9CA3AF' }}>Select Access</option>
                 {accessOptions.map(a => (
-                  <option key={a} value={a}>{a}</option>
+                  <option key={a} value={a} style={{ color: '#374151' }}>{a}</option>
                 ))}
               </select>
-              {errors.access && <p className="text-red-500 text-xs mt-1">{errors.access}</p>}
+              {errors.access && <p className="text-red-500 text-xs mt-1 font-sans">{errors.access}</p>}
             </div>
 
             <div>
               <select
                 value={formData.notifiedManagerId}
                 onChange={(e) => handleInputChange("notifiedManagerId", e.target.value === "" ? "" : Number(e.target.value))}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
+                className={`w-full px-3 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm bg-white appearance-none font-sans ${
+                  formData.notifiedManagerId === "" ? "text-gray-400" : "text-gray-700"
+                }`}
+                style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               >
-                <option value="">Select Manager</option>
+                <option value="" disabled hidden style={{ color: '#9CA3AF' }}>Select Manager</option>
                 {mockManagers.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
+                  <option key={m.id} value={m.id} style={{ color: '#374151' }}>{m.name}</option>
                 ))}
               </select>
-              {errors.notifiedManagerId && <p className="text-red-500 text-xs mt-1">{errors.notifiedManagerId}</p>}
+              {errors.notifiedManagerId && <p className="text-red-500 text-xs mt-1 font-sans">{errors.notifiedManagerId}</p>}
             </div>
 
             {/* Third Row - Notifications and Buttons */}
@@ -433,20 +452,21 @@ const AssignmentUI = () => {
               <button
                 type="button"
                 onClick={() => setNotifOpen(!notifOpen)}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-700 text-left focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
+                className="w-full px-3 py-0.5 border border-gray-300 rounded-md bg-white text-gray-700 placeholder:text-gray-400 text-left focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm font-sans"
+                style={{ WebkitAppearance: 'none' }}
               >
                 {formData.notifications.length > 0 
                   ? formData.notifications.join(", ") 
-                  : "Select Notifications"
+                  : <span className="text-gray-400">Select Notifications</span>
                 }
               </button>
               
               {notifOpen && (
-                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto">
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto font-sans">
                   {mockNotificationOptions.map((opt) => (
                     <label
                       key={opt}
-                      className="flex items-center px-3 py-2 hover:bg-gray-50 text-sm cursor-pointer"
+                      className="flex items-center px-3 py-2 hover:bg-gray-50 text-sm cursor-pointer font-sans"
                     >
                       <input
                         type="checkbox"
@@ -459,7 +479,7 @@ const AssignmentUI = () => {
                   ))}
                 </div>
               )}
-              {errors.notifications && <p className="text-red-500 text-xs mt-1">{errors.notifications}</p>}
+              {errors.notifications && <p className="text-red-500 text-xs mt-1 font-sans">{errors.notifications}</p>}
             </div>
 
             {/* Action Buttons */}
@@ -468,7 +488,8 @@ const AssignmentUI = () => {
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="py-2 px-4 rounded-md transition cursor-pointer w-auto flex items-center gap-1 border border-gray-500 bg-transparent text-gray-500 hover:bg-gray-50 h-8"
+                  className="py-1.5 px-4 rounded-md transition cursor-pointer w-auto flex items-center gap-1 border border-gray-500 bg-transparent text-gray-500 hover:bg-gray-50 h-7 text-sm font-sans"
+                  style={{ WebkitAppearance: 'none' }}
                 >
                   Cancel
                 </button>
@@ -476,7 +497,8 @@ const AssignmentUI = () => {
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="py-2 px-4 rounded-md transition cursor-pointer w-auto flex items-center gap-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 h-8"
+                className="py-1.5 px-4 rounded-md transition cursor-pointer w-auto flex items-center gap-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 h-7 text-sm font-sans"
+                style={{ WebkitAppearance: 'none' }}
               >
                 <Plus className="w-4 h-4" />
                 {editingRecord ? 'Update' : 'Add'}
@@ -487,16 +509,16 @@ const AssignmentUI = () => {
 
         {/* Assignment History Header */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Assignment History</h2>
+          <h2 className="text-xl font-semibold text-gray-900 font-sans">Assignment History</h2>
         </div>
 
         {/* Table Section */}
         <div className="w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-xl bg-white">
-          <table className="min-w-[700px] w-full text-sm text-gray-800 border-separate border-spacing-0">
+          <table className="min-w-[700px] w-full text-sm text-gray-800 border-separate border-spacing-0 font-sans">
             {/* Header */}
-            <thead className="bg-[#004175] text-white text-xs">
+            <thead className="bg-[#004175] text-white text-xs font-sans">
               <tr>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     Client Name
                     <div className="pl-1">
@@ -515,7 +537,7 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     Client Location
                     <div className="pl-1">
@@ -534,7 +556,7 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     User Name
                     <div className="pl-1">
@@ -553,7 +575,7 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     Role
                     <div className="pl-1">
@@ -572,7 +594,7 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     Access
                     <div className="pl-1">
@@ -591,7 +613,7 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     Manager
                     <div className="pl-1">
@@ -610,64 +632,70 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap">Notifications</th>
-                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap">Actions</th>
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap font-sans">Notifications</th>
+                <th className="px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap font-sans">Actions</th>
               </tr>
 
               {/* Search Row */}
-              <tr className="bg-white text-gray-700">
+              <tr className="bg-white text-gray-700 font-sans">
                 <th className="px-4 py-2 border-b text-left">
                   <input
                     placeholder="Search client name"
-                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400 font-sans"
                     type="text"
                     value={searchTerms.clientName}
                     onChange={(e) => setSearchTerms(prev => ({ ...prev, clientName: e.target.value }))}
+                    style={{ WebkitAppearance: 'none' }}
                   />
                 </th>
                 <th className="px-4 py-2 border-b text-left">
                   <input
                     placeholder="Search client location"
-                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400 font-sans"
                     type="text"
                     value={searchTerms.clientLocation}
                     onChange={(e) => setSearchTerms(prev => ({ ...prev, clientLocation: e.target.value }))}
+                    style={{ WebkitAppearance: 'none' }}
                   />
                 </th>
                 <th className="px-4 py-2 border-b text-left">
                   <input
                     placeholder="Search user name"
-                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400 font-sans"
                     type="text"
                     value={searchTerms.invoiceName}
                     onChange={(e) => setSearchTerms(prev => ({ ...prev, invoiceName: e.target.value }))}
+                    style={{ WebkitAppearance: 'none' }}
                   />
                 </th>
                 <th className="px-4 py-2 border-b text-left">
                   <input
                     placeholder="Search role"
-                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400 font-sans"
                     type="text"
                     value={searchTerms.status}
                     onChange={(e) => setSearchTerms(prev => ({ ...prev, status: e.target.value }))}
+                    style={{ WebkitAppearance: 'none' }}
                   />
                 </th>
                 <th className="px-4 py-2 border-b text-left">
                   <input
                     placeholder="Search access"
-                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400 font-sans"
                     type="text"
                     value={searchTerms.access}
                     onChange={(e) => setSearchTerms(prev => ({ ...prev, access: e.target.value }))}
+                    style={{ WebkitAppearance: 'none' }}
                   />
                 </th>
                 <th className="px-4 py-2 border-b text-left">
                   <input
                     placeholder="Search manager"
-                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400 font-sans"
                     type="text"
                     value={searchTerms.manager}
                     onChange={(e) => setSearchTerms(prev => ({ ...prev, manager: e.target.value }))}
+                    style={{ WebkitAppearance: 'none' }}
                   />
                 </th>
                 <th className="px-4 py-2 border-b"></th>
@@ -678,14 +706,14 @@ const AssignmentUI = () => {
             {/* Body */}
             <tbody>
               {filteredAssignments.map((record) => (
-                <tr key={record.id} className="hover:bg-blue-50 transition-colors border-t border-gray-100">
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">{record.clientName}</td>
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">{record.location || "-"}</td>
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">{record.userName}</td>
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">{record.role}</td>
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">{record.access}</td>
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">{record.notifiedManagerName}</td>
-                  <td className="px-4 py-3 border-b border-gray-100">
+                <tr key={record.id} className="hover:bg-blue-50 transition-colors border-t border-gray-100 font-sans">
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">{record.clientName}</td>
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">{record.location || "-"}</td>
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">{record.userName}</td>
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">{record.role}</td>
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">{record.access}</td>
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">{record.notifiedManagerName}</td>
+                  <td className="px-4 py-3 border-b border-gray-100 font-sans">
                     <div className="flex flex-wrap gap-1">
                       {record.notifications.map((notif, i) => (
                         <span key={i} className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
@@ -694,7 +722,7 @@ const AssignmentUI = () => {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">
                     <div className="flex items-center">
                       <button
                         onClick={() => handleEdit(record)}
@@ -725,6 +753,7 @@ const AssignmentUI = () => {
           </table>
         </div>
       </div>
+    </div>
   );
 };
 
