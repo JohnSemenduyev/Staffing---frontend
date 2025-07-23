@@ -5,16 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "./components/ui/toaster";
 import AuthRedirect from "./pages/AuthRedirect";
 import AppLayout from "./pages/AppLayout";
-import { SchedulingAndGeolocation } from "./pages/Scheduling&Geolocation";
-import AssignUserPermission from "./pages/AssignUserPermission";
-import { GeoLocationSetup } from "./pages/GeoLocationSetup";
-import { TimeSetup } from "./pages/TimeSetup";
-import { PostAssignment } from "./pages/PostAssignment";
+import { SchedulingAndGeolocation } from "./pages/Admin/Scheduling&Geolocation";
+import AssignUserPermission from "./pages/Admin/AssignUserPermission";
+import { GeoLocationSetup } from "./pages/Admin/GeoLocationSetup";
+import { TimeSetup } from "./pages/Admin/TimeSetup";
+import { PostAssignment } from "./pages/Admin/PostAssignment";
 
 const queryClient = new QueryClient();
 
