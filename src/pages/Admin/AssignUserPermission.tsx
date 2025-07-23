@@ -51,7 +51,7 @@ interface FormData {
   notifications: NotificationOption[];
 }
 
-const AssignmentUI = () => {
+const AssignUserPermission  = () => {
   // All state declarations
   const [formData, setFormData] = useState<FormData>({
     clientId: "",
@@ -757,4 +757,4 @@ const AssignmentUI = () => {
   );
 };
 
-export default AssignmentUI;
+export default AssignUserPermission ;

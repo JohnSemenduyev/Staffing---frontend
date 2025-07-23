@@ -16,7 +16,6 @@ export const useAuth = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem(STORAGE_KEY);
     if (storedUser) {

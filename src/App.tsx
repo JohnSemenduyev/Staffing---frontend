@@ -8,6 +8,13 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "./components/ui/toaster";
+import AuthRedirect from "./pages/AuthRedirect";
+import AppLayout from "./pages/AppLayout";
+import { SchedulingAndGeolocation } from "./pages/Scheduling&Geolocation";
+import AssignUserPermission from "./pages/AssignUserPermission";
+import { GeoLocationSetup } from "./pages/GeoLocationSetup";
+import { TimeSetup } from "./pages/TimeSetup";
+import { PostAssignment } from "./pages/PostAssignment";
 
 const queryClient = new QueryClient();
 
@@ -18,10 +25,17 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<AuthRedirect />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/home" element={<Home />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route element={<AppLayout />}>
+            <Route path="/scheduling-geolocation" element={<SchedulingAndGeolocation />} />
+            <Route path="/assign-user-permission" element={<AssignUserPermission />} />
+            <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
+            <Route path="/time-setup" element={<TimeSetup />} />
+            <Route path="/post-assignment" element={<PostAssignment />} />
+
+            {/* You can add manager tabs here too */}
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -15,28 +15,41 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-    const success = login(username, password);
-    
-    if (success) {
-      toast({
-        title: "Login successful",
-        description: "Welcome to the admin portal",
-      });
-      navigate('/home');
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Invalid credentials or user not authorized",
-        variant: "destructive",
-      });
+  const success = login(username, password);
+
+  if (success) {
+    const storedUser = localStorage.getItem('admin_portal_user');
+    let redirectPath = '/';
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      if (user.role === 'admin') {
+        redirectPath = '/scheduling-geolocation';
+      } else if (user.role === 'manager') {
+        redirectPath = '/scheduling';
+      }
     }
 
-    setIsLoading(false);
-  };
+    toast({
+      title: "Login successful",
+      description: "Welcome to the portal",
+    });
+
+    navigate(redirectPath);
+  } else {
+    toast({
+      title: "Login failed",
+      description: "Invalid credentials or user not authorized",
+      variant: "destructive",
+    });
+  }
+
+  setIsLoading(false);
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

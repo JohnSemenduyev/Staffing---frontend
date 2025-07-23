@@ -1,14 +1,11 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { SidebarProvider, SidebarTrigger } from '../components/ui/sidebar';
-import { AppSidebar } from '../components/AppSidebar';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from '../components/ui/button';
-import { LogOut } from 'lucide-react';
-import AssignGeoLocation from './AssignUserPermission';
+import { LogOut } from "lucide-react"
+import { Button } from "./ui/button"
+import { useAuth } from "../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
-const Home = () => {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+export const Headers = () => {
+    const { user, isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,18 +28,11 @@ const Home = () => {
   };
 
   const portalTitle = user.role === 'manager' ? 'Manager Portal' : 'Admin Portal';
-
-  return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
-        
-        <div className="flex-1">
-          {/* Header */}
-          <header className="border-b bg-card p-4">
+    return(
+        <header className="border-b bg-card p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <SidebarTrigger />
+                {/* <SidebarTrigger /> */}
                 <h1 className="text-2xl font-bold text-foreground">{portalTitle}</h1>
               </div>
               <div className="flex items-center gap-4">
@@ -61,18 +51,5 @@ const Home = () => {
               </div>
             </div>
           </header>
-
-          {/* Main Content */}
-          <main className="p-6">
-            <div className="rounded-lg border bg-card p-6">
-              <AssignGeoLocation />
-            </div>
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-
-  );
-};
-
-export default Home;
+    )
+}
