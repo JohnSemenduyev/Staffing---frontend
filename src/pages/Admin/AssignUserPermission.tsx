@@ -7,29 +7,34 @@ const mockClients = [
   { id: 2, name: "TechFlow Inc", location: "San Francisco HQ" },
   { id: 3, name: "Global Industries", location: "London Office" },
 ];
+
 const mockUsers = [
   { id: 1, name: "John Smith" },
   { id: 2, name: "Sarah Johnson" },
   { id: 3, name: "Mike Davis" },
   { id: 4, name: "Emily Brown" },
 ];
+
 const mockManagers = [
   { id: 1, name: "David Wilson" },
   { id: 2, name: "Lisa Anderson" },
   { id: 3, name: "James Taylor" },
 ];
+
 const mockNotificationOptions = [
   "Geolocation",
   "Time Clock",
   "Weekly Hours",
   "Scheduling",
 ];
+
 type RoleOption = "Admin" | "Manager" | "Guard" | "Client";
 type NotificationOption =
   | "Geolocation"
   | "Time Clock"
   | "Weekly Hours"
   | "Scheduling";
+
 interface AssignmentRecord {
   id: string;
   clientId: number;
@@ -44,6 +49,7 @@ interface AssignmentRecord {
   notifications: NotificationOption[];
   createdAt: string;
 }
+
 interface FormData {
   clientId: number | "";
   location: string | "";
@@ -65,6 +71,7 @@ const AssignmentUI = () => {
     notifiedManagerId: "",
     notifications: [],
   });
+
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([
     {
       id: "1",
@@ -109,6 +116,7 @@ const AssignmentUI = () => {
       createdAt: new Date(Date.now() - 172800000).toISOString(),
     },
   ]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState({
@@ -126,8 +134,9 @@ const AssignmentUI = () => {
     key: null,
     direction: "asc",
   });
-  const [editingRecord, setEditingRecord] =
-    useState<AssignmentRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<AssignmentRecord | null>(
+    null
+  );
 
   // Refs
   const notifRef = useRef<HTMLDivElement>(null);
@@ -173,6 +182,8 @@ const AssignmentUI = () => {
             .includes(searchTerms.manager.toLowerCase()))
       );
     });
+
+    // Apply sorting
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         const aValue = a[sortConfig.key!] ?? "";
@@ -228,12 +239,14 @@ const AssignmentUI = () => {
         prevConfig.key === key && prevConfig.direction === "asc" ? "desc" : "asc",
     }));
   };
+
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
+
   const toggleNotification = (opt: NotificationOption) => {
     const current = formData.notifications;
     if (current.includes(opt)) {
@@ -245,8 +258,10 @@ const AssignmentUI = () => {
       handleInputChange("notifications", [...current, opt]);
     }
   };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+
     if (!formData.clientId) newErrors.clientId = "Client is required";
     if (!formData.location) newErrors.location = "Location is required";
     if (!formData.userId) newErrors.userId = "User is required";
@@ -256,9 +271,11 @@ const AssignmentUI = () => {
       newErrors.notifiedManagerId = "Manager is required";
     if (formData.notifications.length === 0)
       newErrors.notifications = "Select at least one notification";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
   const handleEdit = (record: AssignmentRecord) => {
     setEditingRecord(record);
     setFormData({
@@ -271,6 +288,7 @@ const AssignmentUI = () => {
       notifications: record.notifications,
     });
   };
+
   const handleDelete = (record: AssignmentRecord) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete the assignment for ${record.userName}?`
@@ -279,8 +297,10 @@ const AssignmentUI = () => {
       setAssignments((prev) => prev.filter((a) => a.id !== record.id));
     }
   };
+
   const handleUpdate = () => {
     if (!validateForm() || !editingRecord) return;
+
     const clientRec = mockClients.find(
       (c) => c.id === Number(formData.clientId)
     );
@@ -288,6 +308,7 @@ const AssignmentUI = () => {
     const mgrRec = mockManagers.find(
       (m) => m.id === Number(formData.notifiedManagerId)
     );
+
     const updatedRecord: AssignmentRecord = {
       ...editingRecord,
       clientId: Number(formData.clientId),
@@ -301,12 +322,14 @@ const AssignmentUI = () => {
       notifiedManagerName: mgrRec?.name ?? "",
       notifications: formData.notifications,
     };
+
     setAssignments((prev) =>
       prev.map((a) => (a.id === editingRecord.id ? updatedRecord : a))
     );
     setEditingRecord(null);
     resetForm();
   };
+
   const resetForm = () => {
     setFormData({
       clientId: "",
@@ -318,15 +341,18 @@ const AssignmentUI = () => {
       notifications: [],
     });
   };
+
   const handleCancelEdit = () => {
     setEditingRecord(null);
     resetForm();
   };
+
   const handleSubmit = () => {
     if (editingRecord) {
       handleUpdate();
     } else {
       if (!validateForm()) return;
+
       const clientRec = mockClients.find(
         (c) => c.id === Number(formData.clientId)
       );
@@ -353,6 +379,7 @@ const AssignmentUI = () => {
         notifications: formData.notifications,
         createdAt: new Date().toISOString(),
       };
+
       setAssignments((prev) => [...prev, record]);
       resetForm();
     }
@@ -367,7 +394,7 @@ const AssignmentUI = () => {
             {editingRecord ? "Edit Assignment" : "General Assignment Information"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
-            {/* ...form fields unchanged */}
+            {/* First Row */}
             <div>
               <select
                 value={formData.clientId}
@@ -439,6 +466,7 @@ const AssignmentUI = () => {
                 </p>
               )}
             </div>
+            {/* Second Row */}
             <div>
               <select
                 value={formData.role}
@@ -497,9 +525,7 @@ const AssignmentUI = () => {
                   )
                 }
                 className={`w-full px-3 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition text-sm bg-white appearance-none font-sans ${
-                  formData.notifiedManagerId === ""
-                    ? "text-gray-400"
-                    : "text-gray-700"
+                  formData.notifiedManagerId === "" ? "text-gray-400" : "text-gray-700"
                 }`}
                 style={{ WebkitAppearance: "none", MozAppearance: "none" }}
               >
@@ -518,6 +544,7 @@ const AssignmentUI = () => {
                 </p>
               )}
             </div>
+            {/* Third Row */}
             <div className="sm:col-span-2 lg:col-span-2 relative" ref={notifRef}>
               <button
                 type="button"
@@ -560,6 +587,7 @@ const AssignmentUI = () => {
                 </p>
               )}
             </div>
+            {/* Action Buttons */}
             <div className="flex gap-3 pt-2 sm:pt-0 flex-wrap">
               {editingRecord && (
                 <button
@@ -583,15 +611,17 @@ const AssignmentUI = () => {
             </div>
           </div>
         </div>
+
         {/* Assignment History Header */}
         <div className="mb-3 sm:mb-6">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 font-sans">
             Assignment History
           </h2>
         </div>
+
         {/* Table Section */}
         <div className="relative w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-xl bg-white">
-          <table className="min-w-[950px] w-full text-sm text-gray-800 border-separate border-spacing-0 font-sans table-fixed">
+          <table className="min-w-[700px] w-full text-sm text-gray-800 border-separate border-spacing-0 font-sans table-fixed">
             {/* Header */}
             <thead className="bg-[#004175] text-white text-xs font-sans">
               <tr>
@@ -624,7 +654,6 @@ const AssignmentUI = () => {
                     </div>
                   </div>
                 </th>
-                {/* ...other table headers unchanged */}
                 <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none font-sans">
                   <div className="flex items-center">
                     Client Location
@@ -777,7 +806,7 @@ const AssignmentUI = () => {
                   Actions
                 </th>
               </tr>
-              {/* ...search row stays unchanged */}
+              {/* Search Row */}
               <tr className="bg-white text-gray-700 font-sans">
                 {[
                   "clientName",
@@ -791,11 +820,11 @@ const AssignmentUI = () => {
                     <input
                       placeholder={
                         idx === 0
-                          ? "Search client name"
+                          ? "Search client"
                           : idx === 1
-                          ? "Search client location"
+                          ? "Search location"
                           : idx === 2
-                          ? "Search user name"
+                          ? "Search user"
                           : idx === 3
                           ? "Search role"
                           : idx === 4
@@ -844,12 +873,13 @@ const AssignmentUI = () => {
                   <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap font-sans">
                     {record.notifiedManagerName}
                   </td>
-                  <td className="px-2 sm:px-4 py-3 border-b border-gray-100 font-sans align-top w-[250px] sm:w-[320px] lg:w-[380px]">
-                    <div className="grid grid-cols-2 gap-x-1 gap-y-1">
+                  <td className="px-2 sm:px-4 py-3 border-b border-gray-100 font-sans align-top w-[1%] max-w-[220px]">
+                    <div className="grid grid-cols-2 gap-x-1 gap-y-1 w-full">
                       {record.notifications.map((notif, i) => (
                         <span
                           key={i}
-                          className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded"
+                          className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded min-w-0 max-w-full break-words"
+                          style={{ wordBreak: "break-word" }}
                         >
                           {notif}
                         </span>
@@ -909,6 +939,7 @@ const AssignmentUI = () => {
               ))}
             </tbody>
           </table>
+          {/* Small screen: horizontal scroll hint */}
           <div className="sm:hidden px-2 py-2 text-xs text-gray-400">
             Scroll horizontally for more
           </div>
