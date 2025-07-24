@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Input } from "../components/ui/input";
+import { ChevronUp, ChevronDown } from "lucide-react";
+import { useAssignments } from "../hooks/useAssignment"; // <-- Adjust path if needed
 
-// Types
 type RoleOption = "Admin" | "Manager" | "Guard" | "Client";
 type NotificationOption = "Geolocation" | "Time Clock" | "Weekly Hours" | "Scheduling";
 
@@ -9,134 +9,358 @@ interface AssignmentRecord {
   id: string;
   clientId: number;
   clientName: string;
-  location: string | null;
+  location: string;
   userId: number;
   userName: string;
   role: RoleOption;
   access: "View" | "Edit";
-  notifiedManagerId: number;
-  notifiedManagerName: string;
+  guardId: number;
+  guardName: string;
   notifications: NotificationOption[];
   createdAt: string;
 }
 
-interface Props {
-  assignments: AssignmentRecord[];
+function getLocationString(location: any) {
+  if (!location) return "";
+  return [location?.label, location?.address, location?.city].filter(Boolean).join(", ");
 }
 
-const AssignmentReport: React.FC<Props> = ({ assignments }) => {
-  const [clientFilter, setClientFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [userFilter, setUserFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [accessFilter, setAccessFilter] = useState("");
-  const [managerFilter, setManagerFilter] = useState("");
-  const [createdFilter, setCreatedFilter] = useState("");
+const AssignmentHistory: React.FC = () => {
+  const { data, isLoading, isError } = useAssignments();
 
-  const norm = (s: unknown) => (s ?? "").toString().toLowerCase();
+  // Flatten backend response
+  const assignments: AssignmentRecord[] = useMemo(() => {
+    if (!data) return [];
+    return data.map((a: any) => ({
+      id: String(a.id),
+      clientId: a.clientId,
+      clientName: a.client?.name || "",
+      location: getLocationString(a.address),
+      userId: a.userId,
+      userName: a.user?.name || "",
+      role: a.role,
+      access: a.access,
+      guardId: a.guardId,
+      guardName: a.guard?.name || "",
+      notifications: a.notification || [],
+      createdAt: a.createdAt,
+    }));
+  }, [data]);
 
-  const filtered = useMemo(() => {
-    const c = norm(clientFilter);
-    const l = norm(locationFilter);
-    const u = norm(userFilter);
-    const r = norm(roleFilter);
-    const a = norm(accessFilter);
-    const m = norm(managerFilter);
-    const d = norm(createdFilter);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof AssignmentRecord | null; direction: "asc" | "desc" }>({
+    key: null, direction: "asc"
+  });
 
-    return assignments.filter((rec) => {
-      const clientName = norm(rec.clientName);
-      const location = norm(rec.location);
-      const userName = norm(rec.userName);
-      const role = norm(rec.role);
-      const access = norm(rec.access);
-      const mgr = norm(rec.notifiedManagerName);
-      const createdLocal = norm(new Date(rec.createdAt).toLocaleString());
-      const createdISO = norm(rec.createdAt);
+  const [searchTerms, setSearchTerms] = useState({
+    clientName: "",
+    clientLocation: "",
+    invoiceName: "",
+    status: "",
+    access: "",
+    manager: "",
+  });
 
+  const filteredAssignments = useMemo(() => {
+    let filtered = assignments.filter((record) => {
+      const clientLocation = record.location || "";
       return (
-        (!c || clientName.includes(c)) &&
-        (!l || location.includes(l)) &&
-        (!u || userName.includes(u)) &&
-        (!r || role.includes(r)) &&
-        (!a || access.includes(a)) &&
-        (!m || mgr.includes(m)) &&
-        (!d || createdLocal.includes(d) || createdISO.includes(d))
+        (!searchTerms.clientName || record.clientName.toLowerCase().includes(searchTerms.clientName.toLowerCase())) &&
+        (!searchTerms.clientLocation || clientLocation.toLowerCase().includes(searchTerms.clientLocation.toLowerCase())) &&
+        (!searchTerms.invoiceName || record.userName.toLowerCase().includes(searchTerms.invoiceName.toLowerCase())) &&
+        (!searchTerms.status || record.role.toLowerCase().includes(searchTerms.status.toLowerCase())) &&
+        (!searchTerms.access || record.access.toLowerCase().includes(searchTerms.access.toLowerCase()))
+        // manager filter can be added if you link manager data
       );
     });
-  }, [assignments, clientFilter, locationFilter, userFilter, roleFilter, accessFilter, managerFilter, createdFilter]);
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.key!] ?? "";
+        const bValue = b[sortConfig.key!] ?? "";
+        if (aValue < bValue) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return filtered;
+  }, [assignments, searchTerms, sortConfig]);
+
+  const handleSort = (key: keyof AssignmentRecord) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const handleEdit = (record: AssignmentRecord) => {
+    alert(`Start editing assignment for: ${record.userName}`);
+  };
+
+  const handleDelete = (record: AssignmentRecord) => {
+    alert(`Delete assignment (id: ${record.id})`);
+  };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (isError) return <div>Error loading assignments.</div>;
 
   return (
-    <div className=" p-2">
-<div className="mb-6 border-b ">
-          <h1 className="text-xl font-semibold mb-2 text-gray-800">Assignment History</h1>
-        </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm border">
-          <thead className="bg-gray-100">
+    <div className="w-full max-w-full">
+      <div className="mb-3 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 font-sans">
+          Assignment History
+        </h2>
+      </div>
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-xl bg-white">
+        <table className="min-w-[950px] w-full text-sm text-gray-800 border-separate border-spacing-0 font-sans table-fixed">
+          <thead className="bg-[#004175] text-white text-xs font-sans">
             <tr>
-              <th className="px-2 py-1 border text-left">Client</th>
-              <th className="px-2 py-1 border text-left">Location</th>
-              <th className="px-2 py-1 border text-left">User</th>
-              <th className="px-2 py-1 border text-left">Role</th>
-              <th className="px-2 py-1 border text-left">Access</th>
-              <th className="px-2 py-1 border text-left">Manager</th>
-              <th className="px-2 py-1 border text-left">Notifications</th>
-              <th className="px-2 py-1 border text-left">Created</th>
+              <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <div className="flex items-center">
+                  Client Name
+                  <div className="pl-1">
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "clientName" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("clientName")}
+                    >
+                      <ChevronUp className="-mb-1 w-4 h-4" />
+                    </span>
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "clientName" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("clientName")}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              </th>
+              <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <div className="flex items-center">
+                  Client Location
+                  <div className="pl-1">
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "location" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("location")}
+                    >
+                      <ChevronUp className="-mb-1 w-4 h-4" />
+                    </span>
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "location" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("location")}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              </th>
+              <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <div className="flex items-center">
+                  User Name
+                  <div className="pl-1">
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "userName" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("userName")}
+                    >
+                      <ChevronUp className="-mb-1 w-4 h-4" />
+                    </span>
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "userName" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("userName")}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              </th>
+              <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <div className="flex items-center">
+                  Role
+                  <div className="pl-1">
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "role" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("role")}
+                    >
+                      <ChevronUp className="-mb-1 w-4 h-4" />
+                    </span>
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "role" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("role")}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              </th>
+              <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <div className="flex items-center">
+                  Access
+                  <div className="pl-1">
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "access" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("access")}
+                    >
+                      <ChevronUp className="-mb-1 w-4 h-4" />
+                    </span>
+                    <span
+                      className={`cursor-pointer ${sortConfig.key === "access" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}
+                      onClick={() => handleSort("access")}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              </th>
+              <th className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap select-none">
+                <div className="flex items-center">
+                  Guard
+                </div>
+              </th>
+              <th className="px-2 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap">
+                Notifications
+              </th>
+              <th className="px-2 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap">
+                Actions
+              </th>
             </tr>
-            <tr className="bg-white">
-              <th className="px-2 py-1 border">
-                <Input value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
-              <th className="px-2 py-1 border">
-                <Input value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
-              <th className="px-2 py-1 border">
-                <Input value={userFilter} onChange={(e) => setUserFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
-              <th className="px-2 py-1 border">
-                <Input value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
-              <th className="px-2 py-1 border">
-                <Input value={accessFilter} onChange={(e) => setAccessFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
-              <th className="px-2 py-1 border">
-                <Input value={managerFilter} onChange={(e) => setManagerFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
-              <th className="px-2 py-1 border"></th>
-              <th className="px-2 py-1 border">
-                <Input value={createdFilter} onChange={(e) => setCreatedFilter(e.target.value)} placeholder="Filter..." className="h-8 font-normal" />
-              </th>
+            <tr className="bg-white text-gray-700 font-sans">
+              {[
+                "clientName",
+                "clientLocation",
+                "invoiceName",
+                "status",
+                "access",
+                "manager",
+              ].map((term, idx) => (
+                <th key={term} className="px-2 sm:px-4 py-2 border-b text-left">
+                  <input
+                    placeholder={
+                      idx === 0
+                        ? "Search client name"
+                        : idx === 1
+                        ? "Search client location"
+                        : idx === 2
+                        ? "Search user name"
+                        : idx === 3
+                        ? "Search role"
+                        : idx === 4
+                        ? "Search access"
+                        : "Search manager"
+                    }
+                    className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
+                    type="text"
+                    value={searchTerms[term as keyof typeof searchTerms]}
+                    onChange={(e) =>
+                      setSearchTerms((prev) => ({
+                        ...prev,
+                        [term]: e.target.value,
+                      }))
+                    }
+                  />
+                </th>
+              ))}
+              <th className="px-2 sm:px-4 py-2 border-b"></th>
+              <th className="px-2 sm:px-4 py-2 border-b"></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-4">
-                  No matching records.
+            {filteredAssignments.map((record) => (
+              <tr
+                key={record.id}
+                className="hover:bg-blue-50 transition-colors border-t border-gray-100"
+              >
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  {record.clientName}
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  {record.location || "-"}
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  {record.userName}
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  {record.role}
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  {record.access}
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  {record.guardName}
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 align-top w-[250px] sm:w-[320px] lg:w-[380px]">
+                  <div className="grid grid-cols-2 gap-x-1 gap-y-1">
+                    {record.notifications.map((notif, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded"
+                      >
+                        {notif}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEdit(record)}
+                      className="text-blue-500 hover:text-green-700"
+                      title="Edit"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="lucide lucide-square-pen"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(record)}
+                      className="text-red-500 hover:text-red-700"
+                      title="Delete"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="lucide lucide-trash2"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        <line x1="10" x2="10" y1="11" y2="17"></line>
+                        <line x1="14" x2="14" y1="11" y2="17"></line>
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
-            ) : (
-              filtered.map((rec) => (
-                <tr key={rec.id} className="border-t">
-                  <td className="px-2 py-1">{rec.clientName}</td>
-                  <td className="px-2 py-1">{rec.location ?? "-"}</td>
-                  <td className="px-2 py-1">{rec.userName}</td>
-                  <td className="px-2 py-1">{rec.role}</td>
-                  <td className="px-2 py-1">{rec.access}</td>
-                  <td className="px-2 py-1">{rec.notifiedManagerName}</td>
-                  <td className="px-2 py-1">{rec.notifications.join(", ") || "-"}</td>
-                  <td className="px-2 py-1 whitespace-nowrap">
-                    {new Date(rec.createdAt).toLocaleString()}
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
+        <div className="sm:hidden px-2 py-2 text-xs text-gray-400">
+          Scroll horizontally for more
+        </div>
       </div>
     </div>
   );
 };
 
-export default AssignmentReport;
+export default AssignmentHistory;
