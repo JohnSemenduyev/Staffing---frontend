@@ -86,9 +86,10 @@ export const SEARCH_CLIENTS = gql`
     searchClients(name: $name) {
       id
       name
-      email
-      phone
-      createdAt
+      addresses {
+      id
+        address
+      } 
     }
   }
 `;
@@ -113,3 +114,24 @@ export const SEARCH_GUARDS = gql`
 `;
 
 
+export const GET_GEOLOCATIONS = gql`
+  query {
+    geoLocations {
+      id
+      clientId
+      addressId
+      distance
+      time
+      createdAt
+      client {
+        id
+        name
+      }
+      address {
+        id
+        label
+        address
+      }
+    }
+  }
+`;

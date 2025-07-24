@@ -86,4 +86,33 @@ export const CREATE_USER = gql`
   }
 `;
 
-// ...add other entity mutations here as needed
+export const CREATE_GEOLOCATION = gql`
+  mutation CreateGeoLocation(
+    $clientId: Int!
+    $addressId: Int!
+    $distance: Float
+    $time: Float
+  ) {
+    createGeoLocation(
+      clientId: $clientId
+      addressId: $addressId
+      distance: $distance
+      time: $time
+    ) {
+      id
+      clientId
+      addressId
+      distance
+      time
+      createdAt
+      client {
+        id
+        name
+      }
+      address {
+        id
+        label
+      }
+    }
+  }
+`;

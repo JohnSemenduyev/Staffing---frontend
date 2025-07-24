@@ -15,6 +15,7 @@ import { GeoLocationSetup } from "./pages/Admin/GeoLocationSetup";
 import { TimeSetup } from "./pages/Admin/TimeSetup";
 import { PostAssignment } from "./pages/Admin/PostAssignment";
 import AssignmentCard from "./pages/Admin/Assignment";
+import { GeoLocationProvider } from "./context/GeoLocationContext";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+       <GeoLocationProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<AuthRedirect />} />
@@ -39,6 +41,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      </GeoLocationProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
