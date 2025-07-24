@@ -81,3 +81,35 @@ export const GET_USERS = gql`
     }
   }
 `;
+export const SEARCH_CLIENTS = gql`
+  query SearchClients($name: String!) {
+    searchClients(name: $name) {
+      id
+      name
+      email
+      phone
+      createdAt
+    }
+  }
+`;
+// queries.ts
+export const SEARCH_USERS = gql`
+  query SearchUsers($name: String!) {
+    searchUsers(name: $name) {
+      id
+      name
+    }
+  }
+`;
+
+
+export const SEARCH_GUARDS = gql`
+  query searchGuards($name: String!) {
+    searchGuards(name: $name) {
+      id
+      name
+    }
+  }
+`;
+
+
