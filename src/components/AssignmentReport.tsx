@@ -141,11 +141,11 @@ const AssignmentHistory: React.FC = () => {
               ))}
             </tr>
             <tr className="bg-white text-gray-700 font-sans">
-              {["clientName", "clientLocation", "invoiceName", "status", "access", "manager"].map((term, idx) => (
+              {["Name", "Location", "User", "Status", "Access", "Manager  "].map((term, idx) => (
                 <th key={term} className="px-2 sm:px-4 py-2 border-b text-left">
                   <input
-                    placeholder={`Search ${term.replace(/([A-Z])/g, " $1").toLowerCase()}`}
-                    className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
+                    placeholder={`Search  `}
+                    className="w-min max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
                     type="text"
                     value={searchTerms[term as keyof typeof searchTerms]}
                     onChange={(e) =>
@@ -164,7 +164,7 @@ const AssignmentHistory: React.FC = () => {
           <tbody>
             {filteredAssignments.map((record) => (
               <tr key={record.id} className="hover:bg-blue-50 transition-colors border-t border-gray-100">
-                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                <td className="px-2 h-7  sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
                   {record.clientName}
                 </td>
                 <td className="px-2 sm:px-4 py-3 border-b border-gray-100 break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]">
@@ -185,7 +185,7 @@ const AssignmentHistory: React.FC = () => {
                   {record.guardName}
                 </td>
                 <td className="px-2 sm:px-4 py-3 border-b border-gray-100 align-top w-[200px] sm:w-[300px] lg:w-[380px]">
-  <div className="flex flex-wrap gap-1">
+  <div className="flex  gap-1">
     {record.notifications.map((notif, i) => (
       <span
         key={i}
