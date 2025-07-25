@@ -10,25 +10,32 @@ import { Toaster } from "./components/ui/toaster";
 import AuthRedirect from "./pages/AuthRedirect";
 import AppLayout from "./pages/AppLayout";
 import { SchedulingAndGeolocation } from "./pages/Admin/Scheduling&Geolocation";
-import AssignUserPermission from "./pages/Admin/AssignUserPermission";
+import AssignUserPermission from "./pages/Admin/Assignment";
 import { GeoLocationSetup } from "./pages/Admin/GeoLocationSetup";
 import { TimeSetup } from "./pages/Admin/TimeSetup";
 import { PostAssignment } from "./pages/Admin/PostAssignment";
+import AssignmentCard from "./pages/Admin/Assignment";
+import { GeoLocationProvider } from "./context/GeoLocationContext";
+import { TimeSetupProvider } from "./context/TimeStemp";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+    
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <GeoLocationProvider>
+          <TimeSetupProvider>
+           
+          <BrowserRouter>
         <Routes>
           <Route path="/" element={<AuthRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route element={<AppLayout />}>
             <Route path="/scheduling-geolocation" element={<SchedulingAndGeolocation />} />
-            <Route path="/assign-user-permission" element={<AssignUserPermission />} />
+            <Route path="/assign-user-permission" element={<AssignmentCard />} />
             <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
             <Route path="/time-setup" element={<TimeSetup />} />
             <Route path="/post-assignment" element={<PostAssignment />} />
@@ -38,7 +45,11 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+          </TimeSetupProvider>
+        
+      </GeoLocationProvider>
     </TooltipProvider>
+    
   </QueryClientProvider>
 );
 

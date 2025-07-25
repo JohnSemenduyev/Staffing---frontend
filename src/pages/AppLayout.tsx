@@ -22,11 +22,12 @@ const AppLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex w-full  bg-background">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <Headers />
-          <main className="p-6">
+          <main className="w-full flex-1 px-2 sm:px-4 md:px-6 py-2 sm:py-4 bg-gray-100">
+            {/* The Outlet renders the active child page */}
             <Outlet />
           </main>
         </div>
