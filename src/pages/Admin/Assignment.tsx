@@ -125,9 +125,8 @@ export default function AssignmentForm() {
   const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 font-sans">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg border border-gray-200 mb-8 p-4 sm:p-6">
+   <div className="min-h-screen p-6 font-sans">
+      <div className="w-full px-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-6 font-sans">
             General Assignment Information
           </h2>
@@ -347,7 +346,6 @@ export default function AssignmentForm() {
           </form>
         </div>
         <AssignmentHistory />
-      </div>
     </div>
   );
 }

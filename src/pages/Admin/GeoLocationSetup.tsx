@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Circle, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Circle, Edit, Plus, Trash2 } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
+import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 
 export const GeoLocationSetup = () => {
   const [form, setForm] = useState({ clientId: "",addressId: "",distance: "",time: "", });
@@ -156,6 +157,63 @@ export const GeoLocationSetup = () => {
     return filtered;
   }, [geoLocations, searchTerms, sortConfig]);
 
+  
+  const tableColumns: TableColumn[] = [
+    {
+      key: "client.name",
+      label: "Client Name",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap"
+    },
+    {
+      key: "address.address",
+      label: "Client Location",
+      sortable: true,
+      searchable: true,
+      className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
+      render: (value: string) => (
+        <div className="truncate" title={value}>
+          {value || "-"}
+        </div>
+      )
+    },
+    {
+      key: "distance",
+      label: "Distance",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap",
+      render: (value: any) => `${value} Mile`
+    },
+    {
+      key: "time",
+      label: "Time",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap",
+      render: (value: any) => `${value} Mins`
+    }
+  ];
+
+  const tableActions: TableAction[] = [
+    {
+      label: "Edit",
+      icon: <Edit className="w-4 h-4" />,
+      onClick: handleEdit,
+      className: "text-blue-500 hover:text-green-700",
+      title: "Edit"
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 className="w-4 h-4" />,
+      onClick: handleDelete,
+      className: "text-red-500 hover:text-red-700",
+      title: "Delete"
+    }
+  ];
+
+
   return (
     <div className="min-h-screen p-6 font-sans">
       <div className="w-full px-6">
@@ -295,123 +353,14 @@ export const GeoLocationSetup = () => {
           </form>
         </div>
 
-        <div className="w-full max-w-full mt-10">
-          {loading ? (
-            <div className="text-center">Loading...</div> 
-          ) : (
-            <div className="relative w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-xl">
-              <table className="min-w-full table-auto text-sm text-gray-800 font-sans">
-                <thead className="bg-[#004175] text-white text-xs font-sans">
-                  <tr>
-                    {[
-                      { label: "Client Name", key: "client" },
-                      { label: "Client Location", key: "address" },
-                      { label: "Distance", key: "distance" },
-                      { label: "Time", key: "time" },
-                      { label: "Actions", key: null }
-                    ].map((header, index) => (
-                      <th key={header.key || header.label} className="px-3 sm:px-4 py-3 text-left whitespace-nowrap">
-                        <div className="flex items-center">
-                          {header.label}
-                          {header.key && (
-                            <div className="pl-1">
-                              <span
-                                className={`cursor-pointer ${sortConfig.key === header.key && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}
-                                onClick={() => handleSort(header.key as keyof GeoLocation)}
-                              >
-                                <ChevronUp className="-mb-1 w-4 h-4" />
-                              </span>
-                              <span
-                                className={`cursor-pointer ${sortConfig.key === header.key && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}
-                                onClick={() => handleSort(header.key as keyof GeoLocation)}
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                  <tr className="bg-white text-gray-700 font-sans w-full">
-                    {[
-                      { label: "Client Name", key: "clientName" },
-                      { label: "Client Location", key: "clientLocation" },
-                      { label: "Distance", key: "distance" },
-                      { label: "Time", key: "time" }
-                    ].map((field) => (
-                      <th key={field.key} className="px-2 sm:px-4 py-2 text-left">
-                        <input
-                          placeholder={`Search ${field.label.toLowerCase()}`}
-                          className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
-                          type="text"
-                          value={searchTerms[field.key as keyof typeof searchTerms]}
-                          onChange={(e) =>
-                            setSearchTerms((prev) => ({
-                              ...prev,
-                              [field.key]: e.target.value,
-                            }))
-                          }
-                        />
-                      </th>
-                    ))}
-                    <th className="px-2 sm:px-4 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAndSortedData.map((record, index) => (
-                    <tr 
-                      key={record.id} 
-                      className={`hover:bg-blue-50 transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                    >
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        {record.client.name || "-"}
-                      </td>
-                      <td className="px-2 sm:px-4 py-3 break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]">
-                        <div className="truncate" title={record.address.address}>
-                          {record.address.address || "-"}
-                        </div>
-                      </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        {record.distance} Mile
-                      </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        {record.time} Mins
-                      </td>
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleEdit(record)} 
-                            className="text-blue-500 hover:text-green-700" 
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(record)} 
-                            className="text-red-500 hover:text-red-700" 
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredAndSortedData.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-500 bg-white">
-                        No records found matching your search criteria.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+       <GenericTable
+          data={geoLocations}
+          columns={tableColumns}
+          actions={tableActions}
+          loading={loading}
+          emptyMessage="No records found matching your search criteria."
+          searchable={true}
+        />
       </div>
     </div>
   );
