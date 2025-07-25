@@ -17,6 +17,12 @@ import { PostAssignment } from "./pages/Admin/PostAssignment";
 import AssignmentCard from "./pages/Admin/Assignment";
 import { GeoLocationProvider } from "./context/GeoLocationContext";
 import { TimeSetupProvider } from "./context/TimeStemp";
+import { Scheduling } from "./pages/Manager/Scheduling";
+import { PrepareSchedule } from "./pages/Manager/PrepareSchedule";
+import { ViewSchedule } from "./pages/Manager/ViewSchedule";
+import { Summary } from "./pages/Manager/Summary";
+import { UniformCompliance } from "./pages/Manager/UniformCompliance";
+import { Notification } from "./pages/Manager/Notification";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +47,13 @@ const App = () => (
             <Route path="/post-assignment" element={<PostAssignment />} />
 
             {/* You can add manager tabs here too */}
+            <Route path="/scheduling" element={<Scheduling />} />
+            <Route path="/prepare-schedule" element={<PrepareSchedule />} />
+            <Route path="/view-schedule" element={<ViewSchedule />} />
+            <Route path="/view-time-summary" element={<Summary />} />
+            <Route path="/uniform-compliance" element={<UniformCompliance />} />
+            <Route path="/notification" element={<Notification />} />
+
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
