@@ -112,7 +112,21 @@ export const SEARCH_GUARDS = gql`
     }
   }
 `;
-
+export const UPDATE_ASSIGNMENT = gql`
+  mutation UpdateAssignment($id: Int!, $data: UpdateAssignmentInput!) {
+    updateAssignment(id: $id, data: $data) {
+      id
+      role
+      access
+      notification
+      user { id name }
+      guard { id name }
+      client { id name }
+      address { id label }
+      createdAt
+    }
+  }
+`;
 
 export const GET_GEOLOCATIONS = gql`
   query {
