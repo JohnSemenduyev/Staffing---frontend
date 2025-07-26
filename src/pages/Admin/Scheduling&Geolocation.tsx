@@ -2,8 +2,6 @@ import { useTimeSetupContext } from "../../context/TimeStemp";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { log } from "console";
-
 
 interface Data {
     id: number;
@@ -95,45 +93,45 @@ const tableColumns: TableColumn[] = [
     render: (value: any) => `${value} Min`
   },
   {
-    key: "overlap",
-    label: "Overlap",
-    sortable: false,
-    searchable: false,
-    className: "whitespace-nowrap",
-    render: (value: boolean) => (
-      <label className="inline-flex items-center cursor-pointer">
-        <input
-          type="checkbox"
-          checked={value}
-          readOnly
-          className="sr-only peer"
-        />
-        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 relative transition-colors">
-          <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-4 transition-transform" />
-        </div>
-      </label>
-    )
-  },
+  key: "overlap",
+  label: "Overlap", 
+  sortable: false,
+  searchable: false,
+  className: "whitespace-nowrap",
+  render: (value: boolean) => (
+    <label className="inline-flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={value}
+        readOnly
+        className="sr-only peer"
+      />
+      <div className="w-10 h-5 bg-gray-300 peer-checked:bg-[#004175] rounded-full relative transition-colors duration-300">
+        <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform duration-300" />
+      </div>
+    </label>
+  )
+},
   {
-    key: "unscheduledTime",
-    label: "Unscheduled Time",
-    sortable: false,
-    searchable: false,
-    className: "whitespace-nowrap",
-    render: (value: boolean) => (
-      <label className="inline-flex items-center cursor-pointer">
-        <input
-          type="checkbox"
-          checked={value}
-          readOnly
-          className="sr-only peer"
-        />
-        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 relative transition-colors">
-          <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-4 transition-transform" />
-        </div>
-      </label>
-    )
-  }
+  key: "unscheduledTime",
+    label: "Unscheduled Time", 
+  sortable: false,
+  searchable: false,
+  className: "whitespace-nowrap",
+  render: (value: boolean) => (
+    <label className="inline-flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={value}
+        readOnly
+        className="sr-only peer"
+      />
+      <div className="w-10 h-5 bg-gray-300 peer-checked:bg-[#004175] rounded-full relative transition-colors duration-300">
+        <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform duration-300" />
+      </div>
+    </label>
+  )
+}
 ];
 
 const tableActions: TableAction[] = [
@@ -165,6 +163,7 @@ const tableActions: TableAction[] = [
   emptyMessage="No time setup records found."
   searchable={true}
 />
+
 
         </div>
     )

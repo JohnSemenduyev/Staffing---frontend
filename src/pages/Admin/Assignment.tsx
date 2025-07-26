@@ -7,6 +7,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useSearchGuards } from "../../hooks/useSearchGuard";
 import { useSearchUsers } from "../../hooks/useSearchUser";
+import SubmitButton from "../../components/ui/ButtonUi";
 
 const notificationOptions = [
   "Geolocation",
@@ -42,9 +43,9 @@ export default function AssignmentForm() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const [guardSearch, setGuardSearch] = useState("");
-  const debouncedGuardSearch = useDebounce(guardSearch, 300);
-  const { data: searchedGuards = [], isLoading: loadingGuards } = useSearchGuards(debouncedGuardSearch);
-  const [showGuardDropdown, setShowGuardDropdown] = useState(false);
+  // const debouncedGuardSearch = useDebounce(guardSearch, 300);
+  // const { data: searchedGuards = [], isLoading: loadingGuards } = useSearchGuards(debouncedGuardSearch);
+  // const [showGuardDropdown, setShowGuardDropdown] = useState(false);
 
   const clientIdNum = form.clientId ? Number(form.clientId) : 0;
   const { data: addresses, isLoading: loadingAddresses } = useAddressesByClient(clientIdNum);
@@ -82,12 +83,12 @@ export default function AssignmentForm() {
     setErrors(e => ({ ...e, userId: undefined }));
   };
 
-  const handleGuardSelect = (guard: { id: string | number; name: string }) => {
-    setForm(f => ({ ...f, guardId: String(guard.id) }));
-    setGuardSearch(guard.name);
-    setShowGuardDropdown(false);
-    setErrors(e => ({ ...e, guardId: undefined }));
-  };
+  // const handleGuardSelect = (guard: { id: string | number; name: string }) => {
+  //   setForm(f => ({ ...f, guardId: String(guard.id) }));
+  //   setGuardSearch(guard.name);
+  //   setShowGuardDropdown(false);
+  //   setErrors(e => ({ ...e, guardId: undefined }));
+  // };
 
   const validate = () => {
     const e: any = {};
@@ -106,6 +107,7 @@ export default function AssignmentForm() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    console.log("Submitting form with data:", form); 
     createAssignment.mutate({
       userId: Number(form.userId),
       guardId: Number(form.guardId),
@@ -125,12 +127,12 @@ export default function AssignmentForm() {
   const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   return (
-   <div className="min-h-screen p-6 font-sans">
+  <div className="min-h-screen p-6 font-sans">
       <div className="w-full px-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6 font-sans">
-            General Assignment Information
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+            Add Assignment
           </h2>
-
           <form onSubmit={onSubmit} autoComplete="off">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {/* Client Search */}
@@ -234,36 +236,36 @@ export default function AssignmentForm() {
               </div>
 
               {/* Guard Search */}
-              <div className="relative">
+             <div className="relative">
                 <input
                   type="text"
                   value={guardSearch}
-                  onFocus={() => setShowGuardDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowGuardDropdown(false), 200)}
+                  onFocus={() => setShowUserDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
                   onChange={e => {
                     setGuardSearch(e.target.value);
-                    setForm(f => ({ ...f, guardId: "" }));
+                    setForm(f => ({ ...f, userId: "" }));
                   }}
                   placeholder="Guard Name"
                   className={fieldInputClasses}
                 />
-                {errors.guardId && (
-                  <span className="text-xs text-red-500">{errors.guardId}</span>
+                {errors.userId && (
+                  <span className="text-xs text-red-500">{errors.userId}</span>
                 )}
-                {showGuardDropdown && guardSearch.length >= 2 && (
+                {showUserDropdown && guardSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                    {loadingGuards ? (
-                      <div className="p-2 text-sm text-gray-500">Searching guards...</div>
-                    ) : searchedGuards.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No guards found</div>
+                    {loadingUsers ? (
+                      <div className="p-2 text-sm text-gray-500">Searching users...</div>
+                    ) : searchedUsers.length === 0 ? (
+                      <div className="p-2 text-gray-500 text-sm">No users found</div>
                     ) : (
-                      searchedGuards.map(guard => (
+                      searchedUsers.map(user => (
                         <div
-                          key={guard.id}
+                          key={user.id}
                           className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                          onMouseDown={() => handleGuardSelect(guard)}
+                          onMouseDown={() => handleUserSelect(user)}
                         >
-                          {guard.name}
+                          {user.name}
                         </div>
                       ))
                     )}
@@ -271,8 +273,6 @@ export default function AssignmentForm() {
                 )}
               </div>
 
-              {/* Role select */}
-              {/* Role select */}
 <div>
   <select
     value={form.role}
@@ -331,21 +331,27 @@ export default function AssignmentForm() {
               </div>
               {/* Submit Button */}
               <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4">
-                <button
+                {/* <button
                   type="submit"
                   disabled={createAssignment.status === "pending"}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md font-sans w-full sm:w-auto"
                 >
                   <Plus className="inline-block w-4 h-4 mr-1" /> Add Assignment
-                </button>
-                {createAssignment.status === "pending" && (
-                  <span className="ml-2 text-blue-500">Submitting...</span>
-                )}
+                </button> */}
+                <SubmitButton
+                  loading={createAssignment.status === "pending"}
+                  disabled={createAssignment.status === "pending"}
+                  icon={<Plus className="w-4 h-4 mr-1" />}
+                >
+                  Add
+                </SubmitButton>
               </div>
             </div>
           </form>
         </div>
-        <AssignmentHistory />
-    </div>
+        <div className="mt-6"></div>
+          <AssignmentHistory />
+        </div>
+      </div>
   );
 }

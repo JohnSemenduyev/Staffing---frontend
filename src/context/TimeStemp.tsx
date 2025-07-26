@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
 import { GET_TIME_SETUP } from "../graphql/queries";
-import { CREATE_TIME_SETUP } from "../graphql/mutation";
-import { log } from "console";
+import {
+  CREATE_TIME_SETUP,
+  DELETE_TIME_SETUP,
+  UPDATE_TIME_SETUP,
+} from "../graphql/mutation";
 
 // ---- Type Definitions ----
 interface TimeSetup {
@@ -43,6 +46,8 @@ interface TimeSetupContextType {
   loading: boolean;
   error: string | null;
   createTimeSetup: (input: TimeSetupInput) => Promise<TimeSetup | undefined>;
+  deleteTimeSetup: (id: number) => Promise<void>;
+  updateTimeSetup: (id: number, input: TimeSetupInput) => Promise<void>;
   refreshTimeSetups: () => void;
 }
 
@@ -61,7 +66,6 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     try {
       const data = await graphQLClient.request<{ timeSetup: TimeSetup[] }>(GET_TIME_SETUP);
       setTimeSetups(data.timeSetup);
-      
     } catch (err: any) {
       console.error("Error fetching time setups:", err);
       setError(err.message || "Failed to fetch time setups");
@@ -82,9 +86,10 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     try {
-      const variables = { ...input };
-      const data = await graphQLClient.request<{ createTimeSetup: TimeSetup }>(CREATE_TIME_SETUP, variables);
-      // Update local state with the newly created time setup
+      const data = await graphQLClient.request<{ createTimeSetup: TimeSetup }>(
+        CREATE_TIME_SETUP,
+        input
+      );
       setTimeSetups(prev => [...prev, data.createTimeSetup]);
       return data.createTimeSetup;
     } catch (err: any) {
@@ -95,8 +100,54 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const deleteTimeSetup = async (id: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await graphQLClient.request<{ deleteTimeSetup: TimeSetup }>(
+        DELETE_TIME_SETUP,
+        { id }
+      );
+      setTimeSetups(prev => prev.filter(ts => ts.id !== data.deleteTimeSetup.id));
+    } catch (err: any) {
+      console.error("Error deleting time setup:", err);
+      setError(err.message || "Failed to delete time setup");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTimeSetup = async (id: number, input: TimeSetupInput) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await graphQLClient.request<{ updateTimeSetup: TimeSetup }>(
+        UPDATE_TIME_SETUP,
+        { id, data: input }
+      );
+      setTimeSetups(prev =>
+        prev.map(ts => (ts.id === id ? data.updateTimeSetup : ts))
+      );
+    } catch (err: any) {
+      console.error("Error updating time setup:", err);
+      setError(err.message || "Failed to update time setup");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <TimeSetupContext.Provider value={{ timeSetups, loading, error, createTimeSetup, refreshTimeSetups }}>
+    <TimeSetupContext.Provider
+      value={{
+        timeSetups,
+        loading,
+        error,
+        createTimeSetup,
+        deleteTimeSetup,
+        updateTimeSetup,
+        refreshTimeSetups,
+      }}
+    >
       {children}
     </TimeSetupContext.Provider>
   );
