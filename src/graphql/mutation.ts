@@ -151,32 +151,32 @@ export const CREATE_TIME_SETUP = gql`
   }
 `;
 
-export const UPDATE_TIME_SETUP = gql`
-  mutation UpdateTimeSetup($id: Int!, $data: TimeSetupInput!) {
-    updateTimeSetup(id: $id, data: $data) {
-      id
-      clientId
-      addressId
-      distance
-      actualScheduledTime
-      weeklyHours
-      reminderTime
-      overlap
-      unscheduledTime
-      updatedAt
-    }
-  }
-`;
+// export const UPDATE_TIME_SETUP = gql`
+//   mutation UpdateTimeSetup($id: Int!, $data: TimeSetupInput!) {
+//     updateTimeSetup(id: $id, data: $data) {
+//       id
+//       clientId
+//       addressId
+//       distance
+//       actualScheduledTime
+//       weeklyHours
+//       reminderTime
+//       overlap
+//       unscheduledTime
+//       updatedAt
+//     }
+//   }
+// `;
 
-export const DELETE_TIME_SETUP = gql`
-  mutation DeleteTimeSetup($id: Int!) {
-    deleteTimeSetup(id: $id) {
-      id
-      clientId
-      addressId
-    }
-  }
-`;
+// export const DELETE_TIME_SETUP = gql`
+//   mutation DeleteTimeSetup($id: Int!) {
+//     deleteTimeSetup(id: $id) {
+//       id
+//       clientId
+//       addressId
+//     }
+//   }
+// `;
 
 export const CREATE_POST_ASSIGN = gql`
   mutation CreatePostAssign($clientId: Int!, $addressId: Int!, $post: String!) {
@@ -205,6 +205,68 @@ export const UPDATE_POST_ASSIGN = gql`
       id
       post
       updatedAt
+    }
+  }
+`;
+export const DELETE_TIME_SETUP = gql`
+  mutation DeleteTimeSetup($id: Int!) {
+    deleteTimeSetup(id: $id) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_TIME_SETUP = gql`
+  mutation UpdateTimeSetup($id: Int!, $data: TimeSetupInput!) {
+    updateTimeSetup(id: $id, data: $data) {
+      id
+      clientId
+      addressId
+      distance
+      actualScheduledTime
+      weeklyHours
+      reminderTime
+      overlap
+      unscheduledTime
+      createdAt
+      updatedAt
+      client {
+        id
+        name
+      }
+      address {
+        id
+        label
+      }
+    }
+  }
+`;
+
+export const DELETE_GEOLOCATION = gql`
+  mutation DeleteGeoLocation($id: Int!) {
+    deleteGeoLocation(id: $id) {
+      id
+    }
+  }
+`;
+export const UPDATE_GEOLOCATION = gql`
+  mutation UpdateGeoLocation($id: Int!, $data: GeoLocationInput!) {
+    updateGeoLocation(id: $id, data: $data) {
+      id
+      clientId
+      addressId
+      distance
+      time
+      createdAt
+      client {
+        id
+        name
+      }
+      address {
+        id
+        label
+        address
+      }
     }
   }
 `;

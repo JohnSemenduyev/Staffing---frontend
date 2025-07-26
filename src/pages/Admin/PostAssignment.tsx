@@ -1,15 +1,15 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
-import { validate } from "graphql";
+import { Plus, Edit, Trash2, Check, X } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
-import { Edit, Trash2 } from "lucide-react";
 import Pagination from "../../components/Pagination";
+import SubmitButton from "../../components/ui/ButtonUi";
+import { toast } from "sonner";
 
 export const PostAssignment = () => {
- const [form, setForm] = useState({
+  const [form, setForm] = useState({
     clientId: "",
     addressId: "",
     postname: "",
@@ -19,80 +19,28 @@ export const PostAssignment = () => {
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [selectedAddressText, setSelectedAddressText] = useState("");
-  const [submitLoader, setSubmitLoader] = useState(false)
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const {
-  postAssigns,
+  const {postAssigns,
   createPostAssign,
   currentPage,
   lastPage,
   fetchPostAssigns,
   setCurrentPage,
   loading,
+  deletePostAssign,
+  updatePostAssign,
+  error
 } = usePostAssignContext();
-
+ const [submitLoader, setSubmitLoader] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
 useEffect(() => {
   fetchPostAssigns(currentPage);
 }, [currentPage]);
 
-   const tableColumns: TableColumn[] = [
-  {
-    key: "client.name",
-    label: "Client Name",
-    sortable: true,
-    searchable: true,
-    className: "whitespace-nowrap"
-  },
-  {
-    key: "address.address",
-    label: "Client Location",
-    sortable: true,
-    searchable: true,
-    className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-    render: (value: string) => (
-      <div className="truncate" title={value}>
-        {value || "-"}
-      </div>
-    )
-  },
-  {
-    key: "post",
-    label: "Post Name",
-    sortable: true,
-    searchable: true,
-    className: "whitespace-nowrap",
-    render: (value: string) => value || "-"
-  }
-];
-
-     const handleEdit = (record: any) => {
-  console.log("Edit record:", record);
-};
-
-const handleDelete = (record: any) => {
-  console.log("Delete record:", record);
-};
-
-    const tableActions: TableAction[] = [
-  {
-    label: "Edit",
-    icon: <Edit className="w-4 h-4" />,
-    onClick: handleEdit,
-    className: "text-blue-500 hover:text-green-700",
-    title: "Edit"
-  },
-  {
-    label: "Delete",
-    icon: <Trash2 className="w-4 h-4" />,
-    onClick: handleDelete,
-    className: "text-red-500 hover:text-red-700",
-    title: "Delete"
-  }
-];
- 
-
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+
   const handleClientSelect = (
     client: { id: string | number; name: string },
     addressId: number | string
@@ -106,17 +54,12 @@ const handleDelete = (record: any) => {
     setShowClientDropdown(false);
     setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
 
-    const selectedClient = searchedClients.find(
-      (c) => String(c.id) === String(client.id)
-    );
-    const selectedAddress = selectedClient?.addresses.find(
-      (a) => String(a.id) === String(addressId)
-    );
+    const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
+    const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
     setSelectedAddressText(selectedAddress?.address || "");
-     
   };
-  
-  const validate = () => {
+
+  const validateForm = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Required";
     if (!form.addressId) e.addressId = "Required";
@@ -124,64 +67,151 @@ const handleDelete = (record: any) => {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
- const onSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!validate()) return;
-  setSubmitLoader(true);
 
-  try {
-    const payload = {
-      clientId: Number(form.clientId),
-      addressId: Number(form.addressId),
-      post: form.postname,
-    };
-
-    await createPostAssign(payload);
-    setForm({
-      clientId: "",
-      addressId: "",
-      postname: "",
-    });
+  const resetForm = () => {
+    setForm({ clientId: "", addressId: "", postname: "" });
     setClientSearch("");
     setSelectedAddressText("");
+    setIsEditMode(false);
+    setEditId(null);
+    setErrors({});
+  };
 
-    alert("Post assignment created successfully!");
-  } catch (error) {
-    console.error("Error creating post assignment:", error);
-    alert("Failed to create post assignment.");
-  } finally {
-    setSubmitLoader(false);
-  }
-};
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setSubmitLoader(true);
 
-  
+    try {
+      const payload = {
+        clientId: Number(form.clientId),
+        addressId: Number(form.addressId),
+        post: form.postname,
+      };
 
+      if (isEditMode && editId !== null) {
+        await updatePostAssign(editId, payload);
+        toast.success("Post assignment updated successfully!");
+      } else {
+        await createPostAssign(payload);
+        toast.success("Post assignment created successfully!");
+      }
+    fetchPostAssigns(currentPage);
+      resetForm();
+    } catch (error) {
+      console.error("Error submitting post assignment:", error);
+      toast.error("Submission failed.");
+    } finally {
+      setSubmitLoader(false);
+    }
+  };
 
-    const handleChange = (field: string, value: any) => {
+  const handleEdit = (record: any) => {
+    setIsEditMode(true);
+    setEditId(record.id);
+    setForm({
+      clientId: String(record.clientId),
+      addressId: String(record.addressId),
+      postname: record.post,
+    });
+
+    const client = searchedClients.find((c) => String(c.id) === String(record.clientId));
+    if (client) {
+      setClientSearch(client.name);
+      const address = client.addresses.find((a) => String(a.id) === String(record.addressId));
+      setSelectedAddressText(address?.address || "");
+    } else {
+      setClientSearch("");
+      setSelectedAddressText("");
+    }
+
+    setErrors({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Are you sure you want to delete this post assign?")) {
+      try {
+        await deletePostAssign(id);
+        toast.success("Deleted successfully!");
+        fetchPostAssigns(currentPage);
+      } catch (err) {
+        toast.error("Failed to delete.");
+      }
+    }
+  };
+
+  const handleChange = (field: string, value: any) => {
     setForm((f) => ({
       ...f,
       [field]: value,
     }));
     setErrors((e) => ({ ...e, [field]: undefined }));
   };
+
+  const tableColumns: TableColumn[] = [
+    {
+      key: "client.name",
+      label: "Client Name",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap"
+    },
+    {
+      key: "address.address",
+      label: "Client Location",
+      sortable: true,
+      searchable: true,
+      className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
+      render: (value: string) => (
+        <div className="truncate" title={value}>
+          {value || "-"}
+        </div>
+      )
+    },
+    {
+      key: "post",
+      label: "Post Name",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap",
+      render: (value: string) => value || "-"
+    }
+  ];
+
+  const tableActions: TableAction[] = [
+    {
+      label: "Edit",
+      icon: <Edit className="w-4 h-4" />,
+      onClick: (record: any) => handleEdit(record),
+      className: "text-blue-500 hover:text-green-700",
+      title: "Edit"
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 className="w-4 h-4" />,
+      onClick: (record: any) => handleDelete(record.id),
+      className: "text-red-500 hover:text-red-700",
+      title: "Delete"
+    }
+  ];
+
   return (
     <div className="min-h-screen p-6 font-sans">
       <div className="w-full px-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Post Assignment
+            {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
           </h2>
           <form onSubmit={onSubmit} autoComplete="off">
             <div className="grid grid-cols-4 gap-4 items-start">
-              {/* Client Search Field */}
+              {/* Client Search */}
               <div className="relative">
                 <input
                   type="text"
                   value={clientSearch}
                   onFocus={() => setShowClientDropdown(true)}
-                  onBlur={() =>
-                    setTimeout(() => setShowClientDropdown(false), 200)
-                  }
+                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
                   onChange={(e) => {
                     setClientSearch(e.target.value);
                     setForm((f) => ({ ...f, clientId: "", addressId: "" }));
@@ -191,25 +221,17 @@ const handleDelete = (record: any) => {
                   className={fieldInputClasses}
                 />
                 {errors.clientId && (
-                  <span className="text-xs text-red-500">
-                    {errors.clientId}
-                  </span>
+                  <span className="text-xs text-red-500">{errors.clientId}</span>
                 )}
                 {errors.addressId && (
-                  <span className="text-xs text-red-500 block">
-                    {errors.addressId}
-                  </span>
+                  <span className="text-xs text-red-500 block">{errors.addressId}</span>
                 )}
                 {showClientDropdown && clientSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
                     {loadingClients ? (
-                      <div className="p-2 text-sm text-gray-500">
-                        Searching clients...
-                      </div>
+                      <div className="p-2 text-sm text-gray-500">Searching clients...</div>
                     ) : searchedClients.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">
-                        No clients found
-                      </div>
+                      <div className="p-2 text-gray-500 text-sm">No clients found</div>
                     ) : (
                       searchedClients.flatMap((client, clientIndex) =>
                         client.addresses.map((address, addressIndex) => {
@@ -253,7 +275,7 @@ const handleDelete = (record: any) => {
                 />
               </div>
 
-              {/* Distance */}
+              {/* Post Name */}
               <div>
                 <input
                   type="text"
@@ -263,31 +285,30 @@ const handleDelete = (record: any) => {
                   className={`${fieldInputClasses}`}
                 />
                 {errors.postname && (
-                  <span className="text-xs text-red-500">
-                    {errors.postname}
-                  </span>
+                  <span className="text-xs text-red-500">{errors.postname}</span>
                 )}
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-start">
-                <button
-                  type="submit"
+              {/* Submit / Cancel */}
+              <div className="flex items-center space-x-2">
+                <SubmitButton
+                  loading={submitLoader}
                   disabled={submitLoader}
-                  className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                  icon={isEditMode ? <Check className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
                 >
-                  {submitLoader ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add
-                    </>
-                  )}
-                </button>
+                  {isEditMode ? "Update" : "Add"}
+                </SubmitButton>
+
+                {isEditMode && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="inline-flex items-center px-3 py-1 text-sm text-gray-500 border border-gray-300 rounded-md hover:bg-gray-100"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Cancel
+                  </button>
+                )}
               </div>
             </div>
           </form>
