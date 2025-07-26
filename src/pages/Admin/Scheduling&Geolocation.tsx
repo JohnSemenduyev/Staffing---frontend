@@ -1,6 +1,8 @@
+import { useTimeSetupContext } from "../../context/TimeStemp";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { log } from "console";
 
 
 interface Data {
@@ -19,47 +21,17 @@ interface Data {
     };
 }
 
-const data : Data[] = [
-      {
-        "id": 2,
-        "distance": 10,
-        "actualScheduledTime": 8,
-        "weeklyHours": 2,
-        "reminderTime": 0,
-        "overlap": true,
-        "unscheduledTime": true,
-        "address": {
-          "address": "1 Apple Park Way"
-        },
-        "client": {
-          "name": "client 1"
-        }
-      },
-      {
-        "id": 3,
-        "distance": 1,
-        "actualScheduledTime": 1,
-        "weeklyHours": 1,
-        "reminderTime": 1,
-        "overlap": true,
-        "unscheduledTime": true,
-        "address": {
-          "address": "1600 Amphitheatre Parkway"
-        },
-        "client": {
-          "name": "client 1"
-        }
-      }
-    ]
 
 export const SchedulingAndGeolocation = () => {
     const [loading , setLoading] = useState(false);
+    const { timeSetups } = useTimeSetupContext();
 
     useEffect(() => {
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
       }, 2000);
+      console.log("Time Setups:", timeSetups);
     }, []);
     
     const handleEdit = (record: any) => {
@@ -186,7 +158,7 @@ const tableActions: TableAction[] = [
         <div>
 
             <GenericTable
-  data={data}
+  data={timeSetups || []}
   columns={tableColumns}
   actions={tableActions}
   loading={loading}

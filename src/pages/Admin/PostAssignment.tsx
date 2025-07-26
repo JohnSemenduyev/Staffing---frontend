@@ -1,10 +1,67 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { validate } from "graphql";
+import { usePostAssignContext } from "../../context/PostAssignm";
+import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
+import { Edit, Trash2 } from "lucide-react";
 
 export const PostAssignment = () => {
+   const tableColumns: TableColumn[] = [
+  {
+    key: "client.name",
+    label: "Client Name",
+    sortable: true,
+    searchable: true,
+    className: "whitespace-nowrap"
+  },
+  {
+    key: "address.address",
+    label: "Client Location",
+    sortable: true,
+    searchable: true,
+    className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
+    render: (value: string) => (
+      <div className="truncate" title={value}>
+        {value || "-"}
+      </div>
+    )
+  },
+  {
+    key: "post",
+    label: "Post Name",
+    sortable: true,
+    searchable: true,
+    className: "whitespace-nowrap",
+    render: (value: string) => value || "-"
+  }
+];
+
+     const handleEdit = (record: any) => {
+  console.log("Edit record:", record);
+};
+
+const handleDelete = (record: any) => {
+  console.log("Delete record:", record);
+};
+
+    const tableActions: TableAction[] = [
+  {
+    label: "Edit",
+    icon: <Edit className="w-4 h-4" />,
+    onClick: handleEdit,
+    className: "text-blue-500 hover:text-green-700",
+    title: "Edit"
+  },
+  {
+    label: "Delete",
+    icon: <Trash2 className="w-4 h-4" />,
+    onClick: handleDelete,
+    className: "text-red-500 hover:text-red-700",
+    title: "Delete"
+  }
+];
   const [form, setForm] = useState({
     clientId: "",
     addressId: "",
@@ -15,9 +72,13 @@ export const PostAssignment = () => {
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [selectedAddressText, setSelectedAddressText] = useState("");
-  const [submitLoader, setSubmitLoader] = useState(false);
+  const [loadingTable, setLoadingTable] = useState(false);
+
+  const [submitLoader, setSubmitLoader] = useState(false)
   const { data: searchedClients = [], isLoading: loadingClients } =
     useSearchClient(debouncedClientSearch);
+const { createPostAssign, refreshPostAssigns } = usePostAssignContext();
+  const { postAssigns, loading, error } = usePostAssignContext();
 
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
@@ -43,6 +104,7 @@ export const PostAssignment = () => {
     setSelectedAddressText(selectedAddress?.address || "");
      
   };
+  
   const validate = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Required";
@@ -51,45 +113,50 @@ export const PostAssignment = () => {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
-   const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setSubmitLoader(true);
-  
-    try {
-      // Ensure all numbers are converted safely, fallback to 0 if empty
-      const payload = {
-        clientId: Number(form.clientId),
-        addressId: Number(form.addressId),
-        postname: form.postname !== "" ? String(form.postname) : "",
-      };
-  
-  
-    //   await createTimeSetup(payload);
-  
-    //   // Reset form
-    //   setForm({
-    //     clientId: "",
-    //     addressId: "",
-    //     distance: "",
-    //     time: "",
-    //     hours: "",
-    //     reminder: "",
-    //   });
-    //   setClientSearch("");
-    //   setSelectedAddressText("");
-    //   setOverlap(false);
-    //   setUnscheduledTime(false);
-    //   alert("Time setup created successfully!");
-        console.log("Payload to be sent:", payload);
-        alert("Post created successfully! (This is a placeholder alert)");
-    } catch (error) {
-      console.error("Error creating time setup:", error);
-      alert("Failed to create time setup.");
-    } finally {
-      setSubmitLoader(false);
+ const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validate()) return;
+  setSubmitLoader(true);
+
+  try {
+    const payload = {
+      clientId: Number(form.clientId),
+      addressId: Number(form.addressId),
+      post: form.postname,
+    };
+
+    await createPostAssign(payload);
+    refreshPostAssigns(); // optional, refresh list if you're showing it somewhere
+
+    // Reset form
+    setForm({
+      clientId: "",
+      addressId: "",
+      postname: "",
+    });
+    setClientSearch("");
+    setSelectedAddressText("");
+
+    alert("Post assignment created successfully!");
+  } catch (error) {
+    console.error("Error creating post assignment:", error);
+    alert("Failed to create post assignment.");
+  } finally {
+    setSubmitLoader(false);
+  }
+};
+ useEffect(() => {
+    if (!loading && postAssigns.length > 0) {
+      console.log("Post Assignments:", postAssigns);
     }
-  };
+    if (error) {
+      console.error("Error fetching post assignments:", error);
+    }
+  }, [postAssigns, loading, error]);
+
+  
+
+
     const handleChange = (field: string, value: any) => {
     setForm((f) => ({
       ...f,
@@ -207,7 +274,7 @@ export const PostAssignment = () => {
                 <button
                   type="submit"
                   disabled={submitLoader}
-                  className="inline-flex items-center px-4 py-1.5 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                  className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                 >
                   {submitLoader ? (
                     <>
@@ -226,6 +293,14 @@ export const PostAssignment = () => {
           </form>
         </div>
       </div>
+      <GenericTable
+              data={postAssigns || []}
+              columns={tableColumns}
+              actions={tableActions}
+              loading={loading}
+              emptyMessage="No post assignment records found."
+              searchable={true}
+            />
     </div>
   );
 };

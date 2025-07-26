@@ -330,21 +330,23 @@ export const GeoLocationSetup = () => {
                   <span className="text-xs text-red-500">{errors.time}</span>
                 )}
               </div>
-              <div className="flex justify-start">
+              
+              {/* //button */}
+                 <div className="flex justify-start">
                 <button
                   type="submit"
                   disabled={submitLoader}
-                  className="inline-flex items-center px-6 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap min-w-[160px]"
+                  className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                 >
                   {submitLoader ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
                       Loading...
                     </>
                   ) : (
                     <>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add GeoLocation
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
                     </>
                   )}
                 </button>

@@ -177,3 +177,34 @@ export const DELETE_TIME_SETUP = gql`
     }
   }
 `;
+
+export const CREATE_POST_ASSIGN = gql`
+  mutation CreatePostAssign($clientId: Int!, $addressId: Int!, $post: String!) {
+    createPostAssign(clientId: $clientId, addressId: $addressId, post: $post) {
+      id
+      clientId
+      addressId
+      post
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const DELETE_POST_ASSIGN = gql`
+  mutation DeletePostAssign($id: Int!) {
+    deletePostAssign(id: $id) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_POST_ASSIGN = gql`
+  mutation UpdatePostAssign($id: Int!, $data: PostAssignInput!) {
+    updatePostAssign(id: $id, data: $data) {
+      id
+      post
+      updatedAt
+    }
+  }
+`;

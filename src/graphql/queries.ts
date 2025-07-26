@@ -170,6 +170,32 @@ export const GET_TIME_SETUP = gql`
       address {
         id
         label
+        address
+
+      }
+    }
+  }
+`;
+export const GET_POST_ASSIGN = gql`
+  query GetPostAssigns {
+    postAssigns {
+      id
+      clientId
+      addressId
+      post
+      createdAt
+      updatedAt
+      client {
+        id
+        name
+      }
+      address {
+        id
+        label
+        address
+        city
+        state
+        pincode
       }
     }
   }

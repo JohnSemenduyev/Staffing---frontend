@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { graphQLClient } from "../GraphqlClient";
 import { GET_TIME_SETUP } from "../graphql/queries";
 import { CREATE_TIME_SETUP } from "../graphql/mutation";
+import { log } from "console";
 
 // ---- Type Definitions ----
 interface TimeSetup {
@@ -60,6 +61,7 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     try {
       const data = await graphQLClient.request<{ timeSetup: TimeSetup[] }>(GET_TIME_SETUP);
       setTimeSetups(data.timeSetup);
+      
     } catch (err: any) {
       console.error("Error fetching time setups:", err);
       setError(err.message || "Failed to fetch time setups");

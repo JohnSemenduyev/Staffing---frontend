@@ -3,7 +3,6 @@ import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "./components/ui/toaster";
@@ -23,6 +22,7 @@ import { ViewSchedule } from "./pages/Manager/ViewSchedule";
 import { Summary } from "./pages/Manager/Summary";
 import { UniformCompliance } from "./pages/Manager/UniformCompliance";
 import { Notification } from "./pages/Manager/Notification";
+import { PostAssignProvider } from "./context/PostAssignm";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +34,7 @@ const App = () => (
         <Sonner />
         <GeoLocationProvider>
           <TimeSetupProvider>
+            <PostAssignProvider>
            
           <BrowserRouter>
         <Routes>
@@ -58,9 +59,9 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      </PostAssignProvider>
           </TimeSetupProvider>
-        
-      </GeoLocationProvider>
+        </GeoLocationProvider>
     </TooltipProvider>
     
   </QueryClientProvider>

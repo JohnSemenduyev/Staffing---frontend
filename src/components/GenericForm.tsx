@@ -178,7 +178,6 @@ export const GenericForm: React.FC<GenericFormProps> = ({
     );
   });
 
-  // Add submit button
   allItems.push(
     <div key="submit-button" className="flex justify-start">
       <button
