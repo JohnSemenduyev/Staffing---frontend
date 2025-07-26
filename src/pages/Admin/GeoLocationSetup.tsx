@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Circle, Edit, Plus, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {  Edit, Plus, Trash2 } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
+import Pagination from "../../components/Pagination";
 
 export const GeoLocationSetup = () => {
   const [form, setForm] = useState({ clientId: "",addressId: "",distance: "",time: "", });
@@ -12,11 +13,9 @@ export const GeoLocationSetup = () => {
   const {data: searchedClients = [],isLoading: loadingClients,} = useSearchClient(debouncedClientSearch);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [selectedAddressText, setSelectedAddressText] = useState("");
-  const { fetchGeoLocations, createGeoLocation , loading , error , geoLocations , submitLoader , submitError } = useGeoLocation();
+  const { fetchGeoLocations, createGeoLocation , setCurrentPage ,loading , error , lastPage,  currentPage ,geoLocations , submitLoader , submitError } = useGeoLocation();
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [sortConfig, setSortConfig] = useState<{ key: keyof GeoLocation | null; direction: "asc" | "desc" }>({key: null,direction: "asc",});
-  const [searchTerms, setSearchTerms] = useState({clientName: "",clientLocation: "", distance: "", time: "",});
-  
+
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({
       ...f,
@@ -77,18 +76,11 @@ export const GeoLocationSetup = () => {
   };
 
   useEffect(() => {
-    fetchGeoLocations();
-  }, []);
+  fetchGeoLocations(currentPage);
+}, [currentPage]);
 
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-
-  const handleSort = (key: keyof GeoLocation) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
 
   const handleEdit = (record: GeoLocation) => {
     console.log(`Start editing assignment for: ${record.id}`);
@@ -97,67 +89,7 @@ export const GeoLocationSetup = () => {
   const handleDelete = (record: GeoLocation) => {
     console.log(`Delete assignment (id: ${record.id})`);
   };
-
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = geoLocations.filter((record) => {
-      const clientName = record.client?.name?.toLowerCase() || "";
-      const clientLocation = record.address?.address?.toLowerCase() || "";
-      const distance = record.distance?.toString() || "";
-      const time = record.time?.toString() || "";
-
-      return (
-        clientName.includes(searchTerms.clientName.toLowerCase()) &&
-        clientLocation.includes(searchTerms.clientLocation.toLowerCase()) &&
-        distance.includes(searchTerms.distance) &&
-        time.includes(searchTerms.time)
-      );
-    });
-
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        let aValue: any = "";
-        let bValue: any = "";
-
-        switch (sortConfig.key) {
-          case "client":
-            aValue = a.client?.name || "";
-            bValue = b.client?.name || "";
-            break;
-          case "address":
-            aValue = a.address?.address || "";
-            bValue = b.address?.address || "";
-            break;
-          case "distance":
-            aValue = Number(a.distance) || 0;
-            bValue = Number(b.distance) || 0;
-            break;
-          case "time":
-            aValue = Number(a.time) || 0;
-            bValue = Number(b.time) || 0;
-            break;
-          default:
-            return 0;
-        }
-
-        if (typeof aValue === "string") {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
-        }
-
-        if (aValue < bValue) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [geoLocations, searchTerms, sortConfig]);
-
-  
+ 
   const tableColumns: TableColumn[] = [
     {
       key: "client.name",
@@ -212,7 +144,6 @@ export const GeoLocationSetup = () => {
       title: "Delete"
     }
   ];
-
 
   return (
     <div className="min-h-screen p-6 font-sans">
@@ -331,7 +262,6 @@ export const GeoLocationSetup = () => {
                 )}
               </div>
               
-              {/* //button */}
                  <div className="flex justify-start">
                 <button
                   type="submit"
@@ -355,14 +285,28 @@ export const GeoLocationSetup = () => {
           </form>
         </div>
 
-       <GenericTable
-          data={geoLocations}
-          columns={tableColumns}
-          actions={tableActions}
-          loading={loading}
-          emptyMessage="No records found matching your search criteria."
-          searchable={true}
-        />
+      <div className="mt-6">
+  <GenericTable
+    data={geoLocations}
+    columns={tableColumns}
+    actions={tableActions}
+    loading={loading}
+    emptyMessage="No records found matching your search criteria."
+    searchable={true}
+  />
+  
+  {lastPage > 1 && (
+    <Pagination
+      currentPage={currentPage}
+      lastPage={lastPage}
+      onPageChange={(page) => {
+        setCurrentPage(page);
+        fetchGeoLocations(page);
+      }}
+    />
+  )}
+</div>
+
       </div>
     </div>
   );

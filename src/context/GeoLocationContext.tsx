@@ -32,54 +32,81 @@ interface GeoLocationInput {
 
 interface GeoLocationContextType {
   geoLocations: GeoLocation[];
+  currentPage: number;
+  lastPage: number;
   loading: boolean;
   error: string | null;
   submitLoader: boolean;
   submitError: string | null;
-  fetchGeoLocations: () => Promise<void>;
+  fetchGeoLocations: (page?: number) => Promise<void>;
+  setCurrentPage: (page: number) => void;
   createGeoLocation: (input: GeoLocationInput) => Promise<void>;
 }
+
 
 const GeoLocationContext = createContext<GeoLocationContextType | undefined>(undefined);
 
 export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [geoLocations, setGeoLocations] = useState<GeoLocation[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [submitLoader, setSubmitLoader] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const fetchGeoLocations = async () => {
-    setLoading(true);
-    try {
-      const data = await graphQLClient.request<{ geoLocations: GeoLocation[] }>(GET_GEOLOCATIONS);
-      setGeoLocations(data.geoLocations);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch geolocations');
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchGeoLocations = async (page: number = 1) => {
+  setLoading(true);
+  try {
+    const data = await graphQLClient.request<{
+      geoLocations: {
+        data: GeoLocation[];
+        lastPage: number;
+      };
+    }>(GET_GEOLOCATIONS, { page });
+
+    setGeoLocations(data.geoLocations.data);
+    setLastPage(data.geoLocations.lastPage);
+    setCurrentPage(page);
+    setError(null);
+  } catch (err) {
+    console.error(err);
+    setError('Failed to fetch geolocations');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const createGeoLocation = async (input: GeoLocationInput) => {
     try {
       setSubmitLoader(true);
       await graphQLClient.request(CREATE_GEOLOCATION, input);
-      await fetchGeoLocations();
+      await fetchGeoLocations(currentPage); // refresh current page
     } catch (err) {
       console.error(err);
       setSubmitError('Failed to create geolocation');
       throw new Error('Failed to create geolocation');
-    }finally{
+    } finally {
       setSubmitLoader(false);
     }
   };
 
-
   return (
-    <GeoLocationContext.Provider value={{ fetchGeoLocations , submitLoader, submitError , geoLocations, loading, error, createGeoLocation }}>
+    <GeoLocationContext.Provider
+      value={{
+        geoLocations,
+        currentPage,
+        lastPage,
+        loading,
+        error,
+        submitLoader,
+        submitError,
+        fetchGeoLocations,
+        setCurrentPage,
+        createGeoLocation,
+      }}
+    >
       {children}
     </GeoLocationContext.Provider>
   );

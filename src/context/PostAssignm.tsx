@@ -21,29 +21,40 @@ interface PostAssignInput {
 
 interface PostAssignContextType {
   postAssigns: PostAssign[];
+  currentPage: number;
+  lastPage: number;
   loading: boolean;
   error: string | null;
   createPostAssign: (input: PostAssignInput) => Promise<void>;
   deletePostAssign: (id: number) => Promise<void>;
   updatePostAssign: (id: number, input: Partial<PostAssignInput>) => Promise<void>;
-  refreshPostAssigns: () => void;
+  fetchPostAssigns: (page?: number) => void;
+  setCurrentPage: (page: number) => void;
 }
 
-// ---- Create Context ----
 const PostAssignContext = createContext<PostAssignContextType | undefined>(undefined);
 
-// ---- Provider Component ----
 export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
   const [postAssigns, setPostAssigns] = useState<PostAssign[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
 
-  const fetchPostAssigns = async () => {
+  const fetchPostAssigns = async (page: number = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await graphQLClient.request<{ postAssigns: PostAssign[] }>(GET_POST_ASSIGN);
-      setPostAssigns(data.postAssigns);
+      const data = await graphQLClient.request<{
+        postAssigns: {
+          data: PostAssign[];
+          lastPage: number;
+        };
+      }>(GET_POST_ASSIGN, { page });
+
+      setPostAssigns(data.postAssigns.data);
+      setLastPage(data.postAssigns.lastPage);
+      setCurrentPage(page);
     } catch (err: any) {
       console.error("Error fetching post assigns:", err);
       setError(err.message || "Failed to fetch post assigns");
@@ -52,18 +63,10 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  useEffect(() => {
-    fetchPostAssigns();
-  }, []);
-
-  const refreshPostAssigns = () => {
-    fetchPostAssigns();
-  };
-
   const createPostAssign = async (input: PostAssignInput) => {
     try {
-      const data = await graphQLClient.request<{ createPostAssign: PostAssign }>(CREATE_POST_ASSIGN, input);
-      setPostAssigns(prev => [...prev, data.createPostAssign]);
+      await graphQLClient.request<{ createPostAssign: PostAssign }>(CREATE_POST_ASSIGN, input);
+      await fetchPostAssigns(currentPage); // refresh current page
     } catch (err: any) {
       console.error("Error creating post assign:", err);
       setError(err.message || "Failed to create post assign");
@@ -73,7 +76,7 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
   const deletePostAssign = async (id: number) => {
     try {
       await graphQLClient.request(DELETE_POST_ASSIGN, { id });
-      setPostAssigns(prev => prev.filter(pa => pa.id !== id));
+      await fetchPostAssigns(currentPage); // refresh current page
     } catch (err: any) {
       console.error("Error deleting post assign:", err);
       setError(err.message || "Failed to delete post assign");
@@ -83,10 +86,8 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
   const updatePostAssign = async (id: number, input: Partial<PostAssignInput>) => {
     try {
       const variables = { id, data: input };
-      const data = await graphQLClient.request<{ updatePostAssign: PostAssign }>(UPDATE_POST_ASSIGN, variables);
-      setPostAssigns(prev =>
-        prev.map(pa => (pa.id === id ? { ...pa, ...data.updatePostAssign } : pa))
-      );
+      await graphQLClient.request<{ updatePostAssign: PostAssign }>(UPDATE_POST_ASSIGN, variables);
+      await fetchPostAssigns(currentPage); // refresh current page
     } catch (err: any) {
       console.error("Error updating post assign:", err);
       setError(err.message || "Failed to update post assign");
@@ -94,13 +95,26 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <PostAssignContext.Provider value={{ postAssigns, loading, error, createPostAssign, deletePostAssign, updatePostAssign, refreshPostAssigns }}>
+    <PostAssignContext.Provider
+      value={{
+        postAssigns,
+        currentPage,
+        lastPage,
+        loading,
+        error,
+        createPostAssign,
+        deletePostAssign,
+        updatePostAssign,
+        fetchPostAssigns,
+        setCurrentPage,
+      }}
+    >
       {children}
     </PostAssignContext.Provider>
   );
 };
 
-// ---- Custom Hook ----
+
 export const usePostAssignContext = () => {
   const context = useContext(PostAssignContext);
   if (!context) {

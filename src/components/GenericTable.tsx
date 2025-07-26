@@ -30,6 +30,7 @@ interface GenericTableProps {
   onSort?: (key: string, direction: 'asc' | 'desc') => void;
   searchable?: boolean;
   className?: string;
+  tableHeight?: string; // New prop to control table height
 }
 
 export const GenericTable: React.FC<GenericTableProps> = ({
@@ -39,7 +40,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
   loading = false,
   emptyMessage = "No records found matching your search criteria.",
   searchable = true,
-  className = ""
+  className = "",
+  tableHeight = "400px" // Default height
 }) => {
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -112,19 +114,14 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     return filtered;
   }, [data, searchTerms, sortConfig, columns]);
 
-  if (loading) {
-    return (
-      <div className="w-full max-w-full mt-10">
-        <div className="text-center py-8">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className={`w-full max-w-full mt-10 ${className}`}>
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-xl">
-        <table className="min-w-full table-auto text-sm text-gray-800 font-sans">
-          <thead className="bg-[#004175] text-white text-xs font-sans">
+      <div 
+        className="relative w-full overflow-auto rounded-2xl border border-gray-200 shadow-xl"
+        style={{ height: tableHeight, minHeight: tableHeight }}
+      >
+        <table className="w-full table-auto text-sm text-gray-800 font-sans">
+          <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
             {/* Header Row */}
             <tr>
               {columns.map((column) => (
@@ -168,8 +165,6 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                 </th>
               )}
             </tr>
-
-            {/* Search Row */}
             {searchable && (
               <tr className="bg-white text-gray-700 font-sans w-full">
                 {columns.map((column) => (
@@ -194,53 +189,72 @@ export const GenericTable: React.FC<GenericTableProps> = ({
               </tr>
             )}
           </thead>
-
-          <tbody>
-            {filteredAndSortedData.map((record, index) => (
-              <tr
-                key={record.id || index}
-                className={`hover:bg-blue-50 transition-colors ${
-                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                }`}
-              >
-                {columns.map((column) => {
-                  const value = getNestedValue(record, column.key);
-                  return (
-                    <td
-                      key={column.key}
-                      className={`px-2 sm:px-4 py-3 ${column.className || ''}`}
-                    >
-                      {column.render ? column.render(value, record) : (value || "-")}
-                    </td>
-                  );
-                })}
-                {actions.length > 0 && (
-                  <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {actions.map((action, actionIndex) => (
-                        <button
-                          key={actionIndex}
-                          onClick={() => action.onClick(record)}
-                          className={action.className || "text-blue-500 hover:text-blue-700"}
-                          title={action.title || action.label}
-                        >
-                          {action.icon}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-            {filteredAndSortedData.length === 0 && (
+          <tbody className="relative">
+            {loading ? (
               <tr>
                 <td
                   colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
-                  className="px-4 py-8 text-center text-gray-500 bg-white"
+                  className="relative p-0"
+                  style={{ height: `calc(${tableHeight} - 120px)` }}
                 >
-                  {emptyMessage}
+                  <div className="absolute inset-0 flex items-center justify-center bg-white">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-500">Loading...</span>
+                    </div>
+                  </div>
                 </td>
               </tr>
+            ) : (
+              <>
+                {filteredAndSortedData.map((record, index) => (
+                  <tr
+                    key={record.id || index}
+                    className={`hover:bg-blue-50 transition-colors ${
+                      index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                    }`}
+                  >
+                    {columns.map((column) => {
+                      const value = getNestedValue(record, column.key);
+                      return (
+                        <td
+                          key={column.key}
+                          className={`px-2 sm:px-4 py-3 ${column.className || ''}`}
+                        >
+                          {column.render ? column.render(value, record) : (value || "-")}
+                        </td>
+                      );
+                    })}
+                    {actions.length > 0 && (
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {actions.map((action, actionIndex) => (
+                            <button
+                              key={actionIndex}
+                              onClick={() => action.onClick(record)}
+                              className={action.className || "text-blue-500 hover:text-blue-700"}
+                              title={action.title || action.label}
+                            >
+                              {action.icon}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                
+                {filteredAndSortedData.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
+                      className="px-4 py-8 text-center text-gray-500 bg-white"
+                    >
+                      {emptyMessage}
+                    </td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>

@@ -129,74 +129,84 @@ export const UPDATE_ASSIGNMENT = gql`
 `;
 
 export const GET_GEOLOCATIONS = gql`
-  query {
-    geoLocations {
-      id
-      clientId
-      addressId
-      distance
-      time
-      createdAt
-      client {
+  query GeoLocations($page: Int) {
+    geoLocations(page: $page) {
+      data {
         id
-        name
+        clientId
+        addressId
+        distance
+        time
+        createdAt
+        client {
+          id
+          name
+        }
+        address {
+          id
+          label
+          address
+        }
       }
-      address {
-        id
-        label
-        address
-      }
+      lastPage
     }
   }
 `;
-export const GET_TIME_SETUP = gql`
-  query GetTimeSetup {
-    timeSetup {
-      id
-      clientId
-      addressId
-      distance
-      actualScheduledTime
-      weeklyHours
-      reminderTime
-      overlap
-      unscheduledTime
-      createdAt
-      updatedAt
-      client {
-        id
-        name
-      }
-      address {
-        id
-        label
-        address
 
+export const GET_TIME_SETUP = gql`
+  query TimeSetup($page: Int) {
+    timeSetup(page: $page) {
+      data {
+        id
+        clientId
+        addressId
+        distance
+        actualScheduledTime
+        weeklyHours
+        reminderTime
+        overlap
+        unscheduledTime
+        createdAt
+        updatedAt
+        client {
+          id
+          name
+        }
+        address {
+          id
+          label
+          address
+        }
       }
+      lastPage
     }
   }
 `;
+
 export const GET_POST_ASSIGN = gql`
-  query GetPostAssigns {
-    postAssigns {
-      id
-      clientId
-      addressId
-      post
-      createdAt
-      updatedAt
-      client {
+  query GetPostAssigns($page: Int) {
+    postAssigns(page: $page) {
+      data {
         id
-        name
+        clientId
+        addressId
+        post
+        createdAt
+        updatedAt
+        client {
+          id
+          name
+        }
+        address {
+          id
+          label
+          address
+          city
+          state
+          pincode
+        }
       }
-      address {
-        id
-        label
-        address
-        city
-        state
-        pincode
-      }
+      lastPage
     }
   }
 `;

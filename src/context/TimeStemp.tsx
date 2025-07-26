@@ -4,7 +4,6 @@ import { GET_TIME_SETUP } from "../graphql/queries";
 import { CREATE_TIME_SETUP } from "../graphql/mutation";
 import { log } from "console";
 
-// ---- Type Definitions ----
 interface TimeSetup {
   id: number;
   clientId: number;
@@ -40,28 +39,38 @@ interface TimeSetupInput {
 
 interface TimeSetupContextType {
   timeSetups: TimeSetup[];
+  currentPage: number;
+  lastPage: number;
   loading: boolean;
   error: string | null;
+  fetchTimeSetups: (page?: number) => void;
+  setCurrentPage: (page: number) => void;
   createTimeSetup: (input: TimeSetupInput) => Promise<TimeSetup | undefined>;
-  refreshTimeSetups: () => void;
 }
 
-// ---- Create Context ----
 const TimeSetupContext = createContext<TimeSetupContextType | undefined>(undefined);
 
-// ---- Provider Component ----
 export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
   const [timeSetups, setTimeSetups] = useState<TimeSetup[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
 
-  const fetchTimeSetups = async () => {
+  const fetchTimeSetups = async (page: number = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await graphQLClient.request<{ timeSetup: TimeSetup[] }>(GET_TIME_SETUP);
-      setTimeSetups(data.timeSetup);
-      
+      const data = await graphQLClient.request<{
+        timeSetup: {
+          data: TimeSetup[];
+          lastPage: number;
+        };
+      }>(GET_TIME_SETUP, { page });
+
+      setTimeSetups(data.timeSetup.data);
+      setLastPage(data.timeSetup.lastPage);
+      setCurrentPage(page);
     } catch (err: any) {
       console.error("Error fetching time setups:", err);
       setError(err.message || "Failed to fetch time setups");
@@ -70,22 +79,13 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  useEffect(() => {
-    fetchTimeSetups();
-  }, []);
-
-  const refreshTimeSetups = () => {
-    fetchTimeSetups();
-  };
-
   const createTimeSetup = async (input: TimeSetupInput): Promise<TimeSetup | undefined> => {
     setLoading(true);
     setError(null);
     try {
       const variables = { ...input };
       const data = await graphQLClient.request<{ createTimeSetup: TimeSetup }>(CREATE_TIME_SETUP, variables);
-      // Update local state with the newly created time setup
-      setTimeSetups(prev => [...prev, data.createTimeSetup]);
+      await fetchTimeSetups(currentPage); // refresh current page
       return data.createTimeSetup;
     } catch (err: any) {
       console.error("Error creating time setup:", err);
@@ -96,11 +96,23 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <TimeSetupContext.Provider value={{ timeSetups, loading, error, createTimeSetup, refreshTimeSetups }}>
+    <TimeSetupContext.Provider
+      value={{
+        timeSetups,
+        currentPage,
+        lastPage,
+        loading,
+        error,
+        fetchTimeSetups,
+        setCurrentPage,
+        createTimeSetup
+      }}
+    >
       {children}
     </TimeSetupContext.Provider>
   );
 };
+
 
 // ---- Custom Hook ----
 export const useTimeSetupContext = () => {

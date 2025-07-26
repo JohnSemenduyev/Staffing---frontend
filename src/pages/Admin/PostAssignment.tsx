@@ -6,8 +6,35 @@ import { validate } from "graphql";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { Edit, Trash2 } from "lucide-react";
+import Pagination from "../../components/Pagination";
 
 export const PostAssignment = () => {
+ const [form, setForm] = useState({
+    clientId: "",
+    addressId: "",
+    postname: "",
+  });
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [clientSearch, setClientSearch] = useState("");
+  const debouncedClientSearch = useDebounce(clientSearch, 300);
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [selectedAddressText, setSelectedAddressText] = useState("");
+  const [submitLoader, setSubmitLoader] = useState(false)
+  const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
+  const {
+  postAssigns,
+  createPostAssign,
+  currentPage,
+  lastPage,
+  fetchPostAssigns,
+  setCurrentPage,
+  loading,
+} = usePostAssignContext();
+
+useEffect(() => {
+  fetchPostAssigns(currentPage);
+}, [currentPage]);
+
    const tableColumns: TableColumn[] = [
   {
     key: "client.name",
@@ -62,23 +89,7 @@ const handleDelete = (record: any) => {
     title: "Delete"
   }
 ];
-  const [form, setForm] = useState({
-    clientId: "",
-    addressId: "",
-    postname: "",
-  });
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [clientSearch, setClientSearch] = useState("");
-  const debouncedClientSearch = useDebounce(clientSearch, 300);
-  const [showClientDropdown, setShowClientDropdown] = useState(false);
-  const [selectedAddressText, setSelectedAddressText] = useState("");
-  const [loadingTable, setLoadingTable] = useState(false);
-
-  const [submitLoader, setSubmitLoader] = useState(false)
-  const { data: searchedClients = [], isLoading: loadingClients } =
-    useSearchClient(debouncedClientSearch);
-const { createPostAssign, refreshPostAssigns } = usePostAssignContext();
-  const { postAssigns, loading, error } = usePostAssignContext();
+ 
 
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
@@ -126,9 +137,6 @@ const { createPostAssign, refreshPostAssigns } = usePostAssignContext();
     };
 
     await createPostAssign(payload);
-    refreshPostAssigns(); // optional, refresh list if you're showing it somewhere
-
-    // Reset form
     setForm({
       clientId: "",
       addressId: "",
@@ -145,14 +153,6 @@ const { createPostAssign, refreshPostAssigns } = usePostAssignContext();
     setSubmitLoader(false);
   }
 };
- useEffect(() => {
-    if (!loading && postAssigns.length > 0) {
-      console.log("Post Assignments:", postAssigns);
-    }
-    if (error) {
-      console.error("Error fetching post assignments:", error);
-    }
-  }, [postAssigns, loading, error]);
 
   
 
@@ -293,6 +293,8 @@ const { createPostAssign, refreshPostAssigns } = usePostAssignContext();
           </form>
         </div>
       </div>
+                  <div className="mt-6">
+
       <GenericTable
               data={postAssigns || []}
               columns={tableColumns}
@@ -301,6 +303,18 @@ const { createPostAssign, refreshPostAssigns } = usePostAssignContext();
               emptyMessage="No post assignment records found."
               searchable={true}
             />
+
+             {lastPage > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              fetchPostAssigns(page);
+            }}
+          />
+        )}
+        </div>
     </div>
   );
 };

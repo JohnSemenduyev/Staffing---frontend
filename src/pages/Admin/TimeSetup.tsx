@@ -6,21 +6,8 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useTimeSetupContext } from "../../context/TimeStemp"; // Import context
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { Edit, Trash2 } from "lucide-react";
-interface Data {
-    id: number;
-    distance: number;
-    actualScheduledTime: number;
-    weeklyHours: number;
-    reminderTime: number;
-    overlap: boolean;
-    unscheduledTime: boolean;
-    address: {
-      address: string;
-    };
-    client: {
-      name: string;
-    };
-}
+import Pagination from "../../components/Pagination";
+
 export const TimeSetup = () => {
   const [form, setForm] = useState({
     clientId: "",
@@ -39,9 +26,9 @@ export const TimeSetup = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [overlap, setOverlap] = useState(false);
   const [unscheduledTime, setUnscheduledTime] = useState(false);
-
+  const { timeSetups, currentPage, lastPage, fetchTimeSetups, setCurrentPage , loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const { createTimeSetup } = useTimeSetupContext(); // Get mutation function
+  const { createTimeSetup } = useTimeSetupContext();
 
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
@@ -57,6 +44,10 @@ export const TimeSetup = () => {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
+
+  useEffect(() => {
+  fetchTimeSetups(currentPage);
+}, [currentPage]);
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({
@@ -87,7 +78,6 @@ export const TimeSetup = () => {
   setSubmitLoader(true);
 
   try {
-    // Ensure all numbers are converted safely, fallback to 0 if empty
     const payload = {
       clientId: Number(form.clientId),
       addressId: Number(form.addressId),
@@ -98,12 +88,7 @@ export const TimeSetup = () => {
       overlap: overlap,
       unscheduledTime: unscheduledTime,
     };
-
-    console.log("Submitting payload:", payload); // Debug log
-
     await createTimeSetup(payload);
-
-    // Reset form
     setForm({
       clientId: "",
       addressId: "",
@@ -124,17 +109,7 @@ export const TimeSetup = () => {
     setSubmitLoader(false);
   }
 };
- const [loading , setLoading] = useState(false);
-    const { timeSetups } = useTimeSetupContext();
 
-    useEffect(() => {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 2000);
-      console.log("Time Setups:", timeSetups);
-    }, []);
-    
     const handleEdit = (record: any) => {
   console.log("Edit record:", record);
 };
@@ -407,6 +382,8 @@ const tableActions: TableAction[] = [
           </form>
         </div>
       </div>
+            <div className="mt-6">
+
       <GenericTable
         data={timeSetups || []}
         columns={tableColumns}
@@ -415,6 +392,18 @@ const tableActions: TableAction[] = [
         emptyMessage="No time setup records found."
         searchable={true}
       />
+
+      {lastPage > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              fetchTimeSetups(page);
+            }}
+          />
+        )}
+        </div>
     </div>
   );
 };
