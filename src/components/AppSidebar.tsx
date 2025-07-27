@@ -21,10 +21,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
   useSidebar,
 } from '../components/ui/sidebar';
 import { useAuth } from '../hooks/useAuth';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 const managerTabs = [
   { id: 'scheduling', label: 'Scheduling', icon: Calendar , path :"/scheduling"},
@@ -46,6 +47,7 @@ const adminTabs = [
 export function AppSidebar() {
   const { user } = useAuth();
   const { state } = useSidebar();
+  const location = useLocation();
 
   if (!user) return null;
 
@@ -55,29 +57,33 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <h1 className="text-2xl font-bold mb-6 block text-white">
+          {!isCollapsed ? portalTitle : (user.role === 'manager' ? 'MP' : 'AP')}
+        </h1>
+      </SidebarHeader>
+      
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-base font-semibold">
-            {!isCollapsed && portalTitle}
-          </SidebarGroupLabel>
-          
           <SidebarGroupContent>
             <SidebarMenu>
-              {tabs.map((tab) => (
-                <SidebarMenuItem key={tab.id}>
-                  <NavLink
-                  to={tab.path}
-                  className={({ isActive }) =>
-                      `${isActive ? 'bg-muted text-primary font-medium' : 'hover:bg-muted/50'} ${
-                        isCollapsed ? 'justify-center' : ''
-                       } flex items-center gap-2 rounded px-2 py-1.5 transition-colors`
-                  }
-                  >
-                    <tab.icon className="h-4 w-4" />
-                    {!isCollapsed && <span className="text-sm">{tab.label}</span>}
-                  </NavLink>
-                </SidebarMenuItem>
-              ))}
+              {tabs.map((tab) => {
+                const isActive = location.pathname === tab.path;
+                return (
+                  <SidebarMenuItem key={tab.id}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive}
+                      tooltip={isCollapsed ? tab.label : undefined}
+                    >
+                      <NavLink to={tab.path}>
+                        <tab.icon />
+                        <span>{tab.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

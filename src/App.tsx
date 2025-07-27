@@ -23,48 +23,48 @@ import { Summary } from "./pages/Manager/Summary";
 import { UniformCompliance } from "./pages/Manager/UniformCompliance";
 import { Notification } from "./pages/Manager/Notification";
 import { PostAssignProvider } from "./context/PostAssignm";
+import AssignmentNew from "./pages/Admin/AssignmentNew";
+import { AssignmentProvider } from "./context/Assignment";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    
-      <TooltipProvider>
-        <Toaster  />
-        <Sonner />
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <AssignmentProvider>
         <GeoLocationProvider>
           <TimeSetupProvider>
             <PostAssignProvider>
-           
-          <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<AuthRedirect />} />
-          <Route path="/login" element={<Login />} />
-          <Route element={<AppLayout />}>
-            <Route path="/scheduling-geolocation" element={<SchedulingAndGeolocation />} />
-            <Route path="/assign-user-permission" element={<AssignmentCard />} />
-            <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
-            <Route path="/time-setup" element={<TimeSetup />} />
-            <Route path="/post-assignment" element={<PostAssignment />} />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<AuthRedirect />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route element={<AppLayout />}>
+                    <Route path="/scheduling-geolocation" element={<SchedulingAndGeolocation />} />
+                    <Route path="/assign-user-permission" element={<AssignmentNew />} />
+                    <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
+                    <Route path="/time-setup" element={<TimeSetup />} />
+                    <Route path="/post-assignment" element={<PostAssignment />} />
 
-            {/* You can add manager tabs here too */}
-            <Route path="/scheduling" element={<Scheduling />} />
-            <Route path="/prepare-schedule" element={<PrepareSchedule />} />
-            <Route path="/view-schedule" element={<ViewSchedule />} />
-            <Route path="/view-time-summary" element={<Summary />} />
-            <Route path="/uniform-compliance" element={<UniformCompliance />} />
-            <Route path="/notification" element={<Notification />} />
+                    {/* Manager Tabs */}
+                    <Route path="/scheduling" element={<Scheduling />} />
+                    <Route path="/prepare-schedule" element={<PrepareSchedule />} />
+                    <Route path="/view-schedule" element={<ViewSchedule />} />
+                    <Route path="/view-time-summary" element={<Summary />} />
+                    <Route path="/uniform-compliance" element={<UniformCompliance />} />
+                    <Route path="/notification" element={<Notification />} />
+                  </Route>
 
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      </PostAssignProvider>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </PostAssignProvider>
           </TimeSetupProvider>
         </GeoLocationProvider>
+      </AssignmentProvider>
     </TooltipProvider>
-    
   </QueryClientProvider>
 );
-
 export default App;

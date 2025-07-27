@@ -2,7 +2,39 @@
 
 import { gql } from "graphql-request";
 
-// ----------- ASSIGNMENT MUTATION -----------
+// -------------------- ASSIGNMENT --------------------
+
+export const GET_ASSIGNMENTS = gql`
+  query GetAssignments($page: Int) {
+    assignments(page: $page) {
+      data {
+        id
+        user {
+          id
+          name
+        }
+        guard {
+          id
+          name
+        }
+        client {
+          id
+          name
+        }
+        address {
+          id
+          label
+        }
+        notification
+        role
+        access
+        createdAt
+      }
+      lastPage
+    }
+  }
+`;
+
 export const CREATE_ASSIGNMENT = gql`
   mutation CreateAssignment(
     $userId: Int!,
@@ -35,7 +67,51 @@ export const CREATE_ASSIGNMENT = gql`
   }
 `;
 
-// ----------- GUARD MUTATION -----------
+export const UPDATE_ASSIGNMENT = gql`
+  mutation UpdateAssignment(
+    $id: Int!,
+    $userId: Int!,
+    $guardId: Int!,
+    $clientId: Int!,
+    $notification: [String!]!,
+    $addressId: Int!,
+    $role: String!,
+    $access: String!
+  ) {
+    updateAssignment(
+      id: $id,
+      userId: $userId,
+      guardId: $guardId,
+      clientId: $clientId,
+      notification: $notification,
+      addressId: $addressId,
+      role: $role,
+      access: $access
+    ) {
+      id
+      userId
+      guardId
+      clientId
+      addressId
+      role
+      access
+      notification
+      createdAt
+    }
+  }
+`;
+
+
+export const DELETE_ASSIGNMENT = gql`
+  mutation DeleteAssignment($id: Int!) {
+    deleteAssignment(id: $id) {
+      id
+    }
+  }
+`;
+
+// -------------------- GUARD --------------------
+
 export const CREATE_GUARD = gql`
   mutation CreateGuard(
     $name: String!
@@ -62,7 +138,8 @@ export const CREATE_GUARD = gql`
   }
 `;
 
-// ----------- USER MUTATION -----------
+// -------------------- USER --------------------
+
 export const CREATE_USER = gql`
   mutation CreateUser(
     $name: String!
@@ -85,6 +162,8 @@ export const CREATE_USER = gql`
     }
   }
 `;
+
+// -------------------- GEOLOCATION --------------------
 
 export const CREATE_GEOLOCATION = gql`
   mutation CreateGeoLocation(
@@ -116,6 +195,39 @@ export const CREATE_GEOLOCATION = gql`
     }
   }
 `;
+
+export const DELETE_GEOLOCATION = gql`
+  mutation DeleteGeoLocation($id: Int!) {
+    deleteGeoLocation(id: $id) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_GEOLOCATION = gql`
+  mutation UpdateGeoLocation($id: Int!, $data: GeoLocationInput!) {
+    updateGeoLocation(id: $id, data: $data) {
+      id
+      clientId
+      addressId
+      distance
+      time
+      createdAt
+      client {
+        id
+        name
+      }
+      address {
+        id
+        label
+        address
+      }
+    }
+  }
+`;
+
+// -------------------- TIME SETUP --------------------
+
 export const CREATE_TIME_SETUP = gql`
   mutation CreateTimeSetup(
     $clientId: Int!
@@ -151,71 +263,6 @@ export const CREATE_TIME_SETUP = gql`
   }
 `;
 
-// export const UPDATE_TIME_SETUP = gql`
-//   mutation UpdateTimeSetup($id: Int!, $data: TimeSetupInput!) {
-//     updateTimeSetup(id: $id, data: $data) {
-//       id
-//       clientId
-//       addressId
-//       distance
-//       actualScheduledTime
-//       weeklyHours
-//       reminderTime
-//       overlap
-//       unscheduledTime
-//       updatedAt
-//     }
-//   }
-// `;
-
-// export const DELETE_TIME_SETUP = gql`
-//   mutation DeleteTimeSetup($id: Int!) {
-//     deleteTimeSetup(id: $id) {
-//       id
-//       clientId
-//       addressId
-//     }
-//   }
-// `;
-
-export const CREATE_POST_ASSIGN = gql`
-  mutation CreatePostAssign($clientId: Int!, $addressId: Int!, $post: String!) {
-    createPostAssign(clientId: $clientId, addressId: $addressId, post: $post) {
-      id
-      clientId
-      addressId
-      post
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const DELETE_POST_ASSIGN = gql`
-  mutation DeletePostAssign($id: Int!) {
-    deletePostAssign(id: $id) {
-      id
-    }
-  }
-`;
-
-export const UPDATE_POST_ASSIGN = gql`
-  mutation UpdatePostAssign($id: Int!, $data: PostAssignInput!) {
-    updatePostAssign(id: $id, data: $data) {
-      id
-      post
-      updatedAt
-    }
-  }
-`;
-export const DELETE_TIME_SETUP = gql`
-  mutation DeleteTimeSetup($id: Int!) {
-    deleteTimeSetup(id: $id) {
-      id
-    }
-  }
-`;
-
 export const UPDATE_TIME_SETUP = gql`
   mutation UpdateTimeSetup($id: Int!, $data: TimeSetupInput!) {
     updateTimeSetup(id: $id, data: $data) {
@@ -242,31 +289,43 @@ export const UPDATE_TIME_SETUP = gql`
   }
 `;
 
-export const DELETE_GEOLOCATION = gql`
-  mutation DeleteGeoLocation($id: Int!) {
-    deleteGeoLocation(id: $id) {
+export const DELETE_TIME_SETUP = gql`
+  mutation DeleteTimeSetup($id: Int!) {
+    deleteTimeSetup(id: $id) {
       id
     }
   }
 `;
-export const UPDATE_GEOLOCATION = gql`
-  mutation UpdateGeoLocation($id: Int!, $data: GeoLocationInput!) {
-    updateGeoLocation(id: $id, data: $data) {
+
+// -------------------- POST ASSIGN --------------------
+
+export const CREATE_POST_ASSIGN = gql`
+  mutation CreatePostAssign($clientId: Int!, $addressId: Int!, $post: String!) {
+    createPostAssign(clientId: $clientId, addressId: $addressId, post: $post) {
       id
       clientId
       addressId
-      distance
-      time
+      post
       createdAt
-      client {
-        id
-        name
-      }
-      address {
-        id
-        label
-        address
-      }
+      updatedAt
+    }
+  }
+`;
+
+export const UPDATE_POST_ASSIGN = gql`
+  mutation UpdatePostAssign($id: Int!, $data: PostAssignInput!) {
+    updatePostAssign(id: $id, data: $data) {
+      id
+      post
+      updatedAt
+    }
+  }
+`;
+
+export const DELETE_POST_ASSIGN = gql`
+  mutation DeletePostAssign($id: Int!) {
+    deletePostAssign(id: $id) {
+      id
     }
   }
 `;

@@ -1,6 +1,8 @@
 // src/graphql/queries.ts
 import { gql } from "graphql-request";
 
+// ----------- CLIENT QUERIES -----------
+
 export const GET_CLIENTS = gql`
   query {
     clients {
@@ -12,6 +14,21 @@ export const GET_CLIENTS = gql`
     }
   }
 `;
+
+export const SEARCH_CLIENTS = gql`
+  query SearchClients($name: String!) {
+    searchClients(name: $name) {
+      id
+      name
+      addresses {
+        id
+        address
+      }
+    }
+  }
+`;
+
+// ----------- ADDRESS QUERIES -----------
 
 export const GET_ADDRESSES_BY_CLIENT = gql`
   query AddressesByClient($clientId: Int!) {
@@ -27,31 +44,49 @@ export const GET_ADDRESSES_BY_CLIENT = gql`
     }
   }
 `;
+
+// ----------- ASSIGNMENT QUERY -----------
+
 export const GET_ASSIGNMENTS = gql`
-  query {
-    assignments {
-      id
-      userId
-      guardId
-      clientId
-      role
-      access
-      notification
-      createdAt
-      addressId
-      address {
+  query GetAssignments($page: Int) {
+    assignments(page: $page) {
+      data {
         id
-        label
-        address
-        city
-        state
-        pincode
+        userId
+        guardId
+        clientId
+        addressId
+        role
+        access
+        notification
+        createdAt
+        user {
+          id
+          name
+        }
+        guard {
+          id
+          name
+        }
+        client {
+          id
+          name
+        }
+        address {
+          id
+          label
+          address
+          city
+          state
+          pincode
+        }
       }
-      // Add user/guard/client fields as needed
+      lastPage
     }
   }
 `;
 
+// ----------- GUARD QUERIES -----------
 
 export const GET_GUARDS = gql`
   query {
@@ -67,7 +102,16 @@ export const GET_GUARDS = gql`
   }
 `;
 
-// ...other queries
+export const SEARCH_GUARDS = gql`
+  query SearchGuards($name: String!) {
+    searchGuards(name: $name) {
+      id
+      name
+    }
+  }
+`;
+
+// ----------- USER QUERIES -----------
 
 export const GET_USERS = gql`
   query {
@@ -81,19 +125,7 @@ export const GET_USERS = gql`
     }
   }
 `;
-export const SEARCH_CLIENTS = gql`
-  query SearchClients($name: String!) {
-    searchClients(name: $name) {
-      id
-      name
-      addresses {
-      id
-        address
-      } 
-    }
-  }
-`;
-// queries.ts
+
 export const SEARCH_USERS = gql`
   query SearchUsers($name: String!) {
     searchUsers(name: $name) {
@@ -103,30 +135,7 @@ export const SEARCH_USERS = gql`
   }
 `;
 
-
-export const SEARCH_GUARDS = gql`
-  query searchGuards($name: String!) {
-    searchGuards(name: $name) {
-      id
-      name
-    }
-  }
-`;
-export const UPDATE_ASSIGNMENT = gql`
-  mutation UpdateAssignment($id: Int!, $data: UpdateAssignmentInput!) {
-    updateAssignment(id: $id, data: $data) {
-      id
-      role
-      access
-      notification
-      user { id name }
-      guard { id name }
-      client { id name }
-      address { id label }
-      createdAt
-    }
-  }
-`;
+// ----------- GEOLOCATION QUERY -----------
 
 export const GET_GEOLOCATIONS = gql`
   query GeoLocations($page: Int) {
@@ -152,6 +161,8 @@ export const GET_GEOLOCATIONS = gql`
     }
   }
 `;
+
+// ----------- TIME SETUP QUERY -----------
 
 export const GET_TIME_SETUP = gql`
   query TimeSetup($page: Int) {
@@ -182,6 +193,8 @@ export const GET_TIME_SETUP = gql`
     }
   }
 `;
+
+// ----------- POST ASSIGN QUERY -----------
 
 export const GET_POST_ASSIGN = gql`
   query GetPostAssigns($page: Int) {
