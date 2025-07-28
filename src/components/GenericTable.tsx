@@ -50,7 +50,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     key: null,
     direction: "asc",
   });
-
+console.log(data)
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
 
   const handleSort = (key: string) => {

@@ -713,7 +713,6 @@ export default function AssignmentNew() {
       render: (value: NotificationOption[] | null | undefined) =>
         Array.isArray(value) && value.length > 0 ? value.join(", ") : "-",
     },
-    { key: "createdAt", label: "Created At", sortable: true },
   ];
 
   const tableActions: TableAction[] = [

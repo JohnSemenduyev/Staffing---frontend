@@ -42,7 +42,6 @@ const App = () => (
                   <Route path="/" element={<AuthRedirect />} />
                   <Route path="/login" element={<Login />} />
                   <Route element={<AppLayout />}>
-                    <Route path="/scheduling-geolocation" element={<SchedulingAndGeolocation />} />
                     <Route path="/assign-user-permission" element={<AssignmentNew />} />
                     <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
                     <Route path="/time-setup" element={<TimeSetup />} />

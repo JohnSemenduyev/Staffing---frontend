@@ -10,9 +10,9 @@ const AuthRedirect = () => {
       try {
         const user = JSON.parse(storedUser);
         if (user.role === 'admin') {
-          navigate('/scheduling-geolocation', { replace: true });
+          navigate('/assign-user-permission', { replace: true });
         } else if (user.role === 'manager') {
-          navigate('/scheduling', { replace: true }); // adjust this path to your manager default
+          navigate('/prepare-schedule', { replace: true }); // adjust this path to your manager default
         } else {
           navigate('/login', { replace: true });
         }

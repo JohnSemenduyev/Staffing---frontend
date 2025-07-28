@@ -57,7 +57,7 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [submitLoader, setSubmitLoader] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-const fetchGeoLocations = async (page: number = 1) => {
+const fetchGeoLocations = async (page: number) => {
   setLoading(true);
   try {
     const data = await graphQLClient.request<{
@@ -97,7 +97,7 @@ const fetchGeoLocations = async (page: number = 1) => {
     setLoading(true);
     try {
       await graphQLClient.request(DELETE_GEOLOCATION, { id });
-      await fetchGeoLocations();
+      await fetchGeoLocations(currentPage);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -111,7 +111,7 @@ const fetchGeoLocations = async (page: number = 1) => {
     try {
       setSubmitLoader(true);
       await graphQLClient.request(UPDATE_GEOLOCATION, { id, data: input });
-      await fetchGeoLocations();
+      await fetchGeoLocations(currentPage);
       setSubmitError(null);
     } catch (err) {
       console.error(err);

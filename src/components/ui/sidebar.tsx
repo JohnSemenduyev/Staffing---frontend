@@ -19,9 +19,9 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
+const SIDEBAR_WIDTH = "20rem"
+const SIDEBAR_WIDTH_MOBILE = "22rem"
+const SIDEBAR_WIDTH_ICON = "4rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
@@ -269,7 +269,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7 text-white hover:bg-[#00325d]", className)}
+      className={cn("h-8 w-8 text-white hover:bg-[#00325d]", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -356,7 +356,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-5", className)}
+      className={cn("flex flex-col gap-2 p-6", className)}
       {...props}
     />
   )
@@ -371,7 +371,7 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-5", className)}
+      className={cn("flex flex-col gap-2 p-6", className)}
       {...props}
     />
   )
@@ -386,7 +386,7 @@ const SidebarSeparator = React.forwardRef<
     <Separator
       ref={ref}
       data-sidebar="separator"
-      className={cn("mx-5 w-auto bg-white/20", className)}
+      className={cn("mx-6 w-auto bg-white/20", className)}
       {...props}
     />
   )
@@ -402,7 +402,7 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col space-y-4 overflow-auto group-data-[collapsible=icon]:overflow-hidden px-5",
+        "flex min-h-0 flex-1 flex-col space-y-4 overflow-auto group-data-[collapsible=icon]:overflow-hidden px-6",
         className
       )}
       {...props}
@@ -510,7 +510,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded px-4 py-2 text-left text-sm outline-none transition-all duration-300 ease-in-out hover:bg-[#00325d] focus-visible:ring-2 focus-visible:ring-white/30 active:bg-[#00325d] disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[#00325d] data-[active=true]:font-medium data-[active=true]:text-white data-[state=open]:hover:bg-[#00325d] data-[state=open]:hover:text-white group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0 [&>svg]:text-white text-white",
+  "peer/menu-button flex w-full items-center gap-4 overflow-hidden rounded px-4 py-3 text-left text-base outline-none transition-all duration-300 ease-in-out hover:bg-[#00325d] focus-visible:ring-2 focus-visible:ring-white/30 active:bg-[#00325d] disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[#00325d] data-[active=true]:font-medium data-[active=true]:text-white data-[state=open]:hover:bg-[#00325d] data-[state=open]:hover:text-white group-data-[collapsible=icon]:!size-12 group-data-[collapsible=icon]:!p-3 [&>span:last-child]:truncate [&>svg]:size-[20px] [&>svg]:shrink-0 [&>svg]:text-white text-white",
   {
     variants: {
       variant: {
@@ -519,9 +519,9 @@ const sidebarMenuButtonVariants = cva(
           "bg-white/5 border border-white/20 hover:bg-[#00325d] hover:text-white hover:border-white/30",
       },
       size: {
-        default: "h-auto text-sm py-2",
-        sm: "h-7 text-xs py-1",
-        lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0 py-3",
+        default: "h-auto text-base py-3",
+        sm: "h-8 text-sm py-2",
+        lg: "h-14 text-base group-data-[collapsible=icon]:!p-0 py-4",
       },
     },
     defaultVariants: {

@@ -20,7 +20,7 @@ export interface Assignment {
   user?: { id: number; name: string };
   guard?: { id: number; name: string };
   client?: { id: number; name: string };
-  address?: { id: number; label: string };
+  address?: { id: number; label: string , address : string };
 }
 
 interface AssignmentContextType {

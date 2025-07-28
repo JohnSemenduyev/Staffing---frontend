@@ -27,9 +27,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     if (storedUser) {
       const user = JSON.parse(storedUser);
       if (user.role === 'admin') {
-        redirectPath = '/scheduling-geolocation';
+        redirectPath = '/assign-user-permission';
       } else if (user.role === 'manager') {
-        redirectPath = '/scheduling';
+        redirectPath = '/prepare-schedule';
       }
     }
 
