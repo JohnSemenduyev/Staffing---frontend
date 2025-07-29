@@ -1,34 +1,33 @@
 import { useEffect, useState } from "react";
 import { GenericTable, TableColumn } from "../../components/GenericTable";
-import { useClients } from "../../context/ClientContext";
+import Pagination from "../../components/Pagination";
+import { useAddresses } from "../../context/AddressContext";
 
 export const Client = () => {
-  const { clients, loading, error, fetchClients } = useClients();
-  const [flattenedClients, setFlattenedClients] = useState([]);
+ const {
+    addresses,
+    loading,
+    error,
+    currentPage,
+    lastPage,
+    fetchAddresses,
+    setCurrentPage
+  } = useAddresses();
 
-  // 1. Fetch clients once on mount
   useEffect(() => {
-    fetchClients();
-  }, []);
-
-  // 2. Whenever clients change, flatten the structure
-  useEffect(() => {
-    if (clients.length > 0) {
-      const flatArray = flattenClientsWithAddresses(clients);
-      setFlattenedClients(flatArray);
-    }
-  }, [clients]);
+    fetchAddresses(currentPage);
+  }, [currentPage]);
 
   const tableColumns: TableColumn[] = [
     {
-      key: "name",
+      key: "client.name",
       label: "Client Name",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap"
     },
     {
-      key: "email",
+      key: "client.email",
       label: "Email",
       sortable: true,
       searchable: true,
@@ -38,28 +37,28 @@ export const Client = () => {
       )
     },
     {
-      key: "address.address", // fixed typo from "adrress"
+      key: "address", // fixed typo from "adrress"
       label: "Address",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
     },
     {
-      key: "address.city",
+      key: "city",
       label: "City",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
     },
     {
-      key: "address.state",
+      key: "state",
       label: "State",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
     },
     {
-      key: "address.pincode",
+      key: "pincode",
       label: "Zip Code",
       sortable: true,
       searchable: true,
@@ -68,43 +67,34 @@ export const Client = () => {
   ];
 
   return (
+      <div className="min-h-screen p-6 font-sans">
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800">
+          Client List
+        </h2>
+        </div>
     <GenericTable
-      data={flattenedClients || []}
+      data={addresses || []}
       columns={tableColumns}
       actions={[]}
       loading={loading}
       emptyMessage="No records found matching your search criteria."
       searchable={true}
     />
+
+     {lastPage > 1 && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  lastPage={lastPage}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    fetchAddresses(page);
+                  }}
+                />
+              </div>
+            )}
+            </div>
   );
 };
 
-function flattenClientsWithAddresses(clients) {
-  const result = [];
-
-  clients.forEach((client) => {
-    if (client.addresses && client.addresses.length > 0) {
-      client.addresses.forEach((address) => {
-        result.push({
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          phone: client.phone,
-          createdAt: client.createdAt,
-          address: address,
-        });
-      });
-    } else {
-      result.push({
-        id: client.id,
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        createdAt: client.createdAt,
-        address: null,
-      });
-    }
-  });
-
-  return result;
-}

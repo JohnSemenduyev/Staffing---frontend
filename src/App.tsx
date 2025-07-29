@@ -28,6 +28,7 @@ import { Guard } from "./pages/Admin/Guard";
 import { Admin } from "./pages/Admin/Admin";
 import { UserProvider } from "./context/UserContext";
 import { ClientProvider } from "./context/ClientContext";
+import { AddressProvider } from "./context/AddressContext";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AssignmentProvider>
+        <AddressProvider>
         <ClientProvider>
         <UserProvider>
         <GeoLocationProvider>
@@ -74,6 +76,7 @@ const App = () => (
         </GeoLocationProvider>
         </UserProvider>
         </ClientProvider>
+        </AddressProvider>
       </AssignmentProvider>
     </TooltipProvider>
   </QueryClientProvider>

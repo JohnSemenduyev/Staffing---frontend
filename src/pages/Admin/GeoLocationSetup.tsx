@@ -205,7 +205,6 @@ export const GeoLocationSetup = () => {
   ];
   return (
     <div className="min-h-screen p-6 font-sans">
-      {/* Form Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}

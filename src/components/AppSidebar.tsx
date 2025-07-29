@@ -15,6 +15,9 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  UserCheck,
+  Briefcase,
+  UserCog,
 } from 'lucide-react';
 
 import {
@@ -50,21 +53,61 @@ const managerTabs = [
 ];
 
 const adminTabs = [
-  { id: 'assign-user-permission', label: 'Assign User Permission', icon: Users, path: '/assign-user-permission' },
-  { id: 'geolocation-setup', label: 'Geolocation Setup', icon: MapPin, path: '/geolocation-setup' },
-  { id: 'time-setup', label: 'Time Setup', icon: Clock, path: '/time-setup' },
-  { id: 'post-assignment', label: 'Post Assignment', icon: Settings, path: '/post-assignment' },
+  {
+    id: 'assign-user-permission',
+    label: 'Assign User Permission',
+    icon: UserCheck, // More specific than Users
+    path: '/assign-user-permission',
+  },
+  {
+    id: 'geolocation-setup',
+    label: 'Geolocation Setup',
+    icon: MapPin,
+    path: '/geolocation-setup',
+  },
+  {
+    id: 'time-setup',
+    label: 'Time Setup',
+    icon: Clock,
+    path: '/time-setup',
+  },
+  {
+    id: 'post-assignment',
+    label: 'Post Assignment',
+    icon: Settings,
+    path: '/post-assignment',
+  },
   {
     id: 'parent',
     label: 'User List',
-    icon: BarChart3,
+    icon: Users, // Makes sense for grouping users
     children: [
-      { id: 'parent-dashboard-1', label: "Client", icon: BarChart3, path: '/client' },
-      { id: 'parent-dashboard-2', label: 'Guard', icon: BarChart3, path: '/guard' },
-      { id: 'parent-dashboard-1', label: "Manager", icon: BarChart3, path: '/manager' },
-      { id: 'parent-dashboard-2', label: 'Administrator', icon: BarChart3, path: '/admin' },
+      {
+        id: 'parent-dashboard-1',
+        label: 'Client',
+        icon: Briefcase, // Represents a business/client
+        path: '/client',
+      },
+      {
+        id: 'parent-dashboard-2',
+        label: 'Guard',
+        icon: Shield, // Security/guard
+        path: '/guard',
+      },
+      {
+        id: 'parent-dashboard-3',
+        label: 'Manager',
+        icon: UserCog, // Manager with settings role
+        path: '/manager',
+      },
+      {
+        id: 'parent-dashboard-4',
+        label: 'Administrator',
+        icon: UserCheck, // Admin/privileged
+        path: '/admin',
+      },
     ],
-  }
+  },
 ];
 
 export function AppSidebar() {

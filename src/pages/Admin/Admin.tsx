@@ -37,7 +37,12 @@ export const Admin = () => {
         ];
 
     return (
-        
+         <div className="min-h-screen p-6 font-sans">
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800">
+          Administrator List
+        </h2>
+        </div>
         <GenericTable
                   data={users || []}
                   columns={tableColumns}
@@ -46,5 +51,6 @@ export const Admin = () => {
                   emptyMessage="No records found matching your search criteria."
                   searchable={true}
                 />
+        </div>
     )
 }

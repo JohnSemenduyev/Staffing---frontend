@@ -4,24 +4,27 @@ import { gql } from "graphql-request";
 // ----------- CLIENT QUERIES -----------
 
 export const GET_CLIENTS = gql`
-  query GetClients {
-    clients {
-      id
-      name
-      email
-      phone
-      createdAt
-      addresses {
+  query GetClients($page: Int) {
+    clients(page: $page) {
+      data {
         id
-        label
-        address
-        city
-        state
-        pincode
+        name
+        email
+        phone
+        createdAt
+        addresses {
+          id
+          address
+          city
+          state
+          pincode
+        }
       }
+      lastPage
     }
   }
 `;
+
 
 export const SEARCH_CLIENTS = gql`
   query SearchClients($search: String!) {
@@ -54,6 +57,27 @@ export const GET_ADDRESSES_BY_CLIENT = gql`
   }
 `;
 
+export const GET_ALL_ADDRESSES = gql`
+  query GetAllAddresses($page: Int) {
+    allAddresses(page: $page) {
+      data {
+        id
+        address
+        city
+        state
+        pincode
+        label
+        createdAt
+        client {
+          id
+          name
+          email
+        }
+      }
+      lastPage
+    }
+  }
+`;
 // ----------- ASSIGNMENT QUERY -----------
 
 export const GET_ASSIGNMENTS = gql`
