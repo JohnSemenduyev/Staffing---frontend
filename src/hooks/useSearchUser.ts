@@ -3,13 +3,14 @@ import { graphQLClient } from "../GraphqlClient";
 import { SEARCH_USERS } from "../graphql/queries";
 import type { User } from "../types";
 
-export function useSearchUsers(name: string) {
+export function useSearchUsers(search: string) {
   return useQuery<User[]>({
-    queryKey: ["searchUsers", name],
+    queryKey: ["searchUsers", search],
     queryFn: async () => {
-      const data = await graphQLClient.request<{ searchUsers: User[] }>(SEARCH_USERS, { name });
+      const data = await graphQLClient.request<{ searchUsers: User[] }>(SEARCH_USERS, { search });
       return data.searchUsers;
     },
-    enabled: !!name && name.length >= 2,
+    enabled: !!search && search.length >= 2,
   });
 }
+

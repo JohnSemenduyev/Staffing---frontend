@@ -24,6 +24,7 @@ export const GET_ASSIGNMENTS = gql`
         address {
           id
           label
+          address
         }
         notification
         role

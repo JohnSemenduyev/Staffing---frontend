@@ -8,13 +8,9 @@ import NotFound from "./pages/NotFound";
 import { Toaster } from "./components/ui/toaster";
 import AuthRedirect from "./pages/AuthRedirect";
 import AppLayout from "./pages/AppLayout";
-import { SchedulingAndGeolocation } from "./pages/Admin/Scheduling&Geolocation";
-import AssignUserPermission from "./pages/Admin/Assignment";
 import { GeoLocationSetup } from "./pages/Admin/GeoLocationSetup";
 import { TimeSetup } from "./pages/Admin/TimeSetup";
 import { PostAssignment } from "./pages/Admin/PostAssignment";
-import AssignmentCard from "./pages/Admin/Assignment";
-import ParentDashboard from "./pages/Admin/ParentDashboard";
 import { GeoLocationProvider } from "./context/GeoLocationContext";
 import { TimeSetupProvider } from "./context/TimeStemp";
 import { Scheduling } from "./pages/Manager/Scheduling";
@@ -26,6 +22,12 @@ import { Notification } from "./pages/Manager/Notification";
 import { PostAssignProvider } from "./context/PostAssignm";
 import AssignmentNew from "./pages/Admin/AssignmentNew";
 import { AssignmentProvider } from "./context/Assignment";
+import { Client } from "./pages/Admin/Client";
+import { Manager } from "./pages/Admin/Manager";
+import { Guard } from "./pages/Admin/Guard";
+import { Admin } from "./pages/Admin/Admin";
+import { UserProvider } from "./context/UserContext";
+import { ClientProvider } from "./context/ClientContext";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AssignmentProvider>
+        <ClientProvider>
+        <UserProvider>
         <GeoLocationProvider>
           <TimeSetupProvider>
             <PostAssignProvider>
@@ -47,7 +51,11 @@ const App = () => (
                     <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
                     <Route path="/time-setup" element={<TimeSetup />} />
                     <Route path="/post-assignment" element={<PostAssignment />} />
-                    <Route path="/parent-dashboard" element={<ParentDashboard />} />
+                    <Route path="/client" element={<Client />} />
+                    <Route path="/manager" element={<Manager />} />
+                    <Route path="/guard" element={<Guard />} />
+                    <Route path="/admin" element={<Admin />} />
+
 
                     {/* Manager Tabs */}
                     <Route path="/scheduling" element={<Scheduling />} />
@@ -64,6 +72,8 @@ const App = () => (
             </PostAssignProvider>
           </TimeSetupProvider>
         </GeoLocationProvider>
+        </UserProvider>
+        </ClientProvider>
       </AssignmentProvider>
     </TooltipProvider>
   </QueryClientProvider>
