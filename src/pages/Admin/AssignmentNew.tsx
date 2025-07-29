@@ -8,6 +8,7 @@ import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { useAssignment } from "../../context/Assignment";
+import { inputClasses } from "./GeoLocationSetup";
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -64,8 +65,6 @@ export default function AssignmentNew() {
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const { data: searchedGuards = [], isLoading: loadingGuards } = useSearchUsers(debouncedGuardSearch);
-
-  const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   useEffect(() => {
     fetchAssignments(currentPage);
@@ -220,7 +219,7 @@ export default function AssignmentNew() {
     sortable: true, 
     searchable: true,
     width: "300px",
-    minWidth: "300px"
+   
   },
   { 
     key: "address.address", 
@@ -228,7 +227,7 @@ export default function AssignmentNew() {
     sortable: true, 
     searchable: true,
     width: "300px",
-    minWidth: "300px"
+    
   },
   { 
     key: "guard.name", 
@@ -236,7 +235,7 @@ export default function AssignmentNew() {
     sortable: true, 
     searchable: true,
     width: "300px",
-    minWidth: "300px"
+    
   },
   { 
     key: "user.name", 
@@ -244,7 +243,7 @@ export default function AssignmentNew() {
     sortable: true, 
     searchable: true,
     width: "300px",
-    minWidth: "300px"
+   
   },
   { 
     key: "role", 
@@ -252,7 +251,7 @@ export default function AssignmentNew() {
     sortable: true, 
     searchable: true,
     width: "300px",
-    minWidth: "300px"
+    
   },
   { 
     key: "access", 
@@ -260,14 +259,14 @@ export default function AssignmentNew() {
     sortable: true, 
     searchable: true,
     width: "300px",
-    minWidth: "300px"
+    
   },
   {
     key: "notification",
     label: "Notifications",
     sortable: false,
     width: "400px",
-    minWidth: "400px",
+
     render: (value: NotificationOption[] | null | undefined) =>
       Array.isArray(value) && value.length > 0 ? value.join(", ") : "-",
   },
@@ -291,9 +290,7 @@ export default function AssignmentNew() {
   ];
 
   return (
-    <div className="min-h-screen p-6 font-sans">
-      {/* Form Section */}
-     {/* Form Section */}
+    <div className="min-h-screen p-6 font-sans max-w-full overflow-hidden">
       <div className="w-full max-w-5xl ">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-6">
@@ -314,7 +311,7 @@ export default function AssignmentNew() {
                     setSelectedAddressText("");
                   }}
                   placeholder="Client Name"
-                  className={fieldInputClasses}
+                  className={inputClasses}
                 />
                 {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
                 {errors.addressId && <span className="text-xs text-red-500 block">{errors.addressId}</span>}
@@ -352,7 +349,7 @@ export default function AssignmentNew() {
                   value={selectedAddressText}
                   placeholder="Location"
                   readOnly
-                  className={`${fieldInputClasses} appearance-none bg-gray-50`}
+                  className={`${inputClasses} appearance-none bg-gray-50`}
                 />
               </div>
               
@@ -368,7 +365,7 @@ export default function AssignmentNew() {
                     setForm(f => ({ ...f, userId: "" }));
                   }}
                   placeholder="User Name"
-                  className={fieldInputClasses}
+                  className={inputClasses}
                 />
                 {errors.userId && (
                   <span className="text-xs text-red-500">{errors.userId}</span>
@@ -406,7 +403,7 @@ export default function AssignmentNew() {
                     setForm(f => ({ ...f, guardId: "" }));
                   }}
                   placeholder="Guard Name"
-                  className={fieldInputClasses}
+                  className={inputClasses}
                 />
                 {errors.guardId && (
                   <span className="text-xs text-red-500">{errors.guardId}</span>
@@ -437,7 +434,7 @@ export default function AssignmentNew() {
                 <select
                   value={form.role}
                   onChange={e => handleChange("role", e.target.value)}
-                  className={`${fieldInputClasses} appearance-none 
+                  className={`${inputClasses} appearance-none 
     bg-transparent  ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
                 >
                   <option value="" disabled>Select Role</option>
@@ -456,7 +453,7 @@ export default function AssignmentNew() {
                 <select
                   value={form.access}
                   onChange={e => handleChange("access", e.target.value)}
-                  className={`${fieldInputClasses} appearance-none 
+                  className={`${inputClasses} appearance-none 
     bg-transparent  ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
                 >
                   <option value="" disabled>Select Access</option>
@@ -471,7 +468,7 @@ export default function AssignmentNew() {
               {/* Notification Dropdown */}
               <div className="relative">
                 <div
-                  className={`${fieldInputClasses}  cursor-pointer flex items-center justify-between`}
+                  className={`${inputClasses}  cursor-pointer flex items-center justify-between`}
                   onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
                 >
                   <span className={form.notification.length > 0 ? "text-gray-900" : "text-gray-400"}>
@@ -515,8 +512,6 @@ export default function AssignmentNew() {
           </form>
         </div>
       </div>
-
-      {/* Table Section */}
       <div >
         <GenericTable
           data={assignments || []}
@@ -556,18 +551,9 @@ export default function AssignmentNew() {
             
             <div className="mb-6">
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete this assignment? This action cannot be undone.
+                Are you sure you want to delete this assignment?
               </p>
-              {deleteModal.record && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium text-gray-900">
-                    {deleteModal.record.client?.name || "Unknown Client"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {deleteModal.record.address?.address || "Unknown Location"}
-                  </p>
-                </div>
-              )}
+              
             </div>
             
             <div className="flex space-x-3 justify-end">

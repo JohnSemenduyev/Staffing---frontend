@@ -69,7 +69,7 @@ export function AppSidebar() {
   if (!user) return null;
 
   const tabs = user.role === 'manager' ? managerTabs : adminTabs;
-  const portalTitle = user.role === 'manager' ? 'Manager Portal' : 'Admin Portal';
+  const portalTitle = user.role === 'manager' ? 'Manager Portal' : 'Scheduling - Admin Portal';
   const isCollapsed = state === 'collapsed';
 
   const handleLogout = () => {
@@ -93,7 +93,7 @@ export function AppSidebar() {
 
       <Sidebar collapsible="icon" className="w-64">
         <SidebarHeader className="px-0 py-6 relative">
-          <h1 className="text-2xl font-bold block text-white text-center">
+          <h1 className="text-xl font-bold block text-white text-center">
             {portalTitle}
           </h1>
         </SidebarHeader>

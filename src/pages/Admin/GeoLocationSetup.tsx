@@ -8,23 +8,31 @@ import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 
+ export  const inputClasses = `
+    w-full
+    px-4
+    py-1
+    text-gray-700
+    bg-white
+    border
+    border-gray-300
+    rounded-md
+    text-base
+    placeholder-gray-500
+     focus:outline-none focus:ring-2 focus:ring-[#004175] transition
+    duration-200
+  `;
+
 export const GeoLocationSetup = () => {
-  // Form state
   const [form, setForm] = useState({ clientId: "", addressId: "", distance: "", time: "" });
-  
-  // Component state
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
-  
-  // Search states
   const [clientSearch, setClientSearch] = useState("");
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
-  
-  // Hooks
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   const { 
@@ -42,7 +50,6 @@ export const GeoLocationSetup = () => {
     submitError 
   } = useGeoLocation();
 
-  const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   useEffect(() => {
     fetchGeoLocations(currentPage);
@@ -196,58 +203,59 @@ export const GeoLocationSetup = () => {
       title: "Delete"
     }
   ];
-
   return (
     <div className="min-h-screen p-6 font-sans">
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-4 gap-4 items-start">
-            <div className="relative">
-              <input
-                type="text"
-                value={clientSearch}
-                onFocus={() => setShowClientDropdown(true)}
-                onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                onChange={(e) => {
-                  setClientSearch(e.target.value);
-                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                  setSelectedAddressText("");
-                }}
-                placeholder="Client Name"
-                className={fieldInputClasses}
-              />
-              {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-              {errors.addressId && <span className="text-xs text-red-500 block">{errors.addressId}</span>}
-              {showClientDropdown && clientSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-                  {loadingClients ? (
-                    <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-                  ) : searchedClients.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">No clients found</div>
-                  ) : (
-                    searchedClients.flatMap((client, clientIndex) =>
-                      client.addresses.map((address, addressIndex) => {
-                        const isEven = (clientIndex + addressIndex) % 2 === 0;
-                        return (
-                          <div
-                            key={`${client.id}-${address.id}`}
-                            onMouseDown={() => handleClientSelect({ id: client.id, name: client.name }, address.id)}
-                            className={`p-4 cursor-pointer text-sm ${isEven ? "bg-white" : "bg-gray-50"} hover:bg-gray-100`}
-                          >
-                            <div className="font-semibold text-gray-600 text-base">{client.name}</div>
-                            <div className="text-xs text-gray-500">{address.label || address.address}</div>
-                          </div>
-                        );
-                      })
-                    )
-                  )}
-                </div>
-              )}
-            </div>
+           <div className="relative">
+            <input
+              type="text"
+              value={clientSearch}
+              onFocus={() => setShowClientDropdown(true)}
+              onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+              onChange={(e) => {
+                setClientSearch(e.target.value);
+                setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                setSelectedAddressText("");
+              }}
+              placeholder="Client Name"
+              className={inputClasses}
+            />
+            {errors.clientId && <span className="text-xs text-red-500 mt-1 block">{errors.clientId}</span>}
+            {errors.addressId && <span className="text-xs text-red-500 mt-1 block">{errors.addressId}</span>}
+            {showClientDropdown && clientSearch.length >= 2 && (
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
+                {loadingClients ? (
+                  <div className="p-3 text-sm text-gray-500">Searching clients...</div>
+                ) : searchedClients.length === 0 ? (
+                  <div className="p-3 text-gray-500 text-sm">No clients found</div>
+                ) : (
+                  searchedClients.flatMap((client, clientIndex) =>
+                    client.addresses.map((address, addressIndex) => {
+                      const isEven = (clientIndex + addressIndex) % 2 === 0;
+                      return (
+                        <div
+                          key={`${client.id}-${address.id}`}
+                          onMouseDown={() => handleClientSelect({ id: client.id, name: client.name }, address.id)}
+                          className={`p-4 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 ${
+                            isEven ? "bg-white" : "bg-gray-50"
+                          } hover:bg-blue-50 transition-colors duration-150`}
+                        >
+                          <div className="font-semibold text-gray-700 text-base">{client.name}</div>
+                          <div className="text-xs text-gray-500 mt-1">{address.label || address.address}</div>
+                        </div>
+                      );
+                    })
+                  )
+                )}
+              </div>
+            )}
+          </div>
             
             <div>
               <input
@@ -255,7 +263,7 @@ export const GeoLocationSetup = () => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${fieldInputClasses} appearance-none bg-gray-50`}
+                className={`${inputClasses} appearance-none bg-gray-50`}
               />
             </div>
             
@@ -266,7 +274,7 @@ export const GeoLocationSetup = () => {
                 onChange={(e) => handleChange("distance", e.target.value)}
                 placeholder="Enter distance"
                 min="0"
-                className={`${fieldInputClasses}`}
+                className={`${inputClasses}`}
               />
               {errors.distance && <span className="text-xs text-red-500">{errors.distance}</span>}
             </div>
@@ -278,7 +286,7 @@ export const GeoLocationSetup = () => {
                 onChange={(e) => handleChange("time", e.target.value)}
                 placeholder="Enter time"
                 min="0"
-                className={`${fieldInputClasses} appearance-none`}
+                className={`${inputClasses} appearance-none`}
               />
               {errors.time && <span className="text-xs text-red-500">{errors.time}</span>}
             </div>
@@ -295,8 +303,6 @@ export const GeoLocationSetup = () => {
           </div>
         </form>
       </div>
-
-      {/* Table Section */}
         <GenericTable
           data={geoLocations || []}
           columns={tableColumns}
@@ -319,7 +325,6 @@ export const GeoLocationSetup = () => {
           </div>
         )}
 
-      {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -334,21 +339,8 @@ export const GeoLocationSetup = () => {
             
             <div className="mb-6">
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete this geolocation setup? This action cannot be undone.
+                Are you sure you want to delete this geolocation setup?
               </p>
-              {deleteModal.record && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium text-gray-900">
-                    {deleteModal.record.client?.name || "Unknown Client"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {deleteModal.record.address?.address || "Unknown Location"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Distance: {deleteModal.record.distance} Mile | Time: {deleteModal.record.time} Mins
-                  </p>
-                </div>
-              )}
             </div>
             
             <div className="flex space-x-3 justify-end">

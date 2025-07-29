@@ -9,6 +9,7 @@ import { Edit, Trash2 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
+import { inputClasses } from "./GeoLocationSetup";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -29,16 +30,10 @@ export const TimeSetup = () => {
   const [overlap, setOverlap] = useState(false);
   const [unscheduledTime, setUnscheduledTime] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  
-  // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
-
   const { timeSetups,createTimeSetup, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage , loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   const validate = () => {
     const e: any = {};
@@ -242,7 +237,7 @@ export const TimeSetup = () => {
                   setSelectedAddressText("");
                 }}
                 placeholder="Client Name"
-                className={fieldInputClasses}
+                className={inputClasses}
               />
               {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
               {errors.addressId && <span className="text-xs text-red-500 block">{errors.addressId}</span>}
@@ -271,11 +266,11 @@ export const TimeSetup = () => {
                 </div>
               )}
             </div>
-            <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${fieldInputClasses} bg-gray-50`} />
-            <input type="number" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={fieldInputClasses} />
-            <input type="number" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={fieldInputClasses} />
-            <input type="number" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={fieldInputClasses} />
-            <input type="number" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={fieldInputClasses} />
+            <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${inputClasses} bg-gray-50`} />
+            <input type="number" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={inputClasses} />
+            <input type="number" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={inputClasses} />
+            <input type="number" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={inputClasses} />
+            <input type="number" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={inputClasses} />
             <ToggleSwitch enabled={overlap} onToggle={setOverlap} label="Overlap" />
             <ToggleSwitch enabled={unscheduledTime} onToggle={setUnscheduledTime} label="Unscheduled Time" />
             <SubmitButton loading={submitLoader} disabled={submitLoader} icon={<Plus className="w-4 h-4 mr-1" />}>
@@ -325,22 +320,9 @@ export const TimeSetup = () => {
             
             <div className="mb-6">
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete this time setup? This action cannot be undone.
+                Are you sure you want to delete this time setup?
               </p>
-              {deleteModal.record && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium text-gray-900">
-                    {deleteModal.record.client?.name || "Unknown Client"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {deleteModal.record.address?.address || "Unknown Location"}
-                  </p>
-                  <div className="text-xs text-gray-500 mt-1 space-y-1">
-                    <p>Distance: {deleteModal.record.distance} Mile | Time: {deleteModal.record.actualScheduledTime} Hr</p>
-                    <p>Weekly Hours: {deleteModal.record.weeklyHours} Hr | Reminder: {deleteModal.record.reminderTime} Min</p>
-                  </div>
-                </div>
-              )}
+              
             </div>
             
             <div className="flex space-x-3 justify-end">

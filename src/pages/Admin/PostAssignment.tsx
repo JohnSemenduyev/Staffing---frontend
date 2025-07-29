@@ -7,6 +7,7 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
+import { inputClasses } from "./GeoLocationSetup";
 
 export const PostAssignment = () => {
   const [form, setForm] = useState({
@@ -43,9 +44,6 @@ export const PostAssignment = () => {
 useEffect(() => {
   fetchPostAssigns(currentPage);
 }, [currentPage]);
-
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   const handleClientSelect = (
     client: { id: string | number; name: string },
@@ -238,7 +236,7 @@ useEffect(() => {
                   setSelectedAddressText("");
                 }}
                 placeholder="Client Name"
-                className={fieldInputClasses}
+                className={inputClasses}
               />
               {errors.clientId && (
                 <span className="text-xs text-red-500">{errors.clientId}</span>
@@ -291,7 +289,7 @@ useEffect(() => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${fieldInputClasses} appearance-none bg-gray-50`}
+                className={`${inputClasses} appearance-none bg-gray-50`}
               />
             </div>
 
@@ -302,7 +300,7 @@ useEffect(() => {
                 value={form.postname}
                 onChange={(e) => handleChange("postname", e.target.value)}
                 placeholder="Enter post name"
-                className={`${fieldInputClasses}`}
+                className={`${inputClasses}`}
               />
               {errors.postname && (
                 <span className="text-xs text-red-500">{errors.postname}</span>
@@ -372,21 +370,8 @@ useEffect(() => {
             
             <div className="mb-6">
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete this post assignment? This action cannot be undone.
+                Are you sure you want to delete this post assignment?
               </p>
-              {deleteModal.record && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium text-gray-900">
-                    {deleteModal.record.client?.name || "Unknown Client"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {deleteModal.record.address?.address || "Unknown Location"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Post: <span className="font-medium">{deleteModal.record.post || "Unknown Post"}</span>
-                  </p>
-                </div>
-              )}
             </div>
             
             <div className="flex space-x-3 justify-end">
