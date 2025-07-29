@@ -212,10 +212,10 @@ export const GeoLocationSetup = () => {
     }
   ];
   return (
-    <div className="min-h-screen p-6 font-sans">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
       {/* Form Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6">
+        <h2 className="text-xl font-semibold mb-6">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
