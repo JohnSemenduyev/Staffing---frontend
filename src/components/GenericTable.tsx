@@ -43,7 +43,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
   emptyMessage = "No records found matching your search criteria.",
   searchable = true,
   className = "",
-  tableHeight = "400px" // Default height
+  tableHeight = "400px", // Default height
 }) => {
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -122,7 +122,7 @@ console.log(data)
         className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
-        <div className="w-full h-full overflow-auto">
+        <div className="w-full h-full overflow-auto rounded-2xl">
           <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
             {/* Header Row */}

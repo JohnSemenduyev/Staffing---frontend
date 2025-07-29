@@ -56,7 +56,8 @@ const columns: TableColumn[] = [
     label: "Client Name",
     sortable: true,
     searchable: true,
-    className: "whitespace-nowrap"
+    className: "whitespace-nowrap",
+    width: "200px"
   },
   {
     key: "location",

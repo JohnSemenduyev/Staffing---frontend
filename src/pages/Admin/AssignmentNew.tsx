@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Edit, Plus, Trash2 } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { Edit, Plus, Trash2, X } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -41,6 +41,7 @@ export default function AssignmentNew() {
   const [isEditing, setIsEditing] = useState(false);
   const [submitLoader, setSubmitLoader] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showErrors, setShowErrors] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
 
@@ -55,6 +56,7 @@ export default function AssignmentNew() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showGuardDropdown, setShowGuardDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const notificationDropdownRef = useRef<HTMLDivElement>(null);
 
   // Debounced search values
   const debouncedClientSearch = useDebounce(clientSearch, 300);
@@ -70,16 +72,34 @@ export default function AssignmentNew() {
     fetchAssignments(currentPage);
   }, [currentPage]);
 
+  // Handle clicking outside notification dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target as Node)) {
+        setShowNotificationDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    // Remove all validation errors when any field changes
+    setErrors({});
+    setShowErrors(false);
   };
 
   const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
     setForm((f) => ({ ...f, clientId: String(client.id), addressId: String(addressId) }));
     setClientSearch(client.name);
     setShowClientDropdown(false);
-    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
+    // Remove all validation errors when selections change
+    setErrors({});
+    setShowErrors(false);
     const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
     const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
     setSelectedAddressText(selectedAddress?.address || "");
@@ -89,14 +109,18 @@ export default function AssignmentNew() {
     setForm(f => ({ ...f, userId: String(user.id) }));
     setUserSearch(user.name);
     setShowUserDropdown(false);
-    setErrors(e => ({ ...e, userId: undefined }));
+    // Remove all validation errors when selections change
+    setErrors({});
+    setShowErrors(false);
   };
 
   const handleGuardSelect = (guard: { id: string | number; name: string }) => {
     setForm(f => ({ ...f, guardId: String(guard.id) }));
     setGuardSearch(guard.name);
     setShowGuardDropdown(false);
-    setErrors(e => ({ ...e, guardId: undefined }));
+    // Remove all validation errors when selections change
+    setErrors({});
+    setShowErrors(false);
   };
 
   const handleCheckbox = (option: NotificationOption) => {
@@ -105,19 +129,28 @@ export default function AssignmentNew() {
         ? { ...f, notification: f.notification.filter(n => n !== option) }
         : { ...f, notification: [...f.notification, option] }
     );
-    setErrors(e => ({ ...e, notification: undefined }));
+    // Remove all validation errors when notifications change
+    setErrors({});
+    setShowErrors(false);
+  };
+
+  // Helper function to get field styling based on error state
+  const getFieldClasses = (fieldName: string) => {
+    const hasError = showErrors && errors[fieldName];
+    return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
 
   const validate = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.userId) e.userId = "Required";
-    if (!form.guardId) e.guardId = "Required";
-    if (!form.addressId) e.addressId = "Required";
-    if (!form.role) e.role = "Required";
-    if (!form.access) e.access = "Required";
-    if (!form.notification.length) e.notification = "Select at least one notification";
+    if (!form.clientId) e.clientId = "Client is required";
+    if (!form.userId) e.userId = "User is required";
+    if (!form.guardId) e.guardId = "Guard is required";
+    // if (!form.addressId) e.addressId = "Address is required";
+    if (!form.role) e.role = "Role is required";
+    if (!form.access) e.access = "Access level is required";
+    if (!form.notification.length) e.notification = "Please select at least one notification";
     setErrors(e);
+    setShowErrors(true);
     return Object.keys(e).length === 0;
   };
 
@@ -132,6 +165,7 @@ export default function AssignmentNew() {
     setShowGuardDropdown(false);
     setShowNotificationDropdown(false);
     setErrors({});
+    setShowErrors(false);
     setIsEditing(false);
     setEditId(null);
   };
@@ -218,7 +252,7 @@ export default function AssignmentNew() {
     label: "Client Name", 
     sortable: true, 
     searchable: true,
-    width: "300px",
+    width: "200px",
    
   },
   { 
@@ -226,7 +260,7 @@ export default function AssignmentNew() {
     label: "Location", 
     sortable: true, 
     searchable: true,
-    width: "300px",
+    width: "200px",
     
   },
   { 
@@ -234,7 +268,7 @@ export default function AssignmentNew() {
     label: "Guard Name", 
     sortable: true, 
     searchable: true,
-    width: "300px",
+    width: "200px",
     
   },
   { 
@@ -242,7 +276,7 @@ export default function AssignmentNew() {
     label: "User Name", 
     sortable: true, 
     searchable: true,
-    width: "300px",
+    width: "200px",
    
   },
   { 
@@ -250,7 +284,7 @@ export default function AssignmentNew() {
     label: "Role", 
     sortable: true, 
     searchable: true,
-    width: "300px",
+    width: "200px",
     
   },
   { 
@@ -258,7 +292,7 @@ export default function AssignmentNew() {
     label: "Access", 
     sortable: true, 
     searchable: true,
-    width: "300px",
+    width: "200px",
     
   },
   {
@@ -311,10 +345,24 @@ export default function AssignmentNew() {
                     setSelectedAddressText("");
                   }}
                   placeholder="Client Name"
-                  className={inputClasses}
+                  className={getFieldClasses('clientId')}
                 />
-                {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-                {errors.addressId && <span className="text-xs text-red-500 block">{errors.addressId}</span>}
+                {showErrors && errors.clientId && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.clientId}
+                  </div>
+                )}
+                {showErrors && errors.addressId && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.addressId}
+                  </div>
+                )}
                 {showClientDropdown && clientSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
                     {loadingClients ? (
@@ -365,10 +413,15 @@ export default function AssignmentNew() {
                     setForm(f => ({ ...f, userId: "" }));
                   }}
                   placeholder="User Name"
-                  className={inputClasses}
+                  className={getFieldClasses('userId')}
                 />
-                {errors.userId && (
-                  <span className="text-xs text-red-500">{errors.userId}</span>
+                {showErrors && errors.userId && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.userId}
+                  </div>
                 )}
                 {showUserDropdown && userSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -403,10 +456,15 @@ export default function AssignmentNew() {
                     setForm(f => ({ ...f, guardId: "" }));
                   }}
                   placeholder="Guard Name"
-                  className={inputClasses}
+                  className={getFieldClasses('guardId')}
                 />
-                {errors.guardId && (
-                  <span className="text-xs text-red-500">{errors.guardId}</span>
+                {showErrors && errors.guardId && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.guardId}
+                  </div>
                 )}
                 {showGuardDropdown && guardSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -434,8 +492,7 @@ export default function AssignmentNew() {
                 <select
                   value={form.role}
                   onChange={e => handleChange("role", e.target.value)}
-                  className={`${inputClasses} appearance-none 
-    bg-transparent  ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
+                  className={`${getFieldClasses('role')} appearance-none bg-transparent ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
                 >
                   <option value="" disabled>Select Role</option>
                   <option value="Admin">Admin</option>
@@ -443,8 +500,13 @@ export default function AssignmentNew() {
                   <option value="Guard">Guard</option>
                   <option value="Client">Client</option>
                 </select>
-                {errors.role && (
-                  <span className="text-xs text-red-500">{errors.role}</span>
+                {showErrors && errors.role && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.role}
+                  </div>
                 )}
               </div>
 
@@ -453,47 +515,84 @@ export default function AssignmentNew() {
                 <select
                   value={form.access}
                   onChange={e => handleChange("access", e.target.value)}
-                  className={`${inputClasses} appearance-none 
-    bg-transparent  ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
+                  className={`${getFieldClasses('access')} appearance-none bg-transparent ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
                 >
                   <option value="" disabled>Select Access</option>
                   <option value="View">View</option>
                   <option value="Edit">Edit</option>
                 </select>
-                {errors.access && (
-                  <span className="text-xs text-red-500">{errors.access}</span>
+                {showErrors && errors.access && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.access}
+                  </div>
                 )}
               </div>
 
               {/* Notification Dropdown */}
-              <div className="relative">
-                <div
-                  className={`${inputClasses}  cursor-pointer flex items-center justify-between`}
+              <div className="relative col-span-1 md:col-span-2 " ref={notificationDropdownRef}>
+                {/* <label className="block font-sans mb-2">Notifications</label> */}
+                <div 
+                  className={`${getFieldClasses('notification')} cursor-pointer flex items-center justify-between`}
                   onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
                 >
-                  <span className={form.notification.length > 0 ? "text-gray-900" : "text-gray-400"}>
-                    {form.notification.length > 0 
-                      ? `${form.notification.length} selected` 
-                      : "Select Notifications"
-                    }
-                  </span>
+                  <div className="flex flex-wrap gap-1 flex-1">
+                    {form.notification.length === 0 ? (
+                      <span className="text-gray-400">Select notifications...</span>
+                    ) : (
+                      form.notification.map(option => (
+                        <span
+                          key={option}
+                          className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
+                        >
+                          {option}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCheckbox(option);
+                            }}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  <div className="ml-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-                {errors.notification && (
-                  <span className="text-xs text-red-500">{errors.notification}</span>
-                )}
+                
                 {showNotificationDropdown && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
                     {notificationOptions.map(option => (
-                      <label key={option} className="flex items-center p-3 hover:bg-gray-50 cursor-pointer text-sm">
+                      <label key={option} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer text-sm">
                         <input
                           type="checkbox"
                           checked={form.notification.includes(option)}
                           onChange={() => handleCheckbox(option)}
                           className="mr-3 text-[#004175] focus:ring-[#004175] focus:ring-2"
                         />
-                        <span className="text-gray-700">{option}</span>
+                        <span className={`${form.notification.includes(option) ? 'text-blue-800' : 'text-gray-700'}`}>
+                          {option}
+                        </span>
                       </label>
                     ))}
+                  </div>
+                )}
+                
+                {showErrors && errors.notification && (
+                  <div className="mt-1 flex items-center text-sm text-red-600">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.notification}
                   </div>
                 )}
               </div>

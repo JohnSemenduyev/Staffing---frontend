@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Plus, X } from "lucide-react";
 import { useAddressesByClient } from "../../hooks/useAddressesByClient";
 import { useCreateAssignment } from "../../hooks/userAssignment";
 import AssignmentHistory from "../../components/AssignmentReport";
@@ -41,6 +41,8 @@ export default function AssignmentForm() {
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const notificationDropdownRef = useRef<HTMLDivElement>(null);
 
   const [guardSearch, setGuardSearch] = useState("");
   // const debouncedGuardSearch = useDebounce(guardSearch, 300);
@@ -50,6 +52,20 @@ export default function AssignmentForm() {
   const clientIdNum = form.clientId ? Number(form.clientId) : 0;
   const { data: addresses, isLoading: loadingAddresses } = useAddressesByClient(clientIdNum);
 
+  // Handle clicking outside notification dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target as Node)) {
+        setShowNotificationDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const createAssignment = useCreateAssignment();
 
   const handleChange = (field: string, value: any) => {
@@ -58,7 +74,10 @@ export default function AssignmentForm() {
       [field]: value,
       ...(field === "clientId" ? { addressId: "" } : {}),
     }));
-    setErrors(e => ({ ...e, [field]: undefined }));
+    // Remove validation error for this field when it changes
+    if (errors[field]) {
+      setErrors(e => ({ ...e, [field]: undefined }));
+    }
   };
 
   const handleCheckbox = (option: NotificationOption) => {
@@ -67,20 +86,30 @@ export default function AssignmentForm() {
         ? { ...f, notification: f.notification.filter(n => n !== option) }
         : { ...f, notification: [...f.notification, option] }
     );
+    // Remove validation error for notifications when it changes
+    if (errors.notification) {
+      setErrors(e => ({ ...e, notification: undefined }));
+    }
   };
 
   const handleClientSelect = (client: { id: string | number; name: string }) => {
     setForm(f => ({ ...f, clientId: String(client.id), addressId: "" }));
     setClientSearch(client.name);
     setShowClientDropdown(false);
-    setErrors(e => ({ ...e, clientId: undefined }));
+    // Remove validation error for clientId when it changes
+    if (errors.clientId) {
+      setErrors(e => ({ ...e, clientId: undefined }));
+    }
   };
 
   const handleUserSelect = (user: { id: string | number; name: string }) => {
     setForm(f => ({ ...f, userId: String(user.id) }));
     setUserSearch(user.name);
     setShowUserDropdown(false);
-    setErrors(e => ({ ...e, userId: undefined }));
+    // Remove validation error for userId when it changes
+    if (errors.userId) {
+      setErrors(e => ({ ...e, userId: undefined }));
+    }
   };
 
   // const handleGuardSelect = (guard: { id: string | number; name: string }) => {
@@ -307,22 +336,60 @@ export default function AssignmentForm() {
 </div>
 
 
-              {/* Notification Checkboxes */}
-              <div className="col-span-1 md:col-span-2 lg:col-span-3">
+              {/* Notification Dropdown */}
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 relative" ref={notificationDropdownRef}>
                 <label className="block font-sans mb-2">Notifications</label>
-                <div className="flex flex-wrap gap-2">
-                  {notificationOptions.map(option => (
-                    <label key={option} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={form.notification.includes(option)}
-                        onChange={() => handleCheckbox(option)}
-                        className="mr-2"
-                      />
-                      {option}
-                    </label>
-                  ))}
+                <div 
+                  className={`${fieldInputClasses} cursor-pointer flex items-center justify-between`}
+                  onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                >
+                  <div className="flex flex-wrap gap-1 flex-1">
+                    {form.notification.length === 0 ? (
+                      <span className="text-gray-400">Select notifications...</span>
+                    ) : (
+                      form.notification.map(option => (
+                        <span
+                          key={option}
+                          className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
+                        >
+                          {option}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCheckbox(option);
+                            }}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  <div className="ml-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
+                
+                {showNotificationDropdown && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                    {notificationOptions.map(option => (
+                      <div
+                        key={option}
+                        className={`p-2 cursor-pointer text-sm hover:bg-gray-50 ${
+                          form.notification.includes(option) ? 'bg-blue-50 text-blue-800' : ''
+                        }`}
+                        onClick={() => handleCheckbox(option)}
+                      >
+                        {option}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
                 {errors.notification && (
                   <span className="text-xs text-red-500 block mt-1">
                     {errors.notification}
