@@ -185,17 +185,17 @@ const GeoLocationList: React.FC = () => {
                   {record.guardName}
                 </td>
                 <td className="px-2 sm:px-4 py-3 border-b border-gray-100 align-top w-[200px] sm:w-[300px] lg:w-[380px]">
-  <div className="flex flex-wrap gap-1">
-    {record.notifications.map((notif, i) => (
-      <span
-        key={i}
-        className="inline-flex w-fit px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded"
-      >
-        {notif}
-      </span>
-    ))}
-  </div>
-</td>
+                  <div className="flex flex-wrap gap-1">
+                    {record.notifications.map((notif, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex w-fit px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded no-wrap"
+                      >
+                        {notif}
+                      </span>
+                    ))}
+                  </div>
+                </td>
 
                 <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
                   <div className="flex items-center gap-2">

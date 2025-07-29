@@ -291,13 +291,13 @@ export default function AssignmentNew() {
 
   return (
     <div className="min-h-screen p-6 font-sans max-w-full overflow-hidden">
-      <div className="w-full max-w-5xl ">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="w-full ">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 w-full">
           <h2 className="text-2xl font-semibold text-gray-800 mb-6">
             {isEditing ? "Edit Assignment" : "Add Assignment"}
           </h2>
           <form onSubmit={onSubmit} autoComplete="off">
-            <div className="grid grid-cols-4 gap-4 items-start max-w-5xl">
+            <div className="grid grid-cols-4 gap-4 items-start w-full">
               {/* Client Search */}
               <div className="relative">
                 <input

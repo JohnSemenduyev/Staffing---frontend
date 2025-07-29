@@ -14,6 +14,7 @@ import { GeoLocationSetup } from "./pages/Admin/GeoLocationSetup";
 import { TimeSetup } from "./pages/Admin/TimeSetup";
 import { PostAssignment } from "./pages/Admin/PostAssignment";
 import AssignmentCard from "./pages/Admin/Assignment";
+import ParentDashboard from "./pages/Admin/ParentDashboard";
 import { GeoLocationProvider } from "./context/GeoLocationContext";
 import { TimeSetupProvider } from "./context/TimeStemp";
 import { Scheduling } from "./pages/Manager/Scheduling";
@@ -46,6 +47,7 @@ const App = () => (
                     <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
                     <Route path="/time-setup" element={<TimeSetup />} />
                     <Route path="/post-assignment" element={<PostAssignment />} />
+                    <Route path="/parent-dashboard" element={<ParentDashboard />} />
 
                     {/* Manager Tabs */}
                     <Route path="/scheduling" element={<Scheduling />} />

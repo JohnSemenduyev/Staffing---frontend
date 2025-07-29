@@ -22,10 +22,10 @@ const AppLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex w-full  bg-background">
+      <div className="flex w-full bg-background">
         <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <main className="w-full flex-1 px-2 sm:px-4 md:px-6 py-2 sm:py-4 bg-gray-100">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <main className="w-full flex-1 px-2 sm:px-4 md:px-6 py-2 sm:py-4 bg-gray-100 md:ml-10">
             <Outlet />
           </main>
         </div>

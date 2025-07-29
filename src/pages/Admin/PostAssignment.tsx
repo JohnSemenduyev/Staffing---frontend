@@ -217,7 +217,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen p-6 font-sans">
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 w-full">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6">
           {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
         </h2>
