@@ -10,22 +10,18 @@ import { toast } from "sonner";
 
  export  const inputClasses = `
     w-full
-    px-4
+    px-3
     py-1
-    text-gray-700
-    bg-white
     border
     border-gray-300
     rounded-md
-    text-base
-    placeholder-gray-500
-     focus:outline-none focus:ring-2 focus:ring-[#004175] transition
-    duration-200
+    focus:outline-none focus:ring-2 focus:ring-[#004175] transition
   `;
 
 export const GeoLocationSetup = () => {
   const [form, setForm] = useState({ clientId: "", addressId: "", distance: "", time: "" });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showErrors, setShowErrors] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
@@ -57,14 +53,18 @@ export const GeoLocationSetup = () => {
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    // Remove all validation errors when any field changes
+    setErrors({});
+    setShowErrors(false);
   };
 
   const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
     setForm((f) => ({ ...f, clientId: String(client.id), addressId: String(addressId) }));
     setClientSearch(client.name);
     setShowClientDropdown(false);
-    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
+    // Remove all validation errors when selections change
+    setErrors({});
+    setShowErrors(false);
     const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
     const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
     setSelectedAddressText(selectedAddress?.address || "");
@@ -72,11 +72,12 @@ export const GeoLocationSetup = () => {
 
   const validate = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.addressId) e.addressId = "Required";
-    if (!form.distance) e.distance = "Required";
-    if (!form.time) e.time = "Required";
+    if (!form.clientId) e.clientId = "Client is required";
+    // if (!form.addressId) e.addressId = "Address is required";
+    if (!form.distance) e.distance = "Distance is required";
+    if (!form.time) e.time = "Time is required";
     setErrors(e);
+    setShowErrors(true);
     return Object.keys(e).length === 0;
   };
 
@@ -88,6 +89,13 @@ export const GeoLocationSetup = () => {
     setIsEditing(false);
     setEditId(null);
     setErrors({});
+    setShowErrors(false);
+  };
+
+  // Helper function to get field styling based on error state
+  const getFieldClasses = (fieldName: string) => {
+    const hasError = showErrors && errors[fieldName];
+    return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -161,7 +169,7 @@ export const GeoLocationSetup = () => {
       label: "Client Name",
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap"
+      className: "whitespace-nowrap max-w-[200px]"
     },
     {
       key: "address.address",
@@ -175,14 +183,14 @@ export const GeoLocationSetup = () => {
       key: "distance",
       label: "Distance",
       sortable: true,
-      className: "whitespace-nowrap",
+      className: "whitespace-nowrap max-w-[200px]",
       render: (value: any) => `${value} Mile`
     },
     {
       key: "time",
       label: "Time",
       sortable: true,
-      className: "whitespace-nowrap",
+      className: "whitespace-nowrap max-w-[200px]",
       render: (value: any) => `${value} Mins`
     }
   ];
@@ -192,7 +200,7 @@ export const GeoLocationSetup = () => {
       label: "Edit",
       icon: <Edit className="w-4 h-4" />,
       onClick: handleEdit,
-      className: "text-blue-500 hover:text-green-700",
+      className: "text-blue-500 hover:text-green-700 max-w-[100px] text-center",
       title: "Edit"
     },
     {
@@ -205,6 +213,7 @@ export const GeoLocationSetup = () => {
   ];
   return (
     <div className="min-h-screen p-6 font-sans">
+      {/* Form Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
@@ -223,10 +232,24 @@ export const GeoLocationSetup = () => {
                 setSelectedAddressText("");
               }}
               placeholder="Client Name"
-              className={inputClasses}
+              className={getFieldClasses('clientId')}
             />
-            {errors.clientId && <span className="text-xs text-red-500 mt-1 block">{errors.clientId}</span>}
-            {errors.addressId && <span className="text-xs text-red-500 mt-1 block">{errors.addressId}</span>}
+            {showErrors && errors.clientId && (
+              <div className="mt-1 flex items-center text-sm text-red-600">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                {errors.clientId}
+              </div>
+            )}
+            {showErrors && errors.addressId && (
+              <div className="mt-1 flex items-center text-sm text-red-600">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                {errors.addressId}
+              </div>
+            )}
             {showClientDropdown && clientSearch.length >= 2 && (
               <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
                 {loadingClients ? (
@@ -273,9 +296,16 @@ export const GeoLocationSetup = () => {
                 onChange={(e) => handleChange("distance", e.target.value)}
                 placeholder="Enter distance"
                 min="0"
-                className={`${inputClasses}`}
+                className={getFieldClasses('distance')}
               />
-              {errors.distance && <span className="text-xs text-red-500">{errors.distance}</span>}
+              {showErrors && errors.distance && (
+                <div className="mt-1 flex items-center text-sm text-red-600">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  {errors.distance}
+                </div>
+              )}
             </div>
             
             <div>
@@ -285,9 +315,16 @@ export const GeoLocationSetup = () => {
                 onChange={(e) => handleChange("time", e.target.value)}
                 placeholder="Enter time"
                 min="0"
-                className={`${inputClasses} appearance-none`}
+                className={getFieldClasses('time')}
               />
-              {errors.time && <span className="text-xs text-red-500">{errors.time}</span>}
+              {showErrors && errors.time && (
+                <div className="mt-1 flex items-center text-sm text-red-600">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.time}
+                </div>
+              )}
             </div>
             
             <div className="flex justify-start">

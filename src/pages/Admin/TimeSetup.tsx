@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, AlertTriangle } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -22,6 +22,7 @@ export const TimeSetup = () => {
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showErrors, setShowErrors] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -35,15 +36,24 @@ export const TimeSetup = () => {
   const { timeSetups,createTimeSetup, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage , loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
 
+  const getFieldClasses = (fieldName: string) => {
+    const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+    const errorClasses = "border-red-500 focus:ring-red-500 focus:border-red-500";
+    const normalClasses = "border-gray-300";
+    
+    return `${baseClasses} ${showErrors && errors[fieldName] ? errorClasses : normalClasses}`;
+  };
+
   const validate = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.addressId) e.addressId = "Required";
-    if (!form.distance) e.distance = "Required";
-    if (!form.time) e.time = "Required";
-    if (!form.hours) e.hours = "Required";
-    if (!form.reminder) e.reminder = "Required";
+    if (!form.clientId) e.clientId = "Client is required";
+    if (!form.addressId) e.addressId = "Address is required";
+    if (!form.distance) e.distance = "Distance is required";
+    if (!form.time) e.time = "Scheduled time is required";
+    if (!form.hours) e.hours = "Weekly hours is required";
+    if (!form.reminder) e.reminder = "Reminder time is required";
     setErrors(e);
+    setShowErrors(true);
     return Object.keys(e).length === 0;
   };
 
@@ -53,7 +63,8 @@ export const TimeSetup = () => {
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    setErrors({});
+    setShowErrors(false);
   };
 
   const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
@@ -64,7 +75,8 @@ export const TimeSetup = () => {
     }));
     setClientSearch(client.name);
     setShowClientDropdown(false);
-    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
+    setErrors({});
+    setShowErrors(false);
 
     const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
     const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
@@ -122,6 +134,7 @@ export const TimeSetup = () => {
     });
     setEditId(null);
     setErrors({});
+    setShowErrors(false);
   }
 
   const handleEdit = (record: any) => {
@@ -138,6 +151,8 @@ export const TimeSetup = () => {
     setSelectedAddressText(record.address.label || record.address.address || "");
     setOverlap(record.overlap);
     setUnscheduledTime(record.unscheduledTime);
+    setErrors({});
+    setShowErrors(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -217,10 +232,10 @@ export const TimeSetup = () => {
   ];
 
   return (
-    <div className="min-h-screen p-6 font-sans">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 w-full">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6 w-full">
+        <h2 className="text-xl font-semibold mb-6">
           {editId ? "Edit Time Setup" : "Add Time Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
@@ -235,12 +250,20 @@ export const TimeSetup = () => {
                   setClientSearch(e.target.value);
                   setForm((f) => ({ ...f, clientId: "", addressId: "" }));
                   setSelectedAddressText("");
+                  setErrors({});
+                  setShowErrors(false);
                 }}
                 placeholder="Client Name"
-                className={inputClasses}
+                className={getFieldClasses('clientId')}
               />
-              {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-              {errors.addressId && <span className="text-xs text-red-500 block">{errors.addressId}</span>}
+              {showErrors && errors.clientId && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.clientId}</span>
+                </div>
+              )}
               {showClientDropdown && clientSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
                   {loadingClients ? (
@@ -266,11 +289,61 @@ export const TimeSetup = () => {
                 </div>
               )}
             </div>
-            <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${inputClasses} bg-gray-50`} />
-            <input type="number" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={inputClasses} />
-            <input type="number" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={inputClasses} />
-            <input type="number" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={inputClasses} />
-            <input type="number" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={inputClasses} />
+            <div>
+              <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${getFieldClasses('addressId')} bg-gray-50`} />
+              {showErrors && errors.addressId && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.addressId}</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <input type="number" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={getFieldClasses('distance')} />
+              {showErrors && errors.distance && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.distance}</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <input type="number" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={getFieldClasses('time')} />
+              {showErrors && errors.time && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.time}</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <input type="number" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={getFieldClasses('hours')} />
+              {showErrors && errors.hours && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.hours}</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <input type="number" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={getFieldClasses('reminder')} />
+              {showErrors && errors.reminder && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.reminder}</span>
+                </div>
+              )}
+            </div>
             <ToggleSwitch enabled={overlap} onToggle={setOverlap} label="Overlap" />
             <ToggleSwitch enabled={unscheduledTime} onToggle={setUnscheduledTime} label="Unscheduled Time" />
             <SubmitButton loading={submitLoader} disabled={submitLoader} icon={<Plus className="w-4 h-4 mr-1" />}>

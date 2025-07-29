@@ -1,7 +1,7 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Check, X } from "lucide-react";
+import { Plus, Edit, Trash2, Check, X, AlertTriangle } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
@@ -16,6 +16,7 @@ export const PostAssignment = () => {
     postname: "",
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showErrors, setShowErrors] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -56,19 +57,29 @@ useEffect(() => {
     }));
     setClientSearch(client.name);
     setShowClientDropdown(false);
-    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
+    setErrors({});
+    setShowErrors(false);
 
     const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
     const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
     setSelectedAddressText(selectedAddress?.address || "");
   };
 
+  const getFieldClasses = (fieldName: string) => {
+    const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+    const errorClasses = "border-red-500 focus:ring-red-500 focus:border-red-500";
+    const normalClasses = "border-gray-300";
+    
+    return `${baseClasses} ${showErrors && errors[fieldName] ? errorClasses : normalClasses}`;
+  };
+
   const validateForm = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.addressId) e.addressId = "Required";
-    if (!form.postname) e.postname = "Required";
+    if (!form.clientId) e.clientId = "Client is required";
+    if (!form.addressId) e.addressId = "Address is required";
+    if (!form.postname) e.postname = "Post name is required";
     setErrors(e);
+    setShowErrors(true);
     return Object.keys(e).length === 0;
   };
 
@@ -80,6 +91,7 @@ useEffect(() => {
     setIsEditMode(false);
     setEditId(null);
     setErrors({});
+    setShowErrors(false);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -131,6 +143,7 @@ useEffect(() => {
     }
 
     setErrors({});
+    setShowErrors(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -164,7 +177,8 @@ useEffect(() => {
       ...f,
       [field]: value,
     }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    setErrors({});
+    setShowErrors(false);
   };
 
   const tableColumns: TableColumn[] = [
@@ -215,10 +229,10 @@ useEffect(() => {
   ];
 
   return (
-    <div className="min-h-screen p-6 font-sans">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 w-full">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6 w-full">
+        <h2 className="text-xl font-semibold mb-6">
           {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
@@ -234,15 +248,19 @@ useEffect(() => {
                   setClientSearch(e.target.value);
                   setForm((f) => ({ ...f, clientId: "", addressId: "" }));
                   setSelectedAddressText("");
+                  setErrors({});
+                  setShowErrors(false);
                 }}
                 placeholder="Client Name"
-                className={inputClasses}
+                className={getFieldClasses('clientId')}
               />
-              {errors.clientId && (
-                <span className="text-xs text-red-500">{errors.clientId}</span>
-              )}
-              {errors.addressId && (
-                <span className="text-xs text-red-500 block">{errors.addressId}</span>
+              {showErrors && errors.clientId && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.clientId}</span>
+                </div>
               )}
               {showClientDropdown && clientSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
@@ -289,8 +307,16 @@ useEffect(() => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${inputClasses} appearance-none bg-gray-50`}
+                className={`${getFieldClasses('addressId')} appearance-none bg-gray-50`}
               />
+              {showErrors && errors.addressId && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.addressId}</span>
+                </div>
+              )}
             </div>
 
             {/* Post Name */}
@@ -300,10 +326,15 @@ useEffect(() => {
                 value={form.postname}
                 onChange={(e) => handleChange("postname", e.target.value)}
                 placeholder="Enter post name"
-                className={`${inputClasses}`}
+                className={getFieldClasses('postname')}
               />
-              {errors.postname && (
-                <span className="text-xs text-red-500">{errors.postname}</span>
+              {showErrors && errors.postname && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  <span>{errors.postname}</span>
+                </div>
               )}
             </div>
 

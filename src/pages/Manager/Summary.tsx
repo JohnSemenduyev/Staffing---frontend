@@ -113,10 +113,9 @@ export const Summary = () => {
     //   }
     };
     return (
-        <div className="min-h-screen p-6 font-sans">
-      <div className="w-full px-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Summary</h2>
+        <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
+        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100">
+          <h2 className="text-xl font-semibold mb-6">Summary</h2>
           <form onSubmit={onSubmit} autoComplete="off">
             <div className="grid grid-cols-4 gap-4 items-start">
               {/* Client Search Field */}
@@ -227,7 +226,6 @@ export const Summary = () => {
           </form>
         </div>
       </div>
-    </div>
   );
     
 }

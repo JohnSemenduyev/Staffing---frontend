@@ -201,7 +201,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100">
       <form onSubmit={onSubmit} autoComplete="off">
         <div className={`grid grid-cols-${gridCols} gap-4 items-start`}>
           {allItems}

@@ -328,7 +328,7 @@ export function AppSidebar() {
 
       {/* Mobile Menu Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full w-80 bg-[#004175] z-50 transform transition-transform duration-300 ease-in-out md:hidden
+        fixed top-0 left-0 h-full w-64 bg-[#004175] z-50 transform transition-transform duration-300 ease-in-out md:hidden
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
@@ -437,7 +437,7 @@ export function AppSidebar() {
       </div>
 
       {/* Desktop Sidebar */}
-      <Sidebar collapsible="icon" className="w-80 hidden md:block">
+      <Sidebar collapsible="icon" className="w-64 hidden md:block">
         <SidebarHeader className="px-0 py-6 relative">
           <h1 className="text-xl font-bold block text-white text-center">
             {portalTitle}

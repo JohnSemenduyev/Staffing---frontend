@@ -21,11 +21,11 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
     <button
       type="submit"
       disabled={isDisabled}
-      className="inline-flex items-center px-4 py-1 border border-[#004175] text-[#004175] hover:bg-[#004175]/10 disabled:border-[#004175]/30 disabled:text-[#004175]/40 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#004175] focus:ring-offset-2 whitespace-nowrap"
+      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
     >
       {loading ? (
         <>
-          <div className="w-4 h-4 border-2 border-[#004175] border-t-transparent rounded-full animate-spin mr-2" />
+          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
           {loadingText}
         </>
       ) : (

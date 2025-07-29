@@ -323,10 +323,9 @@ export default function AssignmentNew() {
   ];
 
   return (
-    <div className="min-h-screen p-6 font-sans max-w-full overflow-hidden">
-      <div className="w-full ">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 w-full">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
+        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6 w-full">
+          <h2 className="text-xl font-semibold mb-6">
             {isEditing ? "Edit Assignment" : "Add Assignment"}
           </h2>
           <form onSubmit={onSubmit} autoComplete="off">
@@ -491,9 +490,9 @@ export default function AssignmentNew() {
                 <select
                   value={form.role}
                   onChange={e => handleChange("role", e.target.value)}
-                  className={`${getFieldClasses('role')} appearance-none bg-transparent ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
+                  className={`${getFieldClasses('role')} appearance-none bg-transparent ${form.role === "" ? "text-[#999]" : "text-gray-900"}`}
                 >
-                  <option value="" disabled>Select Role</option>
+                  <option value="" disabled hidden>Select Role</option>
                   <option value="Admin">Admin</option>
                   <option value="Manager">Manager</option>
                   <option value="Guard">Guard</option>
@@ -514,9 +513,9 @@ export default function AssignmentNew() {
                 <select
                   value={form.access}
                   onChange={e => handleChange("access", e.target.value)}
-                  className={`${getFieldClasses('access')} appearance-none bg-transparent ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
+                  className={`${getFieldClasses('access')} appearance-none bg-transparent ${form.access === "" ? "text-[#999]" : "text-gray-900"}`}
                 >
-                  <option value="" disabled>Select Access</option>
+                  <option value="" disabled hidden >Select Access</option>
                   <option value="View">View</option>
                   <option value="Edit">Edit</option>
                 </select>
@@ -609,8 +608,6 @@ export default function AssignmentNew() {
             </div>
           </form>
         </div>
-      </div>
-      <div >
         <GenericTable
           data={assignments || []}
           columns={tableColumns}
@@ -632,7 +629,6 @@ export default function AssignmentNew() {
             />
           </div>
         )}
-      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
