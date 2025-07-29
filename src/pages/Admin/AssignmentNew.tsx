@@ -24,7 +24,6 @@ export default function AssignmentNew() {
     deleteAssignment,
   } = useAssignment();
 
-  // Form state
   const [form, setForm] = useState({
     userId: "",
     guardId: "",

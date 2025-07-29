@@ -50,28 +50,22 @@ const managerTabs = [
 ];
 
 const adminTabs = [
+  { id: 'assign-user-permission', label: 'Assign User Permission', icon: Users, path: '/assign-user-permission' },
+  { id: 'geolocation-setup', label: 'Geolocation Setup', icon: MapPin, path: '/geolocation-setup' },
+  { id: 'time-setup', label: 'Time Setup', icon: Clock, path: '/time-setup' },
+  { id: 'post-assignment', label: 'Post Assignment', icon: Settings, path: '/post-assignment' },
   {
-    id: 'scheduling-geolocation',
-    label: 'Scheduling and Geolocation',
-    icon: MapPin,
+    id: 'parent',
+    label: 'User List',
+    icon: BarChart3,
     children: [
-      { id: 'assign-user-permission', label: 'Assign User Permission', icon: Users, path: '/assign-user-permission' },
-      { id: 'geolocation-setup', label: 'Geolocation Setup', icon: MapPin, path: '/geolocation-setup' },
-      { id: 'time-setup', label: 'Time Setup', icon: Clock, path: '/time-setup' },
-      { id: 'post-assignment', label: 'Post Assignment', icon: Settings, path: '/post-assignment' },
+      { id: 'parent-dashboard-1', label: "Client", icon: BarChart3, path: '/client' },
+      { id: 'parent-dashboard-2', label: 'Guard', icon: BarChart3, path: '/guard' },
+      { id: 'parent-dashboard-1', label: "Manager", icon: BarChart3, path: '/manager' },
+      { id: 'parent-dashboard-2', label: 'Administrator', icon: BarChart3, path: '/admin' },
     ],
-  },
-    {
-      id: 'Parent',
-      label: 'Parent Dashboard',
-      icon: BarChart3,
-      children: [
-        { id: 'parent-dashboard', label: 'Parent Dashboard', icon: BarChart3, path: '/parent-dashboard' },
-        { id: 'parent-dashboard', label: 'Parent Dashboard', icon: BarChart3, path: '/parent-dashboard' },
-      ],
-    }
+  }
 ];
-
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
@@ -102,6 +96,159 @@ export function AppSidebar() {
       }
       return newSet;
     });
+  };
+
+  // Helper function to render nested children
+  const renderNestedChild = (child, isActive, marginLeft = 'ml-6') => {
+    if (child.children) {
+      // This is a nested parent with children
+      const isExpanded = expandedGroups.has(child.id);
+      return (
+        <div key={child.id} className="space-y-1">
+          <button
+            onClick={() => toggleGroup(child.id)}
+            className={`
+              w-full text-left py-2 px-4 rounded-lg
+              flex items-center justify-between text-sm font-normal
+              transition-all duration-200 ${marginLeft}
+              text-white/70 hover:text-white hover:bg-white/10
+            `}
+          >
+            <div className="flex items-center gap-3">
+              <child.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{child.label}</span>
+            </div>
+            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          </button>
+          {isExpanded && (
+            <div className="space-y-1">
+              {child.children.map((nestedChild) => {
+                const nestedIsActive = location.pathname === nestedChild.path;
+                return (
+                  <button
+                    key={nestedChild.id}
+                    onClick={() => {
+                      navigate(nestedChild.path);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`
+                      w-full text-left py-2 px-4 rounded-lg
+                      flex items-center gap-3 text-sm font-normal
+                      transition-all duration-200 ml-12
+                      ${nestedIsActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                    `}
+                  >
+                    <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{nestedChild.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      // Regular child with path
+      return (
+        <button
+          key={child.id}
+          onClick={() => {
+            navigate(child.path);
+            setIsMobileMenuOpen(false);
+          }}
+          className={`
+            w-full text-left py-2 px-4 rounded-lg
+            flex items-center gap-3 text-sm font-normal
+            transition-all duration-200 ${marginLeft}
+            ${isActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}
+          `}
+        >
+          <child.icon className="w-4 h-4 flex-shrink-0" />
+          <span className="truncate">{child.label}</span>
+        </button>
+      );
+    }
+  };
+
+  // Helper function for desktop nested children
+  const renderDesktopNestedChild = (child, isActive, marginLeft = 'ml-4') => {
+    if (child.children) {
+      // This is a nested parent with children
+      const isExpanded = expandedGroups.has(child.id);
+      return (
+        <div key={child.id} className="space-y-1">
+          <SidebarMenuItem className="px-4">
+            <SidebarMenuButton
+              onClick={() => toggleGroup(child.id)}
+              className={`
+                text-white/70 hover:text-white hover:bg-white/10
+                transition-all duration-200
+                py-2 px-4 rounded-lg
+                flex items-center justify-between
+                text-sm font-normal w-full ${marginLeft}
+              `}
+            >
+              <div className="flex items-center gap-3">
+                <child.icon className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{child.label}</span>
+              </div>
+              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {isExpanded && (
+            <div className="space-y-1">
+              {child.children.map((nestedChild) => {
+                const nestedIsActive = location.pathname === nestedChild.path;
+                return (
+                  <SidebarMenuItem key={nestedChild.id} className="px-4">
+                    <SidebarMenuButton
+                      asChild
+                      isActive={nestedIsActive}
+                      className={`
+                        text-white text-left w-full ml-8
+                        ${nestedIsActive ? 'bg-white/20' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                        transition-all duration-200
+                        py-2 px-4 rounded-lg
+                        flex items-center gap-3
+                        text-sm font-normal
+                      `}
+                    >
+                      <NavLink to={nestedChild.path} className="flex items-center gap-3 w-full">
+                        <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{nestedChild.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      // Regular child with path
+      return (
+        <SidebarMenuItem key={child.id} className="px-4">
+          <SidebarMenuButton
+            asChild
+            isActive={isActive}
+            className={`
+              text-white text-left w-full ${marginLeft}
+              ${isActive ? 'bg-white/20' : 'text-white/70 hover:text-white hover:bg-white/10'}
+              transition-all duration-200
+              py-2 px-4 rounded-lg
+              flex items-center gap-3
+              text-sm font-normal
+            `}
+          >
+            <NavLink to={child.path} className="flex items-center gap-3 w-full">
+              <child.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{child.label}</span>
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
   };
 
   return (
@@ -156,47 +303,71 @@ export function AppSidebar() {
           
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-2">
-              {tabs.map((group) => {
-                const isExpanded = expandedGroups.has(group.id);
-                return (
-                  <div key={group.id} className="space-y-1">
+              {tabs.map((item) => {
+                if (item.children) {
+                  // Item with children (like Parent Dashboard)
+                  const isExpanded = expandedGroups.has(item.id);
+                  return (
+                    <div key={item.id} className="space-y-1">
+                      <button
+                        onClick={() => toggleGroup(item.id)}
+                        className="w-full text-left py-3 px-4 rounded-lg flex items-center justify-between text-sm font-normal text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <item.icon className="w-5 h-5 flex-shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+                      {isExpanded && (
+                        <div className="ml-6 space-y-1">
+                          {item.children.map((child) => {
+                            const isActive = location.pathname === child.path;
+                            return (
+                              <button
+                                key={child.id}
+                                onClick={() => {
+                                  navigate(child.path);
+                                  setIsMobileMenuOpen(false);
+                                }}
+                                className={`
+                                  w-full text-left py-2 px-4 rounded-lg
+                                  flex items-center gap-3 text-sm font-normal
+                                  transition-all duration-200
+                                  ${isActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                                `}
+                              >
+                                <child.icon className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{child.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  // Regular item with path
+                  const isActive = location.pathname === item.path;
+                  return (
                     <button
-                      onClick={() => toggleGroup(group.id)}
-                      className="w-full text-left py-3 px-4 rounded-lg flex items-center justify-between text-sm font-normal text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200"
+                      key={item.id}
+                      onClick={() => {
+                        navigate(item.path);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`
+                        w-full text-left py-3 px-4 rounded-lg
+                        flex items-center gap-3 text-sm font-normal
+                        transition-all duration-200
+                        ${isActive ? 'bg-white/20 text-white' : 'text-white/90 hover:text-white hover:bg-white/10'}
+                      `}
                     >
-                      <div className="flex items-center gap-3">
-                        <group.icon className="w-5 h-5 flex-shrink-0" />
-                        <span className="truncate">{group.label}</span>
-                      </div>
-                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="truncate">{item.label}</span>
                     </button>
-                    {isExpanded && (
-                      <div className="ml-6 space-y-1">
-                        {group.children.map((tab) => {
-                          const isActive = location.pathname === tab.path;
-                          return (
-                            <button
-                              key={tab.id}
-                              onClick={() => {
-                                navigate(tab.path);
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className={`
-                                w-full text-left py-2 px-4 rounded-lg
-                                flex items-center gap-3 text-sm font-normal
-                                transition-all duration-200
-                                ${isActive ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}
-                              `}
-                            >
-                              <tab.icon className="w-4 h-4 flex-shrink-0" />
-                              <span className="truncate">{tab.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
+                  );
+                }
               })}
             </div>
             
@@ -234,58 +405,85 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-2">
-                {tabs.map((group) => {
-                  const isExpanded = expandedGroups.has(group.id);
-                  return (
-                    <div key={group.id} className="space-y-1">
-                      <SidebarMenuItem className="px-4">
+                {tabs.map((item) => {
+                  if (item.children) {
+                    // Item with children (like Parent Dashboard)
+                    const isExpanded = expandedGroups.has(item.id);
+                    return (
+                      <div key={item.id} className="space-y-1">
+                        <SidebarMenuItem className="px-4">
+                          <SidebarMenuButton
+                            onClick={() => toggleGroup(item.id)}
+                            className="
+                              text-white/90 hover:text-white hover:bg-white/10
+                              transition-all duration-200
+                              py-3 px-4 rounded-lg
+                              flex items-center justify-between
+                              text-sm font-normal w-full
+                            "
+                          >
+                            <div className="flex items-center gap-3">
+                              <item.icon className="w-5 h-5 flex-shrink-0" />
+                              <span className="truncate">{item.label}</span>
+                            </div>
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        {isExpanded && (
+                          <div className="ml-4 space-y-1">
+                            {item.children.map((child) => {
+                              const isActive = location.pathname === child.path;
+                              return (
+                                <SidebarMenuItem key={child.id} className="px-4">
+                                  <SidebarMenuButton
+                                    asChild
+                                    isActive={isActive}
+                                    className={`
+                                      text-white text-left w-full
+                                      ${isActive ? 'bg-white/20' : 'text-white/70 hover:text-white hover:bg-white/10'}
+                                      transition-all duration-200
+                                      py-2 px-4 rounded-lg
+                                      flex items-center gap-3
+                                      text-sm font-normal
+                                    `}
+                                  >
+                                    <NavLink to={child.path} className="flex items-center gap-3 w-full">
+                                      <child.icon className="w-4 h-4 flex-shrink-0" />
+                                      <span className="truncate">{child.label}</span>
+                                    </NavLink>
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    // Regular item with path
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <SidebarMenuItem key={item.id} className="px-4">
                         <SidebarMenuButton
-                          onClick={() => toggleGroup(group.id)}
-                          className="
-                            text-white/90 hover:text-white hover:bg-white/10
+                          asChild
+                          isActive={isActive}
+                          className={`
+                            text-white text-left w-full
+                            ${isActive ? 'bg-white/20' : 'text-white/90 hover:text-white hover:bg-white/10'}
                             transition-all duration-200
                             py-3 px-4 rounded-lg
-                            flex items-center justify-between
-                            text-sm font-normal w-full
-                          "
+                            flex items-center gap-3
+                            text-sm font-normal
+                          `}
                         >
-                          <div className="flex items-center gap-3">
-                            <group.icon className="w-5 h-5 flex-shrink-0" />
-                            <span className="truncate">{group.label}</span>
-                          </div>
-                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          <NavLink to={item.path} className="flex items-center gap-3 w-full">
+                            <item.icon className="w-5 h-5 flex-shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                          </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                      {isExpanded && (
-                        <div className="ml-4 space-y-1">
-                          {group.children.map((tab) => {
-                            const isActive = location.pathname === tab.path;
-                            return (
-                              <SidebarMenuItem key={tab.id} className="px-4">
-                                <SidebarMenuButton
-                                  asChild
-                                  isActive={isActive}
-                                  className={`
-                                    text-white text-left w-full
-                                    ${isActive ? 'bg-white/20' : 'text-white/70 hover:text-white hover:bg-white/10'}
-                                    transition-all duration-200
-                                    py-2 px-4 rounded-lg
-                                    flex items-center gap-3
-                                    text-sm font-normal
-                                  `}
-                                >
-                                  <NavLink to={tab.path} className="flex items-center gap-3 w-full">
-                                    <tab.icon className="w-4 h-4 flex-shrink-0" />
-                                    <span className="truncate">{tab.label}</span>
-                                  </NavLink>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
+                    );
+                  }
                 })}
               </SidebarMenu>
             </SidebarGroupContent>

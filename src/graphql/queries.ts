@@ -1,23 +1,31 @@
-// src/graphql/queries.ts
+
 import { gql } from "graphql-request";
 
 // ----------- CLIENT QUERIES -----------
 
 export const GET_CLIENTS = gql`
-  query {
+  query GetClients {
     clients {
       id
       name
       email
       phone
       createdAt
+      addresses {
+        id
+        label
+        address
+        city
+        state
+        pincode
+      }
     }
   }
 `;
 
 export const SEARCH_CLIENTS = gql`
-  query SearchClients($name: String!) {
-    searchClients(name: $name) {
+  query SearchClients($search: String!) {
+    searchClients(search: $search) {
       id
       name
       addresses {
@@ -27,6 +35,7 @@ export const SEARCH_CLIENTS = gql`
     }
   }
 `;
+
 
 // ----------- ADDRESS QUERIES -----------
 
@@ -127,13 +136,47 @@ export const GET_USERS = gql`
 `;
 
 export const SEARCH_USERS = gql`
-  query SearchUsers($name: String!) {
-    searchUsers(name: $name) {
+  query SearchUsers($search: String!) {
+    searchUsers(search: $search) {
       id
       name
     }
   }
 `;
+
+export const GET_ADMIN_USERS = gql`
+  query GetAdminUsers {
+    adminUsers {
+      id
+      name
+      email
+      role
+    }
+  }
+`;
+
+export const GET_MANAGER_USERS = gql`
+  query GetManagerUsers {
+    managerUsers {
+      id
+      name
+      email
+      role
+    }
+  }
+`;
+
+export const GET_GUARD_USERS = gql`
+  query GetGuardUsers {
+    guardUsers {
+      id
+      name
+      email
+      role
+    }
+  }
+`;
+
 
 // ----------- GEOLOCATION QUERY -----------
 
@@ -155,6 +198,7 @@ export const GET_GEOLOCATIONS = gql`
           id
           label
           address
+          city
         }
       }
       lastPage

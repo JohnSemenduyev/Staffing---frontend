@@ -27,10 +27,10 @@ export const useSearchClient = (search: string) => {
     queryFn: async () => {
       const { searchClients } = await graphQLClient.request<{ searchClients: Client[] }>(
         SEARCH_CLIENTS,
-        { name: search }
+        { search } // ✅ Correct variable name
       );
       return searchClients;
     },
-    enabled: !!search,
+    enabled: !!search && search.length >= 2,
   });
 };
