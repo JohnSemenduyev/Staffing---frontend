@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-
+import { ChevronDown, ChevronUp , ChevronsUpDown ,Triangle  } from "lucide-react";
+import { FaCaretUp } from "react-icons/fa"
+import { FaCaretDown } from "react-icons/fa"
 export interface TableColumn {
   key: string;
   label: string;
@@ -10,7 +11,8 @@ export interface TableColumn {
   render?: (value: any, record: any) => React.ReactNode;
   className?: string;
   headerClassName?: string;
-  width?: string;
+  width?: string; // e.g., "150px", "20%", "auto"
+  minWidth?: string; // e.g., "100px"
 }
 
 export interface TableAction {
@@ -30,7 +32,7 @@ interface GenericTableProps {
   onSort?: (key: string, direction: 'asc' | 'desc') => void;
   searchable?: boolean;
   className?: string;
-  tableHeight?: string; // New prop to control table height
+  tableHeight?: string;
 }
 
 export const GenericTable: React.FC<GenericTableProps> = ({
@@ -41,7 +43,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
   emptyMessage = "No records found matching your search criteria.",
   searchable = true,
   className = "",
-  tableHeight = "400px" // Default height
+  tableHeight = "400px"
 }) => {
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -50,7 +52,6 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     key: null,
     direction: "asc",
   });
-console.log(data)
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
 
   const handleSort = (key: string) => {
@@ -85,11 +86,9 @@ console.log(data)
         const aValue = getNestedValue(a, sortConfig.key!);
         const bValue = getNestedValue(b, sortConfig.key!);
 
-        // Handle null/undefined values
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
 
-        // Convert to appropriate types for comparison
         let aCompare: any = aValue;
         let bCompare: any = bValue;
 
@@ -115,20 +114,22 @@ console.log(data)
   }, [data, searchTerms, sortConfig, columns]);
 
   return (
-    <div className={`w-full max-w-full mt-10 ${className}`}>
+    <div className={`w-full ${className}`}>
       <div 
         className="relative w-full overflow-auto rounded-2xl border border-gray-200 shadow-xl"
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
-        <table className="w-full table-auto text-sm text-gray-800 font-sans">
+        <table className="w-auto min-w-full table-auto text-sm text-gray-800 font-sans">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-            {/* Header Row */}
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-3 sm:px-4 py-3 text-left whitespace-nowrap ${column.headerClassName || ''}`}
-                  style={{ width: column.width }}
+                  className={`px-2 sm:px-3 py-2 text-left whitespace-nowrap ${column.headerClassName || ''}`}
+                  style={{ 
+                    width: column.width,
+                    minWidth: column.minWidth || column.width
+                  }}
                 >
                   <div className="flex items-center">
                     {column.label}
@@ -142,7 +143,7 @@ console.log(data)
                           }`}
                           onClick={() => handleSort(column.key)}
                         >
-                          <ChevronUp className="-mb-1 w-4 h-4" />
+                          <FaCaretUp className="-mb-1 w-3 h-3" />
                         </span>
                         <span
                           className={`cursor-pointer ${
@@ -152,7 +153,7 @@ console.log(data)
                           }`}
                           onClick={() => handleSort(column.key)}
                         >
-                          <ChevronDown className="w-4 h-4" />
+                          <FaCaretDown  className="w-3 h-3" />
                         </span>
                       </div>
                     )}
@@ -160,7 +161,7 @@ console.log(data)
                 </th>
               ))}
               {actions.length > 0 && (
-                <th className="px-3 sm:px-4 py-3 text-left whitespace-nowrap">
+                <th className="px-2 sm:px-3 py-2 text-left whitespace-nowrap" style={{ width: "100px" }}>
                   Actions
                 </th>
               )}
@@ -168,11 +169,11 @@ console.log(data)
             {searchable && (
               <tr className="bg-white text-gray-700 font-sans w-full">
                 {columns.map((column) => (
-                  <th key={`search-${column.key}`} className="px-2 sm:px-4 py-2 text-left">
+                  <th key={`search-${column.key}`} className="px-2 py-1.5 text-left">
                     {column.searchable ? (
                       <input
                         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
-                        className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
                         type="text"
                         value={searchTerms[column.key] || ''}
                         onChange={(e) =>
@@ -185,7 +186,7 @@ console.log(data)
                     ) : null}
                   </th>
                 ))}
-                {actions.length > 0 && <th className="px-2 sm:px-4 py-2"></th>}
+                {actions.length > 0 && <th className="px-2 py-1.5"></th>}
               </tr>
             )}
           </thead>
@@ -195,7 +196,7 @@ console.log(data)
                 <td
                   colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
                   className="relative p-0"
-                  style={{ height: `calc(${tableHeight} - 120px)` }}
+                  style={{ height: `calc(${tableHeight} - 100px)` }}
                 >
                   <div className="absolute inset-0 flex items-center justify-center bg-white">
                     <div className="flex items-center space-x-2">
@@ -219,15 +220,15 @@ console.log(data)
                       return (
                         <td
                           key={column.key}
-                          className={`px-2 sm:px-4 py-3 ${column.className || ''}`}
+                          className={`px-2 sm:px-3 py-2 ${column.className || ''}`}
                         >
                           {column.render ? column.render(value, record) : (value || "-")}
                         </td>
                       );
                     })}
                     {actions.length > 0 && (
-                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
+                      <td className="px-2 sm:px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
                           {actions.map((action, actionIndex) => (
                             <button
                               key={actionIndex}

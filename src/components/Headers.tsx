@@ -79,10 +79,7 @@ export const Headers = () => {
     return null;
   }
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+ 
 
   return(
     <header className="border-b border-[#004175]/20 bg-[#004175] p-4">
@@ -99,15 +96,7 @@ export const Headers = () => {
           <span className="text-sm text-white/80">
             Welcome, {user.username}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="flex items-center gap-2 border-white/20 bg-transparent text-white hover:bg-[#00325d] hover:text-white hover:border-white/30 transition-all duration-300"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          
         </div>
       </div>
     </header>

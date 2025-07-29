@@ -286,7 +286,7 @@ export const TimeSetup = () => {
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div>
         <GenericTable
           data={timeSetups || []}
           columns={tableColumns}
