@@ -291,3 +291,41 @@ export const GET_POST_ASSIGN = gql`
     }
   }
 `;
+
+
+export const GET_SCHEDULE_SESSIONS = gql`
+  query GetScheduleSessions($page: Int, $startDate: String) {
+    scheduleSessions(page: $page, startDate: $startDate) {
+      data {
+        id
+        clientId
+        addressId
+        userId
+        startDate
+        auto
+        createdAt
+        client {
+          id
+          name
+        }
+        address {
+          id
+          address
+        }
+        user {
+          id
+          name
+        }
+        shifts {
+          id
+          scheduleSessionId
+          date
+          startTime
+          endTime
+          hours
+        }
+      }
+      lastPage
+    }
+  }
+`;

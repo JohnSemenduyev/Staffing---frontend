@@ -29,6 +29,8 @@ import { Admin } from "./pages/Admin/Admin";
 import { UserProvider } from "./context/UserContext";
 import { ClientProvider } from "./context/ClientContext";
 import { AddressProvider } from "./context/AddressContext";
+import {  ScheduleSessionProvider } from "./context/ScheduleContext";
+import { ScheduleProvider } from "./context/ViewSchedule";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <ScheduleSessionProvider>
       <AssignmentProvider>
         <AddressProvider>
         <ClientProvider>
@@ -44,6 +47,7 @@ const App = () => (
         <GeoLocationProvider>
           <TimeSetupProvider>
             <PostAssignProvider>
+              <ScheduleProvider>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<AuthRedirect />} />
@@ -71,6 +75,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
+              </ScheduleProvider>
             </PostAssignProvider>
           </TimeSetupProvider>
         </GeoLocationProvider>
@@ -78,6 +83,7 @@ const App = () => (
         </ClientProvider>
         </AddressProvider>
       </AssignmentProvider>
+    </ScheduleSessionProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -1,8 +1,11 @@
+import ScheduleSessionTable from "../../components/ScheduleView"
 
 
 
 export const ViewSchedule = () => {
     return (
-        <div>ViewSchedule</div>
+        <div>ViewSchedule
+            <ScheduleSessionTable />
+        </div>
     )
 }

@@ -354,7 +354,6 @@ export const TimeSetup = () => {
       </div>
 
       {/* Table Section */}
-      <div>
         <GenericTable
           data={timeSetups || []}
           columns={tableColumns}
@@ -376,7 +375,6 @@ export const TimeSetup = () => {
             />
           </div>
         )}
-      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (

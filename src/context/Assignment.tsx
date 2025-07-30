@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import {
-  GET_ASSIGNMENTS,
   CREATE_ASSIGNMENT,
   UPDATE_ASSIGNMENT,
   DELETE_ASSIGNMENT,
 } from "../graphql/mutation"; // Double-check filename; should be 'mutations' plural
 import { graphQLClient } from "../GraphqlClient"; // Ensure correct path & spelling
-
+import { GET_ASSIGNMENTS } from "../graphql/queries"; // Ensure correct path & spelling
 export interface Assignment {
   id: number;
   userId: number;
@@ -20,7 +19,9 @@ export interface Assignment {
   user?: { id: number; name: string };
   guard?: { id: number; name: string };
   client?: { id: number; name: string };
-  address?: { id: number; label: string , address : string };
+  address?: { id: number; label: string ,
+    address?: string;
+  };
 }
 
 interface AssignmentContextType {
@@ -59,6 +60,9 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       };
 
       const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, { page });
+        console.log('Full response:', JSON.stringify(response, null, 2));
+    console.log('Address data for first assignment:', response.assignments.data[0]?.address);
+    
       setAssignments(response.assignments.data);
       setLastPage(response.assignments.lastPage);
     } catch (error) {

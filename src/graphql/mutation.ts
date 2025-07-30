@@ -330,3 +330,37 @@ export const DELETE_POST_ASSIGN = gql`
     }
   }
 `;
+export const CREATE_SCHEDULE_SESSION = gql`
+  mutation CreateScheduleSession(
+    $clientId: Int!
+    $addressId: Int!
+    $userId: Int!
+    $startDate: String!
+    $auto: Boolean
+    $shifts: [ShiftInput!]!
+  ) {
+    createScheduleSession(
+      clientId: $clientId
+      addressId: $addressId
+      userId: $userId
+      startDate: $startDate
+      auto: $auto
+      shifts: $shifts
+    ) {
+      id
+      clientId
+      addressId
+      userId
+      startDate
+      auto
+      createdAt
+      client { id name }
+      address { id address }
+      user { id name }
+      shifts {
+        id date startTime endTime hours
+      }
+    }
+  }
+`;
+
