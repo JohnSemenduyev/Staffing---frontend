@@ -52,7 +52,6 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     key: null,
     direction: "asc",
   });
-console.log(data)
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
 
   const handleSort = (key: string) => {
@@ -117,7 +116,7 @@ console.log(data)
   }, [data, searchTerms, sortConfig, columns]);
 
   return (
-    <div className={`w-full mt-10 ${className}`}>
+    <div className={`w-full mt-2 ${className}`}>
       <div 
         className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
         style={{ height: tableHeight, minHeight: tableHeight }}
@@ -130,7 +129,7 @@ console.log(data)
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-2 sm:px-3 py-3 text-left whitespace-nowrap ${column.headerClassName || ''}`}
+                  className={`px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap ${column.headerClassName || ''}`}
                   style={{ 
                     width: column.width || 'auto',
                     minWidth: column.width || 'auto'
@@ -139,28 +138,7 @@ console.log(data)
                   <div className="flex items-center">
                     {column.label}
                     {column.sortable && (
-                      <div className="pl-1">
-                        <span
-                          className={`cursor-pointer ${
-                            sortConfig.key === column.key && sortConfig.direction === "asc"
-                              ? "text-white"
-                              : "text-white/40"
-                          }`}
-                          onClick={() => handleSort(column.key)}
-                        >
-                          <FaCaretUp className="-mb-1 w-4 h-4" />
-                        </span>
-                        <span
-                          className={`cursor-pointer ${
-                            sortConfig.key === column.key && sortConfig.direction === "desc"
-                              ? "text-white"
-                              : "text-white/40"
-                          }`}
-                          onClick={() => handleSort(column.key)}
-                        >
-                          <FaCaretDown className="w-4 h-4" />
-                        </span>
-                      </div>
+                      <div className="pl-1"><span className="text-white/40 cursor-pointer"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" className="-mb-1 " height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path></svg></span><span className="text-white/40 cursor-pointer"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path></svg></span></div>
                     )}
                   </div>
                 </th>
@@ -178,7 +156,7 @@ console.log(data)
                     {column.searchable ? (
                       <input
                         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
-                        className="w-full max-w-[100px] sm:max-w-[140px] md:max-w-[180px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
+                        className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                         type="text"
                         value={searchTerms[column.key] || ''}
                         onChange={(e) =>
@@ -225,7 +203,7 @@ console.log(data)
                       return (
                         <td
                           key={column.key}
-                          className={`px-1 sm:px-2 py-3 whitespace-nowrap ${column.className || ''}`}
+                          className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${column.className || ''}`}
                           style={{ 
                             width: column.width || 'auto',
                             minWidth: column.width || 'auto'

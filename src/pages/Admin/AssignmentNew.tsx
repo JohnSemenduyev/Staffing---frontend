@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Edit, Plus, Trash2, X } from "lucide-react";
+import { Edit, Plus, Trash2, X, RotateCcw } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -244,6 +244,9 @@ export default function AssignmentNew() {
     setDeleteModal({ isOpen: false, record: null });
     setDeleteLoader(false);
   };
+  useEffect(() => {
+      fetchAssignments();
+    }, []);
 
   const tableColumns: TableColumn[] = [
   { 
@@ -323,13 +326,13 @@ export default function AssignmentNew() {
   ];
 
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
-        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6 w-full">
-          <h2 className="text-xl font-semibold mb-6">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+          <h2 className="text-xl font-semibold mb-2">
             {isEditing ? "Edit Assignment" : "Add Assignment"}
           </h2>
           <form onSubmit={onSubmit} autoComplete="off">
-            <div className="grid grid-cols-4 gap-4 items-start w-full">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               {/* Client Search */}
               <div className="relative">
                 <input
@@ -490,7 +493,7 @@ export default function AssignmentNew() {
                 <select
                   value={form.role}
                   onChange={e => handleChange("role", e.target.value)}
-                  className={`${getFieldClasses('role')} appearance-none bg-transparent ${form.role === "" ? "text-[#999]" : "text-gray-900"}`}
+                  className={`${getFieldClasses('role')} appearance-none bg-transparent ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
                 >
                   <option value="" disabled hidden>Select Role</option>
                   <option value="Admin">Admin</option>
@@ -513,9 +516,9 @@ export default function AssignmentNew() {
                 <select
                   value={form.access}
                   onChange={e => handleChange("access", e.target.value)}
-                  className={`${getFieldClasses('access')} appearance-none bg-transparent ${form.access === "" ? "text-[#999]" : "text-gray-900"}`}
+                  className={`${getFieldClasses('access')} appearance-none bg-transparent ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
                 >
-                  <option value="" disabled hidden >Select Access</option>
+                  <option value="" disabled hidden>Select Access</option>
                   <option value="View">View</option>
                   <option value="Edit">Edit</option>
                 </select>
@@ -595,8 +598,8 @@ export default function AssignmentNew() {
                 )}
               </div>
               
-              {/* Submit Button */}
-              <div className="flex justify-start">
+              {/* Submit and Reset Buttons */}
+              <div className="flex justify-start gap-2">
                 <SubmitButton
                   loading={submitLoader}
                   disabled={submitLoader}
@@ -604,6 +607,15 @@ export default function AssignmentNew() {
                 >
                   {isEditing ? "Update" : "Add"}
                 </SubmitButton>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={submitLoader}
+      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
+                </button>
               </div>
             </div>
           </form>
@@ -635,12 +647,8 @@ export default function AssignmentNew() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center mb-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Delete Assignment</h3>
-              </div>
+              
+              
             </div>
             
             <div className="mb-6">

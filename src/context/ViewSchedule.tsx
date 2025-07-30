@@ -47,7 +47,6 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const data: { scheduleSessions: { data: ScheduleSession[]; lastPage: number } } =
         await graphQLClient.request(GET_SCHEDULE_SESSIONS, { page, startDate });
-        console.log("Fetched sessions:", data.scheduleSessions.data);
       setSessions(data.scheduleSessions.data);
       setLastPage(data.scheduleSessions.lastPage);
     } catch (error) {

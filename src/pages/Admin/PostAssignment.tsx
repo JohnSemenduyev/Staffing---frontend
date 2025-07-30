@@ -1,7 +1,7 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Check, X, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Check, X, AlertTriangle, RotateCcw } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
@@ -124,28 +124,28 @@ useEffect(() => {
   };
 
   const handleEdit = (record: any) => {
-    setIsEditMode(true);
-    setEditId(record.id);
-    setForm({
-      clientId: String(record.clientId),
-      addressId: String(record.addressId),
-      postname: record.post,
-    });
+  console.log("Editing record:", record);
+  setIsEditMode(true);
+  setEditId(record.id);
+  
+  // Set form data
+  setForm({
+    clientId: String(record.client.id),
+    addressId: String(record.address.id),
+    postname: record.post,
+  });
 
-    const client = searchedClients.find((c) => String(c.id) === String(record.clientId));
-    if (client) {
-      setClientSearch(client.name);
-      const address = client.addresses.find((a) => String(a.id) === String(record.addressId));
-      setSelectedAddressText(address?.address || "");
-    } else {
-      setClientSearch("");
-      setSelectedAddressText("");
-    }
+  // Set client search and address text directly from the record
+  setClientSearch(record.client.name || "");
+  setSelectedAddressText(record.address.address || "");
 
-    setErrors({});
-    setShowErrors(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // Clear errors
+  setErrors({});
+  setShowErrors(false);
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
 
   const handleDelete = (record: any) => {
     setDeleteModal({ isOpen: true, record });
@@ -229,14 +229,13 @@ useEffect(() => {
   ];
 
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
-      {/* Form Section */}
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6 w-full">
-        <h2 className="text-xl font-semibold mb-6">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+        <h2 className="text-xl font-semibold mb-2">
           {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-4 gap-4 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {/* Client Search */}
             <div className="relative">
               <input
@@ -339,7 +338,7 @@ useEffect(() => {
             </div>
 
             {/* Submit / Cancel */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
@@ -347,17 +346,16 @@ useEffect(() => {
               >
                 {isEditMode ? "Update" : "Add"}
               </SubmitButton>
-
-              {isEditMode && (
-                <button
+               <button
                   type="button"
                   onClick={resetForm}
-                  className="inline-flex items-center px-3 py-1 text-sm text-gray-500 border border-gray-300 rounded-md hover:bg-gray-100"
+                  disabled={submitLoader}
+      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                 >
-                  <X className="w-4 h-4 mr-1" />
-                  Cancel
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
                 </button>
-              )}
+              
             </div>
           </div>
         </form>
@@ -390,15 +388,6 @@ useEffect(() => {
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Delete Post Assignment</h3>
-              </div>
-            </div>
-            
             <div className="mb-6">
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete this post assignment?

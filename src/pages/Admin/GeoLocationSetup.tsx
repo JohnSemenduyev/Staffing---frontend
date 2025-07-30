@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {  Edit, Plus, Trash2 } from "lucide-react";
+import {  Edit, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
@@ -10,12 +10,17 @@ import { toast } from "sonner";
 
  export  const inputClasses = `
     w-full
-    px-3
-    py-1
-    border
-    border-gray-300
-    rounded-md
-    focus:outline-none focus:ring-2 focus:ring-[#004175] transition
+  px-3
+  py-1
+  border
+  border-gray-300
+  rounded-md
+  text-black
+  focus:outline-none
+  focus:ring-2
+  focus:ring-[#004175]
+  transition
+
   `;
 
 export const GeoLocationSetup = () => {
@@ -212,14 +217,14 @@ export const GeoLocationSetup = () => {
     }
   ];
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       {/* Form Section */}
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-6">
-        <h2 className="text-xl font-semibold mb-6">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+        <h2 className="text-xl font-semibold  mb-2 ">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-4 gap-4 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
            <div className="relative">
             <input
               type="text"
@@ -327,7 +332,7 @@ export const GeoLocationSetup = () => {
               )}
             </div>
             
-            <div className="flex justify-start">
+            <div className="flex justify-start gap-2">
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
@@ -335,6 +340,15 @@ export const GeoLocationSetup = () => {
               >
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>
+              <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={submitLoader}
+      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
+                </button>
             </div>
           </div>
         </form>
@@ -364,15 +378,6 @@ export const GeoLocationSetup = () => {
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Delete Geolocation</h3>
-              </div>
-            </div>
-            
             <div className="mb-6">
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete this geolocation setup?
