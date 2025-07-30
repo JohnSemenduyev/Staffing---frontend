@@ -7,7 +7,6 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
-import { inputClasses } from "./GeoLocationSetup";
 
 export const PostAssignment = () => {
   const [form, setForm] = useState({
@@ -122,6 +121,8 @@ useEffect(() => {
       setSubmitLoader(false);
     }
   };
+
+  const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const handleEdit = (record: any) => {
   console.log("Editing record:", record);
@@ -346,7 +347,7 @@ useEffect(() => {
               >
                 {isEditMode ? "Update" : "Add"}
               </SubmitButton>
-               <button
+               {hasInput &&<button
                   type="button"
                   onClick={resetForm}
                   disabled={submitLoader}
@@ -354,7 +355,7 @@ useEffect(() => {
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reset
-                </button>
+                </button>}
               
             </div>
           </div>

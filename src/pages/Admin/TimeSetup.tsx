@@ -181,6 +181,7 @@ export const TimeSetup = () => {
     setDeleteModal({ isOpen: false, record: null });
     setDeleteLoader(false);
   };
+  const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const tableColumns: TableColumn[] = [
     { key: "client.name", label: "Client Name", sortable: true, searchable: true },
@@ -355,15 +356,17 @@ export const TimeSetup = () => {
               >
                 {editId ? "Update" : "Add"}
               </SubmitButton>
-              <button
-                type="button"
-                onClick={resetForm}
-                disabled={submitLoader}
-      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Reset
-              </button>
+              {hasInput && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={submitLoader}
+                  className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
+                </button>
+              )}
             </div>
           </div>
         </form>
