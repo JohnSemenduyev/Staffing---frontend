@@ -124,28 +124,28 @@ useEffect(() => {
   };
 
   const handleEdit = (record: any) => {
-    setIsEditMode(true);
-    setEditId(record.id);
-    setForm({
-      clientId: String(record.client.id),
-      addressId: String(record.address.id),
-      postname: record.post,
-    });
+  console.log("Editing record:", record);
+  setIsEditMode(true);
+  setEditId(record.id);
+  
+  // Set form data
+  setForm({
+    clientId: String(record.client.id),
+    addressId: String(record.address.id),
+    postname: record.post,
+  });
 
-    const client = searchedClients.find((c) => String(c.id) === String(record.clientId));
-    if (client) {
-      setClientSearch(client.name);
-      const address = client.addresses.find((a) => String(a.id) === String(record.addressId));
-      setSelectedAddressText(address?.address || "");
-    } else {
-      setClientSearch("");
-      setSelectedAddressText("");
-    }
+  // Set client search and address text directly from the record
+  setClientSearch(record.client.name || "");
+  setSelectedAddressText(record.address.address || "");
 
-    setErrors({});
-    setShowErrors(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // Clear errors
+  setErrors({});
+  setShowErrors(false);
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
 
   const handleDelete = (record: any) => {
     setDeleteModal({ isOpen: true, record });

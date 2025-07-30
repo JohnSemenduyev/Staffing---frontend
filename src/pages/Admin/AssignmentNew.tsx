@@ -244,6 +244,9 @@ export default function AssignmentNew() {
     setDeleteModal({ isOpen: false, record: null });
     setDeleteLoader(false);
   };
+  useEffect(() => {
+      fetchAssignments();
+    }, []);
 
   const tableColumns: TableColumn[] = [
   { 

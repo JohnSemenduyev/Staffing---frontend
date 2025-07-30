@@ -59,10 +59,7 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         };
       };
 
-      const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, { page });
-        console.log('Full response:', JSON.stringify(response, null, 2));
-    console.log('Address data for first assignment:', response.assignments.data[0]?.address);
-    
+      const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, { page });    
       setAssignments(response.assignments.data);
       setLastPage(response.assignments.lastPage);
     } catch (error) {
@@ -99,9 +96,6 @@ await graphQLClient.request(CREATE_ASSIGNMENT, { ...data });
     }
   };
 
-  useEffect(() => {
-    fetchAssignments();
-  }, []);
 
   return (
     <AssignmentContext.Provider
