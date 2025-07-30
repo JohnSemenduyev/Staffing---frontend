@@ -103,7 +103,6 @@ export default function AssignmentNew() {
     const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
     setSelectedAddressText(selectedAddress?.address || "");
   };
-
   const handleUserSelect = (user: { id: string | number; name: string }) => {
     setForm(f => ({ ...f, userId: String(user.id) }));
     setUserSearch(user.name);
@@ -152,6 +151,15 @@ export default function AssignmentNew() {
     setShowErrors(true);
     return Object.keys(e).length === 0;
   };
+  const hasTextInput =
+  form.userId !== "" ||
+  form.guardId !== "" ||
+  form.clientId !== "" ||
+  form.addressId !== "" ||
+  form.role !== "" ||
+  form.access !== "" ||
+  (Array.isArray(form.notification) && form.notification.length > 0);
+
 
   const resetForm = () => {
     setForm({ clientId: "", addressId: "", userId: "", guardId: "", role: "", access: "", notification: [] });
@@ -244,9 +252,6 @@ export default function AssignmentNew() {
     setDeleteModal({ isOpen: false, record: null });
     setDeleteLoader(false);
   };
-  useEffect(() => {
-      fetchAssignments();
-    }, []);
 
   const tableColumns: TableColumn[] = [
   { 
@@ -607,15 +612,17 @@ export default function AssignmentNew() {
                 >
                   {isEditing ? "Update" : "Add"}
                 </SubmitButton>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={submitLoader}
-      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </button>
+                {hasTextInput && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    disabled={submitLoader}
+                    className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    Reset
+                  </button>
+                )}
               </div>
             </div>
           </form>

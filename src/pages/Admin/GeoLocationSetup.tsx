@@ -62,6 +62,7 @@ export const GeoLocationSetup = () => {
     setErrors({});
     setShowErrors(false);
   };
+  const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
     setForm((f) => ({ ...f, clientId: String(client.id), addressId: String(addressId) }));
@@ -340,7 +341,8 @@ export const GeoLocationSetup = () => {
               >
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>
-              <button
+              {hasInput && (
+                <button
                   type="button"
                   onClick={resetForm}
                   disabled={submitLoader}
@@ -349,6 +351,7 @@ export const GeoLocationSetup = () => {
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reset
                 </button>
+              )}
             </div>
           </div>
         </form>
