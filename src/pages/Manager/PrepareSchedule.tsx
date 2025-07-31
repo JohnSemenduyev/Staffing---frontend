@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Plus, RotateCcw } from "lucide-react";
+import { Plus, RotateCcw, Edit, Trash2, GripVertical } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
+import { useToast } from "../../hooks/use-toast";
 
 const inputClasses = `
   w-full
@@ -30,7 +31,7 @@ const getWeekRangeFromDate = (baseDate) => {
   startOfWeek.setUTCHours(0, 0, 0, 0);
 
   const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6); // +6 days means 7 total days
+  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6); // +6 days means 7 total days (Thu to Wed)
   endOfWeek.setUTCHours(23, 59, 59, 999);
 
   return { startOfWeek, endOfWeek };
@@ -65,6 +66,17 @@ export const PrepareSchedule = () => {
   const [isPublished, setIsPublished] = useState(false);
   const [showApplyAllDropdown, setShowApplyAllDropdown] = useState(false);
   const [applyToAllDates, setApplyToAllDates] = useState(false);
+  const [applyAllWeek, setApplyAllWeek] = useState(false);
+  const { toast } = useToast();
+  
+  // Modal states
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
+  const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
+  const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
+  
+  // Drag and drop states
+  const [draggedShift, setDraggedShift] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null);
 
   const validate = () => {
     const e: any = {};
@@ -74,6 +86,34 @@ export const PrepareSchedule = () => {
     if (!form.date) e.date = "Required";
     if (!form.starttime) e.starttime = "Required";
     if (!form.endtime) e.endtime = "Required";
+    
+    // Check for overlapping shifts
+    if (form.userId && form.date && form.starttime && form.endtime) {
+      const existingShifts = scheduleData
+        .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
+        .flatMap(item => item.shifts);
+      
+      const newStartTime = form.starttime;
+      const newEndTime = form.endtime;
+      
+      for (const shift of existingShifts) {
+        if (shift.id === editModal.shift?.id) continue; // Skip current shift when editing
+        
+        const existingStart = shift.startTime;
+        const existingEnd = shift.endTime;
+        
+        // Check if new shift overlaps with existing shift
+        if (
+          (newStartTime >= existingStart && newStartTime < existingEnd) ||
+          (newEndTime > existingStart && newEndTime <= existingEnd) ||
+          (newStartTime <= existingStart && newEndTime >= existingEnd)
+        ) {
+          e.overlap = "Shift time overlaps with existing shift for this user and date";
+          break;
+        }
+      }
+    }
+    
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -118,11 +158,15 @@ export const PrepareSchedule = () => {
         const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
         const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
         
-        if (existingWeekStart !== newWeekStart) {
-          alert("Week can't be changed until saved data is published!");
-          setForm(f => ({ ...f, date: "" }));
-          return;
-        }
+                 if (existingWeekStart !== newWeekStart) {
+           toast({
+             title: "Invalid Date Selection",
+             description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+             variant: "destructive",
+           });
+           setForm(f => ({ ...f, date: "" }));
+           return;
+         }
       }
       
       setCurrentWeekRange(weekRange);
@@ -178,6 +222,12 @@ export const PrepareSchedule = () => {
     setScheduleData([]);
     setIsPublished(false);
     setApplyToAllDates(false);
+    setApplyAllWeek(false);
+    
+    toast({
+      title: "Form Reset",
+      description: "Form has been reset successfully.",
+    });
   };
 
   const generateDateColumns = () => {
@@ -227,17 +277,17 @@ export const PrepareSchedule = () => {
   const calculateDayTotal = (date) => {
     return scheduleData
       .filter(item => item.startDate === date)
-      .reduce((total, item) => total + item.shifts[0].hours, 0);
+      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   };
 
   const calculateUserTotal = (userId) => {
     return scheduleData
       .filter(item => item.userId === userId)
-      .reduce((total, item) => total + item.shifts[0].hours, 0);
+      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   };
 
   const calculateGrandTotal = () => {
-    return scheduleData.reduce((total, item) => total + item.shifts[0].hours, 0);
+    return scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   };
 
   const handleUserAutoToggle = (userId, enabled) => {
@@ -245,13 +295,21 @@ export const PrepareSchedule = () => {
     setScheduleData(prev => prev.map(item => 
       item.userId === userId ? { ...item, auto: enabled } : item
     ));
+    
+    toast({
+      title: "Auto Setting Updated",
+      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+    });
   };
 
   const handlePublish = () => {
     setIsPublished(true);
     // Clear localStorage when published
     localStorage.removeItem('scheduleData');
-    alert("Schedule published successfully! Employees with schedule changes will receive notifications.");
+    toast({
+      title: "Schedule Published",
+      description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+    });
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -265,59 +323,351 @@ export const PrepareSchedule = () => {
       const selectedAddress = selectedClient?.addresses.find(a => String(a.id) === form.addressId);
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
 
-      const payload = {
-        clientId: Number(form.clientId),
-        addressId: Number(form.addressId),
-        userId: Number(form.userId),
-        startDate: form.date,
-        auto,
-        shifts: [
-          {
-            date: form.date,
-            startTime: form.starttime,
-            endTime: form.endtime,
-            hours: calculateHours(form.starttime, form.endtime),
-          },
-        ],
-        // Add additional data for the schedule table
-        clientName: selectedClient?.name,
-        address: selectedAddress?.address,
-        userName: selectedUser?.name,
-        userPhone: selectedUser?.phone || '', // Assuming phone might be available
-      };
+      let newScheduleItems = [];
+      if (applyAllWeek && currentWeekRange) {
+        // Add for each day in the week (Thu-Wed)
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const dateObj = new Date(startDate);
+          dateObj.setDate(startDate.getDate() + i);
+          const dateStr = dateObj.toISOString().split('T')[0];
+          newScheduleItems.push({
+            id: Date.now() + i, // ensure unique id
+            clientId: Number(form.clientId),
+            addressId: Number(form.addressId),
+            userId: Number(form.userId),
+            startDate: dateStr,
+            auto,
+            shifts: [
+              {
+                id: Date.now() + i, // Ensure unique ID for shifts
+                date: dateStr,
+                startTime: form.starttime,
+                endTime: form.endtime,
+                hours: calculateHours(form.starttime, form.endtime),
+              },
+            ],
+            clientName: selectedClient?.name,
+            address: selectedAddress?.address,
+            userName: selectedUser?.name,
+            userPhone: selectedUser?.phone || '',
+          });
+        }
+             } else {
+         // Check if user already has a schedule for this date
+         const existingScheduleIndex = scheduleData.findIndex(
+           item => item.userId === Number(form.userId) && item.startDate === form.date
+         );
 
-      const newScheduleItem = {
-        id: Date.now(),
-        ...payload,
-      };
+         if (existingScheduleIndex !== -1) {
+           // Add new shift to existing schedule
+           const updatedScheduleData = [...scheduleData];
+           updatedScheduleData[existingScheduleIndex] = {
+             ...updatedScheduleData[existingScheduleIndex],
+             shifts: [
+               ...updatedScheduleData[existingScheduleIndex].shifts,
+               {
+                 id: Date.now(), // Ensure unique ID for shifts
+                 date: form.date,
+                 startTime: form.starttime,
+                 endTime: form.endtime,
+                 hours: calculateHours(form.starttime, form.endtime),
+               }
+             ]
+           };
+           setScheduleData(updatedScheduleData);
+         } else {
+           // Create new schedule
+           newScheduleItems.push({
+             id: Date.now(),
+             clientId: Number(form.clientId),
+             addressId: Number(form.addressId),
+             userId: Number(form.userId),
+             startDate: form.date,
+             auto,
+             shifts: [
+               {
+                 id: Date.now(), // Ensure unique ID for shifts
+                 date: form.date,
+                 startTime: form.starttime,
+                 endTime: form.endtime,
+                 hours: calculateHours(form.starttime, form.endtime),
+               },
+             ],
+             clientName: selectedClient?.name,
+             address: selectedAddress?.address,
+             userName: selectedUser?.name,
+             userPhone: selectedUser?.phone || '',
+           });
+         }
+       }
 
-      setScheduleData(prev => [...prev, newScheduleItem]);
+      setScheduleData(prev => [...prev, ...newScheduleItems]);
 
       if (scheduleData.length === 0) {
         const selectedDate = new Date(form.date);
         setCurrentWeekRange(getWeekRangeFromDate(selectedDate));
       }
-      setForm({
-        clientId: "",
-        addressId: "",
-        userId: "",
-        date: "",
-        starttime: "",
-        endtime: "",
-      });
-      setClientSearch("");
-      setSelectedAddressText("");
-      setUserSearch("");
-      setAuto(false);
-      setErrors({});
-      
-      alert("Schedule session created successfully!");
-    } catch (err) {
-      console.error("Error creating schedule session:", err);
-      alert("Failed to create schedule session.");
-    } finally {
+             setForm({
+         clientId: form.clientId, // Keep client and address
+         addressId: form.addressId,
+         userId: "",
+         date: "",
+         starttime: "",
+         endtime: "",
+       });
+       // Don't reset clientSearch and selectedAddressText
+       setUserSearch("");
+       setAuto(false);
+       setErrors({});
+       setApplyAllWeek(false);
+             toast({
+         title: "Success",
+         description: "Schedule session created successfully!",
+       });
+     } catch (err) {
+       console.error("Error creating schedule session:", err);
+       toast({
+         title: "Error",
+         description: "Failed to create schedule session.",
+         variant: "destructive",
+       });
+     } finally {
       setSubmitLoader(false);
     }
+  };
+
+  // Delete individual shift
+  const handleDeleteShift = (userId, date, shiftId) => {
+    setDeleteModal({ isOpen: true, shiftId, userId, date });
+  };
+
+  const confirmDeleteShift = () => {
+    const { userId, date, shiftId } = deleteModal;
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.filter(shift => shift.id !== shiftId)
+        };
+      }
+      return item;
+    }).filter(item => item.shifts.length > 0)); // Remove items with no shifts
+
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+    toast({
+      title: "Shift Deleted",
+      description: "Shift has been deleted successfully.",
+    });
+  };
+
+  const cancelDeleteShift = () => {
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+  };
+
+  // Edit individual shift
+  const handleEditShift = (userId, date, shift) => {
+    setEditModal({ isOpen: true, shift, userId, date });
+    // Pre-fill form with shift data
+    setForm({
+      clientId: form.clientId,
+      addressId: form.addressId,
+      userId: String(userId),
+      date: date,
+      starttime: shift.startTime,
+      endtime: shift.endTime,
+    });
+  };
+
+  const confirmEditShift = () => {
+    const { userId, date, shift } = editModal;
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.map(s => 
+            s.id === shift.id 
+              ? { ...s, startTime: form.starttime, endTime: form.endtime, hours: calculateHours(form.starttime, form.endtime) }
+              : s
+          )
+        };
+      }
+      return item;
+    }));
+
+    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
+    // Reset form
+    setForm({
+      clientId: form.clientId,
+      addressId: form.addressId,
+      userId: "",
+      date: "",
+      starttime: "",
+      endtime: "",
+    });
+    setUserSearch("");
+    toast({
+      title: "Shift Updated",
+      description: "Shift has been updated successfully.",
+    });
+  };
+
+  const cancelEditShift = () => {
+    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
+    // Reset form
+    setForm({
+      clientId: form.clientId,
+      addressId: form.addressId,
+      userId: "",
+      date: "",
+      starttime: "",
+      endtime: "",
+    });
+    setUserSearch("");
+  };
+
+  // Delete all data for a user
+  const handleDeleteUser = (userId) => {
+    setDeleteUserModal({ isOpen: true, userId });
+  };
+
+  const confirmDeleteUser = () => {
+    const { userId } = deleteUserModal;
+    setScheduleData(prev => prev.filter(item => item.userId !== userId));
+    setDeleteUserModal({ isOpen: false, userId: null });
+    toast({
+      title: "User Data Deleted",
+      description: "All data for this user has been deleted successfully.",
+    });
+  };
+
+  const cancelDeleteUser = () => {
+    setDeleteUserModal({ isOpen: false, userId: null });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e, shift, sourceUserId, sourceDate) => {
+    setDraggedShift({
+      shift,
+      sourceUserId,
+      sourceDate
+    });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, targetUserId, targetDate) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCell({ userId: targetUserId, date: targetDate });
+  };
+
+  const handleDragLeave = (e) => {
+    setDragOverCell(null);
+  };
+
+  const handleDrop = (e, targetUserId, targetDate) => {
+    e.preventDefault();
+    
+    if (!draggedShift) return;
+
+    const { shift, sourceUserId, sourceDate } = draggedShift;
+    
+    // Don't allow dropping on the same cell
+    if (sourceUserId === targetUserId && sourceDate === targetDate) {
+      setDraggedShift(null);
+      setDragOverCell(null);
+      return;
+    }
+
+    // Check if target cell already has shifts for this user/date
+    const existingSchedule = scheduleData.find(
+      item => item.userId === targetUserId && item.startDate === targetDate
+    );
+
+    if (existingSchedule) {
+      // Check for overlapping shifts
+      const hasOverlap = existingSchedule.shifts.some(existingShift => {
+        const existingStart = existingShift.startTime;
+        const existingEnd = existingShift.endTime;
+        const newStart = shift.startTime;
+        const newEnd = shift.endTime;
+
+        return (
+          (newStart >= existingStart && newStart < existingEnd) ||
+          (newEnd > existingStart && newEnd <= existingEnd) ||
+          (newStart <= existingStart && newEnd >= existingEnd)
+        );
+      });
+
+      if (hasOverlap) {
+        toast({
+          title: "Overlapping Shift",
+          description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
+          variant: "destructive",
+        });
+        setDraggedShift(null);
+        setDragOverCell(null);
+        return;
+      }
+
+      // Add shift to existing schedule (copy, don't remove original)
+      setScheduleData(prev => prev.map(item => {
+        if (item.userId === targetUserId && item.startDate === targetDate) {
+          return {
+            ...item,
+            shifts: [...item.shifts, { ...shift, id: Date.now() }]
+          };
+        }
+        return item;
+      }));
+    } else {
+      // Create new schedule for target user/date
+      const sourceSchedule = scheduleData.find(
+        item => item.userId === sourceUserId && item.startDate === sourceDate
+      );
+      
+      if (sourceSchedule) {
+        const newSchedule = {
+          id: Date.now(),
+          clientId: sourceSchedule.clientId,
+          addressId: sourceSchedule.addressId,
+          userId: targetUserId,
+          startDate: targetDate,
+          auto: sourceSchedule.auto,
+          shifts: [{ ...shift, id: Date.now() }],
+          clientName: sourceSchedule.clientName,
+          address: sourceSchedule.address,
+          userName: sourceSchedule.userName,
+          userPhone: sourceSchedule.userPhone,
+        };
+        
+        setScheduleData(prev => [...prev, newSchedule]);
+      }
+    }
+
+    // Don't remove shift from source location - keep it there
+    // setScheduleData(prev => prev.map(item => {
+    //   if (item.userId === sourceUserId && item.startDate === sourceDate) {
+    //     return {
+    //       ...item,
+    //       shifts: item.shifts.filter(s => s.id !== shift.id)
+    //     };
+    //   }
+    //   return item;
+    // }).filter(item => item.shifts.length > 0)); // Remove items with no shifts
+
+    setDraggedShift(null);
+    setDragOverCell(null);
+    
+    toast({
+      title: "Shift Copied",
+      description: "Shift has been copied successfully.",
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedShift(null);
+    setDragOverCell(null);
   };
 
   return (
@@ -342,19 +692,25 @@ export const PrepareSchedule = () => {
             
             {/* Client Search */}
             <div className="relative">
-              <input
-                type="text"
-                value={clientSearch}
-                onFocus={() => setShowClientDropdown(true)}
-                onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                onChange={(e) => {
-                  setClientSearch(e.target.value);
-                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                  setSelectedAddressText("");
-                }}
-                placeholder="Client Name"
-                className={inputClasses}
-              />
+                             <input
+                 type="text"
+                 value={clientSearch}
+                 onFocus={() => {
+                   if (scheduleData.length === 0 || isPublished) {
+                     setShowClientDropdown(true);
+                   }
+                 }}
+                 onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                 onChange={(e) => {
+                   if (scheduleData.length === 0 || isPublished) {
+                     setClientSearch(e.target.value);
+                     setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                     setSelectedAddressText("");
+                   }
+                 }}
+                 placeholder="Client Name"
+                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100' : ''}`}
+               />
               {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
               {errors.addressId && (
                 <span className="text-xs text-red-500 block">{errors.addressId}</span>
@@ -394,13 +750,13 @@ export const PrepareSchedule = () => {
               )}
             </div>
             <div>
-              <input
-                type="text"
-                value={selectedAddressText}
-                placeholder="Location"
-                readOnly
-                className={`${inputClasses}`}
-              />
+                             <input
+                 type="text"
+                 value={selectedAddressText}
+                 placeholder="Location"
+                 readOnly
+                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100' : ''}`}
+               />
             </div>
 
             {/* User Search */}
@@ -440,19 +796,34 @@ export const PrepareSchedule = () => {
                 </div>
               )}
             </div>
-            <div>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => handleChange("date", e.target.value)}
-                placeholder="Select Date"
-                onFocus={(e) => e.target.showPicker?.()}
-                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-              />
+            <div className="flex items-center">
+                             <input
+                 type="date"
+                 value={form.date}
+                 onChange={(e) => handleChange("date", e.target.value)}
+                 placeholder="Select Date"
+                 onFocus={(e) => e.target.showPicker?.()}
+                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
+                 min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+                 max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+               />
               {errors.date && (
                 <span className="text-xs text-red-500">{errors.date}</span>
               )}
+                             {form.date && (
+                 <div className="flex items-center mt-2">
+                   <input
+                     id="applyAllWeek"
+                     type="checkbox"
+                     checked={applyAllWeek}
+                     onChange={e => setApplyAllWeek(e.target.checked)}
+                     className="ml-[-50px] mt-[-7px]"
+                   />
+                  
+                 </div>
+               )}
             </div>
+
             <div>
               <input
                 type="time"
@@ -479,10 +850,14 @@ export const PrepareSchedule = () => {
               {errors.endtime && (
                 <span className="text-xs text-red-500">{errors.endtime}</span>
               )}
+              {errors.overlap && (
+                <span className="text-xs text-red-500">{errors.overlap}</span>
+              )}
             </div>
             <div className="flex items-center">
               <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
             </div>
+            
             <div className="flex gap-2 justify-start">
               <button
                 type="submit"
@@ -527,11 +902,6 @@ export const PrepareSchedule = () => {
             <div className="text-sm text-gray-600">
               {scheduleData[0]?.address || 'Address'}
             </div>
-            {currentWeekRange && (
-              <div className="text-xs text-gray-500 mt-1">
-                Week: {currentWeekRange.startOfWeek.toLocaleDateString()} - {currentWeekRange.endOfWeek.toLocaleDateString()}
-              </div>
-            )}
           </div>
 
           {/* Table */}
@@ -563,48 +933,106 @@ export const PrepareSchedule = () => {
                         <div className="font-medium text-gray-800">{user.name}</div>
                         <div className="text-xs text-gray-500">{user.phone}</div>
                       </td>
-                      {dateColumns.map(dateCol => {
-                        const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
-                        return (
-                          <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center text-sm">
-                            {daySchedules.length > 0 ? (
-                              <div className="space-y-1">
-                                {daySchedules.map(schedule => (
-                                  <div key={schedule.id} className="bg-blue-50 rounded px-2 py-1">
-                                    <div className="text-xs font-medium">
-                                      {schedule.shifts[0].startTime} - {schedule.shifts[0].endTime}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="border border-gray-300 px-4 py-2 text-center font-medium">
-                        {calculateUserTotal(user.id)}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
-                        <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-                      </td>
+                                             {dateColumns.map(dateCol => {
+                         const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
+                         return (
+                           <td 
+                             key={dateCol.date} 
+                             className={`border border-gray-300 px-2 py-2 text-center text-sm ${
+                               dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date 
+                                 ? 'bg-blue-50 border-blue-300' 
+                                 : ''
+                             }`}
+                             onDragOver={(e) => handleDragOver(e, user.id, dateCol.date)}
+                             onDragLeave={handleDragLeave}
+                             onDrop={(e) => handleDrop(e, user.id, dateCol.date)}
+                           >
+                             {daySchedules.length > 0 ? (
+                               <div className="space-y-1">
+                                 {daySchedules.map(schedule => {
+                                   // Sort shifts by start time
+                                   const sortedShifts = [...schedule.shifts].sort((a, b) => {
+                                     const timeA = a.startTime.replace(':', '');
+                                     const timeB = b.startTime.replace(':', '');
+                                     return parseInt(timeA) - parseInt(timeB);
+                                   });
+                                   
+                                   return (
+                                     <div key={schedule.id} className="relative group">
+                                       {sortedShifts.map((shift, shiftIndex) => (
+                                         <div 
+                                           key={shiftIndex} 
+                                           className="flex flex-col items-center justify-center text-sm font-medium py-1"
+                                           draggable
+                                           onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
+                                           onDragEnd={handleDragEnd}
+                                         >
+                                           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                                             <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+                                               <GripVertical className="w-3 h-3" />
+                                             </div>
+                                             <button
+                                               onClick={() => handleEditShift(user.id, dateCol.date, shift)}
+                                               className="text-blue-600 hover:text-blue-800 p-0.5"
+                                               title="Edit shift"
+                                             >
+                                               <Edit className="w-3 h-3" />
+                                             </button>
+                                             <button
+                                               onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                               className="text-red-600 hover:text-red-800 p-0.5"
+                                               title="Delete shift"
+                                             >
+                                               <Trash2 className="w-3 h-3" />
+                                             </button>
+                                           </div>
+                                           <span className="text-base">{shift.startTime} - {shift.endTime}</span>
+                                         </div>
+                                       ))}
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                             ) : (
+                               <span className="text-gray-400">-</span>
+                             )}
+                           </td>
+                         );
+                       })}
+                       <td className="border border-gray-300 px-4 py-2 text-center font-medium">
+                         {calculateUserTotal(user.id)}
+                       </td>
+                       <td className="border border-gray-300 px-2 py-2 text-center w-20">
+                         <div className="flex items-center justify-center space-x-2">
+                           <ToggleSwitch 
+                             enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
+                             onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
+                           />
+                           <button
+                             onClick={() => handleDeleteUser(user.id)}
+                             className="text-red-600 hover:text-red-800 p-1"
+                             title="Delete all user data"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                         </div>
+                       </td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2 text-sm text-gray-600">
                         Total
                       </td>
-                      {dateColumns.map(dateCol => {
-                        const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
-                        const dayTotal = daySchedules.reduce((total, schedule) => 
-                          total + schedule.shifts[0].hours, 0
-                        );
-                        return (
-                          <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center text-sm font-medium">
-                            {dayTotal > 0 ? dayTotal : '-'}
-                          </td>
-                        );
-                      })}
+                                             {dateColumns.map(dateCol => {
+                         const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
+                         const dayTotal = daySchedules.reduce((total, schedule) => 
+                           total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
+                         );
+                         return (
+                           <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center text-sm font-medium">
+                             {dayTotal > 0 ? dayTotal : '-'}
+                           </td>
+                         );
+                       })}
                       <td className="border border-gray-300 px-4 py-2 text-center font-medium">
                         {calculateUserTotal(user.id)}
                       </td>
@@ -644,6 +1072,118 @@ export const PrepareSchedule = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
+
+       {/* Delete Shift Confirmation Modal */}
+       {deleteModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-6">
+               <p className="text-sm text-gray-500">
+                 Are you sure you want to delete this shift?
+               </p>
+             </div>
+             
+             <div className="flex space-x-3 justify-end">
+               <button
+                 type="button"
+                 onClick={cancelDeleteShift}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmDeleteShift}
+                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+               >
+                 <Trash2 className="w-4 h-4 mr-2" />
+                 Delete
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Edit Shift Modal */}
+       {editModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
+             </div>
+             
+             <div className="space-y-4">
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                 <input
+                   type="time"
+                   value={form.starttime}
+                   onChange={(e) => setForm(prev => ({ ...prev, starttime: e.target.value }))}
+                   className={inputClasses}
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                 <input
+                   type="time"
+                   value={form.endtime}
+                   onChange={(e) => setForm(prev => ({ ...prev, endtime: e.target.value }))}
+                   className={inputClasses}
+                 />
+               </div>
+             </div>
+             
+             <div className="flex space-x-3 justify-end mt-6">
+               <button
+                 type="button"
+                 onClick={cancelEditShift}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmEditShift}
+                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+               >
+                 <Edit className="w-4 h-4 mr-2" />
+                 Update
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Delete User Confirmation Modal */}
+       {deleteUserModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-6">
+               <p className="text-sm text-gray-500">
+                 Are you sure you want to delete all data for this user?
+               </p>
+             </div>
+             
+             <div className="flex space-x-3 justify-end">
+               <button
+                 type="button"
+                 onClick={cancelDeleteUser}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmDeleteUser}
+                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+               >
+                 <Trash2 className="w-4 h-4 mr-2" />
+                 Delete All
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ };
