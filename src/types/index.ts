@@ -50,6 +50,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  phone?: string | null;
   password: string; // Consider omitting this from lists for security!
   role: UserRole;
   createdAt: string;
