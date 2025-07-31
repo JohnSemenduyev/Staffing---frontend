@@ -204,12 +204,6 @@ const Login = () => {
             >
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
-
-            <div className="text-right text-sm">
-              <a className="text-[#004175] hover:underline" href="/signup">
-                Don't have an account? <span className="font-semibold">Sign Up</span>
-              </a>
-            </div>
           </form>
         </div>
       </div>
