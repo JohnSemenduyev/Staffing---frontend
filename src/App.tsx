@@ -31,7 +31,6 @@ import { ClientProvider } from "./context/ClientContext";
 import { AddressProvider } from "./context/AddressContext";
 import {  ScheduleSessionProvider } from "./context/ScheduleContext";
 import { ScheduleProvider } from "./context/ViewSchedule";
-
 const queryClient = new QueryClient();
 
 const App = () => (
