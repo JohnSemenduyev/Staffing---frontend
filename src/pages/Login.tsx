@@ -97,6 +97,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/use-toast';
+import img from "../assets/images/Logo.webp";
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -147,7 +148,7 @@ const Login = () => {
       <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 min-h-[40vh] md:min-h-screen">
         <div className="flex items-center justify-center w-full h-full">
           <img 
-            src="src/assets/images/Logo.webp" 
+            src={img}
             alt="Maximal Security - Complete Logo" 
             className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
           />
