@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { FaCaretUp } from "react-icons/fa"
 import { FaCaretDown } from "react-icons/fa"
 import { ChevronDown, ChevronUp } from "lucide-react";
+import {Eye} from "lucide-react";
+import { Trash2, Printer, Share2, Plus, Type } from "lucide-react";
 
 export interface TableColumn {
   key: string;
