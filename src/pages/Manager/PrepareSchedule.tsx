@@ -174,6 +174,21 @@ export const PrepareSchedule = () => {
   };
 
   const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
+    // Check if this is a different client/address than what's already in the schedule
+    if (scheduleData.length > 0 && !isPublished) {
+      const existingClientId = scheduleData[0]?.clientId;
+      const existingAddressId = scheduleData[0]?.addressId;
+      
+      if (String(existingClientId) !== String(client.id) || String(existingAddressId) !== String(addressId)) {
+        toast({
+          title: "Different Client/Address Selected",
+          description: "After publishing the existing schedule, the new client/address will be selected.",
+          variant: "destructive",
+        });
+        return; // Don't allow selection of different client/address
+      }
+    }
+
     setForm((f) => ({
       ...f,
       clientId: String(client.id),
@@ -203,42 +218,42 @@ export const PrepareSchedule = () => {
     return parseFloat(hours.toFixed(2));
   };
 
-const onSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!validate()) return;
-  setSubmitLoader(true);
+// const onSubmit = async (e: React.FormEvent) => {
+//   e.preventDefault();
+//   if (!validate()) return;
+//   setSubmitLoader(true);
 
-  try {
-    const payload = {
-      clientId: Number(form.clientId),
-      addressId: Number(form.addressId),
-      userId: Number(form.userId),
-      startDate: form.date,
-      auto,
-      shifts: [
-        {
-          date: form.date,
-          startTime: form.starttime,
-          endTime: form.endtime,
-          hours: calculateHours(form.starttime, form.endtime),
-        },
-      ],
-    };
+//   try {
+//     const payload = {
+//       clientId: Number(form.clientId),
+//       addressId: Number(form.addressId),
+//       userId: Number(form.userId),
+//       startDate: form.date,
+//       auto,
+//       shifts: [
+//         {
+//           date: form.date,
+//           startTime: form.starttime,
+//           endTime: form.endtime,
+//           hours: calculateHours(form.starttime, form.endtime),
+//         },
+//       ],
+//     };
 
-    await createSession(payload);
-    setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
-    setClientSearch("");
-    setSelectedAddressText("");
-    setUserSearch("");
-    setAuto(false);
-    toast.success("Schedule session created successfully!");
-  } catch (err) {
-    console.error("Error creating schedule session:", err);
-    toast.error("Failed to create schedule session.");
-  } finally {
-    setSubmitLoader(false);
-  }
-};
+//     await createSession(payload);
+//     setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
+//     setClientSearch("");
+//     setSelectedAddressText("");
+//     setUserSearch("");
+//     setAuto(false);
+//     toast.success("Schedule session created successfully!");
+//   } catch (err) {
+//     console.error("Error creating schedule session:", err);
+//     toast.error("Failed to create schedule session.");
+//   } finally {
+//     setSubmitLoader(false);
+//   }
+// };
   const resetForm = () => {
     setForm({ 
       clientId: "", 
@@ -339,9 +354,49 @@ const onSubmit = async (e: React.FormEvent) => {
   };
 
   const handlePublish = () => {
+    // Transform data structure for backend
+    const backendData = uniqueUsers.map(user => {
+      // Get all schedule items for this user
+      const userSchedules = scheduleData.filter(item => item.userId === user.id);
+      
+      // Get the first schedule item to extract common data
+      const firstSchedule = userSchedules[0];
+      
+      // Create a map to deduplicate shifts by date and time
+      const shiftMap = new Map();
+      
+      userSchedules.forEach(schedule => {
+        schedule.shifts.forEach(shift => {
+          const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
+          if (!shiftMap.has(shiftKey)) {
+            shiftMap.set(shiftKey, {
+              date: shift.date.split('-').reverse().join('-'), // Convert YYYY-MM-DD to DD-MM-YYYY
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+              hours: shift.hours
+            });
+          }
+        });
+      });
+      
+      // Convert map values to array
+      const userShifts = Array.from(shiftMap.values());
+      
+      return {
+        clientId: firstSchedule?.clientId,
+        addressId: firstSchedule?.addressId,
+        userId: user.id,
+        startDate: currentWeekRange?.startOfWeek.toISOString().split('T')[0].split('-').reverse().join('-'), // Format as DD-MM-YYYY
+        endDate: currentWeekRange?.endOfWeek.toISOString().split('T')[0].split('-').reverse().join('-'), // Format as DD-MM-YYYY
+        shifts: userShifts,
+        auto: firstSchedule?.auto || false
+      };
+    });
+
+    console.log('Backend Data Structure:', backendData);
+    
     setIsPublished(true);
-    // Clear localStorage when published
-    localStorage.removeItem('scheduleData');
+    // Don't clear localStorage or reset table - just mark as published
     toast({
       title: "Schedule Published",
       description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
@@ -727,25 +782,30 @@ const onSubmit = async (e: React.FormEvent) => {
             
             {/* Client Search */}
             <div className="relative">
-                             <input
-                 type="text"
-                 value={clientSearch}
-                 onFocus={() => {
-                   if (scheduleData.length === 0 || isPublished) {
-                     setShowClientDropdown(true);
-                   }
-                 }}
-                 onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                 onChange={(e) => {
-                   if (scheduleData.length === 0 || isPublished) {
-                     setClientSearch(e.target.value);
-                     setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                     setSelectedAddressText("");
-                   }
-                 }}
-                 placeholder="Client Name"
-                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100' : ''}`}
-               />
+                              <input
+                  type="text"
+                  value={clientSearch}
+                  onFocus={() => {
+                    // Allow focus in all cases, we'll validate the selection later
+                    setShowClientDropdown(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                  onChange={(e) => {
+                    // Allow change if no schedule data, published, or if trying to re-select same client
+                    if (scheduleData.length === 0 || isPublished) {
+                      setClientSearch(e.target.value);
+                      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                      setSelectedAddressText("");
+                    } else if (scheduleData.length > 0 && !isPublished) {
+                      // Always allow typing, but we'll validate the selection later
+                      setClientSearch(e.target.value);
+                      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                      setSelectedAddressText("");
+                    }
+                  }}
+                  placeholder="Client Name"
+                  className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && clientSearch !== scheduleData[0]?.clientName ? 'bg-gray-100' : ''}`}
+                />
               {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
               {errors.addressId && (
                 <span className="text-xs text-red-500 block">{errors.addressId}</span>
@@ -785,13 +845,13 @@ const onSubmit = async (e: React.FormEvent) => {
               )}
             </div>
             <div>
-                             <input
-                 type="text"
-                 value={selectedAddressText}
-                 placeholder="Location"
-                 readOnly
-                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100' : ''}`}
-               />
+                              <input
+                  type="text"
+                  value={selectedAddressText}
+                  placeholder="Location"
+                  readOnly
+                  className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
+                />
             </div>
 
             {/* User Search */}
@@ -955,7 +1015,7 @@ const onSubmit = async (e: React.FormEvent) => {
                   <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700">
                     Total
                   </th>
-                  <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700">
+                  <th className="border border-gray-300 px-2 py-2 text-center text-sm font-medium text-gray-700 w-16">
                     Auto
                   </th>
                 </tr>
@@ -1021,7 +1081,7 @@ const onSubmit = async (e: React.FormEvent) => {
                                                <Trash2 className="w-3 h-3" />
                                              </button>
                                            </div>
-                                           <span className="text-base">{shift.startTime} - {shift.endTime}</span>
+                                           <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
                                          </div>
                                        ))}
                                      </div>
@@ -1037,19 +1097,12 @@ const onSubmit = async (e: React.FormEvent) => {
                        <td className="border border-gray-300 px-4 py-2 text-center font-medium">
                          {calculateUserTotal(user.id)}
                        </td>
-                       <td className="border border-gray-300 px-2 py-2 text-center w-20">
-                         <div className="flex items-center justify-center space-x-2">
+                       <td className="border border-gray-300 px-2 py-2 text-center w-16">
+                         <div className="flex items-center justify-center">
                            <ToggleSwitch 
                              enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
                              onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
                            />
-                           <button
-                             onClick={() => handleDeleteUser(user.id)}
-                             className="text-red-600 hover:text-red-800 p-1"
-                             title="Delete all user data"
-                           >
-                             <Trash2 className="w-4 h-4" />
-                           </button>
                          </div>
                        </td>
                     </tr>
@@ -1071,7 +1124,15 @@ const onSubmit = async (e: React.FormEvent) => {
                       <td className="border border-gray-300 px-4 py-2 text-center font-medium">
                         {calculateUserTotal(user.id)}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2"></td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Delete all data for this user"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   </React.Fragment>
                 ))}
