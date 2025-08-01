@@ -364,3 +364,32 @@ export const CREATE_SCHEDULE_SESSION = gql`
   }
 `;
 
+export const CREATE_MULTIPLE_SCHEDULE_SESSIONS = gql`
+  mutation CreateScheduleSession($input: [ScheduleSessionInput!]!) {
+    createScheduleSession(input: $input) {
+      id
+      clientId
+      addressId
+      userId
+      startDate
+      endDate
+      auto
+      createdAt
+      client {
+        name
+      }
+      address {
+        address
+      }
+      user {
+        name
+      }
+      shifts {
+        date
+        startTime
+        endTime
+      }
+    }
+  }
+`;
+

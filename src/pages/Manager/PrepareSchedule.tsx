@@ -6,6 +6,8 @@ import { useSearchUsers } from "../../hooks/useSearchUser";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
 import { useToast } from "../../hooks/use-toast";
+import { graphQLClient } from "../../GraphqlClient";
+import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
 
 const inputClasses = `
   w-full
@@ -55,7 +57,6 @@ export const PrepareSchedule = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
   const { createSession } = useScheduleSession();
-  const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   const [userSearch, setUserSearch] = useState("");
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
@@ -68,6 +69,9 @@ export const PrepareSchedule = () => {
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const { toast } = useToast();
+  
+  // Client search hook
+  const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   
   // Modal states
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
@@ -134,6 +138,14 @@ export const PrepareSchedule = () => {
       }
     }
   }, []);
+
+  // Control client search - only allow search when no schedule data or published
+  useEffect(() => {
+    if (scheduleData.length > 0 && !isPublished) {
+      // Clear client search when schedule data exists and not published
+      setClientSearch("");
+    }
+  }, [scheduleData.length, isPublished]);
 
   useEffect(() => {
     if (scheduleData.length > 0) {
@@ -218,42 +230,6 @@ export const PrepareSchedule = () => {
     return parseFloat(hours.toFixed(2));
   };
 
-// const onSubmit = async (e: React.FormEvent) => {
-//   e.preventDefault();
-//   if (!validate()) return;
-//   setSubmitLoader(true);
-
-//   try {
-//     const payload = {
-//       clientId: Number(form.clientId),
-//       addressId: Number(form.addressId),
-//       userId: Number(form.userId),
-//       startDate: form.date,
-//       auto,
-//       shifts: [
-//         {
-//           date: form.date,
-//           startTime: form.starttime,
-//           endTime: form.endtime,
-//           hours: calculateHours(form.starttime, form.endtime),
-//         },
-//       ],
-//     };
-
-//     await createSession(payload);
-//     setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
-//     setClientSearch("");
-//     setSelectedAddressText("");
-//     setUserSearch("");
-//     setAuto(false);
-//     toast.success("Schedule session created successfully!");
-//   } catch (err) {
-//     console.error("Error creating schedule session:", err);
-//     toast.error("Failed to create schedule session.");
-//   } finally {
-//     setSubmitLoader(false);
-//   }
-// };
   const resetForm = () => {
     setForm({ 
       clientId: "", 
@@ -353,54 +329,90 @@ export const PrepareSchedule = () => {
     });
   };
 
-  const handlePublish = () => {
-    // Transform data structure for backend
-    const backendData = uniqueUsers.map(user => {
-      // Get all schedule items for this user
-      const userSchedules = scheduleData.filter(item => item.userId === user.id);
-      
-      // Get the first schedule item to extract common data
-      const firstSchedule = userSchedules[0];
-      
-      // Create a map to deduplicate shifts by date and time
-      const shiftMap = new Map();
-      
-      userSchedules.forEach(schedule => {
-        schedule.shifts.forEach(shift => {
-          const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
-          if (!shiftMap.has(shiftKey)) {
-            shiftMap.set(shiftKey, {
-              date: shift.date.split('-').reverse().join('-'), // Convert YYYY-MM-DD to DD-MM-YYYY
+  const handlePublish = async () => {
+    try {
+      // Transform data structure for backend
+      const backendData = uniqueUsers.map(user => {
+        // Get all schedule items for this user
+        const userSchedules = scheduleData.filter(item => item.userId === user.id);
+        
+        // Get the first schedule item to extract common data
+        const firstSchedule = userSchedules[0];
+        
+        // Create a map to deduplicate shifts by date and time
+        const shiftMap = new Map();
+        
+        userSchedules.forEach(schedule => {
+          schedule.shifts.forEach(shift => {
+            const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
+            if (!shiftMap.has(shiftKey)) {
+                          shiftMap.set(shiftKey, {
+              date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
               startTime: shift.startTime,
               endTime: shift.endTime,
               hours: shift.hours
             });
-          }
+            }
+          });
         });
+        
+        // Convert map values to array
+        const userShifts = Array.from(shiftMap.values());
+        
+        // Calculate total weekly hours for this user
+        const weeklyHours = userShifts.reduce((total, shift) => total + shift.hours, 0);
+        
+        return {
+          clientId: firstSchedule?.clientId,
+          addressId: firstSchedule?.addressId,
+          userId: user.id,
+          startDate: currentWeekRange?.startOfWeek.toISOString().split('T')[0].split('-').slice(1).concat(currentWeekRange?.startOfWeek.toISOString().split('T')[0].split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+          endDate: currentWeekRange?.endOfWeek.toISOString().split('T')[0].split('-').slice(1).concat(currentWeekRange?.endOfWeek.toISOString().split('T')[0].split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+          weeklyHours: weeklyHours,
+          shifts: userShifts,
+          auto: firstSchedule?.auto || false
+        };
       });
-      
-      // Convert map values to array
-      const userShifts = Array.from(shiftMap.values());
-      
-      return {
-        clientId: firstSchedule?.clientId,
-        addressId: firstSchedule?.addressId,
-        userId: user.id,
-        startDate: currentWeekRange?.startOfWeek.toISOString().split('T')[0].split('-').reverse().join('-'), // Format as DD-MM-YYYY
-        endDate: currentWeekRange?.endOfWeek.toISOString().split('T')[0].split('-').reverse().join('-'), // Format as DD-MM-YYYY
-        shifts: userShifts,
-        auto: firstSchedule?.auto || false
-      };
-    });
 
-    console.log('Backend Data Structure:', backendData);
-    
-    setIsPublished(true);
-    // Don't clear localStorage or reset table - just mark as published
-    toast({
-      title: "Schedule Published",
-      description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
-    });
+      console.log('Backend Data Structure:', backendData);
+
+      // Send data to backend
+      const response = await graphQLClient.request(CREATE_MULTIPLE_SCHEDULE_SESSIONS, {
+        input: backendData
+      });
+
+      console.log('Backend Response:', response);
+      
+      // Reset everything after successful API call
+      setScheduleData([]);
+      localStorage.removeItem('scheduleData');
+      setIsPublished(false);
+      setCurrentWeekRange(null);
+      resetForm();
+      
+      toast({
+        title: "Schedule Published",
+        description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+      });
+    } catch (err) {
+      console.error("Error publishing schedule sessions:", err);
+      
+      // Handle specific backend error messages
+      let errorMessage = "Failed to publish schedule sessions. Please try again.";
+      
+      if (err.response?.errors && err.response.errors.length > 0) {
+        const backendError = err.response.errors[0];
+        if (backendError.message) {
+          errorMessage = backendError.message;
+        }
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -444,54 +456,54 @@ export const PrepareSchedule = () => {
             userPhone: selectedUser?.phone || '',
           });
         }
-             } else {
-         // Check if user already has a schedule for this date
-         const existingScheduleIndex = scheduleData.findIndex(
-           item => item.userId === Number(form.userId) && item.startDate === form.date
-         );
+      } else {
+        // Check if user already has a schedule for this date
+        const existingScheduleIndex = scheduleData.findIndex(
+          item => item.userId === Number(form.userId) && item.startDate === form.date
+        );
 
-         if (existingScheduleIndex !== -1) {
-           // Add new shift to existing schedule
-           const updatedScheduleData = [...scheduleData];
-           updatedScheduleData[existingScheduleIndex] = {
-             ...updatedScheduleData[existingScheduleIndex],
-             shifts: [
-               ...updatedScheduleData[existingScheduleIndex].shifts,
-               {
-                 id: Date.now(), // Ensure unique ID for shifts
-                 date: form.date,
-                 startTime: form.starttime,
-                 endTime: form.endtime,
-                 hours: calculateHours(form.starttime, form.endtime),
-               }
-             ]
-           };
-           setScheduleData(updatedScheduleData);
-         } else {
-           // Create new schedule
-           newScheduleItems.push({
-             id: Date.now(),
-             clientId: Number(form.clientId),
-             addressId: Number(form.addressId),
-             userId: Number(form.userId),
-             startDate: form.date,
-             auto,
-             shifts: [
-               {
-                 id: Date.now(), // Ensure unique ID for shifts
-                 date: form.date,
-                 startTime: form.starttime,
-                 endTime: form.endtime,
-                 hours: calculateHours(form.starttime, form.endtime),
-               },
-             ],
-             clientName: selectedClient?.name,
-             address: selectedAddress?.address,
-             userName: selectedUser?.name,
-             userPhone: selectedUser?.phone || '',
-           });
-         }
-       }
+        if (existingScheduleIndex !== -1) {
+          // Add new shift to existing schedule
+          const updatedScheduleData = [...scheduleData];
+          updatedScheduleData[existingScheduleIndex] = {
+            ...updatedScheduleData[existingScheduleIndex],
+            shifts: [
+              ...updatedScheduleData[existingScheduleIndex].shifts,
+              {
+                id: Date.now(), // Ensure unique ID for shifts
+                date: form.date,
+                startTime: form.starttime,
+                endTime: form.endtime,
+                hours: calculateHours(form.starttime, form.endtime),
+              }
+            ]
+          };
+          setScheduleData(updatedScheduleData);
+        } else {
+          // Create new schedule
+          newScheduleItems.push({
+            id: Date.now(),
+            clientId: Number(form.clientId),
+            addressId: Number(form.addressId),
+            userId: Number(form.userId),
+            startDate: form.date,
+            auto,
+            shifts: [
+              {
+                id: Date.now(), // Ensure unique ID for shifts
+                date: form.date,
+                startTime: form.starttime,
+                endTime: form.endtime,
+                hours: calculateHours(form.starttime, form.endtime),
+              },
+            ],
+            clientName: selectedClient?.name,
+            address: selectedAddress?.address,
+            userName: selectedUser?.name,
+            userPhone: selectedUser?.phone || '',
+          });
+        }
+      }
 
       setScheduleData(prev => [...prev, ...newScheduleItems]);
 
@@ -499,31 +511,33 @@ export const PrepareSchedule = () => {
         const selectedDate = new Date(form.date);
         setCurrentWeekRange(getWeekRangeFromDate(selectedDate));
       }
-             setForm({
-         clientId: form.clientId, // Keep client and address
-         addressId: form.addressId,
-         userId: "",
-         date: "",
-         starttime: "",
-         endtime: "",
-       });
-       // Don't reset clientSearch and selectedAddressText
-       setUserSearch("");
-       setAuto(false);
-       setErrors({});
-       setApplyAllWeek(false);
-             toast({
-         title: "Success",
-         description: "Schedule session created successfully!",
-       });
-     } catch (err) {
-       console.error("Error creating schedule session:", err);
-       toast({
-         title: "Error",
-         description: "Failed to create schedule session.",
-         variant: "destructive",
-       });
-     } finally {
+      
+      setForm({
+        clientId: form.clientId, // Keep client and address
+        addressId: form.addressId,
+        userId: "",
+        date: "",
+        starttime: "",
+        endtime: "",
+      });
+      // Don't reset clientSearch and selectedAddressText
+      setUserSearch("");
+      setAuto(false);
+      setErrors({});
+      setApplyAllWeek(false);
+      
+      toast({
+        title: "Success",
+        description: "Schedule session created successfully!",
+      });
+    } catch (err) {
+      console.error("Error creating schedule session:", err);
+      toast({
+        title: "Error",
+        description: "Failed to create schedule session.",
+        variant: "destructive",
+      });
+    } finally {
       setSubmitLoader(false);
     }
   };
@@ -735,18 +749,6 @@ export const PrepareSchedule = () => {
         setScheduleData(prev => [...prev, newSchedule]);
       }
     }
-
-    // Don't remove shift from source location - keep it there
-    // setScheduleData(prev => prev.map(item => {
-    //   if (item.userId === sourceUserId && item.startDate === sourceDate) {
-    //     return {
-    //       ...item,
-    //       shifts: item.shifts.filter(s => s.id !== shift.id)
-    //     };
-    //   }
-    //   return item;
-    // }).filter(item => item.shifts.length > 0)); // Remove items with no shifts
-
     setDraggedShift(null);
     setDragOverCell(null);
     
@@ -1057,12 +1059,12 @@ export const PrepareSchedule = () => {
                                        {sortedShifts.map((shift, shiftIndex) => (
                                          <div 
                                            key={shiftIndex} 
-                                           className="flex flex-col items-center justify-center text-sm font-medium py-1"
+                                           className="flex flex-col items-start justify-start text-sm font-medium py-1"
                                            draggable
                                            onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
                                            onDragEnd={handleDragEnd}
                                          >
-                                           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                                           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-start">
                                              <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
                                                <GripVertical className="w-3 h-3" />
                                              </div>
@@ -1081,7 +1083,7 @@ export const PrepareSchedule = () => {
                                                <Trash2 className="w-3 h-3" />
                                              </button>
                                            </div>
-                                           <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
+                                           <span className="text-sm text-left">{shift.startTime} - {shift.endTime}</span>
                                          </div>
                                        ))}
                                      </div>
@@ -1095,7 +1097,16 @@ export const PrepareSchedule = () => {
                          );
                        })}
                        <td className="border border-gray-300 px-4 py-2 text-center font-medium">
-                         {calculateUserTotal(user.id)}
+                         <div className="space-y-1">
+                           {scheduleData
+                             .filter(item => item.userId === user.id)
+                             .flatMap(schedule => schedule.shifts)
+                             .map((shift, index) => (
+                               <div key={index} className="text-sm">
+                                 {shift.hours}
+                               </div>
+                             ))}
+                         </div>
                        </td>
                        <td className="border border-gray-300 px-2 py-2 text-center w-16">
                          <div className="flex items-center justify-center">
