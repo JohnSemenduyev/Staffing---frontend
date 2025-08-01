@@ -203,6 +203,42 @@ export const PrepareSchedule = () => {
     return parseFloat(hours.toFixed(2));
   };
 
+const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validate()) return;
+  setSubmitLoader(true);
+
+  try {
+    const payload = {
+      clientId: Number(form.clientId),
+      addressId: Number(form.addressId),
+      userId: Number(form.userId),
+      startDate: form.date,
+      auto,
+      shifts: [
+        {
+          date: form.date,
+          startTime: form.starttime,
+          endTime: form.endtime,
+          hours: calculateHours(form.starttime, form.endtime),
+        },
+      ],
+    };
+
+    await createSession(payload);
+    setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
+    setClientSearch("");
+    setSelectedAddressText("");
+    setUserSearch("");
+    setAuto(false);
+    toast.success("Schedule session created successfully!");
+  } catch (err) {
+    console.error("Error creating schedule session:", err);
+    toast.error("Failed to create schedule session.");
+  } finally {
+    setSubmitLoader(false);
+  }
+};
   const resetForm = () => {
     setForm({ 
       clientId: "", 
@@ -669,7 +705,6 @@ export const PrepareSchedule = () => {
     setDraggedShift(null);
     setDragOverCell(null);
   };
-
   return (
     <div className="min-h-screen font-sans w-full p-6">
       <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
