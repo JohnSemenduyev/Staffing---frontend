@@ -1,311 +1,41 @@
-// import React, { useState } from "react";
-// import { Plus } from "lucide-react";
-// import { useSearchClient } from "../../hooks/usesearchClient";
-// import { useDebounce } from "../../hooks/useDebounce";
-// import { useSearchUsers } from "../../hooks/useSearchUser";
-// import ToggleSwitch from "../../components/ui/toggle";
-
-
-// export const PrepareSchedule = () => {
-//     const [form, setForm] = useState({
-//         clientId: "",
-//         addressId: "",
-//         userId: "",
-//         date: "",
-//         starttime: "",
-//         endtime: "",
-//       });
-    
-//       const [errors, setErrors] = useState<{ [key: string]: string }>({});
-//       const [clientSearch, setClientSearch] = useState("");
-//       const debouncedClientSearch = useDebounce(clientSearch, 300);
-//       const [showClientDropdown, setShowClientDropdown] = useState(false);
-//       const [selectedAddressText, setSelectedAddressText] = useState("");
-//       const [submitLoader, setSubmitLoader] = useState(false);
-//         const [auto, setAuto] = useState(false);
-    
-//       const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);    
-//         const [userSearch, setUserSearch] = useState("");
-//         const debouncedUserSearch = useDebounce(userSearch, 300);
-//         const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
-//         const [showUserDropdown, setShowUserDropdown] = useState(false);
-      
-//       const fieldInputClasses =
-//         "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-    
-//       const validate = () => {
-//         const e: any = {};
-//         if (!form.clientId) e.clientId = "Required";
-//         if (!form.addressId) e.addressId = "Required";
-//         if (!form.userId) e.userId = "Required";
-//         if (!form.date) e.date = "Required";
-//         if (!form.starttime) e.starttime = "Required";
-//         if (!form.endtime) e.endtime = "Required";
-//         setErrors(e);
-//         return Object.keys(e).length === 0;
-//       };
-    
-//       const handleChange = (field: string, value: any) => {
-//         setForm((f) => ({
-//           ...f,
-//           [field]: value,
-//         }));
-//         setErrors((e) => ({ ...e, [field]: undefined }));
-//       };
-    
-//       const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
-//         setForm((f) => ({
-//           ...f,
-//           clientId: String(client.id),
-//           addressId: String(addressId),
-//         }));
-//         setClientSearch(client.name);
-//         setShowClientDropdown(false);
-//         setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
-    
-//         const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
-//         const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
-//         setSelectedAddressText(selectedAddress?.address || "");
-//       };
-//      const handleUserSelect = (user: { id: string | number; name: string }) => {
-//     setForm(f => ({ ...f, userId: String(user.id) }));
-//     setUserSearch(user.name);
-//     setShowUserDropdown(false);
-//     setErrors(e => ({ ...e, userId: undefined }));
-//   };
-//       const onSubmit = async (e: React.FormEvent) => {
-//       e.preventDefault();
-//       if (!validate()) return;
-//       setSubmitLoader(true);
-//       console.log("Submitting form with data:", form); // Debug log
-      
-    
-//     //   try {
-//     //     // Ensure all numbers are converted safely, fallback to 0 if empty
-//     //     const payload = {
-//     //       clientId: Number(form.clientId),
-//     //       addressId: Number(form.addressId),
-//     //       distance: form.distance !== "" ? Number(form.distance) : 0,
-//     //       actualScheduledTime: form.time !== "" ? Number(form.time) : 0,
-//     //       weeklyHours: form.hours !== "" ? Number(form.hours) : 0,
-//     //       reminderTime: form.reminder !== "" ? Number(form.reminder) : 0,
-//     //       overlap: overlap,
-//     //       unscheduledTime: unscheduledTime,
-//     //     };
-    
-//     //     console.log("Submitting payload:", payload); // Debug log
-    
-//     //     await createTimeSetup(payload);
-    
-//     //     // Reset form
-//     //     setForm({
-//     //       clientId: "",
-//     //       addressId: "",
-//     //       distance: "",
-//     //       time: "",
-//     //       hours: "",
-//     //       reminder: "",
-//     //     });
-//     //     setClientSearch("");
-//     //     setSelectedAddressText("");
-//     //     setOverlap(false);
-//     //     setUnscheduledTime(false);
-//     //     alert("Time setup created successfully!");
-//     //   } catch (error) {
-//     //     console.error("Error creating time setup:", error);
-//     //     alert("Failed to create time setup.");
-//     //   } finally {
-//     //     setSubmitLoader(false);
-//     //   }
-//     };
-//     return (
-//         <div className="min-h-screen p-6 font-sans">
-//       <div className="w-full px-6">
-//         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-//           <h2 className="text-2xl font-semibold text-gray-800 mb-6">Prepare Schedule</h2>
-//           <form onSubmit={onSubmit} autoComplete="off">
-//             <div className="grid grid-cols-4 gap-4 items-start">
-//               {/* Client Search Field */}
-//               <div className="relative">
-//                 <input
-//                   type="text"
-//                   value={clientSearch}
-//                   onFocus={() => setShowClientDropdown(true)}
-//                   onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-//                   onChange={(e) => {
-//                     setClientSearch(e.target.value);
-//                     setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-//                     setSelectedAddressText("");
-//                   }}
-//                   placeholder="Client Name"
-//                   className={fieldInputClasses}
-//                 />
-//                 {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-//                 {errors.addressId && (
-//                   <span className="text-xs text-red-500 block">{errors.addressId}</span>
-//                 )}
-//                 {showClientDropdown && clientSearch.length >= 2 && (
-//                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-//                     {loadingClients ? (
-//                       <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-//                     ) : searchedClients.length === 0 ? (
-//                       <div className="p-2 text-gray-500 text-sm">No clients found</div>
-//                     ) : (
-//                       searchedClients.flatMap((client, clientIndex) =>
-//                         client.addresses.map((address, addressIndex) => {
-//                           const isEven = (clientIndex + addressIndex) % 2 === 0;
-//                           return (
-//                             <div
-//                               key={`${client.id}-${address.id}`}
-//                               onMouseDown={() =>
-//                                 handleClientSelect({ id: client.id, name: client.name }, address.id)
-//                               }
-//                               className={`p-4 cursor-pointer text-sm ${
-//                                 isEven ? "bg-white" : "bg-gray-50"
-//                               } hover:bg-gray-100`}
-//                             >
-//                               <div className="font-semibold text-gray-600 text-base">
-//                                 {client.name}
-//                               </div>
-//                               <div className="text-xs text-gray-500">
-//                                 {address.label || address.address}
-//                               </div>
-//                             </div>
-//                           );
-//                         })
-//                       )
-//                     )}
-//                   </div>
-//                 )}
-//               </div>
-
-//               {/* Address (read-only) */}
-//               <div>
-//                 <input
-//                   type="text"
-//                   value={selectedAddressText}
-//                   placeholder="Location"
-//                   readOnly
-//                   className={`${fieldInputClasses} appearance-none bg-gray-50`}
-//                 />
-//               </div>
-//               {/* User Search */}
-//               <div className="relative">
-//                 <input
-//                   type="text"
-//                   value={userSearch}
-//                   onFocus={() => setShowUserDropdown(true)}
-//                   onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
-//                   onChange={e => {
-//                     setUserSearch(e.target.value);
-//                     setForm(f => ({ ...f, userId: "" }));
-//                   }}
-//                   placeholder="User Name"
-//                   className={fieldInputClasses}
-//                 />
-//                 {errors.userId && (
-//                   <span className="text-xs text-red-500">{errors.userId}</span>
-//                 )}
-//                 {showUserDropdown && userSearch.length >= 2 && (
-//                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-//                     {loadingUsers ? (
-//                       <div className="p-2 text-sm text-gray-500">Searching users...</div>
-//                     ) : searchedUsers.length === 0 ? (
-//                       <div className="p-2 text-gray-500 text-sm">No users found</div>
-//                     ) : (
-//                       searchedUsers.map(user => (
-//                         <div
-//                           key={user.id}
-//                           className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-//                           onMouseDown={() => handleUserSelect(user)}
-//                         >
-//                           {user.name}
-//                         </div>
-//                       ))
-//                     )}
-//                   </div>
-//                 )}
-//               </div>
-//                <div>
-//                 <input
-//                   type="date"
-//                   value={form.date}
-//                   onChange={(e) => handleChange("date", e.target.value)}
-//                   placeholder="Enter date"
-//                   min="0"
-//                   className={`${fieldInputClasses} appearance-none`}
-//                 />
-//                 {errors.date && (
-//                   <span className="text-xs text-red-500">{errors.date}</span>
-//                 )}
-//               </div>
-//                <div>
-//                 <input
-//                   type="time"
-//                   value={form.starttime}
-//                   onChange={(e) => handleChange("starttime", e.target.value)}
-//                   placeholder="Enter start time"
-//                   min="0"
-//                   className={`${fieldInputClasses} appearance-none`}
-//                 />
-//                 {errors.starttime && (
-//                   <span className="text-xs text-red-500">{errors.starttime}</span>
-//                 )}
-//               </div>
-//                <div>
-//                 <input
-//                   type="time"
-//                   value={form.endtime}
-//                   onChange={(e) => handleChange("endtime", e.target.value)}
-//                   placeholder="Enter end time"
-//                   min="0"
-//                   className={`${fieldInputClasses} appearance-none`}
-//                 />
-//                 {errors.endtime && (
-//                   <span className="text-xs text-red-500">{errors.endtime}</span>
-//                 )}
-//               </div>
-//             <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-
-
-//               {/* Submit Button */}
-//               <div className="flex justify-start">
-//   <button
-//     type="submit"
-//     disabled={submitLoader}
-//     className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-//   >
-//     {submitLoader ? (
-//       <>
-//         <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-//         Loading...
-//       </>
-//     ) : (
-//       <>
-//         <Plus className="w-4 h-4 mr-1" />
-//         Add
-//       </>
-//     )}
-//   </button>
-// </div>
-
-//             </div>
-//           </form>
-//         </div>
-//       </div>
-//     </div>
-//   );
-    
-// }
-
-import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Plus, RotateCcw, Edit, Trash2, GripVertical } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
-import { toast } from "sonner";
+import { useToast } from "../../hooks/use-toast";
+
+const inputClasses = `
+  w-full
+  px-3
+  py-1
+  border
+  border-[#d0d4d9]
+  rounded-md
+  placeholder:text-gray-500
+  font-normal
+  focus:outline-none
+  focus:ring-2
+  focus:ring-[#004175]
+  transition
+  appearance-none
+`;
+
+const getWeekRangeFromDate = (baseDate) => {
+  const day = baseDate.getUTCDay();
+  const daysSinceThursday = (day + 3) % 7; // Thursday = 4, so we subtract to get back to it
+  const startOfWeek = new Date(baseDate);
+  startOfWeek.setUTCDate(baseDate.getUTCDate() - daysSinceThursday);
+  startOfWeek.setUTCHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6); // +6 days means 7 total days (Thu to Wed)
+  endOfWeek.setUTCHours(23, 59, 59, 999);
+
+  return { startOfWeek, endOfWeek };
+};
 
 export const PrepareSchedule = () => {
   const [form, setForm] = useState({
@@ -324,17 +54,29 @@ export const PrepareSchedule = () => {
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
-
   const { createSession } = useScheduleSession();
-
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   const [userSearch, setUserSearch] = useState("");
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+  const [scheduleData, setScheduleData] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [currentWeekRange, setCurrentWeekRange] = useState(null);
+  const [isPublished, setIsPublished] = useState(false);
+  const [showApplyAllDropdown, setShowApplyAllDropdown] = useState(false);
+  const [applyToAllDates, setApplyToAllDates] = useState(false);
+  const [applyAllWeek, setApplyAllWeek] = useState(false);
+  const { toast } = useToast();
+  
+  // Modal states
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
+  const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
+  const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
+  
+  // Drag and drop states
+  const [draggedShift, setDraggedShift] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null);
 
   const validate = () => {
     const e: any = {};
@@ -344,16 +86,91 @@ export const PrepareSchedule = () => {
     if (!form.date) e.date = "Required";
     if (!form.starttime) e.starttime = "Required";
     if (!form.endtime) e.endtime = "Required";
+    
+    // Check for overlapping shifts
+    if (form.userId && form.date && form.starttime && form.endtime) {
+      const existingShifts = scheduleData
+        .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
+        .flatMap(item => item.shifts);
+      
+      const newStartTime = form.starttime;
+      const newEndTime = form.endtime;
+      
+      for (const shift of existingShifts) {
+        if (shift.id === editModal.shift?.id) continue; // Skip current shift when editing
+        
+        const existingStart = shift.startTime;
+        const existingEnd = shift.endTime;
+        
+        // Check if new shift overlaps with existing shift
+        if (
+          (newStartTime >= existingStart && newStartTime < existingEnd) ||
+          (newEndTime > existingStart && newEndTime <= existingEnd) ||
+          (newStartTime <= existingStart && newEndTime >= existingEnd)
+        ) {
+          e.overlap = "Shift time overlaps with existing shift for this user and date";
+          break;
+        }
+      }
+    }
+    
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleChange = (field: string, value: any) => {
+  useEffect(() => {
+    const savedData = localStorage.getItem('scheduleData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setScheduleData(parsedData);
+        if (parsedData.length > 0) {
+          // Set the week range based on existing data
+          const firstDate = new Date(parsedData[0].startDate);
+          setCurrentWeekRange(getWeekRangeFromDate(firstDate));
+        }
+      } catch (error) {
+        console.error('Error loading data from localStorage:', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (scheduleData.length > 0) {
+      localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
+    }
+  }, [scheduleData]);
+
+  const handleChange = (field, value) => {
     setForm((f) => ({
       ...f,
       [field]: value,
     }));
     setErrors((e) => ({ ...e, [field]: undefined }));
+
+    // Check week range when date changes
+    if (field === 'date' && value) {
+      const selectedDate = new Date(value);
+      const weekRange = getWeekRangeFromDate(selectedDate);
+      
+      // If there's existing data and it's not published, check if the week is different
+      if (scheduleData.length > 0 && !isPublished && currentWeekRange) {
+        const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
+        const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
+        
+                 if (existingWeekStart !== newWeekStart) {
+           toast({
+             title: "Invalid Date Selection",
+             description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+             variant: "destructive",
+           });
+           setForm(f => ({ ...f, date: "" }));
+           return;
+         }
+      }
+      
+      setCurrentWeekRange(weekRange);
+    }
   };
 
   const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
@@ -386,42 +203,6 @@ export const PrepareSchedule = () => {
     return parseFloat(hours.toFixed(2));
   };
 
-  // const onSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!validate()) return;
-  //   setSubmitLoader(true);
-
-  //   try {
-  //     const payload = {
-  //       clientId: Number(form.clientId),
-  //       addressId: Number(form.addressId),
-  //       userId: Number(form.userId),
-  //       startDate: form.date,
-  //       auto,
-  //       shifts: [
-  //         {
-  //           date: form.date,
-  //           startTime: form.starttime,
-  //           endTime: form.endtime,
-  //           hours: calculateHours(form.starttime, form.endtime),
-  //         },
-  //       ],
-  //     };
-
-  //     await createSession(payload);
-  //     setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
-  //     setClientSearch("");
-  //     setSelectedAddressText("");
-  //     setUserSearch("");
-  //     setAuto(false);
-  //     alert("Schedule session created successfully!");
-  //   } catch (err) {
-  //     console.error("Error creating schedule session:", err);
-  //     alert("Failed to create schedule session.");
-  //   } finally {
-  //     setSubmitLoader(false);
-  //   }
-  // };
 const onSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!validate()) return;
@@ -458,182 +239,986 @@ const onSubmit = async (e: React.FormEvent) => {
     setSubmitLoader(false);
   }
 };
+  const resetForm = () => {
+    setForm({ 
+      clientId: "", 
+      addressId: "", 
+      userId: "", 
+      date: "", 
+      starttime: "", 
+      endtime: "" 
+    });
+    setClientSearch("");
+    setSelectedAddressText("");
+    setUserSearch("");
+    setAuto(false);
+    setErrors({});
+    setEditingId(null);
+    setCurrentWeekRange(null);
+    setScheduleData([]);
+    setIsPublished(false);
+    setApplyToAllDates(false);
+    setApplyAllWeek(false);
+    
+    toast({
+      title: "Form Reset",
+      description: "Form has been reset successfully.",
+    });
+  };
+
+  const generateDateColumns = () => {
+    if (!currentWeekRange) return [];
+    
+    const dates = [];
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      dates.push({
+        date: date.toISOString().split('T')[0],
+        display: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+      });
+    }
+    return dates;
+  };
+
+  const dateColumns = generateDateColumns();
+
+  // Group schedule data by user and date
+  const getScheduleForUserAndDate = (userId, date) => {
+    return scheduleData.filter(item => 
+      item.userId === userId && item.startDate === date
+    );
+  };
+
+  // Get unique users from schedule data
+  const getUniqueUsers = () => {
+    const userMap = new Map();
+    scheduleData.forEach(item => {
+      if (!userMap.has(item.userId)) {
+        userMap.set(item.userId, {
+          id: item.userId,
+          name: item.userName,
+          phone: item.userPhone
+        });
+      }
+    });
+    return Array.from(userMap.values());
+  };
+
+  const uniqueUsers = getUniqueUsers();
+
+  // Calculate totals
+  const calculateDayTotal = (date) => {
+    return scheduleData
+      .filter(item => item.startDate === date)
+      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  };
+
+  const calculateUserTotal = (userId) => {
+    return scheduleData
+      .filter(item => item.userId === userId)
+      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  };
+
+  const calculateGrandTotal = () => {
+    return scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  };
+
+  const handleUserAutoToggle = (userId, enabled) => {
+    // Update auto setting for specific user's schedules
+    setScheduleData(prev => prev.map(item => 
+      item.userId === userId ? { ...item, auto: enabled } : item
+    ));
+    
+    toast({
+      title: "Auto Setting Updated",
+      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+    });
+  };
+
+  const handlePublish = () => {
+    setIsPublished(true);
+    // Clear localStorage when published
+    localStorage.removeItem('scheduleData');
+    toast({
+      title: "Schedule Published",
+      description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+    });
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSubmitLoader(true);
+
+    try {
+      // Get client and user details from the hook data
+      const selectedClient = searchedClients.find(c => String(c.id) === form.clientId);
+      const selectedAddress = selectedClient?.addresses.find(a => String(a.id) === form.addressId);
+      const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
+
+      let newScheduleItems = [];
+      if (applyAllWeek && currentWeekRange) {
+        // Add for each day in the week (Thu-Wed)
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const dateObj = new Date(startDate);
+          dateObj.setDate(startDate.getDate() + i);
+          const dateStr = dateObj.toISOString().split('T')[0];
+          newScheduleItems.push({
+            id: Date.now() + i, // ensure unique id
+            clientId: Number(form.clientId),
+            addressId: Number(form.addressId),
+            userId: Number(form.userId),
+            startDate: dateStr,
+            auto,
+            shifts: [
+              {
+                id: Date.now() + i, // Ensure unique ID for shifts
+                date: dateStr,
+                startTime: form.starttime,
+                endTime: form.endtime,
+                hours: calculateHours(form.starttime, form.endtime),
+              },
+            ],
+            clientName: selectedClient?.name,
+            address: selectedAddress?.address,
+            userName: selectedUser?.name,
+            userPhone: selectedUser?.phone || '',
+          });
+        }
+             } else {
+         // Check if user already has a schedule for this date
+         const existingScheduleIndex = scheduleData.findIndex(
+           item => item.userId === Number(form.userId) && item.startDate === form.date
+         );
+
+         if (existingScheduleIndex !== -1) {
+           // Add new shift to existing schedule
+           const updatedScheduleData = [...scheduleData];
+           updatedScheduleData[existingScheduleIndex] = {
+             ...updatedScheduleData[existingScheduleIndex],
+             shifts: [
+               ...updatedScheduleData[existingScheduleIndex].shifts,
+               {
+                 id: Date.now(), // Ensure unique ID for shifts
+                 date: form.date,
+                 startTime: form.starttime,
+                 endTime: form.endtime,
+                 hours: calculateHours(form.starttime, form.endtime),
+               }
+             ]
+           };
+           setScheduleData(updatedScheduleData);
+         } else {
+           // Create new schedule
+           newScheduleItems.push({
+             id: Date.now(),
+             clientId: Number(form.clientId),
+             addressId: Number(form.addressId),
+             userId: Number(form.userId),
+             startDate: form.date,
+             auto,
+             shifts: [
+               {
+                 id: Date.now(), // Ensure unique ID for shifts
+                 date: form.date,
+                 startTime: form.starttime,
+                 endTime: form.endtime,
+                 hours: calculateHours(form.starttime, form.endtime),
+               },
+             ],
+             clientName: selectedClient?.name,
+             address: selectedAddress?.address,
+             userName: selectedUser?.name,
+             userPhone: selectedUser?.phone || '',
+           });
+         }
+       }
+
+      setScheduleData(prev => [...prev, ...newScheduleItems]);
+
+      if (scheduleData.length === 0) {
+        const selectedDate = new Date(form.date);
+        setCurrentWeekRange(getWeekRangeFromDate(selectedDate));
+      }
+             setForm({
+         clientId: form.clientId, // Keep client and address
+         addressId: form.addressId,
+         userId: "",
+         date: "",
+         starttime: "",
+         endtime: "",
+       });
+       // Don't reset clientSearch and selectedAddressText
+       setUserSearch("");
+       setAuto(false);
+       setErrors({});
+       setApplyAllWeek(false);
+             toast({
+         title: "Success",
+         description: "Schedule session created successfully!",
+       });
+     } catch (err) {
+       console.error("Error creating schedule session:", err);
+       toast({
+         title: "Error",
+         description: "Failed to create schedule session.",
+         variant: "destructive",
+       });
+     } finally {
+      setSubmitLoader(false);
+    }
+  };
+
+  // Delete individual shift
+  const handleDeleteShift = (userId, date, shiftId) => {
+    setDeleteModal({ isOpen: true, shiftId, userId, date });
+  };
+
+  const confirmDeleteShift = () => {
+    const { userId, date, shiftId } = deleteModal;
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.filter(shift => shift.id !== shiftId)
+        };
+      }
+      return item;
+    }).filter(item => item.shifts.length > 0)); // Remove items with no shifts
+
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+    toast({
+      title: "Shift Deleted",
+      description: "Shift has been deleted successfully.",
+    });
+  };
+
+  const cancelDeleteShift = () => {
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+  };
+
+  // Edit individual shift
+  const handleEditShift = (userId, date, shift) => {
+    setEditModal({ isOpen: true, shift, userId, date });
+    // Pre-fill form with shift data
+    setForm({
+      clientId: form.clientId,
+      addressId: form.addressId,
+      userId: String(userId),
+      date: date,
+      starttime: shift.startTime,
+      endtime: shift.endTime,
+    });
+  };
+
+  const confirmEditShift = () => {
+    const { userId, date, shift } = editModal;
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.map(s => 
+            s.id === shift.id 
+              ? { ...s, startTime: form.starttime, endTime: form.endtime, hours: calculateHours(form.starttime, form.endtime) }
+              : s
+          )
+        };
+      }
+      return item;
+    }));
+
+    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
+    // Reset form
+    setForm({
+      clientId: form.clientId,
+      addressId: form.addressId,
+      userId: "",
+      date: "",
+      starttime: "",
+      endtime: "",
+    });
+    setUserSearch("");
+    toast({
+      title: "Shift Updated",
+      description: "Shift has been updated successfully.",
+    });
+  };
+
+  const cancelEditShift = () => {
+    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
+    // Reset form
+    setForm({
+      clientId: form.clientId,
+      addressId: form.addressId,
+      userId: "",
+      date: "",
+      starttime: "",
+      endtime: "",
+    });
+    setUserSearch("");
+  };
+
+  // Delete all data for a user
+  const handleDeleteUser = (userId) => {
+    setDeleteUserModal({ isOpen: true, userId });
+  };
+
+  const confirmDeleteUser = () => {
+    const { userId } = deleteUserModal;
+    setScheduleData(prev => prev.filter(item => item.userId !== userId));
+    setDeleteUserModal({ isOpen: false, userId: null });
+    toast({
+      title: "User Data Deleted",
+      description: "All data for this user has been deleted successfully.",
+    });
+  };
+
+  const cancelDeleteUser = () => {
+    setDeleteUserModal({ isOpen: false, userId: null });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e, shift, sourceUserId, sourceDate) => {
+    setDraggedShift({
+      shift,
+      sourceUserId,
+      sourceDate
+    });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, targetUserId, targetDate) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCell({ userId: targetUserId, date: targetDate });
+  };
+
+  const handleDragLeave = (e) => {
+    setDragOverCell(null);
+  };
+
+  const handleDrop = (e, targetUserId, targetDate) => {
+    e.preventDefault();
+    
+    if (!draggedShift) return;
+
+    const { shift, sourceUserId, sourceDate } = draggedShift;
+    
+    // Don't allow dropping on the same cell
+    if (sourceUserId === targetUserId && sourceDate === targetDate) {
+      setDraggedShift(null);
+      setDragOverCell(null);
+      return;
+    }
+
+    // Check if target cell already has shifts for this user/date
+    const existingSchedule = scheduleData.find(
+      item => item.userId === targetUserId && item.startDate === targetDate
+    );
+
+    if (existingSchedule) {
+      // Check for overlapping shifts
+      const hasOverlap = existingSchedule.shifts.some(existingShift => {
+        const existingStart = existingShift.startTime;
+        const existingEnd = existingShift.endTime;
+        const newStart = shift.startTime;
+        const newEnd = shift.endTime;
+
+        return (
+          (newStart >= existingStart && newStart < existingEnd) ||
+          (newEnd > existingStart && newEnd <= existingEnd) ||
+          (newStart <= existingStart && newEnd >= existingEnd)
+        );
+      });
+
+      if (hasOverlap) {
+        toast({
+          title: "Overlapping Shift",
+          description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
+          variant: "destructive",
+        });
+        setDraggedShift(null);
+        setDragOverCell(null);
+        return;
+      }
+
+      // Add shift to existing schedule (copy, don't remove original)
+      setScheduleData(prev => prev.map(item => {
+        if (item.userId === targetUserId && item.startDate === targetDate) {
+          return {
+            ...item,
+            shifts: [...item.shifts, { ...shift, id: Date.now() }]
+          };
+        }
+        return item;
+      }));
+    } else {
+      // Create new schedule for target user/date
+      const sourceSchedule = scheduleData.find(
+        item => item.userId === sourceUserId && item.startDate === sourceDate
+      );
+      
+      if (sourceSchedule) {
+        const newSchedule = {
+          id: Date.now(),
+          clientId: sourceSchedule.clientId,
+          addressId: sourceSchedule.addressId,
+          userId: targetUserId,
+          startDate: targetDate,
+          auto: sourceSchedule.auto,
+          shifts: [{ ...shift, id: Date.now() }],
+          clientName: sourceSchedule.clientName,
+          address: sourceSchedule.address,
+          userName: sourceSchedule.userName,
+          userPhone: sourceSchedule.userPhone,
+        };
+        
+        setScheduleData(prev => [...prev, newSchedule]);
+      }
+    }
+
+    // Don't remove shift from source location - keep it there
+    // setScheduleData(prev => prev.map(item => {
+    //   if (item.userId === sourceUserId && item.startDate === sourceDate) {
+    //     return {
+    //       ...item,
+    //       shifts: item.shifts.filter(s => s.id !== shift.id)
+    //     };
+    //   }
+    //   return item;
+    // }).filter(item => item.shifts.length > 0)); // Remove items with no shifts
+
+    setDraggedShift(null);
+    setDragOverCell(null);
+    
+    toast({
+      title: "Shift Copied",
+      description: "Shift has been copied successfully.",
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
   return (
-    <div className="min-h-screen p-6 font-sans">
-      {/* form content here (same as before) */}
-            <div className="w-full px-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-   
-       <h2 className="text-2xl font-semibold text-gray-800 mb-6">Prepare Schedule</h2>          <form onSubmit={onSubmit} autoComplete="off">
-            <div className="grid grid-cols-4 gap-4 items-start">
-             {/* Client Search Field */}              <div className="relative">
-               <input
-                  type="text"
-                  value={clientSearch}
-                  onFocus={() => setShowClientDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                  onChange={(e) => {
-                    setClientSearch(e.target.value);
-                    setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                    setSelectedAddressText("");
-                  }}
-                  placeholder="Client Name"
-                  className={fieldInputClasses}
-                />
-                {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-                {errors.addressId && (
-                  <span className="text-xs text-red-500 block">{errors.addressId}</span>
-                )}
-                {showClientDropdown && clientSearch.length >= 2 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-                    {loadingClients ? (
-                      <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-                    ) : searchedClients.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No clients found</div>
-                    ) : (
-                      searchedClients.flatMap((client, clientIndex) =>
-                        client.addresses.map((address, addressIndex) => {
-                          const isEven = (clientIndex + addressIndex) % 2 === 0;
-                          return (
-                            <div
-                              key={`${client.id}-${address.id}`}
-                              onMouseDown={() =>
-                                handleClientSelect({ id: client.id, name: client.name }, address.id)
-                              }
-                              className={`p-4 cursor-pointer text-sm ${
-                                isEven ? "bg-white" : "bg-gray-50"
-                              } hover:bg-gray-100`}
-                            >
-                              <div className="font-semibold text-gray-600 text-base">
-                                {client.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {address.label || address.address}
-                              </div>
+    <div className="min-h-screen font-sans w-full p-6">
+      <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
+        <h2
+          style={{
+            fontFamily:
+              'system-ui, ui-sans-serif, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
+            fontWeight: 600,
+            fontSize: '20px',
+            lineHeight: '28px',
+            color: 'rgb(0, 0, 0)',
+          }}
+          className="mb-2"
+        >
+          Prepare Schedule
+        </h2>
+        
+        <form onSubmit={onSubmit} autoComplete="off">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+            
+            {/* Client Search */}
+            <div className="relative">
+                             <input
+                 type="text"
+                 value={clientSearch}
+                 onFocus={() => {
+                   if (scheduleData.length === 0 || isPublished) {
+                     setShowClientDropdown(true);
+                   }
+                 }}
+                 onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                 onChange={(e) => {
+                   if (scheduleData.length === 0 || isPublished) {
+                     setClientSearch(e.target.value);
+                     setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                     setSelectedAddressText("");
+                   }
+                 }}
+                 placeholder="Client Name"
+                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100' : ''}`}
+               />
+              {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
+              {errors.addressId && (
+                <span className="text-xs text-red-500 block">{errors.addressId}</span>
+              )}
+              {showClientDropdown && clientSearch.length >= 2 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+                  {loadingClients ? (
+                    <div className="p-2 text-sm text-gray-500">Searching clients...</div>
+                  ) : searchedClients.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">No clients found</div>
+                  ) : (
+                    searchedClients.flatMap((client, clientIndex) =>
+                      client.addresses.map((address, addressIndex) => {
+                        const isEven = (clientIndex + addressIndex) % 2 === 0;
+                        return (
+                          <div
+                            key={`${client.id}-${address.id}`}
+                            onMouseDown={() =>
+                              handleClientSelect({ id: client.id, name: client.name }, address.id)
+                            }
+                            className={`p-4 cursor-pointer text-sm ${
+                              isEven ? "bg-white" : "bg-gray-50"
+                            } hover:bg-gray-100`}
+                          >
+                            <div className="font-semibold text-gray-600 text-base">
+                              {client.name}
                             </div>
-                          );
-                        })
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Address (read-only) */}
-              <div>
-                <input
-                  type="text"
-                  value={selectedAddressText}
-                  placeholder="Location"
-                  readOnly
-                  className={`${fieldInputClasses} appearance-none bg-gray-50`}
-                />
-              </div>
-              {/* User Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={userSearch}
-                  onFocus={() => setShowUserDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
-                  onChange={e => {
-                    setUserSearch(e.target.value);
-                    setForm(f => ({ ...f, userId: "" }));
-                  }}
-                  placeholder="User Name"
-                  className={fieldInputClasses}
-                />
-                {errors.userId && (
-                  <span className="text-xs text-red-500">{errors.userId}</span>
-                )}
-                {showUserDropdown && userSearch.length >= 2 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                    {loadingUsers ? (
-                      <div className="p-2 text-sm text-gray-500">Searching users...</div>
-                    ) : searchedUsers.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No users found</div>
-                    ) : (
-                      searchedUsers.map(user => (
-                        <div
-                          key={user.id}
-                          className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                          onMouseDown={() => handleUserSelect(user)}
-                        >
-                          {user.name}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-               <div>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => handleChange("date", e.target.value)}
-                  placeholder="Enter date"
-                  min="0"
-                  className={`${fieldInputClasses} appearance-none`}
-                />
-                {errors.date && (
-                  <span className="text-xs text-red-500">{errors.date}</span>
-                )}
-              </div>
-               <div>
-                <input
-                  type="time"
-                  value={form.starttime}
-                  onChange={(e) => handleChange("starttime", e.target.value)}
-                  placeholder="Enter start time"
-                  min="0"
-                  className={`${fieldInputClasses} appearance-none`}
-                />
-                {errors.starttime && (
-                  <span className="text-xs text-red-500">{errors.starttime}</span>
-                )}
-              </div>
-               <div>
-                <input
-                  type="time"
-                  value={form.endtime}
-                  onChange={(e) => handleChange("endtime", e.target.value)}
-                  placeholder="Enter end time"
-                  min="0"
-                  className={`${fieldInputClasses} appearance-none`}
-                />
-                {errors.endtime && (
-                  <span className="text-xs text-red-500">{errors.endtime}</span>
-                )}
-              </div>
-            <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-
-
-              {/* Submit Button */}
-              <div className="flex justify-start">
-  <button
-    type="submit"
-    disabled={submitLoader}
-    className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-  >
-    {submitLoader ? (
-      <>
-        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-        Loading...
-      </>
-    ) : (
-      <>
-        <Plus className="w-4 h-4 mr-1" />
-        Add
-      </>
-    )}
-  </button>
-</div>
-
+                            <div className="text-xs text-gray-500">
+                              {address.label || address.address}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
+                </div>
+              )}
             </div>
-          </form>
-        </div>
+            <div>
+                             <input
+                 type="text"
+                 value={selectedAddressText}
+                 placeholder="Location"
+                 readOnly
+                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100' : ''}`}
+               />
+            </div>
+
+            {/* User Search */}
+            <div className="relative">
+              <input
+                type="text"
+                value={userSearch}
+                onFocus={() => setShowUserDropdown(true)}
+                onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
+                onChange={e => {
+                  setUserSearch(e.target.value);
+                  setForm(f => ({ ...f, userId: "" }));
+                }}
+                placeholder="User Name"
+                className={inputClasses}
+              />
+              {errors.userId && (
+                <span className="text-xs text-red-500">{errors.userId}</span>
+              )}
+              {showUserDropdown && userSearch.length >= 2 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
+                  {loadingUsers ? (
+                    <div className="p-2 text-sm text-gray-500">Searching users...</div>
+                  ) : searchedUsers.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">No users found</div>
+                  ) : (
+                    searchedUsers.map(user => (
+                      <div
+                        key={user.id}
+                        className="p-2 cursor-pointer text-sm hover:bg-gray-50"
+                        onMouseDown={() => handleUserSelect(user)}
+                      >
+                        {user.name}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center">
+                             <input
+                 type="date"
+                 value={form.date}
+                 onChange={(e) => handleChange("date", e.target.value)}
+                 placeholder="Select Date"
+                 onFocus={(e) => e.target.showPicker?.()}
+                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
+                 min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+                 max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+               />
+              {errors.date && (
+                <span className="text-xs text-red-500">{errors.date}</span>
+              )}
+                             {form.date && (
+                 <div className="flex items-center mt-2">
+                   <input
+                     id="applyAllWeek"
+                     type="checkbox"
+                     checked={applyAllWeek}
+                     onChange={e => setApplyAllWeek(e.target.checked)}
+                     className="ml-[-50px] mt-[-7px]"
+                   />
+                  
+                 </div>
+               )}
+            </div>
+
+            <div>
+              <input
+                type="time"
+                value={form.starttime}
+                onChange={(e) => handleChange("starttime", e.target.value)}
+                placeholder="Start Time"
+                step="60"
+                onFocus={(e) => e.target.showPicker?.()}
+                className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
+              />
+              {errors.starttime && (
+                <span className="text-xs text-red-500">{errors.starttime}</span>
+              )}
+            </div>
+            <div>
+              <input
+                type="time"
+                value={form.endtime}
+                onChange={(e) => handleChange("endtime", e.target.value)}
+                placeholder="End Time"
+                onFocus={(e) => e.target.showPicker?.()}
+                className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
+              />
+              {errors.endtime && (
+                <span className="text-xs text-red-500">{errors.endtime}</span>
+              )}
+              {errors.overlap && (
+                <span className="text-xs text-red-500">{errors.overlap}</span>
+              )}
+            </div>
+            <div className="flex items-center">
+              <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+            </div>
+            
+            <div className="flex gap-2 justify-start">
+              <button
+                type="submit"
+                disabled={submitLoader}
+                className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+              >
+                {submitLoader ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </>
+                )}
+              </button>
+              {(form.date || form.starttime || form.endtime || form.userId || form.addressId || form.clientId || auto ) && (
+                
+              <button
+                type="button"
+                onClick={resetForm}
+                className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Reset
+              </button>
+              )}
+            </div>
+          </div>
+        </form>
       </div>
 
-    </div>
-  );
-};
+       {scheduleData.length > 0 && (
+        <div className="bg-white rounded shadow-sm border">
+          {/* Client Info */}
+          <div className="p-4 border-b bg-gray-50">
+            <div className="font-medium text-gray-800">
+              {scheduleData[0]?.clientName || 'Client Name'}
+            </div>
+            <div className="text-sm text-gray-600">
+              {scheduleData[0]?.address || 'Address'}
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-700">
+                    Employee Name
+                  </th>
+                  {dateColumns.map(dateCol => (
+                    <th key={dateCol.date} className="border border-gray-300 px-3 py-2 text-center text-sm font-medium text-gray-700 min-w-[100px]">
+                      {dateCol.display}
+                    </th>
+                  ))}
+                  <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700">
+                    Total
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700">
+                    Auto
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {uniqueUsers.map(user => (
+                  <React.Fragment key={user.id}>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2">
+                        <div className="font-medium text-gray-800">{user.name}</div>
+                        <div className="text-xs text-gray-500">{user.phone}</div>
+                      </td>
+                                             {dateColumns.map(dateCol => {
+                         const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
+                         return (
+                           <td 
+                             key={dateCol.date} 
+                             className={`border border-gray-300 px-2 py-2 text-center text-sm ${
+                               dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date 
+                                 ? 'bg-blue-50 border-blue-300' 
+                                 : ''
+                             }`}
+                             onDragOver={(e) => handleDragOver(e, user.id, dateCol.date)}
+                             onDragLeave={handleDragLeave}
+                             onDrop={(e) => handleDrop(e, user.id, dateCol.date)}
+                           >
+                             {daySchedules.length > 0 ? (
+                               <div className="space-y-1">
+                                 {daySchedules.map(schedule => {
+                                   // Sort shifts by start time
+                                   const sortedShifts = [...schedule.shifts].sort((a, b) => {
+                                     const timeA = a.startTime.replace(':', '');
+                                     const timeB = b.startTime.replace(':', '');
+                                     return parseInt(timeA) - parseInt(timeB);
+                                   });
+                                   
+                                   return (
+                                     <div key={schedule.id} className="relative group">
+                                       {sortedShifts.map((shift, shiftIndex) => (
+                                         <div 
+                                           key={shiftIndex} 
+                                           className="flex flex-col items-center justify-center text-sm font-medium py-1"
+                                           draggable
+                                           onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
+                                           onDragEnd={handleDragEnd}
+                                         >
+                                           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1">
+                                             <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+                                               <GripVertical className="w-3 h-3" />
+                                             </div>
+                                             <button
+                                               onClick={() => handleEditShift(user.id, dateCol.date, shift)}
+                                               className="text-blue-600 hover:text-blue-800 p-0.5"
+                                               title="Edit shift"
+                                             >
+                                               <Edit className="w-3 h-3" />
+                                             </button>
+                                             <button
+                                               onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                               className="text-red-600 hover:text-red-800 p-0.5"
+                                               title="Delete shift"
+                                             >
+                                               <Trash2 className="w-3 h-3" />
+                                             </button>
+                                           </div>
+                                           <span className="text-base">{shift.startTime} - {shift.endTime}</span>
+                                         </div>
+                                       ))}
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                             ) : (
+                               <span className="text-gray-400">-</span>
+                             )}
+                           </td>
+                         );
+                       })}
+                       <td className="border border-gray-300 px-4 py-2 text-center font-medium">
+                         {calculateUserTotal(user.id)}
+                       </td>
+                       <td className="border border-gray-300 px-2 py-2 text-center w-20">
+                         <div className="flex items-center justify-center space-x-2">
+                           <ToggleSwitch 
+                             enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
+                             onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
+                           />
+                           <button
+                             onClick={() => handleDeleteUser(user.id)}
+                             className="text-red-600 hover:text-red-800 p-1"
+                             title="Delete all user data"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                         </div>
+                       </td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-gray-600">
+                        Total
+                      </td>
+                                             {dateColumns.map(dateCol => {
+                         const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
+                         const dayTotal = daySchedules.reduce((total, schedule) => 
+                           total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
+                         );
+                         return (
+                           <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center text-sm font-medium">
+                             {dayTotal > 0 ? dayTotal : '-'}
+                           </td>
+                         );
+                       })}
+                      <td className="border border-gray-300 px-4 py-2 text-center font-medium">
+                        {calculateUserTotal(user.id)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2"></td>
+                    </tr>
+                  </React.Fragment>
+                ))}
+                {/* Grand Total Row */}
+                <tr className="bg-gray-50 font-medium">
+                  <td className="border border-gray-300 px-4 py-2">Grand Total</td>
+                  {dateColumns.map(dateCol => (
+                    <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center">
+                      {calculateDayTotal(dateCol.date) || '-'}
+                    </td>
+                  ))}
+                  <td className="border border-gray-300 px-4 py-2 text-center">
+                    {calculateGrandTotal()}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Publish Button */}
+          <div className="p-4 border-t">
+            <button 
+              onClick={handlePublish}
+              className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700"
+              disabled={isPublished}
+            >
+              {isPublished ? 'Published' : 'Publish'}
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Employees who had change in the schedule should get "Your schedule has been updated!" notification after Publish is clicked.
+            </p>
+          </div>
+        </div>
+      )}
+
+       {/* Delete Shift Confirmation Modal */}
+       {deleteModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-6">
+               <p className="text-sm text-gray-500">
+                 Are you sure you want to delete this shift?
+               </p>
+             </div>
+             
+             <div className="flex space-x-3 justify-end">
+               <button
+                 type="button"
+                 onClick={cancelDeleteShift}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmDeleteShift}
+                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+               >
+                 <Trash2 className="w-4 h-4 mr-2" />
+                 Delete
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Edit Shift Modal */}
+       {editModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
+             </div>
+             
+             <div className="space-y-4">
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                 <input
+                   type="time"
+                   value={form.starttime}
+                   onChange={(e) => setForm(prev => ({ ...prev, starttime: e.target.value }))}
+                   className={inputClasses}
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                 <input
+                   type="time"
+                   value={form.endtime}
+                   onChange={(e) => setForm(prev => ({ ...prev, endtime: e.target.value }))}
+                   className={inputClasses}
+                 />
+               </div>
+             </div>
+             
+             <div className="flex space-x-3 justify-end mt-6">
+               <button
+                 type="button"
+                 onClick={cancelEditShift}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmEditShift}
+                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+               >
+                 <Edit className="w-4 h-4 mr-2" />
+                 Update
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Delete User Confirmation Modal */}
+       {deleteUserModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-6">
+               <p className="text-sm text-gray-500">
+                 Are you sure you want to delete all data for this user?
+               </p>
+             </div>
+             
+             <div className="flex space-x-3 justify-end">
+               <button
+                 type="button"
+                 onClick={cancelDeleteUser}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmDeleteUser}
+                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+               >
+                 <Trash2 className="w-4 h-4 mr-2" />
+                 Delete All
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ };

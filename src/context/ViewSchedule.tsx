@@ -22,7 +22,7 @@ interface ScheduleSession {
   createdAt: string;
   client: { id: number; name: string };
   address: { id: number; address: string };
-  user: { id: number; name: string };
+  user: { id: number; name: string ,phone?:string };
   shifts: Shift[];
 }
 
