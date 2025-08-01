@@ -18,6 +18,7 @@ export const Notification = () => {
     Enddate: "",
     notification: [] as NotificationOption[],
   });
+  const data=[];
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
@@ -113,6 +114,7 @@ export const Notification = () => {
     e.preventDefault();
     if (!validate()) return;
     setSubmitLoader(true);
+    data.push(form);
     console.log("Submitting form with data:", form); // Debug log
     setSubmitLoader(false);
 
@@ -448,7 +450,7 @@ export const Notification = () => {
      
 
       <GenericTable
-        data={[]}
+        data={data || []}
         columns={tableColumns}
         loading={loading}
         emptyMessage="No records found matching your search criteria."

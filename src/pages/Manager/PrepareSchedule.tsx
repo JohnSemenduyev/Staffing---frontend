@@ -305,6 +305,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
+import { toast } from "sonner";
 
 export const PrepareSchedule = () => {
   const [form, setForm] = useState({
@@ -385,43 +386,78 @@ export const PrepareSchedule = () => {
     return parseFloat(hours.toFixed(2));
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setSubmitLoader(true);
+  // const onSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!validate()) return;
+  //   setSubmitLoader(true);
 
-    try {
-      const payload = {
-        clientId: Number(form.clientId),
-        addressId: Number(form.addressId),
-        userId: Number(form.userId),
-        startDate: form.date,
-        auto,
-        shifts: [
-          {
-            date: form.date,
-            startTime: form.starttime,
-            endTime: form.endtime,
-            hours: calculateHours(form.starttime, form.endtime),
-          },
-        ],
-      };
+  //   try {
+  //     const payload = {
+  //       clientId: Number(form.clientId),
+  //       addressId: Number(form.addressId),
+  //       userId: Number(form.userId),
+  //       startDate: form.date,
+  //       auto,
+  //       shifts: [
+  //         {
+  //           date: form.date,
+  //           startTime: form.starttime,
+  //           endTime: form.endtime,
+  //           hours: calculateHours(form.starttime, form.endtime),
+  //         },
+  //       ],
+  //     };
 
-      await createSession(payload);
-      setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
-      setClientSearch("");
-      setSelectedAddressText("");
-      setUserSearch("");
-      setAuto(false);
-      alert("Schedule session created successfully!");
-    } catch (err) {
-      console.error("Error creating schedule session:", err);
-      alert("Failed to create schedule session.");
-    } finally {
-      setSubmitLoader(false);
-    }
-  };
+  //     await createSession(payload);
+  //     setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
+  //     setClientSearch("");
+  //     setSelectedAddressText("");
+  //     setUserSearch("");
+  //     setAuto(false);
+  //     alert("Schedule session created successfully!");
+  //   } catch (err) {
+  //     console.error("Error creating schedule session:", err);
+  //     alert("Failed to create schedule session.");
+  //   } finally {
+  //     setSubmitLoader(false);
+  //   }
+  // };
+const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validate()) return;
+  setSubmitLoader(true);
 
+  try {
+    const payload = {
+      clientId: Number(form.clientId),
+      addressId: Number(form.addressId),
+      userId: Number(form.userId),
+      startDate: form.date,
+      auto,
+      shifts: [
+        {
+          date: form.date,
+          startTime: form.starttime,
+          endTime: form.endtime,
+          hours: calculateHours(form.starttime, form.endtime),
+        },
+      ],
+    };
+
+    await createSession(payload);
+    setForm({ clientId: "", addressId: "", userId: "", date: "", starttime: "", endtime: "" });
+    setClientSearch("");
+    setSelectedAddressText("");
+    setUserSearch("");
+    setAuto(false);
+    toast.success("Schedule session created successfully!");
+  } catch (err) {
+    console.error("Error creating schedule session:", err);
+    toast.error("Failed to create schedule session.");
+  } finally {
+    setSubmitLoader(false);
+  }
+};
   return (
     <div className="min-h-screen p-6 font-sans">
       {/* form content here (same as before) */}

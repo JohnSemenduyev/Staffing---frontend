@@ -1,16 +1,35 @@
-// import React, { useState } from "react";
-// import { Eye, Plus, Trash2 } from "lucide-react";
+// import React, { useRef, useState } from "react";
+// import { Eye, Plus, Trash2, Printer, Share2 } from "lucide-react";
 // import { useSearchClient } from "../../hooks/usesearchClient";
 // import { useDebounce } from "../../hooks/useDebounce";
 // import { useSearchUsers } from "../../hooks/useSearchUser";
 // import { GenericTable,TableAction,TableColumn } from "../../components/GenericTable";
-
+// import { toast } from "sonner";
+// import * as XLSX from "xlsx";
 // export const Summary = () => {
 //   const [form, setForm] = useState({
 //     clientId: "",
 //     addressId: "",
 //     date: "",
 //   });
+//   const data=[
+//     {
+//       guardFirst: { name: "John" },
+//       guardLast: { name: "Doe" },
+//       date: "2023-10-01",
+//       Client: { name: "Client A" },
+//       address: { address: "123 Main St" },
+//       time: 120,
+//     },
+//     {
+//       guardFirst: { name: "Jane" },
+//       guardLast: { name: "Smith" },
+//       date: "2023-10-02",
+//       Client: { name: "Client B" },
+//       address: { address: "456 Elm St" },
+//       time: 90,
+//     }
+//   ]
 
 //   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 //   const [clientSearch, setClientSearch] = useState("");
@@ -27,7 +46,7 @@
 //   const { data: searchedUsers = [], isLoading: loadingUsers } =
 //     useSearchUsers(debouncedUserSearch);
 //   const [showUserDropdown, setShowUserDropdown] = useState(false);
-
+// const tableRef = useRef<HTMLDivElement>(null);
 //   const fieldInputClasses =
 //     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
@@ -69,12 +88,14 @@
 //     );
 //     setSelectedAddressText(selectedAddress?.address || "");
 //   };
+  
 //   const handleUserSelect = (user: { id: string | number; name: string }) => {
 //     setForm((f) => ({ ...f, userId: String(user.id) }));
 //     setUserSearch(user.name);
 //     setShowUserDropdown(false);
 //     setErrors((e) => ({ ...e, userId: undefined }));
 //   };
+  
 //   const onSubmit = async (e: React.FormEvent) => {
 //     e.preventDefault();
 //     if (!validate()) return;
@@ -121,7 +142,71 @@
 //     //   }
 //   };
 
-//    const tableColumns: TableColumn[] = [
+//      const generateExcelFile = () => {
+//     const formattedData = data.map((item) => ({
+//       "First Name": item.guardFirst.name,
+//       "Last Name": item.guardLast.name,
+//       "Date": item.date,
+//       "Client Name": item.Client.name,
+//       "Location": item.address.address,
+//       "Hours (Mins)": item.time,
+//     }));
+
+//     const worksheet = XLSX.utils.json_to_sheet(formattedData);
+//     const workbook = XLSX.utils.book_new();
+//     XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
+
+//     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+//     const blob = new Blob([excelBuffer], {
+//       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+//     });
+//     return blob;
+//   };
+
+//   const handleDownloadExcel = () => {
+//     const blob = generateExcelFile();
+//     const url = URL.createObjectURL(blob);
+//     const a = document.createElement("a");
+//     a.href = url;
+//     a.download = "SummaryReport.xlsx";
+//     document.body.appendChild(a);
+//     a.click();
+//     a.remove();
+//     URL.revokeObjectURL(url);
+//     toast.success("Excel downloaded!");
+//   };
+
+//   const handlePrint = () => {
+//     const content = tableRef.current?.innerHTML;
+//     const printWindow = window.open("", "", "width=800,height=600");
+
+//     if (printWindow && content) {
+//       printWindow.document.write(`
+//         <html>
+//           <head>
+//             <title>Time Summary Report</title>
+//             <style>
+//               body { font-family: Arial, sans-serif; padding: 20px; }
+//               h1 { text-align: center; margin-bottom: 20px; }
+//               table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+//               th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+//               th { background-color: #f2f2f2; }
+//             </style>
+//           </head>
+//           <body>
+//             <h1>Time Summary Report</h1>
+//             ${content}
+//           </body>
+//         </html>
+//       `);
+//       printWindow.document.close();
+//       printWindow.focus();
+//       printWindow.print();
+//       printWindow.close();
+//     }
+//   };
+
+//   const tableColumns: TableColumn[] = [
 //     {
 //       key: "guardFirst.name",
 //       label: "First Name",
@@ -140,6 +225,7 @@
 //       key: "date",
 //       label: "Date",
 //       sortable: true,
+//       searchable: true,
 //       className: "whitespace-nowrap max-w-[200px]",
 //       render: (value: any) => `${value} Mins`
 //     },
@@ -162,14 +248,17 @@
 //       key: "time",
 //       label: "Hours",
 //       sortable: true,
+//       searchable: true,
 //       className: "whitespace-nowrap max-w-[200px]",
 //       render: (value: any) => `${value} Mins`
 //     }
 //   ]; 
+  
 //   return (
-//     <div className="min-h-screen font-sans w-full p-6">
-//       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100">
-//         <h2 className="text-xl font-semibold mb-6">Summary</h2>
+//     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+//         <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+//           <h2 className="text-xl font-semibold mb-2">
+//            View Time Summary</h2>
 //         <form onSubmit={onSubmit} autoComplete="off">
 //           <div className="grid grid-cols-4 gap-4 items-start">
 //             {/* Client Search Field */}
@@ -267,44 +356,65 @@
 //             </div>
 
 //             {/* Submit Button */}
-//             <div className="flex justify-start">
-//               <button
-//                 type="submit"
-//                 disabled={submitLoader}
-//                 className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-//               >
-//                 {submitLoader ? (
-//                   <>
-//                     <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-//                     Loading...
-//                   </>
-//                 ) : (
-//                   <>
-//                     <Plus className="w-4 h-4 mr-1" />
-//                     Add
-//                   </>
-//                 )}
-//               </button>
-//             </div>
+//                 {/* Submit Button */}
+//             <div className="flex justify-start">               
+//   <button                 
+//     type="submit"                 
+//     disabled={submitLoader}                 
+//     className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap pl-5 pr-5"               
+//   >                 
+//     {submitLoader ? (                   
+//       <>                     
+//         <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />                     
+//         Loading...                   
+//       </>                 
+//     ) : (                   
+//       "Run"                 
+//     )}               
+//   </button>             
+// </div>
 //           </div>
 //         </form>
 //       </div>
+      
+//       {/* Table Header with Print and Share Icons */}
+//       <div className="flex justify-end items-center  mt-4 mb-2">
+//         <button
+//           onClick={handlePrint}
+//           className="inline-flex items-center  py-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+//           title="Print"
+//         >
+//           <Printer className="w-5 h-5" />
+//         </button>
+//         <button
+//           onClick={handleDownloadExcel}
+//           className="inline-flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+//           title="Share"
+//         >
+//           <Share2 className="w-5 h-5" />
+//         </button>
+//       </div>
+//       <div ref={tableRef} className="overflow-x-auto">
 //       <GenericTable
-//                 data={[]}
-//                 columns={tableColumns}
-//                 loading={loading}
-//                 emptyMessage="No records found matching your search criteria."
-//                 searchable={true}
-//               />
+//         data={data || []}
+//         columns={tableColumns}
+//         loading={loading}
+//         emptyMessage="No records found matching your search criteria."
+//         searchable={true}
+//       />
+//       </div>
 //     </div>
 //   );
 // };
+
 import React, { useState } from "react";
 import { Eye, Plus, Trash2, Printer, Share2 } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
-import { GenericTable,TableAction,TableColumn } from "../../components/GenericTable";
+import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export const Summary = () => {
   const [form, setForm] = useState({
@@ -313,6 +423,25 @@ export const Summary = () => {
     date: "",
   });
 
+  const data = [
+    {
+      guardFirst: { name: "John" },
+      guardLast: { name: "Doe" },
+      date: "2023-10-01",
+      Client: { name: "Client A" },
+      address: { address: "123 Main St" },
+      time: 120,
+    },
+    {
+      guardFirst: { name: "Jane" },
+      guardLast: { name: "Smith" },
+      date: "2023-10-02",
+      Client: { name: "Client B" },
+      address: { address: "456 Elm St" },
+      time: 90,
+    }
+  ];
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
@@ -320,7 +449,9 @@ export const Summary = () => {
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
-  const[loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const { data: searchedClients = [], isLoading: loadingClients } =
     useSearchClient(debouncedClientSearch);
   const [userSearch, setUserSearch] = useState("");
@@ -341,7 +472,7 @@ export const Summary = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field, value) => {
     setForm((f) => ({
       ...f,
       [field]: value,
@@ -350,8 +481,8 @@ export const Summary = () => {
   };
 
   const handleClientSelect = (
-    client: { id: string | number; name: string },
-    addressId: number | string
+    client,
+    addressId
   ) => {
     setForm((f) => ({
       ...f,
@@ -370,15 +501,15 @@ export const Summary = () => {
     );
     setSelectedAddressText(selectedAddress?.address || "");
   };
-  
-  const handleUserSelect = (user: { id: string | number; name: string }) => {
+
+  const handleUserSelect = (user) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
     setUserSearch(user.name);
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined }));
   };
-  
-  const onSubmit = async (e: React.FormEvent) => {
+
+  const onSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setSubmitLoader(true);
@@ -399,9 +530,7 @@ export const Summary = () => {
     //     };
 
     //     console.log("Submitting payload:", payload); // Debug log
-
     //     await createTimeSetup(payload);
-
     //     // Reset form
     //     setForm({
     //       clientId: "",
@@ -424,26 +553,289 @@ export const Summary = () => {
     //   }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const generateExcelFile = () => {
+    const formattedData = data.map((item) => ({
+      "First Name": item.guardFirst.name,
+      "Last Name": item.guardLast.name,
+      "Date": item.date,
+      "Client Name": item.Client.name,
+      "Location": item.address.address,
+      "Hours (Mins)": item.time,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    return blob;
   };
 
-  const handleShare = () => {
-    // Add your share logic here
-    if (navigator.share) {
-      navigator.share({
-        title: 'Summary Report',
-        text: 'Check out this summary report',
-        url: window.location.href,
-      });
-    } else {
-      // Fallback for browsers that don't support Web Share API
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+  const handleDownloadExcel = () => {
+    const blob = generateExcelFile();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "SummaryReport.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Excel downloaded!");
+  };
+
+  const generatePrintableTable = () => {
+    if (!data || data.length === 0) {
+      return `
+        <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
+          <p>No data available to print</p>
+          <p style="font-size: 14px; margin-top: 10px;">Please run a search to generate data first.</p>
+        </div>
+      `;
+    }
+
+    // Table headers
+    const headers = [
+      'First Name',
+      'Last Name', 
+      'Date',
+      'Client Name',
+      'Client Location',
+      'Hours (Minutes)'
+    ];
+
+    const headerRow = headers.map(header => 
+      `<th style="background-color: #f8f9fa; font-weight: bold; padding: 12px; text-align: left; border: 1px solid #dee2e6;">${header}</th>`
+    ).join('');
+    
+    // Table rows from data
+    const dataRows = data.map((item, index) => {
+      const rowStyle = index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
+      return `
+        <tr style="${rowStyle}">
+          <td style="padding: 10px; border: 1px solid #dee2e6;">${item.guardFirst?.name || '-'}</td>
+          <td style="padding: 10px; border: 1px solid #dee2e6;">${item.guardLast?.name || '-'}</td>
+          <td style="padding: 10px; border: 1px solid #dee2e6;">${item.date || '-'}</td>
+          <td style="padding: 10px; border: 1px solid #dee2e6;">${item.Client?.name || '-'}</td>
+          <td style="padding: 10px; border: 1px solid #dee2e6; max-width: 200px; word-wrap: break-word;">${item.address?.address || '-'}</td>
+          <td style="padding: 10px; border: 1px solid #dee2e6; text-align: right;">${item.time || 0}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Calculate totals
+    const totalHours = data.reduce((sum, item) => sum + (item.time || 0), 0);
+    const totalRecords = data.length;
+
+    return `
+      <div style="margin-bottom: 20px;">
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Total Records:</strong> ${totalRecords}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Total Hours:</strong> ${totalHours} minutes (${(totalHours / 60).toFixed(2)} hours)</p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px;">
+        <thead>
+          <tr>${headerRow}</tr>
+        </thead>
+        <tbody>
+          ${dataRows}
+        </tbody>
+      </table>
+    `;
+  };
+
+  const handlePrint = async () => {
+    try {
+      setIsPrinting(true);
+      
+      // Small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const tableContent = generatePrintableTable();
+      const currentDate = new Date().toLocaleDateString();
+      const currentTime = new Date().toLocaleTimeString();
+      
+      const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
+
+      if (!printWindow) {
+        toast.error("Pop-up blocked! Please allow pop-ups and try again.");
+        return;
+      }
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Time Summary Report</title>
+            <style>
+              @page {
+                margin: 1in;
+                size: landscape;
+              }
+              
+              * {
+                box-sizing: border-box;
+              }
+              
+              body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                margin: 0;
+                padding: 20px;
+                background: white;
+                color: #333;
+                line-height: 1.4;
+              }
+              
+              .header {
+                text-align: center;
+                margin-bottom: 30px;
+                border-bottom: 2px solid #004175;
+                padding-bottom: 15px;
+              }
+              
+              .header h1 { 
+                margin: 0;
+                color: #004175;
+                font-size: 24px;
+                font-weight: bold;
+              }
+              
+              .header .subtitle {
+                margin: 5px 0 0 0;
+                color: #666;
+                font-size: 14px;
+              }
+              
+              .print-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+                font-size: 12px;
+                color: #666;
+              }
+              
+              .summary-stats {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 5px;
+                margin-bottom: 20px;
+                border-left: 4px solid #004175;
+              }
+              
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-top: 10px;
+                background: white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+              }
+              
+              th { 
+                background-color: #004175 !important;
+                color: white !important;
+                font-weight: bold;
+                padding: 12px 8px;
+                text-align: left;
+                border: 1px solid #004175;
+                font-size: 12px;
+              }
+              
+              td { 
+                padding: 10px 8px;
+                border: 1px solid #dee2e6;
+                font-size: 11px;
+              }
+              
+              tr:nth-child(even) {
+                background-color: #f8f9fa;
+              }
+              
+              tr:hover {
+                background-color: #e9ecef;
+              }
+              
+              .footer {
+                margin-top: 30px;
+                text-align: center;
+                font-size: 10px;
+                color: #666;
+                border-top: 1px solid #dee2e6;
+                padding-top: 15px;
+              }
+              
+              .no-data {
+                text-align: center;
+                padding: 40px;
+                color: #666;
+                font-style: italic;
+              }
+              
+              @media print {
+                body { 
+                  margin: 0;
+                  padding: 15px;
+                }
+                
+                .header h1 {
+                  font-size: 20px;
+                }
+                
+                table {
+                  font-size: 10px;
+                }
+                
+                th, td {
+                  padding: 6px 4px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Time Summary Report</h1>
+              <p class="subtitle">Generated on ${currentDate} at ${currentTime}</p>
+            </div>
+            
+            <div class="print-info">
+              <div>Report Type: Time Summary</div>
+              <div>Page 1 of 1</div>
+            </div>
+            
+            ${tableContent}
+            
+            <div class="footer">
+              <p>This report was generated automatically from the Time Summary system.</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      // Wait for content to load, then focus and print
+      printWindow.onload = () => {
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          // Don't close automatically - let user choose
+        }, 500);
+      };
+      
+      toast.success("Print preview opened successfully!");
+      
+    } catch (error) {
+      console.error("Print error:", error);
+      toast.error("Error generating print preview. Please try again.");
+    } finally {
+      setIsPrinting(false);
     }
   };
 
-  const tableColumns: TableColumn[] = [
+  const tableColumns = [
     {
       key: "guardFirst.name",
       label: "First Name",
@@ -460,11 +852,10 @@ export const Summary = () => {
     },
     {
       key: "date",
-      label: "Date",
+      label: "Date",  
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap max-w-[200px]",
-      render: (value: any) => `${value} Mins`
+      className: "whitespace-nowrap max-w-[200px]"
     },
     {
       key: "Client.name",
@@ -479,7 +870,7 @@ export const Summary = () => {
       sortable: true,
       searchable: true,
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-      render: (value: string) => <div className="truncate" title={value}>{value || "-"}</div>
+      render: (value) => <div className="truncate" title={value}>{value || "-"}</div>
     },
     {
       key: "time",
@@ -487,15 +878,16 @@ export const Summary = () => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap max-w-[200px]",
-      render: (value: any) => `${value} Mins`
+      render: (value) => `${value} Mins`
     }
-  ]; 
+  ];
   
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
-          <h2 className="text-xl font-semibold mb-2">
-           View Time Summary</h2>
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+        <h2 className="text-xl font-semibold mb-2">
+          View Time Summary
+        </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-4 gap-4 items-start">
             {/* Client Search Field */}
@@ -575,6 +967,7 @@ export const Summary = () => {
                 className={`${fieldInputClasses} appearance-none bg-gray-50`}
               />
             </div>
+            
             <div>
               <input
                 type="text"
@@ -593,47 +986,55 @@ export const Summary = () => {
             </div>
 
             {/* Submit Button */}
-                {/* Submit Button */}
             <div className="flex justify-start">               
-  <button                 
-    type="submit"                 
-    disabled={submitLoader}                 
-    className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap pl-5 pr-5"               
-  >                 
-    {submitLoader ? (                   
-      <>                     
-        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />                     
-        Loading...                   
-      </>                 
-    ) : (                   
-      "Run"                 
-    )}               
-  </button>             
-</div>
+              <button                 
+                type="submit"                 
+                disabled={submitLoader}                 
+                className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap pl-5 pr-5"               
+              >                 
+                {submitLoader ? (                   
+                  <>                     
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />                     
+                    Loading...                   
+                  </>                 
+                ) : (                   
+                  "Run"                 
+                )}               
+              </button>             
+            </div>
           </div>
         </form>
       </div>
       
       {/* Table Header with Print and Share Icons */}
-      <div className="flex justify-end items-center  mt-4 mb-2">
+      <div className="flex justify-end items-center gap-2 mt-4 mb-2">
         <button
           onClick={handlePrint}
-          className="inline-flex items-center  py-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          title="Print"
+          disabled={isPrinting}
+          className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          title="Print Report"
         >
-          <Printer className="w-5 h-5" />
+          {isPrinting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+              <span className="text-sm">Preparing...</span>
+            </>
+          ) : (
+            <Printer className="w-5 h-5" />
+          )}
         </button>
+        
         <button
-          onClick={handleShare}
-          className="inline-flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          title="Share"
+          onClick={handleDownloadExcel}
+          className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          title="Download Excel"
         >
           <Share2 className="w-5 h-5" />
         </button>
       </div>
 
       <GenericTable
-        data={[]}
+        data={data || []}
         columns={tableColumns}
         loading={loading}
         emptyMessage="No records found matching your search criteria."
