@@ -87,7 +87,22 @@ const getWeekRangeFromDate = (baseDate) => {
 
   return { startOfWeek, endOfWeek };
 };
+const timeToMinutes = (timeStr) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
 
+// Helper function to check if two time ranges overlap
+const doTimesOverlap = (start1, end1, start2, end2) => {
+  const start1Minutes = timeToMinutes(start1);
+  const end1Minutes = timeToMinutes(end1);
+  const start2Minutes = timeToMinutes(start2);
+  const end2Minutes = timeToMinutes(end2);
+  
+  // Two shifts overlap if:
+  // - First shift starts before second ends AND first shift ends after second starts
+  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+};
 const sortShiftsByTime = (shifts) => {
   return [...shifts].sort((a, b) => {
     const timeToMinutes = (timeStr) => {
@@ -220,14 +235,10 @@ export const PrepareSchedule = () => {
         const existingEnd = shift.endTime;
         
         // Check if new shift overlaps with existing shift
-        if (
-          (newStartTime >= existingStart && newStartTime < existingEnd) ||
-          (newEndTime > existingStart && newEndTime <= existingEnd) ||
-          (newStartTime <= existingStart && newEndTime >= existingEnd)
-        ) {
-          e.overlap = "Shift time overlaps with existing shift for this user and date";
-          break;
-        }
+        if (doTimesOverlap(newStartTime, newEndTime, shift.startTime, shift.endTime)) {
+  e.overlap = "Shift time overlaps with existing shift for this user and date";
+  break;
+}
       }
     }
     
@@ -235,22 +246,34 @@ export const PrepareSchedule = () => {
     return Object.keys(e).length === 0;
   };
 
-  useEffect(() => {
-    const savedData = localStorage.getItem('scheduleData');
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        setScheduleData(parsedData);
-        if (parsedData.length > 0) {
-          // Set the week range based on existing data
-          const firstDate = new Date(parsedData[0].startDate);
-          setCurrentWeekRange(getWeekRangeFromDate(firstDate));
-        }
-      } catch (error) {
-        console.error('Error loading data from localStorage:', error);
+useEffect(() => {
+  const savedData = localStorage.getItem('scheduleData');
+  if (savedData) {
+    try {
+      const parsedData = JSON.parse(savedData);
+      setScheduleData(parsedData);
+      if (parsedData.length > 0) {
+        // Set the week range based on existing data
+        const firstDate = new Date(parsedData[0].startDate);
+        setCurrentWeekRange(getWeekRangeFromDate(firstDate));
+        
+        // Restore client name and address from saved data
+        const firstScheduleItem = parsedData[0];
+        setClientSearch(firstScheduleItem.clientName || '');
+        setSelectedAddressText(firstScheduleItem.address || '');
+        
+        // Also restore the form clientId and addressId
+        setForm(prevForm => ({
+          ...prevForm,
+          clientId: String(firstScheduleItem.clientId || ''),
+          addressId: String(firstScheduleItem.addressId || '')
+        }));
       }
+    } catch (error) {
+      console.error('Error loading data from localStorage:', error);
     }
-  }, []);
+  }
+}, []);
 
   // Control client search - only allow search when no schedule data or published
   useEffect(() => {
@@ -264,11 +287,13 @@ export const PrepareSchedule = () => {
   }, [scheduleData.length, isPublished, clientSearch]);
 
   useEffect(() => {
-    if (scheduleData.length > 0) {
-      localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
-    }
-  }, [scheduleData]);
-
+  if (scheduleData.length > 0) {
+    localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
+  } else {
+    // Remove the item from localStorage when scheduleData is empty
+    localStorage.removeItem('scheduleData');
+  }
+}, [scheduleData]);
   const handleChange = (field: keyof FormData, value: string) => {
     setForm((f) => ({
       ...f,
@@ -812,18 +837,15 @@ export const PrepareSchedule = () => {
 
     if (existingSchedule) {
       // Check for overlapping shifts
-      const hasOverlap = existingSchedule.shifts.some(existingShift => {
-        const existingStart = existingShift.startTime;
-        const existingEnd = existingShift.endTime;
-        const newStart = shift.startTime;
-        const newEnd = shift.endTime;
-
-        return (
-          (newStart >= existingStart && newStart < existingEnd) ||
-          (newEnd > existingStart && newEnd <= existingEnd) ||
-          (newStart <= existingStart && newEnd >= existingEnd)
-        );
-      });
+      // Check for overlapping shifts using the improved function
+const hasOverlap = existingSchedule.shifts.some(existingShift => {
+  return doTimesOverlap(
+    shift.startTime, 
+    shift.endTime, 
+    existingShift.startTime, 
+    existingShift.endTime
+  );
+});
 
       if (hasOverlap) {
         toast({
@@ -841,7 +863,7 @@ export const PrepareSchedule = () => {
         if (item.userId === targetUserId && item.startDate === targetDate) {
           return {
             ...item,
-            shifts: [...item.shifts, { ...shift, id: Date.now(), date: targetDate }]
+            shifts: sortShiftsByTime([...item.shifts, { ...shift, id: Date.now(), date: targetDate }])
           };
         }
         return item;

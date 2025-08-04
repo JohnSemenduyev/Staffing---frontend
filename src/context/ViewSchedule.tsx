@@ -1,77 +1,66 @@
-// context/ScheduleContext.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { GET_SCHEDULE_SESSIONS } from '../graphql/queries';
+import { GET_CLIENTS_WITH_SESSIONS } from "../graphql/queries";
 
-interface Shift {
+// Type definitions
+export interface Address {
   id: number;
-  scheduleSessionId: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  hours: number;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
 }
 
-interface ScheduleSession {
+export interface Client {
   id: number;
-  clientId: number;
-  addressId: number;
-  userId: number;
-  startDate: string;
-  auto: boolean;
+  name: string;
+  email: string;
+  phone?: string;
   createdAt: string;
-  client: { id: number; name: string };
-  address: { id: number; address: string };
-  user: { id: number; name: string ,phone?:string };
-  shifts: Shift[];
+  addresses: Address[];
 }
 
-interface ScheduleContextProps {
-  sessions: ScheduleSession[];
-  lastPage: number;
-  fetchSessions: (page?: number, startDate?: string) => void;
+interface ClientSessionContextType {
+  clients: Client[];
   loading: boolean;
+  error: string | null;
+  fetchClients: () => Promise<void>;
 }
 
-// Renamed context
-const ScheduleContext = createContext<ScheduleContextProps | undefined>(undefined);
+const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
 
-// Renamed provider
-export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [sessions, setSessions] = useState<ScheduleSession[]>([]);
-  const [lastPage, setLastPage] = useState<number>(1);
+export const ClientSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchSessions = async (page = 1, startDate?: string) => {
+  const fetchClients = async () => {
     setLoading(true);
     try {
-      const data: { scheduleSessions: { data: ScheduleSession[]; lastPage: number } } =
-        await graphQLClient.request(GET_SCHEDULE_SESSIONS, { page, startDate });
-      setSessions(data.scheduleSessions.data);
-      setLastPage(data.scheduleSessions.lastPage);
-    } catch (error) {
-      console.error("Error fetching sessions:", error);
+      const data = await graphQLClient.request<{ clientsWithScheduleSessions: Client[] }>(
+        GET_CLIENTS_WITH_SESSIONS
+      );
+      setClients(data.clientsWithScheduleSessions);
+      setError(null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to fetch clients");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSessions();
-  }, []);
-
   return (
-    <ScheduleContext.Provider value={{ sessions, lastPage, fetchSessions, loading }}>
+    <ClientSessionContext.Provider value={{ clients, loading, error, fetchClients }}>
       {children}
-    </ScheduleContext.Provider>
+    </ClientSessionContext.Provider>
   );
 };
 
-// Renamed hook
-export const useSchedule = () => {
-  const context = useContext(ScheduleContext);
+export const useClientSessionContext = () => {
+  const context = useContext(ClientSessionContext);
   if (!context) {
-    throw new Error("useSchedule must be used within a ScheduleProvider");
+    throw new Error("useClientSessionContext must be used within a ClientSessionProvider");
   }
   return context;
 };
