@@ -310,7 +310,9 @@ export const ViewSchedule = () => {
       address: address.address,
       city: address.city,
       pincode: address.pincode,
-      client: client // Add full client object for reference
+      client: client, // Add full client object for reference
+      email: client.email,
+      state: address.state
     }))
   );
 
@@ -318,7 +320,10 @@ export const ViewSchedule = () => {
     { key: "name", label: "Client Name", sortable: true, searchable: true, width: "200px" },
     { key: "address", label: "Street Name", sortable: true, searchable: true, width: "200px" },
     { key: "city", label: "City", sortable: true, searchable: true, width: "200px" },
-    { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "200px" }
+    { key: "state", label: "State", sortable: true, searchable: true, width: "200px" },
+    { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "200px" },
+    { key: "email", label: "Email", sortable: false, searchable: true, width: "100px" }
+
   ];
 
   const tableActions: TableAction[] = [
@@ -326,7 +331,7 @@ export const ViewSchedule = () => {
       label: "View",
       icon: <Eye className="w-4 h-4" />,
       onClick: handleView,
-      className: "text-blue-500 hover:text-green-700 px-1",
+      className: "text-blue-500 hover:text-green-700 ml-4 px-1",
       title: "View"
     }
   ];
