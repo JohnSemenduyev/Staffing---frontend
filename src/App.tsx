@@ -30,7 +30,7 @@ import { UserProvider } from "./context/UserContext";
 import { ClientProvider } from "./context/ClientContext";
 import { AddressProvider } from "./context/AddressContext";
 import {  ScheduleSessionProvider } from "./context/ScheduleContext";
-import { ScheduleProvider } from "./context/ViewSchedule";
+import { ClientSessionProvider } from "./context/ViewSchedule";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -46,7 +46,7 @@ const App = () => (
         <GeoLocationProvider>
           <TimeSetupProvider>
             <PostAssignProvider>
-              <ScheduleProvider>
+                <ClientSessionProvider>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<AuthRedirect />} />
@@ -74,7 +74,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
-              </ScheduleProvider>
+            </ClientSessionProvider>
             </PostAssignProvider>
           </TimeSetupProvider>
         </GeoLocationProvider>

@@ -329,3 +329,22 @@ export const GET_SCHEDULE_SESSIONS = gql`
     }
   }
 `;
+
+export const GET_CLIENTS_WITH_SESSIONS = gql`
+  query ClientsWithScheduleSessions {
+    clientsWithScheduleSessions {
+      id
+      name
+      email
+      phone
+      createdAt
+      addresses {
+        id
+        address
+        city
+        state
+        pincode
+      }
+    }
+  }
+`;
