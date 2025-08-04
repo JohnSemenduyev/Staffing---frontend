@@ -9,6 +9,55 @@ import { useToast } from "../../hooks/use-toast";
 import { graphQLClient } from "../../GraphqlClient";
 import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
 
+interface FormData {
+  clientId: string;
+  addressId: string;
+  userId: string;
+  date: string;
+  starttime: string;
+  endtime: string;
+}
+
+interface User {
+  id: string | number;
+  name: string;
+  phone?: string;
+}
+
+interface Client {
+  id: string | number;
+  name: string;
+  addresses: Address[];
+}
+
+interface Address {
+  id: string | number;
+  address: string;
+  label?: string;
+}
+
+interface Shift {
+  id: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+}
+
+interface ScheduleItem {
+  id: number;
+  clientId: number;
+  addressId: number;
+  userId: number;
+  startDate: string;
+  auto: boolean;
+  shifts: Shift[];
+  clientName: string;
+  address: string;
+  userName: string;
+  userPhone: string;
+}
+
 const inputClasses = `
   w-full
   px-3
@@ -39,8 +88,72 @@ const getWeekRangeFromDate = (baseDate) => {
   return { startOfWeek, endOfWeek };
 };
 
+const sortShiftsByTime = (shifts) => {
+  return [...shifts].sort((a, b) => {
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+  });
+};
+
+// Get unique shift time patterns for a user
+const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
+  const userSchedules = scheduleData.filter(item => item.userId === userId);
+  const allShifts = userSchedules.flatMap(schedule => schedule.shifts);
+  
+  const uniqueShiftTimes = new Map();
+  allShifts.forEach(shift => {
+    const key = `${shift.startTime}-${shift.endTime}`;
+    if (!uniqueShiftTimes.has(key)) {
+      uniqueShiftTimes.set(key, {
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        hours: shift.hours
+      });
+    }
+  });
+  
+  // Sort by start time
+  return Array.from(uniqueShiftTimes.values()).sort((a, b) => {
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+  });
+};
+
+// Get shift for specific user, date, and time slot
+const getShiftForUserDateAndTime = (userId: number, date: string, startTime: string, endTime: string, scheduleData: ScheduleItem[]) => {
+  const daySchedules = scheduleData.filter(item => 
+    item.userId === userId && item.startDate === date
+  );
+  
+  for (const schedule of daySchedules) {
+    const shift = schedule.shifts.find(s => 
+      s.startTime === startTime && s.endTime === endTime
+    );
+    if (shift) return shift;
+  }
+  return null;
+};
+
+// Calculate total hours for a specific shift time across all days for a user
+const calculateShiftTimeTotal = (userId: number, startTime: string, endTime: string, scheduleData: ScheduleItem[], dateColumns: any[]) => {
+  let total = 0;
+  dateColumns.forEach(dateCol => {
+    const shift = getShiftForUserDateAndTime(userId, dateCol.date, startTime, endTime, scheduleData);
+    if (shift) {
+      total += shift.hours;
+    }
+  });
+  return parseFloat(total.toFixed(2));
+};
+
 export const PrepareSchedule = () => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormData>({
     clientId: "",
     addressId: "",
     userId: "",
@@ -61,7 +174,7 @@ export const PrepareSchedule = () => {
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [scheduleData, setScheduleData] = useState([]);
+  const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [editingId, setEditingId] = useState(null);
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [isPublished, setIsPublished] = useState(false);
@@ -83,7 +196,7 @@ export const PrepareSchedule = () => {
   const [dragOverCell, setDragOverCell] = useState(null);
 
   const validate = () => {
-    const e: any = {};
+    const e: { [key: string]: string } = {};
     if (!form.clientId) e.clientId = "Required";
     if (!form.addressId) e.addressId = "Required";
     if (!form.userId) e.userId = "Required";
@@ -142,10 +255,13 @@ export const PrepareSchedule = () => {
   // Control client search - only allow search when no schedule data or published
   useEffect(() => {
     if (scheduleData.length > 0 && !isPublished) {
-      // Clear client search when schedule data exists and not published
-      setClientSearch("");
+      // Only clear client search if it's different from the existing client
+      const existingClientName = scheduleData[0]?.clientName;
+      if (clientSearch && clientSearch !== existingClientName) {
+        setClientSearch("");
+      }
     }
-  }, [scheduleData.length, isPublished]);
+  }, [scheduleData.length, isPublished, clientSearch]);
 
   useEffect(() => {
     if (scheduleData.length > 0) {
@@ -153,12 +269,18 @@ export const PrepareSchedule = () => {
     }
   }, [scheduleData]);
 
-  const handleChange = (field, value) => {
+  const handleChange = (field: keyof FormData, value: string) => {
     setForm((f) => ({
       ...f,
       [field]: value,
     }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    
+    // Clear field-specific error and overlap error for fields that affect overlap validation
+    if (field === 'starttime' || field === 'endtime' || field === 'userId' || field === 'date') {
+      setErrors((e) => ({ ...e, [field]: undefined, overlap: undefined }));
+    } else {
+      setErrors((e) => ({ ...e, [field]: undefined }));
+    }
 
     // Check week range when date changes
     if (field === 'date' && value) {
@@ -170,22 +292,22 @@ export const PrepareSchedule = () => {
         const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
         const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
         
-                 if (existingWeekStart !== newWeekStart) {
-           toast({
-             title: "Invalid Date Selection",
-             description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
-             variant: "destructive",
-           });
-           setForm(f => ({ ...f, date: "" }));
-           return;
-         }
+        if (existingWeekStart !== newWeekStart) {
+          toast({
+            title: "Invalid Date Selection",
+            description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+            variant: "destructive",
+          });
+          setForm(f => ({ ...f, date: "" }));
+          return;
+        }
       }
       
       setCurrentWeekRange(weekRange);
     }
   };
 
-  const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
+  const handleClientSelect = (client: Client, addressId: string | number) => {
     // Check if this is a different client/address than what's already in the schedule
     if (scheduleData.length > 0 && !isPublished) {
       const existingClientId = scheduleData[0]?.clientId;
@@ -215,14 +337,14 @@ export const PrepareSchedule = () => {
     setSelectedAddressText(selectedAddress?.address || "");
   };
 
-  const handleUserSelect = (user: { id: string | number; name: string }) => {
+  const handleUserSelect = (user: User) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
     setUserSearch(user.name);
     setShowUserDropdown(false);
-    setErrors((e) => ({ ...e, userId: undefined }));
+    setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
   };
 
-  const calculateHours = (start: string, end: string) => {
+  const calculateHours = (start, end) => {
     const [startH, startM] = start.split(":").map(Number);
     const [endH, endM] = end.split(":").map(Number);
     let hours = endH - startH + (endM - startM) / 60;
@@ -276,13 +398,6 @@ export const PrepareSchedule = () => {
 
   const dateColumns = generateDateColumns();
 
-  // Group schedule data by user and date
-  const getScheduleForUserAndDate = (userId, date) => {
-    return scheduleData.filter(item => 
-      item.userId === userId && item.startDate === date
-    );
-  };
-
   // Get unique users from schedule data
   const getUniqueUsers = () => {
     const userMap = new Map();
@@ -301,23 +416,26 @@ export const PrepareSchedule = () => {
   const uniqueUsers = getUniqueUsers();
 
   // Calculate totals
-  const calculateDayTotal = (date) => {
-    return scheduleData
+  const calculateDayTotal = (date: string) => {
+    const total = scheduleData
       .filter(item => item.startDate === date)
       .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    return parseFloat(total.toFixed(2));
   };
 
-  const calculateUserTotal = (userId) => {
-    return scheduleData
+  const calculateUserTotal = (userId: number) => {
+    const total = scheduleData
       .filter(item => item.userId === userId)
       .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    return parseFloat(total.toFixed(2));
   };
 
   const calculateGrandTotal = () => {
-    return scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    const total = scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    return parseFloat(total.toFixed(2));
   };
 
-  const handleUserAutoToggle = (userId, enabled) => {
+  const handleUserAutoToggle = (userId: number, enabled: boolean) => {
     // Update auto setting for specific user's schedules
     setScheduleData(prev => prev.map(item => 
       item.userId === userId ? { ...item, auto: enabled } : item
@@ -346,12 +464,12 @@ export const PrepareSchedule = () => {
           schedule.shifts.forEach(shift => {
             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
             if (!shiftMap.has(shiftKey)) {
-                          shiftMap.set(shiftKey, {
-              date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
-              startTime: shift.startTime,
-              endTime: shift.endTime,
-              hours: shift.hours
-            });
+              shiftMap.set(shiftKey, {
+                date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+                hours: shift.hours
+              });
             }
           });
         });
@@ -360,7 +478,7 @@ export const PrepareSchedule = () => {
         const userShifts = Array.from(shiftMap.values());
         
         // Calculate total weekly hours for this user
-        const weeklyHours = userShifts.reduce((total, shift) => total + shift.hours, 0);
+        const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
         
         return {
           clientId: firstSchedule?.clientId,
@@ -415,7 +533,7 @@ export const PrepareSchedule = () => {
     }
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setSubmitLoader(true);
@@ -465,18 +583,21 @@ export const PrepareSchedule = () => {
         if (existingScheduleIndex !== -1) {
           // Add new shift to existing schedule
           const updatedScheduleData = [...scheduleData];
+          const newShifts = [
+            ...updatedScheduleData[existingScheduleIndex].shifts,
+            {
+              id: Date.now(),
+              date: form.date,
+              startTime: form.starttime,
+              endTime: form.endtime,
+              hours: calculateHours(form.starttime, form.endtime),
+            }
+          ];
+          
+          // Sort shifts by time when adding
           updatedScheduleData[existingScheduleIndex] = {
             ...updatedScheduleData[existingScheduleIndex],
-            shifts: [
-              ...updatedScheduleData[existingScheduleIndex].shifts,
-              {
-                id: Date.now(), // Ensure unique ID for shifts
-                date: form.date,
-                startTime: form.starttime,
-                endTime: form.endtime,
-                hours: calculateHours(form.starttime, form.endtime),
-              }
-            ]
+            shifts: sortShiftsByTime(newShifts)
           };
           setScheduleData(updatedScheduleData);
         } else {
@@ -511,7 +632,7 @@ export const PrepareSchedule = () => {
         const selectedDate = new Date(form.date);
         setCurrentWeekRange(getWeekRangeFromDate(selectedDate));
       }
-      
+      console.log("Schedule Data:", form);
       setForm({
         clientId: form.clientId, // Keep client and address
         addressId: form.addressId,
@@ -525,7 +646,7 @@ export const PrepareSchedule = () => {
       setAuto(false);
       setErrors({});
       setApplyAllWeek(false);
-      
+      console.log("Schedule Data:", form);
       toast({
         title: "Success",
         description: "Schedule session created successfully!",
@@ -543,7 +664,7 @@ export const PrepareSchedule = () => {
   };
 
   // Delete individual shift
-  const handleDeleteShift = (userId, date, shiftId) => {
+  const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
     setDeleteModal({ isOpen: true, shiftId, userId, date });
   };
 
@@ -571,7 +692,7 @@ export const PrepareSchedule = () => {
   };
 
   // Edit individual shift
-  const handleEditShift = (userId, date, shift) => {
+  const handleEditShift = (userId: number, date: string, shift: Shift) => {
     setEditModal({ isOpen: true, shift, userId, date });
     // Pre-fill form with shift data
     setForm({
@@ -632,7 +753,7 @@ export const PrepareSchedule = () => {
   };
 
   // Delete all data for a user
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = (userId: number) => {
     setDeleteUserModal({ isOpen: true, userId });
   };
 
@@ -650,27 +771,27 @@ export const PrepareSchedule = () => {
     setDeleteUserModal({ isOpen: false, userId: null });
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (e, shift, sourceUserId, sourceDate) => {
+  // Drag and drop handlers - COPY behavior instead of MOVE
+  const handleDragStart = (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string) => {
     setDraggedShift({
       shift,
       sourceUserId,
       sourceDate
     });
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copy'; // Changed from 'move' to 'copy'
   };
 
-  const handleDragOver = (e, targetUserId, targetDate) => {
+  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = 'copy'; // Changed from 'move' to 'copy'
     setDragOverCell({ userId: targetUserId, date: targetDate });
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     setDragOverCell(null);
   };
 
-  const handleDrop = (e, targetUserId, targetDate) => {
+  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
     e.preventDefault();
     
     if (!draggedShift) return;
@@ -720,7 +841,7 @@ export const PrepareSchedule = () => {
         if (item.userId === targetUserId && item.startDate === targetDate) {
           return {
             ...item,
-            shifts: [...item.shifts, { ...shift, id: Date.now() }]
+            shifts: [...item.shifts, { ...shift, id: Date.now(), date: targetDate }]
           };
         }
         return item;
@@ -732,6 +853,7 @@ export const PrepareSchedule = () => {
       );
       
       if (sourceSchedule) {
+        const targetUser = uniqueUsers.find(u => u.id === targetUserId);
         const newSchedule = {
           id: Date.now(),
           clientId: sourceSchedule.clientId,
@@ -739,11 +861,11 @@ export const PrepareSchedule = () => {
           userId: targetUserId,
           startDate: targetDate,
           auto: sourceSchedule.auto,
-          shifts: [{ ...shift, id: Date.now() }],
+          shifts: [{ ...shift, id: Date.now(), date: targetDate }],
           clientName: sourceSchedule.clientName,
           address: sourceSchedule.address,
-          userName: sourceSchedule.userName,
-          userPhone: sourceSchedule.userPhone,
+          userName: targetUser?.name || sourceSchedule.userName,
+          userPhone: targetUser?.phone || sourceSchedule.userPhone,
         };
         
         setScheduleData(prev => [...prev, newSchedule]);
@@ -762,6 +884,7 @@ export const PrepareSchedule = () => {
     setDraggedShift(null);
     setDragOverCell(null);
   };
+  
   return (
     <div className="min-h-screen font-sans w-full p-6">
       <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
@@ -784,30 +907,30 @@ export const PrepareSchedule = () => {
             
             {/* Client Search */}
             <div className="relative">
-                              <input
-                  type="text"
-                  value={clientSearch}
-                  onFocus={() => {
-                    // Allow focus in all cases, we'll validate the selection later
-                    setShowClientDropdown(true);
-                  }}
-                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                  onChange={(e) => {
-                    // Allow change if no schedule data, published, or if trying to re-select same client
-                    if (scheduleData.length === 0 || isPublished) {
-                      setClientSearch(e.target.value);
-                      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                      setSelectedAddressText("");
-                    } else if (scheduleData.length > 0 && !isPublished) {
-                      // Always allow typing, but we'll validate the selection later
-                      setClientSearch(e.target.value);
-                      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                      setSelectedAddressText("");
-                    }
-                  }}
-                  placeholder="Client Name"
-                  className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && clientSearch !== scheduleData[0]?.clientName ? 'bg-gray-100' : ''}`}
-                />
+              <input
+                type="text"
+                value={clientSearch}
+                onFocus={() => {
+                  // Allow focus in all cases, we'll validate the selection later
+                  setShowClientDropdown(true);
+                }}
+                onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                onChange={(e) => {
+                  // Allow change if no schedule data, published, or if trying to re-select same client
+                  if (scheduleData.length === 0 || isPublished) {
+                    setClientSearch(e.target.value);
+                    setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                    setSelectedAddressText("");
+                  } else if (scheduleData.length > 0 && !isPublished) {
+                    // Always allow typing, but we'll validate the selection later
+                    setClientSearch(e.target.value);
+                    setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                    setSelectedAddressText("");
+                  }
+                }}
+                placeholder="Client Name"
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && clientSearch !== scheduleData[0]?.clientName ? 'bg-gray-100' : ''}`}
+              />
               {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
               {errors.addressId && (
                 <span className="text-xs text-red-500 block">{errors.addressId}</span>
@@ -826,7 +949,7 @@ export const PrepareSchedule = () => {
                           <div
                             key={`${client.id}-${address.id}`}
                             onMouseDown={() =>
-                              handleClientSelect({ id: client.id, name: client.name }, address.id)
+                              handleClientSelect(client, address.id)
                             }
                             className={`p-4 cursor-pointer text-sm ${
                               isEven ? "bg-white" : "bg-gray-50"
@@ -847,13 +970,13 @@ export const PrepareSchedule = () => {
               )}
             </div>
             <div>
-                              <input
-                  type="text"
-                  value={selectedAddressText}
-                  placeholder="Location"
-                  readOnly
-                  className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
-                />
+              <input
+                type="text"
+                value={selectedAddressText}
+                placeholder="Location"
+                readOnly
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
+              />
             </div>
 
             {/* User Search */}
@@ -894,63 +1017,78 @@ export const PrepareSchedule = () => {
               )}
             </div>
             <div className="flex items-center">
-                             <input
-                 type="date"
-                 value={form.date}
-                 onChange={(e) => handleChange("date", e.target.value)}
-                 placeholder="Select Date"
-                 onFocus={(e) => e.target.showPicker?.()}
-                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-                 min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
-                 max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
-               />
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => handleChange("date", e.target.value)}
+                placeholder="Select Date"
+                onFocus={(e) => e.target.showPicker?.()}
+                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
+                min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+                max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+              />
               {errors.date && (
                 <span className="text-xs text-red-500">{errors.date}</span>
               )}
-                             {form.date && (
-                 <div className="flex items-center mt-2">
-                   <input
-                     id="applyAllWeek"
-                     type="checkbox"
-                     checked={applyAllWeek}
-                     onChange={e => setApplyAllWeek(e.target.checked)}
-                     className="ml-[-50px] mt-[-7px]"
-                   />
-                  
-                 </div>
-               )}
+              {form.date && (
+                <div className="flex items-center mt-2">
+                  <input
+                    id="applyAllWeek"
+                    type="checkbox"
+                    checked={applyAllWeek}
+                    onChange={e => setApplyAllWeek(e.target.checked)}
+                    className="ml-[-50px] mt-[-7px]"
+                  />
+                </div>
+              )}
             </div>
 
             <div>
-              <input
-                type="time"
-                value={form.starttime}
-                onChange={(e) => handleChange("starttime", e.target.value)}
-                placeholder="Start Time"
-                step="60"
-                onFocus={(e) => e.target.showPicker?.()}
-                className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
-              />
-              {errors.starttime && (
-                <span className="text-xs text-red-500">{errors.starttime}</span>
-              )}
-            </div>
-            <div>
-              <input
-                type="time"
-                value={form.endtime}
-                onChange={(e) => handleChange("endtime", e.target.value)}
-                placeholder="End Time"
-                onFocus={(e) => e.target.showPicker?.()}
-                className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
-              />
-              {errors.endtime && (
-                <span className="text-xs text-red-500">{errors.endtime}</span>
-              )}
-              {errors.overlap && (
-                <span className="text-xs text-red-500">{errors.overlap}</span>
-              )}
-            </div>
+  <input
+    type={form.starttime ? "time" : "text"}
+    value={form.starttime}
+    onChange={(e) => handleChange("starttime", e.target.value)}
+    placeholder="Start Time"
+    step="60"
+    onFocus={(e) => {
+      e.target.type = "time";
+      e.target.showPicker?.();
+    }}
+    onBlur={(e) => {
+      if (!e.target.value) {
+        e.target.type = "text";
+      }
+    }}
+    className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
+  />
+  {errors.starttime && (
+    <span className="text-xs text-red-500">{errors.starttime}</span>
+  )}
+</div>
+<div>
+  <input
+    type={form.endtime ? "time" : "text"}
+    value={form.endtime}
+    onChange={(e) => handleChange("endtime", e.target.value)}
+    placeholder="End Time"
+    onFocus={(e) => {
+      e.target.type = "time";
+      e.target.showPicker?.();
+    }}
+    onBlur={(e) => {
+      if (!e.target.value) {
+        e.target.type = "text";
+      }
+    }}
+    className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
+  />
+  {errors.endtime && (
+    <span className="text-xs text-red-500">{errors.endtime}</span>
+  )}
+  {errors.overlap && (
+    <span className="text-xs text-red-500">{errors.overlap}</span>
+  )}
+</div>
             <div className="flex items-center">
               <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
             </div>
@@ -974,323 +1112,331 @@ export const PrepareSchedule = () => {
                 )}
               </button>
               {(form.date || form.starttime || form.endtime || form.userId || form.addressId || form.clientId || auto ) && (
-                
-              <button
-                type="button"
-                onClick={resetForm}
-                className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Reset
-              </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
+                </button>
               )}
             </div>
           </div>
         </form>
       </div>
 
-       {scheduleData.length > 0 && (
-        <div className="bg-white rounded shadow-sm border">
-          {/* Client Info */}
-          <div className="p-4 border-b bg-gray-50">
-            <div className="font-medium text-gray-800">
-              {scheduleData[0]?.clientName || 'Client Name'}
-            </div>
-            <div className="text-sm text-gray-600">
-              {scheduleData[0]?.address || 'Address'}
-            </div>
-          </div>
+             {scheduleData.length > 0 && (
+        <div className="w-full mt-2">
+          <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
+            <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
+              {/* Client Info */}
+              <div className="p-4 border-b bg-gray-50">
+                <div className="font-medium text-gray-800">
+                  {scheduleData[0]?.clientName || 'Client Name'}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {scheduleData[0]?.address || 'Address'}
+                </div>
+              </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-gray-700">
-                    Employee Name
-                  </th>
-                  {dateColumns.map(dateCol => (
-                    <th key={dateCol.date} className="border border-gray-300 px-3 py-2 text-center text-sm font-medium text-gray-700 min-w-[100px]">
-                      {dateCol.display}
+              {/* Table */}
+              <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
+                <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left border border-gray-300 whitespace-nowrap">
+                      Employee Name
                     </th>
-                  ))}
-                  <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-gray-700">
-                    Total
-                  </th>
-                  <th className="border border-gray-300 px-2 py-2 text-center text-sm font-medium text-gray-700 w-16">
-                    Auto
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {uniqueUsers.map(user => (
-                  <React.Fragment key={user.id}>
-                    <tr>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <div className="font-medium text-gray-800">{user.name}</div>
-                        <div className="text-xs text-gray-500">{user.phone}</div>
+                    {dateColumns.map(dateCol => (
+                      <th key={dateCol.date} className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
+                        {dateCol.display}
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap w-16">
+                      Auto
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="relative">
+                  {uniqueUsers.map((user, userIndex) => {
+                    const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
+                    const rowCount = userShiftTimes.length;
+                    
+                    return (
+                      <React.Fragment key={user.id}>
+                        {userShiftTimes.map((shiftTime, shiftIndex) => (
+                          <tr 
+                            key={`${user.id}-${shiftTime.startTime}-${shiftTime.endTime}`}
+                            className={`hover:bg-blue-50 transition-colors ${
+                              (userIndex * rowCount + shiftIndex) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                            }`}
+                          >
+                            {shiftIndex === 0 && (
+                              <td 
+                                className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap" 
+                                rowSpan={rowCount}
+                              >
+                                <div className="font-medium text-gray-800">{user.name}</div>
+                                <div className="text-xs text-gray-500">{user.phone}</div>
+                              </td>
+                            )}
+                            {dateColumns.map(dateCol => {
+                              const shift = getShiftForUserDateAndTime(
+                                user.id, 
+                                dateCol.date, 
+                                shiftTime.startTime, 
+                                shiftTime.endTime, 
+                                scheduleData
+                              );
+                              return (
+                                <td 
+                                  key={dateCol.date} 
+                                  className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
+                                    dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date 
+                                      ? 'bg-blue-50 border-blue-300' 
+                                      : ''
+                                  }`}
+                                  onDragOver={(e) => handleDragOver(e, user.id, dateCol.date)}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={(e) => handleDrop(e, user.id, dateCol.date)}
+                                >
+                                  {shift ? (
+                                    <div className="relative group">
+                                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
+                                        <div 
+                                          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                          draggable
+                                          onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
+                                          onDragEnd={handleDragEnd}
+                                        >
+                                          <GripVertical className="w-3 h-3" />
+                                        </div>
+                                        <button
+                                          onClick={() => handleEditShift(user.id, dateCol.date, shift)}
+                                          className="text-blue-600 hover:text-blue-800 p-0.5"
+                                          title="Edit shift"
+                                        >
+                                          <Edit className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                          className="text-red-600 hover:text-red-800 p-0.5"
+                                          title="Delete shift"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                      <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                              {calculateShiftTimeTotal(user.id, shiftTime.startTime, shiftTime.endTime, scheduleData, dateColumns)}
+                            </td>
+                            {shiftIndex === 0 && (
+                              <td 
+                                className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap" 
+                                rowSpan={rowCount}
+                              >
+                                <div className="flex items-center justify-center">
+                                  <ToggleSwitch 
+                                    enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
+                                    onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
+                                  />
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                        {/* User Total Row */}
+                        <tr className={`transition-colors ${
+                          (userIndex * 2 + 1) % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'
+                        }`}>
+                          <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+                            Total
+                          </td>
+                          {dateColumns.map(dateCol => {
+                            const daySchedules = scheduleData.filter(item => 
+                              item.userId === user.id && item.startDate === dateCol.date
+                            );
+                            const dayTotal = daySchedules.reduce((total, schedule) => 
+                              total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
+                            );
+                            const roundedDayTotal = parseFloat(dayTotal.toFixed(2));
+                            return (
+                              <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
+                                {roundedDayTotal > 0 ? roundedDayTotal : '-'}
+                              </td>
+                            );
+                          })}
+                          <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                            {calculateUserTotal(user.id)}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="text-red-600 hover:text-red-800 p-1"
+                              title="Delete all data for this user"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
+                  {/* Grand Total Row */}
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
+                    {dateColumns.map(dateCol => (
+                      <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                        {calculateDayTotal(dateCol.date) || '-'}
                       </td>
-                                             {dateColumns.map(dateCol => {
-                         const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
-                         return (
-                           <td 
-                             key={dateCol.date} 
-                             className={`border border-gray-300 px-2 py-2 text-center text-sm ${
-                               dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date 
-                                 ? 'bg-blue-50 border-blue-300' 
-                                 : ''
-                             }`}
-                             onDragOver={(e) => handleDragOver(e, user.id, dateCol.date)}
-                             onDragLeave={handleDragLeave}
-                             onDrop={(e) => handleDrop(e, user.id, dateCol.date)}
-                           >
-                             {daySchedules.length > 0 ? (
-                               <div className="space-y-1">
-                                 {daySchedules.map(schedule => {
-                                   // Sort shifts by start time
-                                   const sortedShifts = [...schedule.shifts].sort((a, b) => {
-                                     const timeA = a.startTime.replace(':', '');
-                                     const timeB = b.startTime.replace(':', '');
-                                     return parseInt(timeA) - parseInt(timeB);
-                                   });
-                                   
-                                   return (
-                                     <div key={schedule.id} className="relative group">
-                                       {sortedShifts.map((shift, shiftIndex) => (
-                                         <div 
-                                           key={shiftIndex} 
-                                           className="flex flex-col items-start justify-start text-sm font-medium py-1"
-                                           draggable
-                                           onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
-                                           onDragEnd={handleDragEnd}
-                                         >
-                                           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-start">
-                                             <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
-                                               <GripVertical className="w-3 h-3" />
-                                             </div>
-                                             <button
-                                               onClick={() => handleEditShift(user.id, dateCol.date, shift)}
-                                               className="text-blue-600 hover:text-blue-800 p-0.5"
-                                               title="Edit shift"
-                                             >
-                                               <Edit className="w-3 h-3" />
-                                             </button>
-                                             <button
-                                               onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
-                                               className="text-red-600 hover:text-red-800 p-0.5"
-                                               title="Delete shift"
-                                             >
-                                               <Trash2 className="w-3 h-3" />
-                                             </button>
-                                           </div>
-                                           <span className="text-sm text-left">{shift.startTime} - {shift.endTime}</span>
-                                         </div>
-                                       ))}
-                                     </div>
-                                   );
-                                 })}
-                               </div>
-                             ) : (
-                               <span className="text-gray-400">-</span>
-                             )}
-                           </td>
-                         );
-                       })}
-                       <td className="border border-gray-300 px-4 py-2 text-center font-medium">
-                         <div className="space-y-1">
-                           {scheduleData
-                             .filter(item => item.userId === user.id)
-                             .flatMap(schedule => schedule.shifts)
-                             .map((shift, index) => (
-                               <div key={index} className="text-sm">
-                                 {shift.hours}
-                               </div>
-                             ))}
-                         </div>
-                       </td>
-                       <td className="border border-gray-300 px-2 py-2 text-center w-16">
-                         <div className="flex items-center justify-center">
-                           <ToggleSwitch 
-                             enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
-                             onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
-                           />
-                         </div>
-                       </td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-300 px-4 py-2 text-sm text-gray-600">
-                        Total
-                      </td>
-                                             {dateColumns.map(dateCol => {
-                         const daySchedules = getScheduleForUserAndDate(user.id, dateCol.date);
-                         const dayTotal = daySchedules.reduce((total, schedule) => 
-                           total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
-                         );
-                         return (
-                           <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center text-sm font-medium">
-                             {dayTotal > 0 ? dayTotal : '-'}
-                           </td>
-                         );
-                       })}
-                      <td className="border border-gray-300 px-4 py-2 text-center font-medium">
-                        {calculateUserTotal(user.id)}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                          title="Delete all data for this user"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  </React.Fragment>
-                ))}
-                {/* Grand Total Row */}
-                <tr className="bg-gray-50 font-medium">
-                  <td className="border border-gray-300 px-4 py-2">Grand Total</td>
-                  {dateColumns.map(dateCol => (
-                    <td key={dateCol.date} className="border border-gray-300 px-2 py-2 text-center">
-                      {calculateDayTotal(dateCol.date) || '-'}
+                    ))}
+                    <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                      {calculateGrandTotal()}
                     </td>
-                  ))}
-                  <td className="border border-gray-300 px-4 py-2 text-center">
-                    {calculateGrandTotal()}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-2"></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-          {/* Publish Button */}
-          <div className="p-4 border-t">
-            <button 
-              onClick={handlePublish}
-              className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700"
-              disabled={isPublished}
-            >
-              {isPublished ? 'Published' : 'Publish'}
-            </button>
-            <p className="text-sm text-gray-600 mt-2">
-              Employees who had change in the schedule should get "Your schedule has been updated!" notification after Publish is clicked.
-            </p>
+            {/* Publish Button */}
+            <div className="p-4 border-t bg-white">
+              <button 
+                onClick={handlePublish}
+                className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700"
+                disabled={isPublished}
+              >
+                {isPublished ? 'Published' : 'Publish'}
+              </button>
+              <p className="text-sm text-gray-600 mt-2">
+                Employees who had change in the schedule should get "Your schedule has been updated!" notification after Publish is clicked.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-       {/* Delete Shift Confirmation Modal */}
-       {deleteModal.isOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-             <div className="mb-6">
-               <p className="text-sm text-gray-500">
-                 Are you sure you want to delete this shift?
-               </p>
-             </div>
-             
-             <div className="flex space-x-3 justify-end">
-               <button
-                 type="button"
-                 onClick={cancelDeleteShift}
-                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-               >
-                 Cancel
-               </button>
-               <button
-                 type="button"
-                 onClick={confirmDeleteShift}
-                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
-               >
-                 <Trash2 className="w-4 h-4 mr-2" />
-                 Delete
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
+      {/* Delete Shift Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete this shift?
+              </p>
+            </div>
+            
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDeleteShift}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteShift}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-       {/* Edit Shift Modal */}
-       {editModal.isOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-             <div className="mb-4">
-               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
-             </div>
-             
-             <div className="space-y-4">
-               <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                 <input
-                   type="time"
-                   value={form.starttime}
-                   onChange={(e) => setForm(prev => ({ ...prev, starttime: e.target.value }))}
-                   className={inputClasses}
-                 />
-               </div>
-               <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                 <input
-                   type="time"
-                   value={form.endtime}
-                   onChange={(e) => setForm(prev => ({ ...prev, endtime: e.target.value }))}
-                   className={inputClasses}
-                 />
-               </div>
-             </div>
-             
-             <div className="flex space-x-3 justify-end mt-6">
-               <button
-                 type="button"
-                 onClick={cancelEditShift}
-                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-               >
-                 Cancel
-               </button>
-               <button
-                 type="button"
-                 onClick={confirmEditShift}
-                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
-               >
-                 <Edit className="w-4 h-4 mr-2" />
-                 Update
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
+      {/* Edit Shift Modal */}
+      {editModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={form.starttime}
+                  onChange={(e) => setForm(prev => ({ ...prev, starttime: e.target.value }))}
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={form.endtime}
+                  onChange={(e) => setForm(prev => ({ ...prev, endtime: e.target.value }))}
+                  className={inputClasses}
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 justify-end mt-6">
+              <button
+                type="button"
+                onClick={cancelEditShift}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmEditShift}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-       {/* Delete User Confirmation Modal */}
-       {deleteUserModal.isOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-             <div className="mb-6">
-               <p className="text-sm text-gray-500">
-                 Are you sure you want to delete all data for this user?
-               </p>
-             </div>
-             
-             <div className="flex space-x-3 justify-end">
-               <button
-                 type="button"
-                 onClick={cancelDeleteUser}
-                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-               >
-                 Cancel
-               </button>
-               <button
-                 type="button"
-                 onClick={confirmDeleteUser}
-                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
-               >
-                 <Trash2 className="w-4 h-4 mr-2" />
-                 Delete All
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
-     </div>
-   );
- };
+      {/* Delete User Confirmation Modal */}
+      {deleteUserModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete all data for this user?
+              </p>
+            </div>
+            
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
