@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { GET_CLIENTS_WITH_SESSIONS } from "../graphql/queries";
+import { GET_UNIQUE_CLIENT_ADDRESS_SESSIONS } from "../graphql/queries";
 
-// Type definitions
+// Type definitions...
 export interface Address {
   id: number;
   address: string;
@@ -20,38 +20,48 @@ export interface Client {
   addresses: Address[];
 }
 
+export interface ScheduleSession {
+  id: number;
+  clientId: number;
+  addressId: number;
+  startDate: string;
+  endDate: string;
+  client: Client;
+  address: Address;
+}
+
 interface ClientSessionContextType {
-  clients: Client[];
+  sessions: ScheduleSession[];
   loading: boolean;
   error: string | null;
-  fetchClients: () => Promise<void>;
+  fetchSessions: () => Promise<void>;
 }
 
 const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
 
 export const ClientSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [sessions, setSessions] = useState<ScheduleSession[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchClients = async () => {
+  const fetchSessions = async () => {
     setLoading(true);
     try {
-      const data = await graphQLClient.request<{ clientsWithScheduleSessions: Client[] }>(
-        GET_CLIENTS_WITH_SESSIONS
+      const data = await graphQLClient.request<{ scheduleSessionsWithUniqueClientAddressPair: ScheduleSession[] }>(
+        GET_UNIQUE_CLIENT_ADDRESS_SESSIONS
       );
-      setClients(data.clientsWithScheduleSessions);
+      setSessions(data.scheduleSessionsWithUniqueClientAddressPair);
       setError(null);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to fetch clients");
+      setError(err.message || "Failed to fetch schedule sessions");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ClientSessionContext.Provider value={{ clients, loading, error, fetchClients }}>
+    <ClientSessionContext.Provider value={{ sessions, loading, error, fetchSessions }}>
       {children}
     </ClientSessionContext.Provider>
   );

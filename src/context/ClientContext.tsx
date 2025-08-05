@@ -20,6 +20,8 @@ export type Client = {
   phone?: string;
   createdAt: string;
   addresses: Address[];
+  company?: string;
+  lastName?: string;
 };
 
 interface ClientContextType {
