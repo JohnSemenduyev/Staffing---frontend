@@ -271,14 +271,6 @@ export default function AssignmentNew() {
     
   },
   { 
-    key: "guard.name", 
-    label: "Guard Name", 
-    sortable: true, 
-    searchable: true,
-    width: "200px",
-    
-  },
-  { 
     key: "user.name", 
     label: "User Name", 
     sortable: true, 
@@ -289,6 +281,14 @@ export default function AssignmentNew() {
   { 
     key: "role", 
     label: "Role", 
+    sortable: true, 
+    searchable: true,
+    width: "200px",
+    
+  },
+    { 
+    key: "guard.name", 
+    label: "Guard Name", 
     sortable: true, 
     searchable: true,
     width: "200px",
@@ -403,7 +403,7 @@ export default function AssignmentNew() {
                   value={selectedAddressText}
                   placeholder="Location"
                   readOnly
-                  className={`${inputClasses} appearance-none bg-gray-50`}
+                  className={`${inputClasses} appearance-none`}
                 />
               </div>
               
@@ -639,13 +639,14 @@ export default function AssignmentNew() {
         {lastPage > 1 && (
           <div className="mt-6">
             <Pagination
-              currentPage={currentPage}
-              lastPage={lastPage}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-                fetchAssignments(page);
-              }}
-            />
+  currentPage={currentPage}
+  lastPage={lastPage}
+  onPageChange={(page) => {
+    setCurrentPage(page);
+    fetchAssignments(page);
+  }}
+  loading={loading}  // Add this line
+/>
           </div>
         )}
 

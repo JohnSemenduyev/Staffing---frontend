@@ -43,7 +43,7 @@ export const Manager = () => {
           },
           {
             key: "address",
-            label: "Address",
+            label: " Street Address",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap",

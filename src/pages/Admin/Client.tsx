@@ -56,8 +56,16 @@ export const Client = () => {
       width: "200px"
     },
     {
+            key:"client.company",
+            label: "Company",
+            sortable: true,
+            searchable: true,
+            className: "whitespace-nowrap",
+            width: "200px"
+          },
+    {
       key: "address", // fixed typo from "adrress"
-      label: "Address",
+      label: " Street Address",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
@@ -115,6 +123,7 @@ export const Client = () => {
                     setCurrentPage(page);
                     fetchAddresses(page);
                   }}
+                   loading={loading}
                 />
               </div>
             )}

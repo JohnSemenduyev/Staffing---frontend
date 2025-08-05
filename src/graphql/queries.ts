@@ -326,6 +326,7 @@ export const GET_SCHEDULE_SESSIONS = gql`
         userId
         startDate
         auto
+        weeklyHours
         createdAt
         client {
           id

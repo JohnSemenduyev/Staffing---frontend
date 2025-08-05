@@ -307,7 +307,7 @@ useEffect(() => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${getFieldClasses('addressId')} appearance-none bg-gray-50`}
+                className={`${getFieldClasses('addressId')} appearance-none`}
               />
               {showErrors && errors.addressId && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
@@ -381,6 +381,7 @@ useEffect(() => {
                 setCurrentPage(page);
                 fetchPostAssigns(page);
               }}
+               loading={loading}
             />
           </div>
         )}

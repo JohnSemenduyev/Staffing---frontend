@@ -391,6 +391,7 @@ export const TimeSetup = () => {
                 setCurrentPage(page);
                 fetchTimeSetups(page);
               }}
+               loading={loading}
             />
           </div>
         )}
