@@ -14,7 +14,14 @@ export const Manager = () => {
         const tableColumns: TableColumn[] = [
           {
             key: "name",
-            label: "Manager Name",
+            label: "First Name",
+            sortable: true,
+            searchable: true,
+            className: "whitespace-nowrap"
+          },
+          {
+            key: "lastName",
+            label: "Last Name",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap"
@@ -28,9 +35,38 @@ export const Manager = () => {
             render: (value: string) => <div className="truncate" title={value}>{value || "-"}</div>
           },
           {
-            key: "role",
-            label: "Role",
+            key: "phone",
+            label: "Phone",
             sortable: true,
+            searchable: true,
+            className: "whitespace-nowrap",
+          },
+          {
+            key: "address",
+            label: "Address",
+            sortable: true,
+            searchable: true,
+            className: "whitespace-nowrap",
+          },
+          {
+            key: "city",
+            label: "City",
+            sortable: true,
+            searchable: true,
+            className: "whitespace-nowrap",
+          },
+          {
+            key: "state",
+            label: "State",
+            sortable: true,
+            searchable: true,
+            className: "whitespace-nowrap",
+          },
+          {
+            key: "zipcode",
+            label: "Zipcode",
+            sortable: true,
+            searchable: true,
             className: "whitespace-nowrap",
           },
           

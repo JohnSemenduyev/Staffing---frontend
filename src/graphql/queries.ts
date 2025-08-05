@@ -72,6 +72,9 @@ export const GET_ALL_ADDRESSES = gql`
           id
           name
           email
+          phone
+          company
+          lastName
         }
       }
       lastPage
@@ -173,18 +176,32 @@ export const GET_ADMIN_USERS = gql`
     adminUsers {
       id
       name
+      lastName
       email
+      phone
+      address
+      city
+      state
+      zipcode
       role
+      status
     }
   }
 `;
+
 
 export const GET_MANAGER_USERS = gql`
   query GetManagerUsers {
     managerUsers {
       id
       name
+      lastName
       email
+      phone
+      address
+      city
+      state
+      zipcode
       role
     }
   }
@@ -195,7 +212,13 @@ export const GET_GUARD_USERS = gql`
     guardUsers {
       id
       name
+      lastName
       email
+      phone
+      address
+      city
+      state
+      zipcode
       role
     }
   }
@@ -330,15 +353,29 @@ export const GET_SCHEDULE_SESSIONS = gql`
   }
 `;
 
-export const GET_CLIENTS_WITH_SESSIONS = gql`
-  query ClientsWithScheduleSessions {
-    clientsWithScheduleSessions {
+export const GET_UNIQUE_CLIENT_ADDRESS_SESSIONS = gql`
+  query GetUniqueClientAddressSessions {
+    scheduleSessionsWithUniqueClientAddressPair {
       id
-      name
-      email
-      phone
-      createdAt
-      addresses {
+      clientId
+      addressId
+      startDate
+      endDate
+      client {
+        id
+        name
+        email
+        phone
+        createdAt
+        addresses {
+          id
+          address
+          city
+          state
+          pincode
+        }
+      }
+      address {
         id
         address
         city

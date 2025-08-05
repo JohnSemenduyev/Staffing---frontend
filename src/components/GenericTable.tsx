@@ -120,7 +120,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
   return (
     <div className={`w-full mt-2 ${className}`}>
       <div 
-        className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
+        className="relative w-full rounded-2xl border border-gray-200 shadow-xl "
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
         <div className="w-full h-full overflow-auto rounded-2xl">
@@ -140,8 +140,31 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                   <div className="flex items-center">
                     {column.label}
                     {column.sortable && (
-                      <div className="pl-1"><span className="text-white/40 cursor-pointer"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" className="-mb-1 " height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path></svg></span><span className="text-white/40 cursor-pointer"><svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path></svg></span></div>
-                    )}
+  <div className="pl-1 cursor-pointer" onClick={() => handleSort(column.key)}>
+    <span 
+      className={`cursor-pointer ${
+        sortConfig.key === column.key && sortConfig.direction === "asc" 
+          ? "text-white" 
+          : "text-white/40"
+      }`}
+    >
+      <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" className="-mb-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path>
+      </svg>
+    </span>
+    <span 
+      className={`cursor-pointer ${
+        sortConfig.key === column.key && sortConfig.direction === "desc" 
+          ? "text-white" 
+          : "text-white/40"
+      }`}
+    >
+      <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18-39.62z"></path>
+      </svg>
+    </span>
+  </div>
+)}
                   </div>
                 </th>
               ))}

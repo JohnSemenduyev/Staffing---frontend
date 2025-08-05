@@ -11,8 +11,8 @@ export const UniformCompliance = () => {
     clientId: "",
     addressId: "",
     userId: "",
-    Startdate: "",
-    Enddate: "",
+    startDate: "",
+    endDate: "",
   });
 
   const data=[
@@ -28,7 +28,7 @@ export const UniformCompliance = () => {
     },
     {
       id: 2,
-      guardFirst: { name: "Jane" },
+      guardFirst: { name: "ane" },
       guardLast: { name: "Smith" },
       date: "2023-10-02",
       Client: { name: "Client B" },
@@ -66,8 +66,6 @@ export const UniformCompliance = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Required";
     if (!form.addressId) e.addressId = "Required";
-    if (!form.Startdate) e.Startdate = "Required";
-    if (!form.Enddate) e.Enddate = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -382,32 +380,32 @@ export const UniformCompliance = () => {
               <input
                 type="text"
                 placeholder="Select date"
-                value={form.Startdate}
-                onChange={(e) => handleChange("Startdate", e.target.value)}
+                value={form.startDate}
+                onChange={(e) => handleChange("startDate", e.target.value)}
                 onFocus={(e) => (e.target.type = "date")}
                 onBlur={(e) => {
-                  if (!form.Startdate) e.target.type = "text";
+                  if (!form.startDate) e.target.type = "text";
                 }}
                 className={`${fieldInputClasses} appearance-none`}
               />
-              {errors.Startdate && (
-                <span className="text-xs text-red-500">{errors.Startdate}</span>
+              {errors.startDate && (
+                <span className="text-xs text-red-500">{errors.startDate}</span>
               )}
             </div>
 <div>
               <input
                 type="text"
                 placeholder="End date"
-                value={form.Enddate}
-                onChange={(e) => handleChange("Enddate", e.target.value)}
+                value={form.endDate}
+                onChange={(e) => handleChange("endDate", e.target.value)}
                 onFocus={(e) => (e.target.type = "date")}
                 onBlur={(e) => {
-                  if (!form.Enddate) e.target.type = "text";
+                  if (!form.endDate) e.target.type = "text";
                 }}
                 className={`${fieldInputClasses} appearance-none`}
               />
-              {errors.Enddate && (
-                <span className="text-xs text-red-500">{errors.Enddate}</span>
+              {errors.endDate && (
+                <span className="text-xs text-red-500">{errors.endDate}</span>
               )}
             </div>
             {/* Submit Button */}

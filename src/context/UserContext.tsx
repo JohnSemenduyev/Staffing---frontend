@@ -10,10 +10,17 @@ import {
 export type User = {
   id: number;
   name: string;
+  lastName: string;
   email: string;
-  phone?: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipcode: string;
+  status: boolean
   role: "admin" | "manager" | "guard";
 };
+
 
 interface UserContextType {
   users: User[];

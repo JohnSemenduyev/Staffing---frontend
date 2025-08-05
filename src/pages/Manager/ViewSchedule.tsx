@@ -203,7 +203,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
 };
 
 export const ViewSchedule = () => {
-  const { clients, loading, error, fetchClients } = useClientSessionContext();
+  const { sessions, loading, error, fetchSessions } = useClientSessionContext();
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [showScheduleTable, setShowScheduleTable] = useState(false);
@@ -299,26 +299,33 @@ export const ViewSchedule = () => {
     console.log("Date submitted for client:", selectedClient, "Date:", date);
   };
 
-  useEffect(() => {
-    fetchClients();
-    console.log("Fetched clients:", clients);
-  }, []);
+ useEffect(() => {
+  fetchSessions();
+}, []);
 
-  const tableData = clients.flatMap(client =>
-    client.addresses.map(address => ({
-      name: client.name,
-      address: address.address,
-      city: address.city,
-      pincode: address.pincode,
-      client: client // Add full client object for reference
-    }))
-  );
+useEffect(() => {
+  console.log("Fetched sessions:", sessions);
+}, [sessions]);
+
+const tableData = sessions.map(session => ({
+  name: session.client?.name,
+  address: session.address.address,
+  city: session.address.city,
+  pincode: session.address.pincode,
+  client: session.client, // Full client object
+  email: session.client?.email,
+  state: session.address.state,
+}));
+
 
   const tableColumns: TableColumn[] = [
     { key: "name", label: "Client Name", sortable: true, searchable: true, width: "200px" },
     { key: "address", label: "Street Name", sortable: true, searchable: true, width: "200px" },
     { key: "city", label: "City", sortable: true, searchable: true, width: "200px" },
-    { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "200px" }
+    { key: "state", label: "State", sortable: true, searchable: true, width: "200px" },
+    { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "200px" },
+    { key: "email", label: "Email", sortable: false, searchable: true, width: "100px" }
+
   ];
 
   const tableActions: TableAction[] = [
@@ -326,7 +333,7 @@ export const ViewSchedule = () => {
       label: "View",
       icon: <Eye className="w-4 h-4" />,
       onClick: handleView,
-      className: "text-blue-500 hover:text-green-700 px-1",
+      className: "text-blue-500 hover:text-green-700 ml-4 px-1",
       title: "View"
     }
   ];

@@ -16,25 +16,44 @@ export const Client = () => {
 
   useEffect(() => {
     fetchAddresses(currentPage);
+    console.log("Fetching addresses for client view", addresses);
   }, [currentPage]);
 
   const tableColumns: TableColumn[] = [
     {
       key: "client.name",
-      label: "Client Name",
+      label: "First Name",
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap"
+      className: "whitespace-nowrap",
+      width: "200px"
+    },
+    {
+      key: "client.lastName",
+      label: "Last Name",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap",
+      width: "200px"
     },
     {
       key: "client.email",
       label: "Email",
       sortable: true,
       searchable: true,
+      width: "200px",
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
       render: (value: string) => (
         <div className="truncate" title={value}>{value || "-"}</div>
       )
+    },
+    {
+      key: "client.phone",
+      label: "Phone",
+      sortable: true,
+      searchable: true,
+      className: "whitespace-nowrap",
+      width: "200px"
     },
     {
       key: "address", // fixed typo from "adrress"
@@ -42,13 +61,16 @@ export const Client = () => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
+      width: "200px"
     },
+
     {
       key: "city",
       label: "City",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
+      width: "200px"
     },
     {
       key: "state",
@@ -56,6 +78,7 @@ export const Client = () => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
+      width: "200px"
     },
     {
       key: "pincode",
@@ -63,6 +86,7 @@ export const Client = () => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap",
+      width: "200px"
     },
   ];
 
