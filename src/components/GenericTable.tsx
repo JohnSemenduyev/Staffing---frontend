@@ -258,15 +258,20 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                 ))}
                 
                 {filteredAndSortedData.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
-                      className="px-4 py-8 text-center text-gray-500 bg-white whitespace-nowrap"
-                    >
-                      {emptyMessage}
-                    </td>
-                  </tr>
-                )}
+  <tr>
+    <td
+      colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
+      className="relative p-0"
+      style={{ height: `calc(${tableHeight} - ${searchable ? '150px' : '100px'})` }}
+    >
+      <div className="absolute inset-0 flex items-center justify-center bg-white">
+        <span className="text-gray-500 text-center">
+          {emptyMessage}
+        </span>
+      </div>
+    </td>
+  </tr>
+)}
               </>
             )}
           </tbody>

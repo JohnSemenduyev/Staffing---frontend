@@ -674,6 +674,12 @@ const adminTabs = [
       },
     ],
   },
+  {
+    id: 'client-list',
+    label: 'Client List',
+    icon: Briefcase,
+    path: '/clientlist',
+  },
 ];
 
 export function AppSidebar() {

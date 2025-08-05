@@ -291,7 +291,7 @@ export const GeoLocationSetup = () => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${inputClasses} appearance-none bg-gray-50`}
+                className={`${inputClasses} appearance-none`}
               />
             </div>
             
@@ -374,6 +374,7 @@ export const GeoLocationSetup = () => {
                 setCurrentPage(page);
                 fetchGeoLocations(page);
               }}
+               loading={loading}
             />
           </div>
         )}
