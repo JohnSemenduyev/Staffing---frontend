@@ -58,6 +58,7 @@ interface UniformComplianceContextType {
   error: string | null;
   fetchUniformCompliances: (variables: FetchVariables) => Promise<void>;
 }
+const token=localStorage.getItem('token')||'';
 
 // === Context Creation ===
 const UniformComplianceContext = createContext<UniformComplianceContextType | undefined>(undefined);
@@ -74,7 +75,9 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
     try {
       const data: UniformComplianceQueryResponse = await graphQLClient.request(
         UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER,
-        variables
+        variables,{ 
+          Authorization: `Bearer ${token}` // Headers
+        }
       );
       setUniformCompliances(data.uniformCompliancesByScheduleFilter);
     } catch (err: any) {

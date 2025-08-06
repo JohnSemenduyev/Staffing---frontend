@@ -35,6 +35,7 @@ import ClientList from "./pages/Admin/ClientList";
 import { ScheduleSessionProviderClient } from "./context/ClientList";
 import { UniformComplianceProvider } from "./context/unifromCompliace";
 import { AuthProvider } from "./context/LoginContext";
+import { ViewTimeSummaryProvider } from "./context/ViewTimeSummaryContext";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -51,6 +52,7 @@ const App = () => (
           <TimeSetupProvider>
             <PostAssignProvider>
                 <ClientSessionProvider>
+                  <ViewTimeSummaryProvider>
                   <ScheduleSessionProviderClient>
                     <UniformComplianceProvider>
                       <AuthProvider>
@@ -85,6 +87,7 @@ const App = () => (
               </AuthProvider>
               </UniformComplianceProvider>
               </ScheduleSessionProviderClient>
+              </ViewTimeSummaryProvider>
             </ClientSessionProvider>
             </PostAssignProvider>
           </TimeSetupProvider>

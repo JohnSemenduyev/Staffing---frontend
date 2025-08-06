@@ -184,6 +184,7 @@ export const PrepareSchedule = () => {
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
+  const [publishLoader, setPublishLoader] = useState(false);
   const { createSession } = useScheduleSession();
   const [userSearch, setUserSearch] = useState("");
   const token = localStorage.getItem('token') || '';
@@ -477,6 +478,7 @@ useEffect(() => {
   };
 
   const handlePublish = async () => {
+    setPublishLoader(true);
     try {
       // Transform data structure for backend
       const backendData = uniqueUsers.map(user => {
@@ -562,6 +564,9 @@ useEffect(() => {
         variant: "destructive",
       });
     }
+    finally {
+    setPublishLoader(false);
+  }
   };
 
   const onSubmit = async (e) => {
@@ -1340,12 +1345,19 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
             {/* Publish Button */}
             <div className="p-4 border-t bg-white">
               <button 
-                onClick={handlePublish}
-                className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700"
-                disabled={isPublished}
-              >
-                {isPublished ? 'Published' : 'Publish'}
-              </button>
+  onClick={handlePublish}
+  className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+  disabled={isPublished || publishLoader}
+>
+  {publishLoader ? (
+    <>
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block" />
+      Publishing...
+    </>
+  ) : (
+    isPublished ? 'Published' : 'Publish'
+  )}
+</button>
               <p className="text-sm text-gray-600 mt-2">
                 Employees who had change in the schedule should get "Your schedule has been updated!" notification after Publish is clicked.
               </p>
