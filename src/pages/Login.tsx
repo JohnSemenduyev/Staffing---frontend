@@ -95,7 +95,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/LoginContext';
 import { useToast } from '../hooks/use-toast';
 import img from "../assets/images/Logo.webp";
 
@@ -103,44 +103,42 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+ const { token, role, login, logout } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-    const success = login(username, password);
-
-    if (success) {
-      const storedUser = localStorage.getItem('admin_portal_user');
-      let redirectPath = '/';
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user.role === 'admin') {
-          redirectPath = '/assign-user-permission';
-        } else if (user.role === 'manager') {
-          redirectPath = '/prepare-schedule';
-        }
-      }
-
-      toast({
-        title: "Login successful",
-        description: "Welcome to the portal",
-      });
-
-      navigate(redirectPath);
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Invalid credentials or user not authorized",
-        variant: "destructive",
-      });
+  const result = await login(username, password);  // ✅ Await login here
+  console.log(result);
+  if (result.success) {
+    const storedRole = localStorage.getItem('role'); // ✅ Get role from localStorage
+    let redirectPath = '/';
+    if (storedRole === 'admin') {
+      redirectPath = '/assign-user-permission';
+    } else if (storedRole === 'manager') {
+      redirectPath = '/prepare-schedule';
     }
 
-    setIsLoading(false);
-  };
+    toast({
+      title: "Login successful",
+      description: "Welcome to the portal",
+    });
+
+    navigate(redirectPath);
+  } else {
+    toast({
+      title: "Login failed",
+      description: result.error || "Invalid credentials or user not authorized",
+      variant: "destructive",
+    });
+  }
+
+  setIsLoading(false);
+};
+
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">

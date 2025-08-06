@@ -386,3 +386,48 @@ export const GET_UNIQUE_CLIENT_ADDRESS_SESSIONS = gql`
     }
   }
 `;
+
+
+
+export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
+  query UniformCompliancesByScheduleFilter(
+    $startDate: String,
+    $endDate: String,
+    $addressId: Int,
+    $clientId: Int,
+    $userId: Int
+  ) {
+    uniformCompliancesByScheduleFilter(
+      startDate: $startDate,
+      endDate: $endDate,
+      addressId: $addressId,
+      clientId: $clientId,
+      userId: $userId
+    ) {
+      shift {
+        id
+        date
+        startTime
+        endTime
+      }
+      scheduleSession {
+        client {
+          name
+          lastName
+        }
+        user {
+          name
+          lastName
+        }
+        address {
+          address
+        }
+      }
+      bottomUniformImage
+      topUniformImage
+      shiftId
+      scheduleSessionId
+    }
+  }
+`;
+
