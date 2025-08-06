@@ -33,6 +33,8 @@ import {  ScheduleSessionProvider } from "./context/ScheduleContext";
 import { ClientSessionProvider } from "./context/ViewSchedule";
 import ClientList from "./pages/Admin/ClientList";
 import { ScheduleSessionProviderClient } from "./context/ClientList";
+import { UniformComplianceProvider } from "./context/unifromCompliace";
+import { AuthProvider } from "./context/LoginContext";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -50,6 +52,8 @@ const App = () => (
             <PostAssignProvider>
                 <ClientSessionProvider>
                   <ScheduleSessionProviderClient>
+                    <UniformComplianceProvider>
+                      <AuthProvider>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<AuthRedirect />} />
@@ -78,6 +82,8 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
+              </AuthProvider>
+              </UniformComplianceProvider>
               </ScheduleSessionProviderClient>
             </ClientSessionProvider>
             </PostAssignProvider>

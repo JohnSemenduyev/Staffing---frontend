@@ -186,8 +186,10 @@ export const PrepareSchedule = () => {
   const [auto, setAuto] = useState(false);
   const { createSession } = useScheduleSession();
   const [userSearch, setUserSearch] = useState("");
+  const token = localStorage.getItem('token') || '';
+
   const debouncedUserSearch = useDebounce(userSearch, 300);
-  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
+ const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [editingId, setEditingId] = useState(null);
@@ -199,8 +201,10 @@ export const PrepareSchedule = () => {
   const { toast } = useToast();
   
   // Client search hook
-  const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  
+
+const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(
+  debouncedClientSearch,
+);  
   // Modal states
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
   const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
@@ -520,9 +524,11 @@ useEffect(() => {
       console.log('Backend Data Structure:', backendData);
 
       // Send data to backend
-      const response = await graphQLClient.request(CREATE_MULTIPLE_SCHEDULE_SESSIONS, {
-        input: backendData
-      });
+        const response = await graphQLClient.request(
+      CREATE_MULTIPLE_SCHEDULE_SESSIONS,
+      { input: backendData }, // Variables
+      { Authorization: `Bearer ${token}` } // Headers with token
+    );
 
       console.log('Backend Response:', response);
       

@@ -599,10 +599,9 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '../components/ui/sidebar';
-import { useAuth } from '../hooks/useAuth';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-
+import { useAuth } from '../context/LoginContext';
 const managerTabs = [
   {
     id: 'scheduling',
@@ -683,22 +682,24 @@ const adminTabs = [
 ];
 
 export function AppSidebar() {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { state, toggleSidebar } = useSidebar();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+const { logout, role, token } = useAuth(); // ✅ Get role and token from auth context
 
-  if (!user) return null;
+// Replace the user check with role check
+if (!role || !token) return null; // ✅ Check if user is authenticated
 
-  const tabs = user.role === 'manager' ? managerTabs : adminTabs;
-  const portalTitle = user.role === 'manager' ? 'Manager Portal' : 'Scheduling - Admin Portal';
-  const isCollapsed = state === 'collapsed';
+// Fix the tabs and portalTitle logic
+const tabs = role === 'manager' ? managerTabs : adminTabs; // ✅ Use role instead of user.role
+const portalTitle = role === 'manager' ? 'Manager Portal' : 'Scheduling - Admin Portal';   const isCollapsed = state === 'collapsed';
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+
   };
 
   const toggleGroup = (groupId: string) => {
