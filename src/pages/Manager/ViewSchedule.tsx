@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useClientSessionContext } from "../../context/ViewSchedule";
+import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
@@ -203,7 +203,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
 };
 
 export const ViewSchedule = () => {
-  const { sessions, loading, error, fetchSessions } = useClientSessionContext();
+  const { clientSessions, loading, error, fetchClientSessions } = useClientSessions();
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [showScheduleTable, setShowScheduleTable] = useState(false);
@@ -300,31 +300,35 @@ export const ViewSchedule = () => {
   };
 
  useEffect(() => {
-  fetchSessions();
-}, []);
+    fetchClientSessions(); // Fetch only when needed
+  }, []);
+ const [tableData, setTableData] = useState([]);
 
 useEffect(() => {
-  console.log("Fetched sessions:", sessions);
-}, [sessions]);
+  if (clientSessions && Array.isArray(clientSessions)) {
+    const flatData = clientSessions.map(session => ({
+      clientName: session.client.name,
+      address: session.address.address,
+      city: session.address.city,
+      state: session.address.state,
+      pincode: session.address.pincode
+    }));
+    setTableData(flatData);
+  } else {
+    setTableData([]); // fallback if clientSessions is null or not an array
+  }
+}, [clientSessions]);
 
-const tableData = sessions.map(session => ({
-  name: session.client?.name,
-  address: session.address.address,
-  city: session.address.city,
-  pincode: session.address.pincode,
-  client: session.client, // Full client object
-  email: session.client?.email,
-  state: session.address.state,
-}));
+
+
 
 
   const tableColumns: TableColumn[] = [
-    { key: "name", label: "Client Name", sortable: true, searchable: true, width: "200px" },
-    { key: "address", label: "Street Name", sortable: true, searchable: true, width: "200px" },
-    { key: "city", label: "City", sortable: true, searchable: true, width: "200px" },
-    { key: "state", label: "State", sortable: true, searchable: true, width: "200px" },
-    { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "200px" },
-    { key: "email", label: "Email", sortable: false, searchable: true, width: "100px" }
+    { key: "clientName", label: "Client Name", sortable: true, searchable: true, width: "225px" },
+    { key: "address", label: "Street Name", sortable: true, searchable: true, width: "225px" },
+    { key: "city", label: "City", sortable: true, searchable: true, width: "225px" },
+    { key: "state", label: "State", sortable: true, searchable: true, width: "225px" },
+    { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "225px" },
 
   ];
 
@@ -1055,26 +1059,26 @@ const tableData = sessions.map(session => ({
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       {!showScheduleTable ? (
         <>
-          {loading ? (
-            <p>Loading schedule data...</p>
-          ) : error ? (
-            <p className="text-red-500">Error loading data: {error}</p>
-          ) : (
-            <GenericTable
-              data={tableData}
-              columns={tableColumns}
-              actions={tableActions}
-              loading={loading}
-              emptyMessage="No records found."
-              searchable={true}
-            />
-          )}
-          <PeriodEndDateModal
-            isOpen={isModalOpen}
-            onClose={() => setModalOpen(false)}
-            onSubmit={handleDateSubmit}
-          />
-        </>
+  {error ? (
+    <p className="text-red-500">Error loading data: {error}</p>
+  ) : (
+    <GenericTable
+      data={tableData}
+      columns={tableColumns}
+      actions={tableActions}
+      loading={loading}               // Let table handle the loader
+      emptyMessage="No records found."
+      searchable={true}
+    />
+  )}
+  
+  <PeriodEndDateModal
+    isOpen={isModalOpen}
+    onClose={() => setModalOpen(false)}
+    onSubmit={handleDateSubmit}
+  />
+</>
+
       ) : (
         <div className="w-full">
           {/* Header with reset button */}

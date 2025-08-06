@@ -356,28 +356,11 @@ export const GET_SCHEDULE_SESSIONS = gql`
 
 export const GET_UNIQUE_CLIENT_ADDRESS_SESSIONS = gql`
   query GetUniqueClientAddressSessions {
-    scheduleSessionsWithUniqueClientAddressPair {
-      id
-      clientId
-      addressId
-      startDate
-      endDate
+    ScheduleSessionsByClientWeek {
       client {
-        id
         name
-        email
-        phone
-        createdAt
-        addresses {
-          id
-          address
-          city
-          state
-          pincode
-        }
       }
       address {
-        id
         address
         city
         state
@@ -386,7 +369,6 @@ export const GET_UNIQUE_CLIENT_ADDRESS_SESSIONS = gql`
     }
   }
 `;
-
 
 
 export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
@@ -431,3 +413,23 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
   }
 `;
 
+export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
+  query GetScheduleSessionsByClientWeek($clientId: Int!, $date: String) {
+    ScheduleSessionsByClientWeek(clientId: $clientId, date: $date) {
+      client {
+        name
+      }
+      address {
+        address
+      }
+      user {
+        name
+        lastName
+      }
+      shifts {
+        date
+        hours
+      }
+    }
+  }
+`;

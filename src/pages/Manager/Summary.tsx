@@ -407,7 +407,7 @@
 //   );
 // };
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {  Printer, Share2, Upload } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -415,59 +415,30 @@ import { useSearchUsers } from "../../hooks/useSearchUser";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-
+import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
 export const Summary = () => {
   const [form, setForm] = useState({
     clientId: "",
     addressId: "",
     date: "",
   });
-
-  const data = [
-    {
-      guardFirst: { name: "John" },
-      guardLast: { name: "Doe" },
-      date: "2023-10-01",
-      Client: { name: "Client A" },
-      address: { address: "123 Main St" },
-      time: 120,
-    },
-    {
-      guardFirst: { name: "Jane" },
-      guardLast: { name: "Smith" },
-      date: "2023-10-02",
-      Client: { name: "Client B" },
-      address: { address: "456 Elm St" },
-      time: 90,
-    }
-  ];
-
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [submitLoader, setSubmitLoader] = useState(false);
-  const [auto, setAuto] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
   const { data: searchedClients = [], isLoading: loadingClients } =
     useSearchClient(debouncedClientSearch);
-  const [userSearch, setUserSearch] = useState("");
-  const debouncedUserSearch = useDebounce(userSearch, 300);
-  const { data: searchedUsers = [], isLoading: loadingUsers } =
-    useSearchUsers(debouncedUserSearch);
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-
+ const { data, loading, error, fetchSummary } = useViewTimeSummary();
   const validate = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Required";
     if (!form.addressId) e.addressId = "Required";
-    if (!form.date) e.date = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -502,56 +473,42 @@ export const Summary = () => {
     setSelectedAddressText(selectedAddress?.address || "");
   };
 
-  const handleUserSelect = (user) => {
-    setForm((f) => ({ ...f, userId: String(user.id) }));
-    setUserSearch(user.name);
-    setShowUserDropdown(false);
-    setErrors((e) => ({ ...e, userId: undefined }));
-  };
+  const formatDateToYYYYMMDD = (rawDate: string | Date): string => {
+  const dateObj = new Date(rawDate);
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  return `${mm}-${dd}-${yyyy}`;   // ✅ YYYY-MM-DD
+};
+const onSubmit = async (e) => {
+  e.preventDefault();
+  if (!validate()) return;
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setSubmitLoader(true);
+  setSubmitLoader(true);
+  try {
     console.log("Submitting form with data:", form); // Debug log
+
+    const clientId = Number(form.clientId);
+    const rawDate = form.date;
+
+    if (rawDate) {
+      const formattedDate = formatDateToYYYYMMDD(rawDate);  // Format only if date exists
+      console.log("Formatted Date for API:", formattedDate);
+      await fetchSummary(clientId, formattedDate); // ✅ Call with date
+    } else {
+      console.log("No date provided, calling API without date");
+      await fetchSummary(clientId); // ✅ Call without date
+    }
+
+    console.log("Time summary fetched:", data);  // Optional debug log
+  } catch (err) {
+    console.error("Failed to fetch time summary:", err);
+  } finally {
     setSubmitLoader(false);
+  }
+};
 
-    //   try {
-    //     // Ensure all numbers are converted safely, fallback to 0 if empty
-    //     const payload = {
-    //       clientId: Number(form.clientId),
-    //       addressId: Number(form.addressId),
-    //       distance: form.distance !== "" ? Number(form.distance) : 0,
-    //       actualScheduledTime: form.time !== "" ? Number(form.time) : 0,
-    //       weeklyHours: form.hours !== "" ? Number(form.hours) : 0,
-    //       reminderTime: form.reminder !== "" ? Number(form.reminder) : 0,
-    //       overlap: overlap,
-    //       unscheduledTime: unscheduledTime,
-    //     };
 
-    //     console.log("Submitting payload:", payload); // Debug log
-    //     await createTimeSetup(payload);
-    //     // Reset form
-    //     setForm({
-    //       clientId: "",
-    //       addressId: "",
-    //       distance: "",
-    //       time: "",
-    //       hours: "",
-    //       reminder: "",
-    //     });
-    //     setClientSearch("");
-    //     setSelectedAddressText("");
-    //     setOverlap(false);
-    //     setUnscheduledTime(false);
-    //     alert("Time setup created successfully!");
-    //   } catch (error) {
-    //     console.error("Error creating time setup:", error);
-    //     alert("Failed to create time setup.");
-    //   } finally {
-    //     setSubmitLoader(false);
-    //   }
-  };
 
   const generateExcelFile = () => {
     const formattedData = data.map((item) => ({
