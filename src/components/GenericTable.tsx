@@ -123,7 +123,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
         className="relative w-full rounded-2xl border border-gray-200 shadow-xl "
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
-        <div className="w-full h-full overflow-auto rounded-2xl">
+        <div className="w-full h-full overflow-auto bg-white rounded-2xl">
           <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
             {/* Header Row */}
@@ -177,11 +177,11 @@ export const GenericTable: React.FC<GenericTableProps> = ({
             {searchable && (
               <tr className="bg-white text-gray-700 font-sans w-full">
                 {columns.map((column) => (
-                  <th key={`search-${column.key}`} className="px-1 sm:px-2 py-2 text-left">
+                  <th key={`search-${column.key}`} className="px-5 sm:px-2 py-2 text-left">
                     {column.searchable ? (
                       <input
                         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
-                        className="w-40 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="w-40 px-2 ml-1 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                         type="text"
                         value={searchTerms[column.key] || ''}
                         onChange={(e) =>

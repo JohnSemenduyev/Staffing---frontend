@@ -76,7 +76,10 @@
 // };
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { GET_UNIQUE_CLIENT_ADDRESS_SESSIONS } from "../graphql/queries";
+import { 
+  GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
+  SCHEDULE_SESSIONS_BY_CLIENT_WEEK 
+} from "../graphql/queries";
 
 // Types
 export type Address = {
@@ -91,15 +94,57 @@ export type Client = {
 };
 
 export type ClientSession = {
+  id: number;
+  clientId: number;
+  addressId: number;
+  userId: number;
   client: Client;
   address: Address;
 };
 
+// Add new types for schedule data
+export type Shift = {
+  startTime: string;
+  endTime: string;
+  hours: number;
+  actualHours: number;
+  id: number;
+  scheduleSessionId: number;
+  date: string;
+};
+
+// User type for the schedule data
+export type ScheduleUser = {
+  id: number;
+  name: string;
+};
+
+// Updated ScheduleData type to match the new query structure
+export type ScheduleDataItem = {
+  shifts: Shift[];
+  user: ScheduleUser;
+  clientId: number;
+  addressId: number;
+  weeklyHours: number;
+};
+
+// This will be an array of ScheduleDataItem
+export type ScheduleData = ScheduleDataItem[];
+
+// Updated context type
 type ClientSessionContextType = {
+  // Existing client sessions
   clientSessions: ClientSession[] | null;
   loading: boolean;
   error: string | null;
   fetchClientSessions: () => Promise<void>;
+  
+  // Add schedule-related state and functions
+  scheduleData: ScheduleData | null;
+  scheduleLoading: boolean;
+  scheduleError: string | null;
+  fetchScheduleData: (clientId: number, addressId: number, date: string) => Promise<void>;
+  clearScheduleData: () => void;
 };
 
 // Context
@@ -107,21 +152,31 @@ const ClientSessionContext = createContext<ClientSessionContextType | undefined>
 
 // Provider
 export const ClientSessionProvider = ({ children }: { children: ReactNode }) => {
+  // Existing state
   const [clientSessions, setClientSessions] = useState<ClientSession[] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Add schedule state
+  const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState<boolean>(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  // Existing function
   const fetchClientSessions = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
-      const response = await graphQLClient.request<{ ScheduleSessionsByClientWeek: ClientSession[] }>(
+      const token = localStorage.getItem("token");
+      const response = await graphQLClient.request<{
+        ScheduleSessionsByClientWeekForManager: ClientSession[];
+      }>(
         GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
         {},
         { Authorization: `Bearer ${token}` }
       );
-      setClientSessions(response.ScheduleSessionsByClientWeek);
+
+      setClientSessions(response.ScheduleSessionsByClientWeekForManager);
     } catch (err) {
       console.error("Failed to fetch client sessions:", err);
       setError("Error fetching client sessions.");
@@ -130,8 +185,54 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     }
   };
 
+  // Updated schedule data fetching function
+  const fetchScheduleData = async (clientId: number, addressId: number, date: string) => {
+    setScheduleLoading(true);
+    setScheduleError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await graphQLClient.request<{
+        ScheduleSessionsByClientWeek: ScheduleData;
+      }>(
+        SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
+        { clientId, addressId, date },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      console.log("Schedule API Response:", response.ScheduleSessionsByClientWeek);
+      setScheduleData(response.ScheduleSessionsByClientWeek);
+    } catch (err) {
+      console.error("Failed to fetch schedule data:", err);
+      setScheduleError("Error fetching schedule data.");
+      setScheduleData(null);
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  // Clear schedule data function
+  const clearScheduleData = () => {
+    setScheduleData(null);
+    setScheduleError(null);
+  };
+
   return (
-    <ClientSessionContext.Provider value={{ clientSessions, loading, error, fetchClientSessions }}>
+    <ClientSessionContext.Provider
+      value={{ 
+        // Existing values
+        clientSessions, 
+        loading, 
+        error, 
+        fetchClientSessions,
+        
+        // New schedule values
+        scheduleData,
+        scheduleLoading,
+        scheduleError,
+        fetchScheduleData,
+        clearScheduleData
+      }}
+    >
       {children}
     </ClientSessionContext.Provider>
   );
