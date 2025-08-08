@@ -460,3 +460,12 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
     }
   }
 `;
+
+export const CHECK_CLIENT_WEEK_SCHEDULE = gql`
+  query Query($clientId: Int!, $startDate: String!, $addressId: Int!) {
+    checkClientWeekSchedule(clientId: $clientId, startDate: $startDate, addressId: $addressId) {
+      overlap
+      message
+    }
+  }
+`;

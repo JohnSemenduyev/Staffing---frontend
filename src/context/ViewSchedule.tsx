@@ -80,6 +80,8 @@ import {
   GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
   SCHEDULE_SESSIONS_BY_CLIENT_WEEK 
 } from "../graphql/queries";
+import { BULK_UPSERT_SCHEDULE_SESSION } from "../graphql/mutation";
+import { toast as toasted } from "sonner";
 
 // Types
 export type Address = {
@@ -102,7 +104,6 @@ export type ClientSession = {
   address: Address;
 };
 
-// Add new types for schedule data
 export type Shift = {
   startTime: string;
   endTime: string;
@@ -113,13 +114,11 @@ export type Shift = {
   date: string;
 };
 
-// User type for the schedule data
 export type ScheduleUser = {
   id: number;
   name: string;
 };
 
-// Updated ScheduleData type to match the new query structure
 export type ScheduleDataItem = {
   shifts: Shift[];
   user: ScheduleUser;
@@ -128,41 +127,58 @@ export type ScheduleDataItem = {
   weeklyHours: number;
 };
 
-// This will be an array of ScheduleDataItem
 export type ScheduleData = ScheduleDataItem[];
 
-// Updated context type
+// New input type for mutation
+export type ShiftInput = {
+  date: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+};
+
+export type ScheduleSessionInputExtended = {
+  scheduleSessionId?: number | null;
+  clientId: number | null;
+  addressId: number | null;
+  userId: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  auto: boolean | null;
+  weeklyHours: number | null;
+  shifts: ShiftInput[];
+};
+
+// Context type
 type ClientSessionContextType = {
-  // Existing client sessions
   clientSessions: ClientSession[] | null;
   loading: boolean;
   error: string | null;
   fetchClientSessions: () => Promise<void>;
-  
-  // Add schedule-related state and functions
+
   scheduleData: ScheduleData | null;
   scheduleLoading: boolean;
   scheduleError: string | null;
   fetchScheduleData: (clientId: number, addressId: number, date: string) => Promise<void>;
   clearScheduleData: () => void;
+
+  bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<void>;
+  mutationLoading: boolean;
 };
 
-// Context
 const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
 
-// Provider
 export const ClientSessionProvider = ({ children }: { children: ReactNode }) => {
-  // Existing state
   const [clientSessions, setClientSessions] = useState<ClientSession[] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Add schedule state
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState<boolean>(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
-  // Existing function
+  const [mutationLoading, setMutationLoading] = useState<boolean>(false);
+
   const fetchClientSessions = async () => {
     setLoading(true);
     setError(null);
@@ -175,7 +191,6 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         {},
         { Authorization: `Bearer ${token}` }
       );
-
       setClientSessions(response.ScheduleSessionsByClientWeekForManager);
     } catch (err) {
       console.error("Failed to fetch client sessions:", err);
@@ -185,7 +200,6 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     }
   };
 
-  // Updated schedule data fetching function
   const fetchScheduleData = async (clientId: number, addressId: number, date: string) => {
     setScheduleLoading(true);
     setScheduleError(null);
@@ -198,8 +212,6 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         { clientId, addressId, date },
         { Authorization: `Bearer ${token}` }
       );
-
-      console.log("Schedule API Response:", response.ScheduleSessionsByClientWeek);
       setScheduleData(response.ScheduleSessionsByClientWeek);
     } catch (err) {
       console.error("Failed to fetch schedule data:", err);
@@ -210,27 +222,44 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     }
   };
 
-  // Clear schedule data function
   const clearScheduleData = () => {
     setScheduleData(null);
     setScheduleError(null);
   };
 
+  const bulkUpsertScheduleSessions = async (input: ScheduleSessionInputExtended[]) => {
+    setMutationLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await graphQLClient.request(
+        BULK_UPSERT_SCHEDULE_SESSION,
+        { input },
+        { Authorization: `Bearer ${token}` }
+      );
+      toasted.success("Schedule saved successfully!");
+      console.log("Bulk upsert response:", response);
+    } catch (err) {
+      console.error("Failed to save schedule sessions:", err);
+      toasted.error("Failed to save schedule.");
+    } finally {
+      setMutationLoading(false);
+    }
+  };
+
   return (
     <ClientSessionContext.Provider
-      value={{ 
-        // Existing values
-        clientSessions, 
-        loading, 
-        error, 
+      value={{
+        clientSessions,
+        loading,
+        error,
         fetchClientSessions,
-        
-        // New schedule values
         scheduleData,
         scheduleLoading,
         scheduleError,
         fetchScheduleData,
-        clearScheduleData
+        clearScheduleData,
+        bulkUpsertScheduleSessions,
+        mutationLoading
       }}
     >
       {children}
@@ -238,7 +267,6 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
   );
 };
 
-// Hook
 export const useClientSessions = () => {
   const context = useContext(ClientSessionContext);
   if (!context) {

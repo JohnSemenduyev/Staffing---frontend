@@ -1,7 +1,7 @@
 // import React, { useEffect, useState } from "react";
 // import { useClientSessions } from "../../context/ViewSchedule";
 // import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
-// import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload } from "lucide-react";
+// import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send } from "lucide-react";
 // import ToggleSwitch from "../../components/ui/toggle";
 // import { useToast } from "../../hooks/use-toast";
 // import { toast } from "sonner";
@@ -19,6 +19,7 @@
 //   startTime: string;
 //   endTime: string;
 //   hours: number;
+//   scheduleSessionId?: number; // Updated: Added scheduleSessionId property
 // }
 
 // interface ScheduleItem {
@@ -225,7 +226,8 @@
 //     scheduleLoading,
 //     scheduleError,
 //     fetchScheduleData,
-//     clearScheduleData
+//     clearScheduleData,
+//     bulkUpsertScheduleSessions // Updated: Added bulkUpsertScheduleSessions
 //   } = useClientSessions();
 
 //   const [isModalOpen, setModalOpen] = useState(false);
@@ -236,6 +238,7 @@
 //   const [selectedDate, setSelectedDate] = useState("");
 //   const { toast: hookToast } = useToast();
 //   const [isPrinting, setIsPrinting] = useState(false);
+//   const [isPublishing, setIsPublishing] = useState(false);
 
 //   // Modal states for edit/delete functionality
 //   const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
@@ -330,7 +333,7 @@
 //     }
 //   }, [clientSessions]);
 
-//   // Transform API data when it arrives
+//   // Transform API data when it arrives - UPDATED
 //   useEffect(() => {
 //     if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
 //       console.log("Raw API data:", apiScheduleData);
@@ -357,7 +360,8 @@
 //               date: readableDate,
 //               startTime: shift.startTime,
 //               endTime: shift.endTime,
-//               hours: shift.hours
+//               hours: shift.hours,
+//               scheduleSessionId: shift.scheduleSessionId // Updated: Preserve scheduleSessionId from API
 //             });
 //           });
 
@@ -544,6 +548,102 @@
 //       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 //     });
 //     return blob;
+//   };
+
+//   // Updated Publish functionality
+//   const handlePublish = async () => {
+//     if (!scheduleData || scheduleData.length === 0) {
+//       toast.error("No data available to publish!");
+//       return;
+//     }
+
+//     try {
+//       setIsPublishing(true);
+      
+//       // Calculate week start and end dates from the selected date
+//       const selectedDateObj = new Date(selectedDate);
+//       const weekRange = getWeekRangeFromDate(selectedDateObj);
+//       const startDate = weekRange.startOfWeek.toISOString().split('T')[0];
+//       const endDate = weekRange.endOfWeek.toISOString().split('T')[0];
+
+//       // Group schedule data by user to create the required format
+//       const userScheduleMap = new Map();
+
+//       // Process each schedule item
+//       scheduleData.forEach(item => {
+//         const userId = item.userId;
+        
+//         // Get scheduleSessionId from the first shift (all shifts for a user should have the same scheduleSessionId)
+//         const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId 
+//           ? item.shifts[0].scheduleSessionId 
+//           : null;
+        
+//         if (!userScheduleMap.has(userId)) {
+//           userScheduleMap.set(userId, {
+//             scheduleSessionId: scheduleSessionId, // Take from shift data
+//             clientId: item.clientId,
+//             addressId: item.addressId,
+//             userId: userId,
+//             startDate: startDate,
+//             endDate: endDate,
+//             auto: item.auto,
+//             weeklyHours: 0, // Will calculate below
+//             shifts: []
+//           });
+//         } else {
+//           // If user already exists, keep the first scheduleSessionId we found
+//           // but update auto setting if it's different (take the latest one)
+//           const existingSchedule = userScheduleMap.get(userId);
+//           existingSchedule.auto = item.auto; // Update with latest auto setting
+          
+//           // If we don't have a scheduleSessionId yet, try to get it from this item
+//           if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
+//             existingSchedule.scheduleSessionId = scheduleSessionId;
+//           }
+//         }
+
+//         const userSchedule = userScheduleMap.get(userId);
+        
+//         // Add shifts for this user
+//         item.shifts.forEach(shift => {
+//           userSchedule.shifts.push({
+//             date: shift.date,
+//             startTime: shift.startTime,
+//             endTime: shift.endTime,
+//             hours: shift.hours
+//           });
+//         });
+//       });
+
+//       // Calculate weekly hours for each user and prepare final array
+//       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
+//         // Calculate total weekly hours
+//         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
+        
+//         return {
+//           ...userSchedule,
+//           weeklyHours: parseFloat(weeklyHours.toFixed(2))
+//         };
+//       });
+
+//       console.log("=== PUBLISHING SCHEDULE DATA ===");
+//       console.log("Schedule Input:", JSON.stringify(scheduleInput, null, 2));
+//       console.log("Total Users:", scheduleInput.length);
+//       console.log("Week Range:", { startDate, endDate });
+//       console.log("=====================================");
+//    console.log(scheduleInput);
+   
+//       // Call the context function
+//      await bulkUpsertScheduleSessions(scheduleInput);
+      
+//       toast.success("Schedule published successfully!");
+      
+//     } catch (error) {
+//       console.error("Error publishing schedule:", error);
+//       toast.error("Failed to publish schedule. Please try again.");
+//     } finally {
+//       setIsPublishing(false);
+//     }
 //   };
 
 //   const handleDownloadExcel = () => {
@@ -1365,31 +1465,54 @@
 //                 </table>
 //               </div>
 
-//               {/* Print and Download buttons - Bottom Corner */}
-//               <div className="flex justify-end items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
+//               {/* Publish, Print and Download buttons - Bottom Corner */}
+//               <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
+//                 {/* Publish button - Leftmost */}
 //                 <button
-//                   onClick={handlePrint}
-//                   disabled={isPrinting}
-//                   className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-//                   title="Print Report"
+//                   onClick={handlePublish}
+//                   disabled={isPublishing}
+//                   className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
+//                   title="Publish Schedule"
 //                 >
-//                   {isPrinting ? (
+//                   {isPublishing ? (
 //                     <>
-//                       <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-//                       <span className="text-sm">Preparing...</span>
+//                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+//                       <span>Publishing...</span>
 //                     </>
 //                   ) : (
-//                     <Printer className="w-5 h-5" />
+//                     <>
+//                       <Send className="w-4 h-4 mr-2" />
+//                       Publish
+//                     </>
 //                   )}
 //                 </button>
-                
-//                 <button
-//                   onClick={handleDownloadExcel}
-//                   className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-//                   title="Download Excel"
-//                 >
-//                   <Upload className="w-5 h-5" />
-//                 </button>
+
+//                 {/* Print and Download buttons - Right side */}
+//                 <div className="flex items-center gap-2">
+//                   <button
+//                     onClick={handlePrint}
+//                     disabled={isPrinting}
+//                     className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+//                     title="Print Report"
+//                   >
+//                     {isPrinting ? (
+//                       <>
+//                         <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+//                         <span className="text-sm">Preparing...</span>
+//                       </>
+//                     ) : (
+//                       <Printer className="w-5 h-5" />
+//                     )}
+//                   </button>
+                  
+//                   <button
+//                     onClick={handleDownloadExcel}
+//                     className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+//                     title="Download Excel"
+//                   >
+//                     <Upload className="w-5 h-5" />
+//                   </button>
+//                 </div>
 //               </div>
 //             </div>
 //           )}
@@ -1519,6 +1642,7 @@
 //     </div>
 //   );
 // };
+
 import React, { useEffect, useState } from "react";
 import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
@@ -1527,11 +1651,26 @@ import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { useSearchUsers } from "../../hooks/useSearchUser";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (date: string) => void;
+}
+
+interface FormData {
+  userId: string;
+  date: string;
+  starttime: string;
+  endtime: string;
+}
+
+interface User {
+  id: string | number;
+  name: string;
+  phone?: string;
 }
 
 interface Shift {
@@ -1540,6 +1679,7 @@ interface Shift {
   startTime: string;
   endTime: string;
   hours: number;
+  scheduleSessionId?: number; // Updated: Added scheduleSessionId property
 }
 
 interface ScheduleItem {
@@ -1678,6 +1818,33 @@ const convertTimestampToDate = (timestamp: string) => {
   return date.toISOString().split('T')[0];
 };
 
+// Form validation function
+const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingShiftId?: number) => {
+  const e: { [key: string]: string } = {};
+  if (!formData.userId) e.userId = "Required";
+  if (!formData.date) e.date = "Required";
+  if (!formData.starttime) e.starttime = "Required";
+  if (!formData.endtime) e.endtime = "Required";
+  
+  // Check for overlapping shifts
+  if (formData.userId && formData.date && formData.starttime && formData.endtime) {
+    const existingShifts = scheduleData
+      .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
+      .flatMap(item => item.shifts);
+    
+    for (const shift of existingShifts) {
+      if (shift.id === editingShiftId) continue; // Skip current shift when editing
+      
+      if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+        e.overlap = "Shift time overlaps with existing shift for this user and date";
+        break;
+      }
+    }
+  }
+  
+  return e;
+};
+
 export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [selectedDate, setSelectedDate] = useState("");
 
@@ -1746,7 +1913,8 @@ export const ViewSchedule = () => {
     scheduleLoading,
     scheduleError,
     fetchScheduleData,
-    clearScheduleData
+    clearScheduleData,
+    bulkUpsertScheduleSessions // Updated: Added bulkUpsertScheduleSessions
   } = useClientSessions();
 
   const [isModalOpen, setModalOpen] = useState(false);
@@ -1757,6 +1925,23 @@ export const ViewSchedule = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const { toast: hookToast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  // Form states for adding new guards
+  const [form, setForm] = useState<FormData>({
+    userId: "",
+    date: "",
+    starttime: "",
+    endtime: "",
+  });
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [userSearch, setUserSearch] = useState("");
+  const debouncedUserSearch = useDebounce(userSearch, 300);
+  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [submitLoader, setSubmitLoader] = useState(false);
+  const [auto, setAuto] = useState(false);
+  const [applyAllWeek, setApplyAllWeek] = useState(false);
 
   // Modal states for edit/delete functionality
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
@@ -1851,7 +2036,7 @@ export const ViewSchedule = () => {
     }
   }, [clientSessions]);
 
-  // Transform API data when it arrives
+  // Transform API data when it arrives - UPDATED
   useEffect(() => {
     if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
       console.log("Raw API data:", apiScheduleData);
@@ -1878,7 +2063,8 @@ export const ViewSchedule = () => {
               date: readableDate,
               startTime: shift.startTime,
               endTime: shift.endTime,
-              hours: shift.hours
+              hours: shift.hours,
+              scheduleSessionId: shift.scheduleSessionId // Updated: Preserve scheduleSessionId from API
             });
           });
 
@@ -1963,6 +2149,199 @@ export const ViewSchedule = () => {
   };
 
   const uniqueUsers = getUniqueUsers();
+
+  // Form handler functions
+  const handleFormChange = (field: keyof FormData, value: string) => {
+    setForm((f) => ({
+      ...f,
+      [field]: value,
+    }));
+    
+    // Clear field-specific error and overlap error for fields that affect overlap validation
+    if (field === 'starttime' || field === 'endtime' || field === 'userId' || field === 'date') {
+      setErrors((e) => ({ ...e, [field]: undefined, overlap: undefined }));
+    } else {
+      setErrors((e) => ({ ...e, [field]: undefined }));
+    }
+
+    // Check week range when date changes
+    if (field === 'date' && value && currentWeekRange) {
+      const selectedDate = new Date(value);
+      const weekRange = getWeekRangeFromDate(selectedDate);
+      
+      const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
+      const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
+      
+      if (existingWeekStart !== newWeekStart) {
+        hookToast({
+          title: "Invalid Date Selection",
+          description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+          variant: "destructive",
+        });
+        setForm(f => ({ ...f, date: "" }));
+        return;
+      }
+    }
+  };
+
+  const handleUserSelect = (user: User) => {
+    setForm((f) => ({ ...f, userId: String(user.id) }));
+    setUserSearch(user.name);
+    setShowUserDropdown(false);
+    setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
+  };
+
+  const resetAddGuardForm = () => {
+    setForm({ 
+      userId: "", 
+      date: "", 
+      starttime: "", 
+      endtime: "" 
+    });
+    setUserSearch("");
+    setAuto(false);
+    setErrors({});
+    setApplyAllWeek(false);
+    
+    hookToast({
+      title: "Form Reset",
+      description: "Add guard form has been reset successfully.",
+    });
+  };
+
+  const calculateHours = (start, end) => {
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    let hours = endH - startH + (endM - startM) / 60;
+    if (hours < 0) hours += 24;
+    return parseFloat(hours.toFixed(2));
+  };
+
+  const onSubmitAddGuard = async (e) => {
+    e.preventDefault();
+    const formErrors = validateForm(form, scheduleData);
+    setErrors(formErrors);
+    
+    if (Object.keys(formErrors).length > 0) return;
+    
+    setSubmitLoader(true);
+
+    try {
+      // Get user details from the hook data
+      const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
+      
+      if (!selectedUser) {
+        hookToast({
+          title: "Error",
+          description: "Selected user not found.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let newScheduleItems = [];
+      if (applyAllWeek && currentWeekRange) {
+        // Add for each day in the week (Thu-Wed)
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const dateObj = new Date(startDate);
+          dateObj.setDate(startDate.getDate() + i);
+          const dateStr = dateObj.toISOString().split('T')[0];
+          newScheduleItems.push({
+            id: Date.now() + i, // ensure unique id
+            clientId: scheduleData[0]?.clientId || 0,
+            addressId: scheduleData[0]?.addressId || 0,
+            userId: Number(form.userId),
+            startDate: dateStr,
+            auto,
+            shifts: [
+              {
+                id: Date.now() + i, // Ensure unique ID for shifts
+                date: dateStr,
+                startTime: form.starttime,
+                endTime: form.endtime,
+                hours: calculateHours(form.starttime, form.endtime),
+              },
+            ],
+            clientName: scheduleData[0]?.clientName || "Unknown Client",
+            address: scheduleData[0]?.address || "Unknown Address",
+            userName: selectedUser.name,
+            userPhone: selectedUser.phone || '',
+          });
+        }
+      } else {
+        // Check if user already has a schedule for this date
+        const existingScheduleIndex = scheduleData.findIndex(
+          item => item.userId === Number(form.userId) && item.startDate === form.date
+        );
+
+        if (existingScheduleIndex !== -1) {
+          // Add new shift to existing schedule
+          const updatedScheduleData = [...scheduleData];
+          const newShifts = [
+            ...updatedScheduleData[existingScheduleIndex].shifts,
+            {
+              id: Date.now(),
+              date: form.date,
+              startTime: form.starttime,
+              endTime: form.endtime,
+              hours: calculateHours(form.starttime, form.endtime),
+            }
+          ];
+          
+          // Sort shifts by time when adding
+          updatedScheduleData[existingScheduleIndex] = {
+            ...updatedScheduleData[existingScheduleIndex],
+            shifts: sortShiftsByTime(newShifts)
+          };
+          setScheduleData(updatedScheduleData);
+        } else {
+          // Create new schedule
+          newScheduleItems.push({
+            id: Date.now(),
+            clientId: scheduleData[0]?.clientId || 0,
+            addressId: scheduleData[0]?.addressId || 0,
+            userId: Number(form.userId),
+            startDate: form.date,
+            auto,
+            shifts: [
+              {
+                id: Date.now(), // Ensure unique ID for shifts
+                date: form.date,
+                startTime: form.starttime,
+                endTime: form.endtime,
+                hours: calculateHours(form.starttime, form.endtime),
+              },
+            ],
+            clientName: scheduleData[0]?.clientName || "Unknown Client",
+            address: scheduleData[0]?.address || "Unknown Address",
+            userName: selectedUser.name,
+            userPhone: selectedUser.phone || '',
+          });
+        }
+      }
+
+      if (newScheduleItems.length > 0) {
+        setScheduleData(prev => [...prev, ...newScheduleItems]);
+      }
+
+      resetAddGuardForm();
+      
+      hookToast({
+        title: "Success",
+        description: "New guard shift added successfully!",
+      });
+    } catch (err) {
+      console.error("Error adding guard shift:", err);
+      hookToast({
+        title: "Error",
+        description: "Failed to add guard shift.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitLoader(false);
+    }
+  };
 
   // Calculate totals
   const calculateDayTotal = (date: string) => {
@@ -2067,66 +2446,100 @@ export const ViewSchedule = () => {
     return blob;
   };
 
-  // Publish functionality
-  const handlePublish = () => {
+  // Updated Publish functionality
+  const handlePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
       toast.error("No data available to publish!");
       return;
     }
 
-    // Extract publish data from the schedule
-    const publishData = {
-      clientId: scheduleData[0]?.clientId,
-      addressId: scheduleData[0]?.addressId,
-      selectedDate: selectedDate,
-      shifts: [],
-      users: []
-    };
+    try {
+      setIsPublishing(true);
+      
+      // Calculate week start and end dates from the selected date
+      const selectedDateObj = new Date(selectedDate);
+      const weekRange = getWeekRangeFromDate(selectedDateObj);
+      const startDate = weekRange.startOfWeek.toISOString().split('T')[0];
+      const endDate = weekRange.endOfWeek.toISOString().split('T')[0];
 
-    // Collect all shifts and user data
-    scheduleData.forEach(item => {
-      // Add user info if not already added
-      if (!publishData.users.find(user => user.userId === item.userId)) {
-        publishData.users.push({
-          userId: item.userId, // This is the shift guard id
-          userName: item.userName,
-          userPhone: item.userPhone
-        });
-      }
+      // Group schedule data by user to create the required format
+      const userScheduleMap = new Map();
 
-      // Add shifts for this item
-      item.shifts.forEach(shift => {
-        publishData.shifts.push({
-          shiftId: shift.id,
-          shiftGuardId: item.userId, // This is the shift guard id
-          clientId: item.clientId,
-          addressId: item.addressId,
-          date: shift.date,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          hours: shift.hours,
-          userName: item.userName
+      // Process each schedule item
+      scheduleData.forEach(item => {
+        const userId = item.userId;
+        
+        // Get scheduleSessionId from the first shift (all shifts for a user should have the same scheduleSessionId)
+        const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId 
+          ? item.shifts[0].scheduleSessionId 
+          : null;
+        
+        if (!userScheduleMap.has(userId)) {
+          userScheduleMap.set(userId, {
+            scheduleSessionId: scheduleSessionId, // Take from shift data
+            clientId: item.clientId,
+            addressId: item.addressId,
+            userId: userId,
+            startDate: startDate,
+            endDate: endDate,
+            auto: item.auto,
+            weeklyHours: 0, // Will calculate below
+            shifts: []
+          });
+        } else {
+          // If user already exists, keep the first scheduleSessionId we found
+          // but update auto setting if it's different (take the latest one)
+          const existingSchedule = userScheduleMap.get(userId);
+          existingSchedule.auto = item.auto; // Update with latest auto setting
+          
+          // If we don't have a scheduleSessionId yet, try to get it from this item
+          if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
+            existingSchedule.scheduleSessionId = scheduleSessionId;
+          }
+        }
+
+        const userSchedule = userScheduleMap.get(userId);
+        
+        // Add shifts for this user
+        item.shifts.forEach(shift => {
+          userSchedule.shifts.push({
+            date: shift.date,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            hours: shift.hours
+          });
         });
       });
-    });
 
-    console.log("=== PUBLISH DATA ===");
-    console.log("Client ID:", publishData.clientId);
-    console.log("Address ID:", publishData.addressId);
-    console.log("Selected Date:", publishData.selectedDate);
-    console.log("Total Users:", publishData.users.length);
-    console.log("Total Shifts:", publishData.shifts.length);
-    console.log("\n--- USERS DATA ---");
-    publishData.users.forEach(user => {
-      console.log(`User ID (Shift Guard ID): ${user.userId}, Name: ${user.userName}, Phone: ${user.userPhone || 'N/A'}`);
-    });
-    console.log("\n--- SHIFTS DATA ---");
-    publishData.shifts.forEach(shift => {
-      console.log(`Shift ID: ${shift.shiftId}, Guard ID: ${shift.shiftGuardId}, Client ID: ${shift.clientId}, Address ID: ${shift.addressId}, Date: ${shift.date}, Time: ${shift.startTime}-${shift.endTime}, Hours: ${shift.hours}, User: ${shift.userName}`);
-    });
-    console.log("=== END PUBLISH DATA ===");
+      // Calculate weekly hours for each user and prepare final array
+      const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
+        // Calculate total weekly hours
+        const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
+        
+        return {
+          ...userSchedule,
+          weeklyHours: parseFloat(weeklyHours.toFixed(2))
+        };
+      });
 
-    toast.success("Schedule data published! Check console for details.");
+      console.log("=== PUBLISHING SCHEDULE DATA ===");
+      console.log("Schedule Input:", JSON.stringify(scheduleInput, null, 2));
+      console.log("Total Users:", scheduleInput.length);
+      console.log("Week Range:", { startDate, endDate });
+      console.log("=====================================");
+     console.log(scheduleInput);
+     
+      // Call the context function
+      //await bulkUpsertScheduleSessions(scheduleInput);
+      
+      toast.success("Schedule published successfully!");
+      
+    } catch (error) {
+      console.error("Error publishing schedule:", error);
+      toast.error("Failed to publish schedule. Please try again.");
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleDownloadExcel = () => {
@@ -2524,6 +2937,29 @@ export const ViewSchedule = () => {
 
   const confirmEditShift = () => {
     const { userId, date, shift } = editModal;
+    
+    // Validate the edit form
+    const tempForm = {
+      userId: String(userId),
+      date: date,
+      starttime: editForm.starttime,
+      endtime: editForm.endtime
+    };
+    
+    const editErrors = validateForm(tempForm, scheduleData, shift.id);
+    
+    if (Object.keys(editErrors).length > 0) {
+      // Show error toast for overlapping shifts
+      if (editErrors.overlap) {
+        hookToast({
+          title: "Overlapping Shift",
+          description: editErrors.overlap,
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
     const calculateHours = (start, end) => {
       const [startH, startM] = start.split(":").map(Number);
       const [endH, endM] = end.split(":").map(Number);
@@ -2740,7 +3176,171 @@ export const ViewSchedule = () => {
             </button>
           </div>
 
-          {/* Add loading state */}
+          {/* Add New Guard Form */}
+          {!scheduleLoading && !scheduleError && scheduleData.length > 0 && (
+            <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800">Add New Guard</h3>
+              
+              <form onSubmit={onSubmitAddGuard} autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+                  
+                  {/* User Search */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onFocus={() => setShowUserDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
+                      onChange={e => {
+                        setUserSearch(e.target.value);
+                        setForm(f => ({ ...f, userId: "" }));
+                      }}
+                      placeholder="Guard Name"
+                      className={inputClasses}
+                    />
+                    {errors.userId && (
+                      <span className="text-xs text-red-500">{errors.userId}</span>
+                    )}
+                    {showUserDropdown && userSearch.length >= 2 && (
+                      <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
+                        {loadingUsers ? (
+                          <div className="p-2 text-sm text-gray-500">Searching guards...</div>
+                        ) : searchedUsers.length === 0 ? (
+                          <div className="p-2 text-gray-500 text-sm">No guards found</div>
+                        ) : (
+                          searchedUsers.map(user => (
+                            <div
+                              key={user.id}
+                              className="p-2 cursor-pointer text-sm hover:bg-gray-50"
+                              onMouseDown={() => handleUserSelect(user)}
+                            >
+                              {user.name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Date */}
+                  <div className="flex items-center">
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => handleFormChange("date", e.target.value)}
+                      placeholder="Select Date"
+                      onFocus={(e) => e.target.showPicker?.()}
+                      className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
+                      min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+                      max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+                    />
+                    {errors.date && (
+                      <span className="text-xs text-red-500">{errors.date}</span>
+                    )}
+                    {form.date && (
+                      <div className="flex items-center mt-2">
+                        <input
+                          id="applyAllWeekAdd"
+                          type="checkbox"
+                          checked={applyAllWeek}
+                          onChange={e => setApplyAllWeek(e.target.checked)}
+                          className="ml-[-50px] mt-[-7px]"
+                        />
+                        <label htmlFor="applyAllWeekAdd" className="text-xs text-gray-600 ml-[-45px] mt-[10px]">
+                          All Week
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Start Time */}
+                  <div>
+                    <input
+                      type={form.starttime ? "time" : "text"}
+                      value={form.starttime}
+                      onChange={(e) => handleFormChange("starttime", e.target.value)}
+                      placeholder="Start Time"
+                      step="60"
+                      onFocus={(e) => {
+                        e.target.type = "time";
+                        e.target.showPicker?.();
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value) {
+                          e.target.type = "text";
+                        }
+                      }}
+                      className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
+                    />
+                    {errors.starttime && (
+                      <span className="text-xs text-red-500">{errors.starttime}</span>
+                    )}
+                  </div>
+
+                  {/* End Time */}
+                  <div>
+                    <input
+                      type={form.endtime ? "time" : "text"}
+                      value={form.endtime}
+                      onChange={(e) => handleFormChange("endtime", e.target.value)}
+                      placeholder="End Time"
+                      onFocus={(e) => {
+                        e.target.type = "time";
+                        e.target.showPicker?.();
+                      }}
+                      onBlur={(e) => {
+                        if (!e.target.value) {
+                          e.target.type = "text";
+                        }
+                      }}
+                      className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
+                    />
+                    {errors.endtime && (
+                      <span className="text-xs text-red-500">{errors.endtime}</span>
+                    )}
+                    {errors.overlap && (
+                      <span className="text-xs text-red-500">{errors.overlap}</span>
+                    )}
+                  </div>
+
+                  {/* Auto Toggle and Buttons */}
+                  <div className="flex items-center gap-2">
+                    <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+                    
+                    <button
+                      type="submit"
+                      disabled={submitLoader}
+                      className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                    >
+                      {submitLoader ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add
+                        </>
+                      )}
+                    </button>
+
+                    {(form.date || form.starttime || form.endtime || form.userId || auto) && (
+                      
+                      <button
+                                        type="button"
+                                        onClick={resetAddGuardForm}
+                                        className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                                      >
+                                        <RotateCcw className="w-4 h-4 mr-1" />
+                                        Reset
+                                      </button>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
           {scheduleLoading && (
             <div className="flex justify-center items-center p-8">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -2953,11 +3553,21 @@ export const ViewSchedule = () => {
                 {/* Publish button - Leftmost */}
                 <button
                   onClick={handlePublish}
-                  className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium shadow-sm"
+                  disabled={isPublishing}
+                  className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
                   title="Publish Schedule"
                 >
-                  <Send className="w-4 h-4 mr-2" />
-                  Publish
+                  {isPublishing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Publish
+                    </>
+                  )}
                 </button>
 
                 {/* Print and Download buttons - Right side */}

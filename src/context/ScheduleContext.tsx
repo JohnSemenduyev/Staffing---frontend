@@ -85,9 +85,13 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { CREATE_SCHEDULE_SESSION } from "../graphql/mutation"; // Add GET query
-import { GET_SCHEDULE_SESSIONS } from "../graphql/queries";
+import { CREATE_SCHEDULE_SESSION } from "../graphql/mutation";
+import {
+  GET_SCHEDULE_SESSIONS,
+  CHECK_CLIENT_WEEK_SCHEDULE, // ✅ Import the query
+} from "../graphql/queries";
 
+// Types
 type ShiftInput = {
   date: string;
   startTime: string;
@@ -118,10 +122,20 @@ type ScheduleSession = {
   shifts: (ShiftInput & { id: number })[];
 };
 
+type WeekScheduleCheckResponse = {
+  overlap: boolean;
+  message: string;
+};
+
 type ScheduleSessionContextType = {
   sessions: ScheduleSession[];
   createSession: (data: CreateSessionInput) => Promise<void>;
-  fetchSessions: (startDate: string) => Promise<void>; // NEW
+  fetchSessions: (startDate: string) => Promise<void>;
+  checkClientWeekSchedule: (
+    clientId: number,
+    startDate: string,
+    addressId: number
+  ) => Promise<WeekScheduleCheckResponse | null>;
 };
 
 type CreateScheduleSessionResponse = {
@@ -136,7 +150,7 @@ type ScheduleSessionQueryResponse = {
 };
 
 const ScheduleSessionContext = createContext<ScheduleSessionContextType | undefined>(undefined);
-
+const token=localStorage.getItem('token');
 export const ScheduleSessionProvider = ({ children }: { children: React.ReactNode }) => {
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
 
@@ -150,7 +164,7 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
           userId: data.userId,
           startDate: data.startDate,
           auto: data.auto,
-          shifts: data.shifts
+          shifts: data.shifts,
         }
       );
       const newSession = response.createScheduleSession;
@@ -172,8 +186,34 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
     }
   };
 
+  // ✅ New method: checkClientWeekSchedule
+  const checkClientWeekSchedule = async (
+    clientId: number,
+    startDate: string,
+    addressId: number
+  ): Promise<WeekScheduleCheckResponse | null> => {
+    try {
+      const response = await graphQLClient.request<{ checkClientWeekSchedule: WeekScheduleCheckResponse }>(
+        CHECK_CLIENT_WEEK_SCHEDULE,
+        { clientId, startDate, addressId },
+        { Authorization: `Bearer ${token}` }
+      );
+      return response.checkClientWeekSchedule;
+    } catch (error: any) {
+      console.error("Failed to check client week schedule:", error.message || error);
+      return null;
+    }
+  };
+
   return (
-    <ScheduleSessionContext.Provider value={{ sessions, createSession, fetchSessions }}>
+    <ScheduleSessionContext.Provider
+      value={{
+        sessions,
+        createSession,
+        fetchSessions,
+        checkClientWeekSchedule, // ✅ Provide the function
+      }}
+    >
       {children}
     </ScheduleSessionContext.Provider>
   );
