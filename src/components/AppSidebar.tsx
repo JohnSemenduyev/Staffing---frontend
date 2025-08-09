@@ -115,8 +115,18 @@ export function AppSidebar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-const { logout, role, token } = useAuth(); // ✅ Get role and token from auth context
+const { logout, role, token ,isLoading} = useAuth(); // ✅ Get role and token from auth context
 
+if (isLoading) {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex items-center space-x-2">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-gray-500">Loading...</span>
+      </div>
+    </div>
+  );
+}
     // Replace the user check with role check
     if (!role || !token) {
       console.log('🔒 Sidebar: No role or token found', { role, hasToken: !!token });
