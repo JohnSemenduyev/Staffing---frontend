@@ -117,8 +117,12 @@ export function AppSidebar() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 const { logout, role, token } = useAuth(); // ✅ Get role and token from auth context
 
-// Replace the user check with role check
-if (!role || !token) return null; // ✅ Check if user is authenticated
+    // Replace the user check with role check
+    if (!role || !token) {
+      console.log('🔒 Sidebar: No role or token found', { role, hasToken: !!token });
+      return null;
+    }
+    console.log('🔍 Sidebar render:', { role, hasToken: !!token, state });
 
 // Fix the tabs and portalTitle logic
 const tabs = role === 'manager' ? managerTabs : adminTabs; // ✅ Use role instead of user.role

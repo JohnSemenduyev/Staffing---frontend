@@ -63,9 +63,10 @@ const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("role");
   localStorage.removeItem("admin_portal_user"); // ✅ Add this line
-  
-  // Optional: Clear all localStorage if you want to be extra sure
-  // localStorage.clear();
+  localStorage.removeItem("scheduleData");
+  localStorage.clear();
+  window.location.reload();
+
 };
 
   return (

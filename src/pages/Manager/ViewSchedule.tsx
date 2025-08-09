@@ -635,7 +635,6 @@
    
 //       // Call the context function
 //      await bulkUpsertScheduleSessions(scheduleInput);
-      
 //       toast.success("Schedule published successfully!");
       
 //     } catch (error) {
@@ -2480,8 +2479,8 @@ export const ViewSchedule = () => {
             clientId: item.clientId,
             addressId: item.addressId,
             userId: userId,
-            startDate: startDate,
-            endDate: endDate,
+            startDate: convertDateFormat(startDate),
+            endDate: convertDateFormat(endDate),
             auto: item.auto,
             weeklyHours: 0, // Will calculate below
             shifts: []
@@ -2502,11 +2501,13 @@ export const ViewSchedule = () => {
         
         // Add shifts for this user
         item.shifts.forEach(shift => {
+          const isClientGeneratedId = shift.id > 1000000000000; 
           userSchedule.shifts.push({
-            date: shift.date,
+            date: convertDateFormat(shift.date),
             startTime: shift.startTime,
             endTime: shift.endTime,
-            hours: shift.hours
+            hours: shift.hours,
+            shiftId: isClientGeneratedId ? null : shift.id
           });
         });
       });
@@ -2530,8 +2531,9 @@ export const ViewSchedule = () => {
      console.log(scheduleInput);
      
       // Call the context function
-      //await bulkUpsertScheduleSessions(scheduleInput);
-      
+      await bulkUpsertScheduleSessions(scheduleInput);
+      console.log("scheduleInput",JSON.stringify(scheduleInput, null, 2));
+
       toast.success("Schedule published successfully!");
       
     } catch (error) {
