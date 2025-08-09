@@ -402,3 +402,12 @@ export const LOGIN_USER = gql`
   }
 `;
 
+
+export const BULK_UPSERT_SCHEDULE_SESSION = gql`
+  mutation BulkUpsertScheduleSession($input: [ScheduleSessionInputExtended!]!) {
+    bulkUpsertScheduleSession(input: $input) {
+      id
+      createdAt
+    }
+  }
+`;

@@ -8,6 +8,7 @@ import { useScheduleSession } from "../../context/ScheduleContext";
 import { useToast } from "../../hooks/use-toast";
 import { graphQLClient } from "../../GraphqlClient";
 import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
+import { toast as toasted } from "sonner";
 
 interface FormData {
   clientId: string;
@@ -103,6 +104,11 @@ const doTimesOverlap = (start1, end1, start2, end2) => {
   // - First shift starts before second ends AND first shift ends after second starts
   return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
 };
+// Utility function to convert date from YYYY-MM-DD to MM-DD-YYYY
+const convertDateFormat = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-');
+  return `${month}-${day}-${year}`;
+};
 const sortShiftsByTime = (shifts) => {
   return [...shifts].sort((a, b) => {
     const timeToMinutes = (timeStr) => {
@@ -185,7 +191,7 @@ export const PrepareSchedule = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
   const [publishLoader, setPublishLoader] = useState(false);
-  const { createSession } = useScheduleSession();
+  const { createSession,checkClientWeekSchedule } = useScheduleSession();
   const [userSearch, setUserSearch] = useState("");
   const token = localStorage.getItem('token') || '';
 
@@ -568,6 +574,26 @@ useEffect(() => {
     setPublishLoader(false);
   }
   };
+  const handleCheck = async (
+    clientId: string,
+    startDate: string,
+    addressId: string
+  ): Promise<boolean> => {
+    try {
+      console.log(clientId,addressId,startDate);
+      const result = await checkClientWeekSchedule(Number(clientId), startDate, Number(addressId));
+
+      if (result?.overlap === true) {
+        toasted.success(result.message); // ✅ Show toast if no overlap
+        return true;
+      }
+
+      return false; // ✅ Overlap exists or result is null
+    } catch (error) {
+      toasted.error("Error checking schedule overlap.");
+      return false;
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -579,7 +605,32 @@ useEffect(() => {
       const selectedClient = searchedClients.find(c => String(c.id) === form.clientId);
       const selectedAddress = selectedClient?.addresses.find(a => String(a.id) === form.addressId);
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
-
+      const formatedDate=convertDateFormat(form.date);
+      const results= await handleCheck(form.clientId,formatedDate,form.addressId);
+      if (results) {
+      // ✅ If overlap exists, reset form and exit
+      setForm({
+        clientId:"",
+        addressId:"",
+        userId: "",
+        date: "",
+        starttime: "",
+        endtime: "",
+      });
+      setClientSearch("");
+    setSelectedAddressText("");
+    setUserSearch("");
+    setAuto(false);
+    setErrors({});
+    setEditingId(null);
+    setCurrentWeekRange(null);
+    setScheduleData([]);
+    setIsPublished(false);
+    setApplyToAllDates(false);
+    setApplyAllWeek(false);
+      
+      return;
+    }
       let newScheduleItems = [];
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
