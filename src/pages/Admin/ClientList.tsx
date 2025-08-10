@@ -17,13 +17,11 @@ function ClientList() {
   return formattedDate;  // ✅ You need to return it
 };
 
-    useEffect(() => {
-        // Fetch schedule sessions for current date when component mounts
-        const today = getCurrentDate();
-        
-        fetchScheduleSessions(currentPage, today);
-        console.log("Fetching schedule sessions for client list", scheduleSessions);
-    }, [currentPage]);
+useEffect(() => {
+    // Fetch all schedule sessions without date filter
+    fetchScheduleSessions(currentPage); // Remove the startDate parameter
+    console.log("Fetching schedule sessions for client list", scheduleSessions);
+}, [currentPage]);
 
     const tableColumns: TableColumn[] = [
         {
@@ -120,8 +118,7 @@ function ClientList() {
                         lastPage={lastPage}
                         onPageChange={(page) => {
                             setCurrentPage(page);
-                            const today = getCurrentDate();
-                            fetchScheduleSessions(page, today);
+                            fetchScheduleSessions(page); // Remove the startDate parameter
                         }}
                          loading={loading}
                     />
