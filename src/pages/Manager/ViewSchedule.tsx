@@ -82,7 +82,7 @@
 //   const end1Minutes = timeToMinutes(end1);
 //   const start2Minutes = timeToMinutes(start2);
 //   const end2Minutes = timeToMinutes(end2);
-  
+
 //   return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
 // };
 
@@ -99,7 +99,7 @@
 // const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
 //   const userSchedules = scheduleData.filter(item => item.userId === userId);
 //   const allShifts = userSchedules.flatMap(schedule => schedule.shifts);
-  
+
 //   const uniqueShiftTimes = new Map();
 //   allShifts.forEach(shift => {
 //     const key = `${shift.startTime}-${shift.endTime}`;
@@ -111,7 +111,7 @@
 //       });
 //     }
 //   });
-  
+
 //   return Array.from(uniqueShiftTimes.values()).sort((a, b) => {
 //     const timeToMinutes = (timeStr) => {
 //       const [hours, minutes] = timeStr.split(':').map(Number);
@@ -125,7 +125,7 @@
 //   const daySchedules = scheduleData.filter(item => 
 //     item.userId === userId && item.startDate === date
 //   );
-  
+
 //   for (const schedule of daySchedules) {
 //     const shift = schedule.shifts.find(s => 
 //       s.startTime === startTime && s.endTime === endTime
@@ -261,7 +261,7 @@
 //       pincode: rowData.pincode,
 //       addresses: rowData.client?.addresses || []
 //     };
-    
+
 //     console.log("Selected client data:", clientData);
 //     setSelectedClient(clientData);
 //     setModalOpen(true);
@@ -270,13 +270,13 @@
 //   const handleDateSubmit = async (date: string) => {
 //     setSelectedDate(date);
 //     setShowScheduleTable(true);
-    
+
 //     const clientId = selectedClient?.clientId;
 //     const addressId = selectedClient?.addressId;
-    
+
 //     // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
 //     const formattedDate = convertDateFormat(date);
-    
+
 //     console.log("Submitting with:", {
 //       clientId,
 //       addressId, 
@@ -296,7 +296,7 @@
 
 //     // Clear any existing schedule data
 //     clearScheduleData();
-    
+
 //     // Fetch actual schedule data from API using formatted date
 //     try {
 //       await fetchScheduleData(clientId, addressId, formattedDate);
@@ -311,7 +311,7 @@
 //   }, []);
 
 //   const [tableData, setTableData] = useState([]);
-  
+
 //   useEffect(() => {
 //     console.log(tableData);
 //   }, [tableData])
@@ -337,24 +337,24 @@
 //   useEffect(() => {
 //     if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
 //       console.log("Raw API data:", apiScheduleData);
-      
+
 //       // Transform API data to match your component's expected format
 //       const transformedData: ScheduleItem[] = [];
-      
+
 //       // Process each schedule group in the array
 //       apiScheduleData.forEach(scheduleGroup => {
 //         if (scheduleGroup.shifts && scheduleGroup.user) {
 //           // Group shifts by date for this user
 //           const shiftsByDate = new Map();
-          
+
 //           scheduleGroup.shifts.forEach(shift => {
 //             // Convert timestamp to readable date
 //             const readableDate = convertTimestampToDate(shift.date);
-            
+
 //             if (!shiftsByDate.has(readableDate)) {
 //               shiftsByDate.set(readableDate, []);
 //             }
-            
+
 //             shiftsByDate.get(readableDate).push({
 //               id: shift.id,
 //               date: readableDate,
@@ -383,7 +383,7 @@
 //           });
 //         }
 //       });
-      
+
 //       console.log("Transformed schedule data:", transformedData);
 //       setScheduleData(transformedData);
 //     } else {
@@ -413,10 +413,10 @@
 //   // Generate date columns for the schedule table
 //   const generateDateColumns = () => {
 //     if (!currentWeekRange) return [];
-    
+
 //     const dates = [];
 //     const startDate = new Date(currentWeekRange.startOfWeek);
-    
+
 //     for (let i = 0; i < 7; i++) {
 //       const date = new Date(startDate);
 //       date.setDate(startDate.getDate() + i);
@@ -474,7 +474,7 @@
 //     // Add data rows for each user - matching table structure exactly
 //     uniqueUsers.forEach(user => {
 //       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
-      
+
 //       // First row for each user: Employee name with phone number below
 //       const userMainRow = {
 //         "Employee Name": `${user.name}\n${user.phone || ""}`,
@@ -485,7 +485,7 @@
 //         const userSchedulesForDate = scheduleData.filter(item => 
 //           item.userId === user.id && item.startDate === dateCol.date
 //         );
-        
+
 //         if (userSchedulesForDate.length > 0) {
 //           const shifts = userSchedulesForDate.flatMap(schedule => schedule.shifts);
 //           const shiftTimes = shifts.map(shift => `${shift.startTime} - ${shift.endTime}`);
@@ -497,7 +497,7 @@
 
 //       userMainRow["Total"] = calculateUserTotal(user.id);
 //       userMainRow["Auto"] = scheduleData.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
-      
+
 //       formattedData.push(userMainRow);
 
 //       // Add user total row
@@ -530,7 +530,7 @@
 //     formattedData.push(grandTotalRow);
 
 //     const worksheet = XLSX.utils.json_to_sheet(formattedData);
-    
+
 //     // Set column widths for better formatting
 //     const colWidths = [
 //       { wch: 20 }, // Employee Name
@@ -559,7 +559,7 @@
 
 //     try {
 //       setIsPublishing(true);
-      
+
 //       // Calculate week start and end dates from the selected date
 //       const selectedDateObj = new Date(selectedDate);
 //       const weekRange = getWeekRangeFromDate(selectedDateObj);
@@ -572,12 +572,12 @@
 //       // Process each schedule item
 //       scheduleData.forEach(item => {
 //         const userId = item.userId;
-        
+
 //         // Get scheduleSessionId from the first shift (all shifts for a user should have the same scheduleSessionId)
 //         const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId 
 //           ? item.shifts[0].scheduleSessionId 
 //           : null;
-        
+
 //         if (!userScheduleMap.has(userId)) {
 //           userScheduleMap.set(userId, {
 //             scheduleSessionId: scheduleSessionId, // Take from shift data
@@ -595,7 +595,7 @@
 //           // but update auto setting if it's different (take the latest one)
 //           const existingSchedule = userScheduleMap.get(userId);
 //           existingSchedule.auto = item.auto; // Update with latest auto setting
-          
+
 //           // If we don't have a scheduleSessionId yet, try to get it from this item
 //           if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
 //             existingSchedule.scheduleSessionId = scheduleSessionId;
@@ -603,7 +603,7 @@
 //         }
 
 //         const userSchedule = userScheduleMap.get(userId);
-        
+
 //         // Add shifts for this user
 //         item.shifts.forEach(shift => {
 //           userSchedule.shifts.push({
@@ -619,7 +619,7 @@
 //       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
 //         // Calculate total weekly hours
 //         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
-        
+
 //         return {
 //           ...userSchedule,
 //           weeklyHours: parseFloat(weeklyHours.toFixed(2))
@@ -632,11 +632,11 @@
 //       console.log("Week Range:", { startDate, endDate });
 //       console.log("=====================================");
 //    console.log(scheduleInput);
-   
+
 //       // Call the context function
 //      await bulkUpsertScheduleSessions(scheduleInput);
 //       toast.success("Schedule published successfully!");
-      
+
 //     } catch (error) {
 //       console.error("Error publishing schedule:", error);
 //       toast.error("Failed to publish schedule. Please try again.");
@@ -686,19 +686,19 @@
 //     const headerRow = headers.map(header => 
 //       `<th style="background-color: #004175; color: white; font-weight: bold; padding: 8px 4px; text-align: center; border: 1px solid #004175; font-size: 10px;">${header}</th>`
 //     ).join('');
-    
+
 //     // Table rows from schedule data
 //     let dataRows = '';
 //     let rowIndex = 0;
-    
+
 //     uniqueUsers.forEach(user => {
 //       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
-      
+
 //       userShiftTimes.forEach((shiftTime, shiftIndex) => {
 //         const rowStyle = rowIndex % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
-        
+
 //         let row = `<tr style="${rowStyle}">`;
-        
+
 //         // Employee name (only on first shift row)
 //         if (shiftIndex === 0) {
 //           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;" rowspan="${userShiftTimes.length}">
@@ -706,12 +706,12 @@
 //             <div style="font-size: 9px; color: #666;">${user.phone || ''}</div>
 //           </td>`;
 //         }
-        
+
 //         // Phone (merged with name)
 //         if (shiftIndex === 0) {
 //           // This is handled in the name cell
 //         }
-        
+
 //         // Date columns with shift times
 //         dateColumns.forEach(dateCol => {
 //           const shift = getShiftForUserDateAndTime(
@@ -725,14 +725,14 @@
 //             ${shift ? `${shift.startTime} - ${shift.endTime}` : '-'}
 //           </td>`;
 //         });
-        
+
 //         // Total hours (only on first shift row)
 //         if (shiftIndex === 0) {
 //           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${userShiftTimes.length}">
 //             ${calculateUserTotal(user.id)}
 //           </td>`;
 //         }
-        
+
 //         // Auto (only on first shift row)
 //         if (shiftIndex === 0) {
 //           const autoValue = scheduleData.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
@@ -740,18 +740,18 @@
 //             ${autoValue}
 //           </td>`;
 //         }
-        
+
 //         row += '</tr>';
 //         dataRows += row;
 //         rowIndex++;
 //       });
-      
+
 //       // User total row
 //       const totalRowStyle = rowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
 //       let totalRow = `<tr style="${totalRowStyle}">`;
 //       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
 //       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
-      
+
 //       dateColumns.forEach(dateCol => {
 //         const daySchedules = scheduleData.filter(item => 
 //           item.userId === user.id && item.startDate === dateCol.date
@@ -764,25 +764,25 @@
 //           ${roundedDayTotal > 0 ? roundedDayTotal : '-'}
 //         </td>`;
 //       });
-      
+
 //       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id)}</td>`;
 //       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
 //       totalRow += '</tr>';
 //       dataRows += totalRow;
 //       rowIndex++;
 //     });
-    
+
 //     // Grand total row
 //     let grandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
 //     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
 //     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
-    
+
 //     dateColumns.forEach(dateCol => {
 //       grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
 //         ${calculateDayTotal(dateCol.date) || '-'}
 //       </td>`;
 //     });
-    
+
 //     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal()}</td>`;
 //     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
 //     grandTotalRow += '</tr>';
@@ -818,14 +818,14 @@
 
 //     try {
 //       setIsPrinting(true);
-      
+
 //       // Small delay to show loading state
 //       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
 //       const tableContent = generatePrintableTable();
 //       const currentDate = new Date().toLocaleDateString();
 //       const currentTime = new Date().toLocaleTimeString();
-      
+
 //       const printWindow = window.open("", "_blank", "width=1200,height=800,scrollbars=yes,resizable=yes");
 
 //       if (!printWindow) {
@@ -844,11 +844,11 @@
 //                 margin: 0.5in;
 //                 size: landscape;
 //               }
-              
+
 //               * {
 //                 box-sizing: border-box;
 //               }
-              
+
 //               body { 
 //                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
 //                 margin: 0;
@@ -857,27 +857,27 @@
 //                 color: #333;
 //                 line-height: 1.3;
 //               }
-              
+
 //               .header {
 //                 text-align: center;
 //                 margin-bottom: 20px;
 //                 border-bottom: 2px solid #004175;
 //                 padding-bottom: 10px;
 //               }
-              
+
 //               .header h1 { 
 //                 margin: 0;
 //                 color: #004175;
 //                 font-size: 20px;
 //                 font-weight: bold;
 //               }
-              
+
 //               .header .subtitle {
 //                 margin: 5px 0 0 0;
 //                 color: #666;
 //                 font-size: 12px;
 //               }
-              
+
 //               .print-info {
 //                 display: flex;
 //                 justify-content: space-between;
@@ -885,7 +885,7 @@
 //                 font-size: 10px;
 //                 color: #666;
 //               }
-              
+
 //               .summary-stats {
 //                 background: #f8f9fa;
 //                 padding: 10px;
@@ -893,7 +893,7 @@
 //                 margin-bottom: 15px;
 //                 border-left: 4px solid #004175;
 //               }
-              
+
 //               table { 
 //                 width: 100%; 
 //                 border-collapse: collapse; 
@@ -901,7 +901,7 @@
 //                 background: white;
 //                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 //               }
-              
+
 //               th { 
 //                 background-color: #004175 !important;
 //                 color: white !important;
@@ -911,17 +911,17 @@
 //                 border: 1px solid #004175;
 //                 font-size: 10px;
 //               }
-              
+
 //               td { 
 //                 padding: 6px 4px;
 //                 border: 1px solid #dee2e6;
 //                 font-size: 10px;
 //               }
-              
+
 //               tr:nth-child(even) {
 //                 background-color: #f8f9fa;
 //               }
-              
+
 //               .footer {
 //                 margin-top: 20px;
 //                 text-align: center;
@@ -930,28 +930,28 @@
 //                 border-top: 1px solid #dee2e6;
 //                 padding-top: 10px;
 //               }
-              
+
 //               .no-data {
 //                 text-align: center;
 //                 padding: 40px;
 //                 color: #666;
 //                 font-style: italic;
 //               }
-              
+
 //               @media print {
 //                 body { 
 //                   margin: 0;
 //                   padding: 10px;
 //                 }
-                
+
 //                 .header h1 {
 //                   font-size: 18px;
 //                 }
-                
+
 //                 table {
 //                   font-size: 9px;
 //                 }
-                
+
 //                 th, td {
 //                   padding: 4px 2px;
 //                 }
@@ -963,15 +963,15 @@
 //               <h1>Schedule Report</h1>
 //               <p class="subtitle">Generated on ${currentDate} at ${currentTime}</p>
 //             </div>
-            
+
 //             <div class="print-info">
 //               <div>Report Type: Schedule</div>
 //               <div>Selected Date: ${selectedDate}</div>
 //               <div>Page 1 of 1</div>
 //             </div>
-            
+
 //             ${tableContent}
-            
+
 //             <div class="footer">
 //               <p>This report was generated automatically from the Schedule system.</p>
 //             </div>
@@ -981,7 +981,7 @@
 
 //       printWindow.document.write(printContent);
 //       printWindow.document.close();
-      
+
 //       // Wait for content to load, then focus and print
 //       printWindow.onload = () => {
 //         printWindow.focus();
@@ -990,9 +990,9 @@
 //           // Don't close automatically - let user choose
 //         }, 500);
 //       };
-      
+
 //       toast.success("Print preview opened successfully!");
-      
+
 //     } catch (error) {
 //       console.error("Print error:", error);
 //       toast.error("Error generating print preview. Please try again.");
@@ -1099,7 +1099,7 @@
 //     setScheduleData(prev => prev.map(item => 
 //       item.userId === userId ? { ...item, auto: enabled } : item
 //     ));
-    
+
 //     hookToast({
 //       title: "Auto Setting Updated",
 //       description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
@@ -1128,11 +1128,11 @@
 
 //   const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
 //     e.preventDefault();
-    
+
 //     if (!draggedShift) return;
 
 //     const { shift, sourceUserId, sourceDate } = draggedShift;
-    
+
 //     if (sourceUserId === targetUserId && sourceDate === targetDate) {
 //       setDraggedShift(null);
 //       setDragOverCell(null);
@@ -1177,7 +1177,7 @@
 //       const sourceSchedule = scheduleData.find(
 //         item => item.userId === sourceUserId && item.startDate === sourceDate
 //       );
-      
+
 //       if (sourceSchedule) {
 //         const targetUser = uniqueUsers.find(u => u.id === targetUserId);
 //         const newSchedule = {
@@ -1193,13 +1193,13 @@
 //           userName: targetUser?.name || sourceSchedule.userName,
 //           userPhone: targetUser?.phone || sourceSchedule.userPhone,
 //         };
-        
+
 //         setScheduleData(prev => [...prev, newSchedule]);
 //       }
 //     }
 //     setDraggedShift(null);
 //     setDragOverCell(null);
-    
+
 //     hookToast({
 //       title: "Shift Copied",
 //       description: "Shift has been copied successfully.",
@@ -1235,7 +1235,7 @@
 //               searchable={true}
 //             />
 //           )}
-          
+
 //           <PeriodEndDateModal
 //             isOpen={isModalOpen}
 //             onClose={() => setModalOpen(false)}
@@ -1319,7 +1319,7 @@
 //                     {uniqueUsers.map((user, userIndex) => {
 //                       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
 //                       const rowCount = userShiftTimes.length;
-                      
+
 //                       return (
 //                         <React.Fragment key={user.id}>
 //                           {userShiftTimes.map((shiftTime, shiftIndex) => (
@@ -1503,7 +1503,7 @@
 //                       <Printer className="w-5 h-5" />
 //                     )}
 //                   </button>
-                  
+
 //                   <button
 //                     onClick={handleDownloadExcel}
 //                     className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -1535,7 +1535,7 @@
 //                 Are you sure you want to delete this shift?
 //               </p>
 //             </div>
-            
+
 //             <div className="flex space-x-3 justify-end">
 //               <button
 //                 type="button"
@@ -1564,7 +1564,7 @@
 //             <div className="mb-4">
 //               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
 //             </div>
-            
+
 //             <div className="space-y-4">
 //               <div>
 //                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
@@ -1585,7 +1585,7 @@
 //                 />
 //               </div>
 //             </div>
-            
+
 //             <div className="flex space-x-3 justify-end mt-6">
 //               <button
 //                 type="button"
@@ -1617,7 +1617,7 @@
 //                 Are you sure you want to delete all data for this user?
 //               </p>
 //             </div>
-            
+
 //             <div className="flex space-x-3 justify-end">
 //               <button
 //                 type="button"
@@ -1741,7 +1741,7 @@ const doTimesOverlap = (start1, end1, start2, end2) => {
   const end1Minutes = timeToMinutes(end1);
   const start2Minutes = timeToMinutes(start2);
   const end2Minutes = timeToMinutes(end2);
-  
+
   return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
 };
 
@@ -1754,39 +1754,65 @@ const sortShiftsByTime = (shifts) => {
     return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
   });
 };
-
+const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
+  const userDays = scheduleData.filter(i => i.userId === userId);
+  let max = 1;
+  for (const d of userDays) max = Math.max(max, d.shifts.length);
+  return max;
+};
+const userHasMultiShiftDay = (userId: number, scheduleData: ScheduleItem[]) => {
+  const userSchedules = scheduleData.filter(item => item.userId === userId);
+  
+  // Group shifts by date to check if any date has multiple shifts
+  const shiftsByDate = new Map<string, Shift[]>();
+  
+  userSchedules.forEach(schedule => {
+    schedule.shifts.forEach(shift => {
+      const date = shift.date;
+      if (!shiftsByDate.has(date)) {
+        shiftsByDate.set(date, []);
+      }
+      shiftsByDate.get(date)!.push(shift);
+    });
+  });
+  
+  // Check if any date has multiple shifts
+  for (const [date, shifts] of shiftsByDate) {
+    if (shifts.length > 1) {
+      return true; // User has multiple shifts on at least one day
+    }
+  }
+  
+  return false; // User has at most one shift per day
+};
 const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
   const userSchedules = scheduleData.filter(item => item.userId === userId);
-  const allShifts = userSchedules.flatMap(schedule => schedule.shifts);
-  
-  const uniqueShiftTimes = new Map();
-  allShifts.forEach(shift => {
-    const key = `${shift.startTime}-${shift.endTime}`;
-    if (!uniqueShiftTimes.has(key)) {
-      uniqueShiftTimes.set(key, {
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        hours: shift.hours
-      });
-    }
+  const uniqueTimes = new Set<string>();
+  const shiftTimes: { startTime: string; endTime: string }[] = [];
+
+  userSchedules.forEach(schedule => {
+    schedule.shifts.forEach(shift => {
+      const timeKey = `${shift.startTime}-${shift.endTime}`;
+      if (!uniqueTimes.has(timeKey)) {
+        uniqueTimes.add(timeKey);
+        shiftTimes.push({
+          startTime: shift.startTime,
+          endTime: shift.endTime
+        });
+      }
+    });
   });
-  
-  return Array.from(uniqueShiftTimes.values()).sort((a, b) => {
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-  });
+
+  return shiftTimes;
 };
 
 const getShiftForUserDateAndTime = (userId: number, date: string, startTime: string, endTime: string, scheduleData: ScheduleItem[]) => {
-  const daySchedules = scheduleData.filter(item => 
+  const daySchedules = scheduleData.filter(item =>
     item.userId === userId && item.startDate === date
   );
-  
+
   for (const schedule of daySchedules) {
-    const shift = schedule.shifts.find(s => 
+    const shift = schedule.shifts.find(s =>
       s.startTime === startTime && s.endTime === endTime
     );
     if (shift) return shift;
@@ -1824,23 +1850,23 @@ const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingS
   if (!formData.date) e.date = "Required";
   if (!formData.starttime) e.starttime = "Required";
   if (!formData.endtime) e.endtime = "Required";
-  
+
   // Check for overlapping shifts
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
     const existingShifts = scheduleData
       .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
       .flatMap(item => item.shifts);
-    
+
     for (const shift of existingShifts) {
       if (shift.id === editingShiftId) continue; // Skip current shift when editing
-      
+
       if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
         e.overlap = "Shift time overlaps with existing shift for this user and date";
         break;
       }
     }
   }
-  
+
   return e;
 };
 
@@ -1902,10 +1928,10 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
 };
 
 export const ViewSchedule = () => {
-  const { 
-    clientSessions, 
-    loading, 
-    error, 
+  const {
+    clientSessions,
+    loading,
+    error,
     fetchClientSessions,
     // Add these new properties from the updated context
     scheduleData: apiScheduleData,
@@ -1963,7 +1989,7 @@ export const ViewSchedule = () => {
       pincode: rowData.pincode,
       addresses: rowData.client?.addresses || []
     };
-    
+
     console.log("Selected client data:", clientData);
     setSelectedClient(clientData);
     setModalOpen(true);
@@ -1972,16 +1998,16 @@ export const ViewSchedule = () => {
   const handleDateSubmit = async (date: string) => {
     setSelectedDate(date);
     setShowScheduleTable(true);
-    
+
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
-    
+
     // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
     const formattedDate = convertDateFormat(date);
-    
+
     console.log("Submitting with:", {
       clientId,
-      addressId, 
+      addressId,
       date: formattedDate,
       originalDate: date
     });
@@ -1998,7 +2024,7 @@ export const ViewSchedule = () => {
 
     // Clear any existing schedule data
     clearScheduleData();
-    
+
     // Fetch actual schedule data from API using formatted date
     try {
       await fetchScheduleData(clientId, addressId, formattedDate);
@@ -2013,7 +2039,7 @@ export const ViewSchedule = () => {
   }, []);
 
   const [tableData, setTableData] = useState([]);
-  
+
   useEffect(() => {
     console.log(tableData);
   }, [tableData])
@@ -2027,7 +2053,7 @@ export const ViewSchedule = () => {
         state: session.address.state,
         pincode: session.address.pincode,
         addressId: session.addressId,
-        clientId: session.clientId 
+        clientId: session.clientId
       }));
       setTableData(flatData);
     } else {
@@ -2039,24 +2065,24 @@ export const ViewSchedule = () => {
   useEffect(() => {
     if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
       console.log("Raw API data:", apiScheduleData);
-      
+
       // Transform API data to match your component's expected format
       const transformedData: ScheduleItem[] = [];
-      
+
       // Process each schedule group in the array
       apiScheduleData.forEach(scheduleGroup => {
         if (scheduleGroup.shifts && scheduleGroup.user) {
           // Group shifts by date for this user
           const shiftsByDate = new Map();
-          
+
           scheduleGroup.shifts.forEach(shift => {
             // Convert timestamp to readable date
             const readableDate = convertTimestampToDate(shift.date);
-            
+
             if (!shiftsByDate.has(readableDate)) {
               shiftsByDate.set(readableDate, []);
             }
-            
+
             shiftsByDate.get(readableDate).push({
               id: shift.id,
               date: readableDate,
@@ -2085,7 +2111,7 @@ export const ViewSchedule = () => {
           });
         }
       });
-      
+
       console.log("Transformed schedule data:", transformedData);
       setScheduleData(transformedData);
     } else {
@@ -2115,10 +2141,10 @@ export const ViewSchedule = () => {
   // Generate date columns for the schedule table
   const generateDateColumns = () => {
     if (!currentWeekRange) return [];
-    
+
     const dates = [];
     const startDate = new Date(currentWeekRange.startOfWeek);
-    
+
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
@@ -2155,7 +2181,7 @@ export const ViewSchedule = () => {
       ...f,
       [field]: value,
     }));
-    
+
     // Clear field-specific error and overlap error for fields that affect overlap validation
     if (field === 'starttime' || field === 'endtime' || field === 'userId' || field === 'date') {
       setErrors((e) => ({ ...e, [field]: undefined, overlap: undefined }));
@@ -2167,10 +2193,10 @@ export const ViewSchedule = () => {
     if (field === 'date' && value && currentWeekRange) {
       const selectedDate = new Date(value);
       const weekRange = getWeekRangeFromDate(selectedDate);
-      
+
       const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
       const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
-      
+
       if (existingWeekStart !== newWeekStart) {
         hookToast({
           title: "Invalid Date Selection",
@@ -2191,17 +2217,17 @@ export const ViewSchedule = () => {
   };
 
   const resetAddGuardForm = () => {
-    setForm({ 
-      userId: "", 
-      date: "", 
-      starttime: "", 
-      endtime: "" 
+    setForm({
+      userId: "",
+      date: "",
+      starttime: "",
+      endtime: ""
     });
     setUserSearch("");
     setAuto(false);
     setErrors({});
     setApplyAllWeek(false);
-    
+
     hookToast({
       title: "Form Reset",
       description: "Add guard form has been reset successfully.",
@@ -2220,15 +2246,15 @@ export const ViewSchedule = () => {
     e.preventDefault();
     const formErrors = validateForm(form, scheduleData);
     setErrors(formErrors);
-    
+
     if (Object.keys(formErrors).length > 0) return;
-    
+
     setSubmitLoader(true);
 
     try {
       // Get user details from the hook data
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
-      
+
       if (!selectedUser) {
         hookToast({
           title: "Error",
@@ -2287,7 +2313,7 @@ export const ViewSchedule = () => {
               hours: calculateHours(form.starttime, form.endtime),
             }
           ];
-          
+
           // Sort shifts by time when adding
           updatedScheduleData[existingScheduleIndex] = {
             ...updatedScheduleData[existingScheduleIndex],
@@ -2325,7 +2351,7 @@ export const ViewSchedule = () => {
       }
 
       resetAddGuardForm();
-      
+
       hookToast({
         title: "Success",
         description: "New guard shift added successfully!",
@@ -2369,7 +2395,7 @@ export const ViewSchedule = () => {
     // Add data rows for each user - matching table structure exactly
     uniqueUsers.forEach(user => {
       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
-      
+
       // First row for each user: Employee name with phone number below
       const userMainRow = {
         "Employee Name": `${user.name}\n${user.phone || ""}`,
@@ -2377,10 +2403,10 @@ export const ViewSchedule = () => {
 
       // Add shift times for each date (only show shifts if they exist)
       dateColumns.forEach(dateCol => {
-        const userSchedulesForDate = scheduleData.filter(item => 
+        const userSchedulesForDate = scheduleData.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
         );
-        
+
         if (userSchedulesForDate.length > 0) {
           const shifts = userSchedulesForDate.flatMap(schedule => schedule.shifts);
           const shiftTimes = shifts.map(shift => `${shift.startTime} - ${shift.endTime}`);
@@ -2392,7 +2418,7 @@ export const ViewSchedule = () => {
 
       userMainRow["Total"] = calculateUserTotal(user.id);
       userMainRow["Auto"] = scheduleData.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
-      
+
       formattedData.push(userMainRow);
 
       // Add user total row
@@ -2400,10 +2426,10 @@ export const ViewSchedule = () => {
         "Employee Name": "Total",
       };
       dateColumns.forEach(dateCol => {
-        const daySchedules = scheduleData.filter(item => 
+        const daySchedules = scheduleData.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
         );
-        const dayTotal = daySchedules.reduce((total, schedule) => 
+        const dayTotal = daySchedules.reduce((total, schedule) =>
           total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
         );
         totalRow[dateCol.display] = dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-";
@@ -2425,7 +2451,7 @@ export const ViewSchedule = () => {
     formattedData.push(grandTotalRow);
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
-    
+
     // Set column widths for better formatting
     const colWidths = [
       { wch: 20 }, // Employee Name
@@ -2454,7 +2480,7 @@ export const ViewSchedule = () => {
 
     try {
       setIsPublishing(true);
-      
+
       // Calculate week start and end dates from the selected date
       const selectedDateObj = new Date(selectedDate);
       const weekRange = getWeekRangeFromDate(selectedDateObj);
@@ -2467,12 +2493,12 @@ export const ViewSchedule = () => {
       // Process each schedule item
       scheduleData.forEach(item => {
         const userId = item.userId;
-        
+
         // Get scheduleSessionId from the first shift (all shifts for a user should have the same scheduleSessionId)
-        const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId 
-          ? item.shifts[0].scheduleSessionId 
+        const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId
+          ? item.shifts[0].scheduleSessionId
           : null;
-        
+
         if (!userScheduleMap.has(userId)) {
           userScheduleMap.set(userId, {
             scheduleSessionId: scheduleSessionId, // Take from shift data
@@ -2490,7 +2516,7 @@ export const ViewSchedule = () => {
           // but update auto setting if it's different (take the latest one)
           const existingSchedule = userScheduleMap.get(userId);
           existingSchedule.auto = item.auto; // Update with latest auto setting
-          
+
           // If we don't have a scheduleSessionId yet, try to get it from this item
           if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
             existingSchedule.scheduleSessionId = scheduleSessionId;
@@ -2498,10 +2524,10 @@ export const ViewSchedule = () => {
         }
 
         const userSchedule = userScheduleMap.get(userId);
-        
+
         // Add shifts for this user
         item.shifts.forEach(shift => {
-          const isClientGeneratedId = shift.id > 1000000000000; 
+          const isClientGeneratedId = shift.id > 1000000000000;
           userSchedule.shifts.push({
             date: convertDateFormat(shift.date),
             startTime: shift.startTime,
@@ -2516,7 +2542,7 @@ export const ViewSchedule = () => {
       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
         // Calculate total weekly hours
         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
-        
+
         return {
           ...userSchedule,
           weeklyHours: parseFloat(weeklyHours.toFixed(2))
@@ -2528,14 +2554,14 @@ export const ViewSchedule = () => {
       console.log("Total Users:", scheduleInput.length);
       console.log("Week Range:", { startDate, endDate });
       console.log("=====================================");
-     console.log(scheduleInput);
-     
+      console.log(scheduleInput);
+
       // Call the context function
       await bulkUpsertScheduleSessions(scheduleInput);
-      console.log("scheduleInput",JSON.stringify(scheduleInput, null, 2));
+      console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
       toast.success("Schedule published successfully!");
-      
+
     } catch (error) {
       console.error("Error publishing schedule:", error);
       toast.error("Failed to publish schedule. Please try again.");
@@ -2582,22 +2608,22 @@ export const ViewSchedule = () => {
       'Auto'
     ];
 
-    const headerRow = headers.map(header => 
+    const headerRow = headers.map(header =>
       `<th style="background-color: #004175; color: white; font-weight: bold; padding: 8px 4px; text-align: center; border: 1px solid #004175; font-size: 10px;">${header}</th>`
     ).join('');
-    
+
     // Table rows from schedule data
     let dataRows = '';
     let rowIndex = 0;
-    
+
     uniqueUsers.forEach(user => {
       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
-      
+
       userShiftTimes.forEach((shiftTime, shiftIndex) => {
         const rowStyle = rowIndex % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
-        
+
         let row = `<tr style="${rowStyle}">`;
-        
+
         // Employee name (only on first shift row)
         if (shiftIndex === 0) {
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;" rowspan="${userShiftTimes.length}">
@@ -2605,33 +2631,33 @@ export const ViewSchedule = () => {
             <div style="font-size: 9px; color: #666;">${user.phone || ''}</div>
           </td>`;
         }
-        
+
         // Phone (merged with name)
         if (shiftIndex === 0) {
           // This is handled in the name cell
         }
-        
+
         // Date columns with shift times
         dateColumns.forEach(dateCol => {
           const shift = getShiftForUserDateAndTime(
-            user.id, 
-            dateCol.date, 
-            shiftTime.startTime, 
-            shiftTime.endTime, 
+            user.id,
+            dateCol.date,
+            shiftTime.startTime,
+            shiftTime.endTime,
             scheduleData
           );
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
             ${shift ? `${shift.startTime} - ${shift.endTime}` : '-'}
           </td>`;
         });
-        
+
         // Total hours (only on first shift row)
         if (shiftIndex === 0) {
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${userShiftTimes.length}">
             ${calculateUserTotal(user.id)}
           </td>`;
         }
-        
+
         // Auto (only on first shift row)
         if (shiftIndex === 0) {
           const autoValue = scheduleData.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
@@ -2639,23 +2665,23 @@ export const ViewSchedule = () => {
             ${autoValue}
           </td>`;
         }
-        
+
         row += '</tr>';
         dataRows += row;
         rowIndex++;
       });
-      
+
       // User total row
       const totalRowStyle = rowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
       let totalRow = `<tr style="${totalRowStyle}">`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
-      
+
       dateColumns.forEach(dateCol => {
-        const daySchedules = scheduleData.filter(item => 
+        const daySchedules = scheduleData.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
         );
-        const dayTotal = daySchedules.reduce((total, schedule) => 
+        const dayTotal = daySchedules.reduce((total, schedule) =>
           total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
         );
         const roundedDayTotal = parseFloat(dayTotal.toFixed(2));
@@ -2663,25 +2689,25 @@ export const ViewSchedule = () => {
           ${roundedDayTotal > 0 ? roundedDayTotal : '-'}
         </td>`;
       });
-      
+
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id)}</td>`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
       totalRow += '</tr>';
       dataRows += totalRow;
       rowIndex++;
     });
-    
+
     // Grand total row
     let grandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
-    
+
     dateColumns.forEach(dateCol => {
       grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
         ${calculateDayTotal(dateCol.date) || '-'}
       </td>`;
     });
-    
+
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal()}</td>`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
     grandTotalRow += '</tr>';
@@ -2717,14 +2743,14 @@ export const ViewSchedule = () => {
 
     try {
       setIsPrinting(true);
-      
+
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       const tableContent = generatePrintableTable();
       const currentDate = new Date().toLocaleDateString();
       const currentTime = new Date().toLocaleTimeString();
-      
+
       const printWindow = window.open("", "_blank", "width=1200,height=800,scrollbars=yes,resizable=yes");
 
       if (!printWindow) {
@@ -2880,7 +2906,7 @@ export const ViewSchedule = () => {
 
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
+
       // Wait for content to load, then focus and print
       printWindow.onload = () => {
         printWindow.focus();
@@ -2889,9 +2915,9 @@ export const ViewSchedule = () => {
           // Don't close automatically - let user choose
         }, 500);
       };
-      
+
       toast.success("Print preview opened successfully!");
-      
+
     } catch (error) {
       console.error("Print error:", error);
       toast.error("Error generating print preview. Please try again.");
@@ -2939,7 +2965,7 @@ export const ViewSchedule = () => {
 
   const confirmEditShift = () => {
     const { userId, date, shift } = editModal;
-    
+
     // Validate the edit form
     const tempForm = {
       userId: String(userId),
@@ -2947,9 +2973,9 @@ export const ViewSchedule = () => {
       starttime: editForm.starttime,
       endtime: editForm.endtime
     };
-    
+
     const editErrors = validateForm(tempForm, scheduleData, shift.id);
-    
+
     if (Object.keys(editErrors).length > 0) {
       // Show error toast for overlapping shifts
       if (editErrors.overlap) {
@@ -2974,8 +3000,8 @@ export const ViewSchedule = () => {
       if (item.userId === userId && item.startDate === date) {
         return {
           ...item,
-          shifts: item.shifts.map(s => 
-            s.id === shift.id 
+          shifts: item.shifts.map(s =>
+            s.id === shift.id
               ? { ...s, startTime: editForm.starttime, endTime: editForm.endtime, hours: calculateHours(editForm.starttime, editForm.endtime) }
               : s
           )
@@ -3018,10 +3044,10 @@ export const ViewSchedule = () => {
 
   // Auto toggle handler
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-    setScheduleData(prev => prev.map(item => 
+    setScheduleData(prev => prev.map(item =>
       item.userId === userId ? { ...item, auto: enabled } : item
     ));
-    
+
     hookToast({
       title: "Auto Setting Updated",
       description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
@@ -3050,11 +3076,11 @@ export const ViewSchedule = () => {
 
   const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
     e.preventDefault();
-    
+
     if (!draggedShift) return;
 
     const { shift, sourceUserId, sourceDate } = draggedShift;
-    
+
     if (sourceUserId === targetUserId && sourceDate === targetDate) {
       setDraggedShift(null);
       setDragOverCell(null);
@@ -3068,9 +3094,9 @@ export const ViewSchedule = () => {
     if (existingSchedule) {
       const hasOverlap = existingSchedule.shifts.some(existingShift => {
         return doTimesOverlap(
-          shift.startTime, 
-          shift.endTime, 
-          existingShift.startTime, 
+          shift.startTime,
+          shift.endTime,
+          existingShift.startTime,
           existingShift.endTime
         );
       });
@@ -3099,7 +3125,7 @@ export const ViewSchedule = () => {
       const sourceSchedule = scheduleData.find(
         item => item.userId === sourceUserId && item.startDate === sourceDate
       );
-      
+
       if (sourceSchedule) {
         const targetUser = uniqueUsers.find(u => u.id === targetUserId);
         const newSchedule = {
@@ -3115,13 +3141,13 @@ export const ViewSchedule = () => {
           userName: targetUser?.name || sourceSchedule.userName,
           userPhone: targetUser?.phone || sourceSchedule.userPhone,
         };
-        
+
         setScheduleData(prev => [...prev, newSchedule]);
       }
     }
     setDraggedShift(null);
     setDragOverCell(null);
-    
+
     hookToast({
       title: "Shift Copied",
       description: "Shift has been copied successfully.",
@@ -3157,7 +3183,7 @@ export const ViewSchedule = () => {
               searchable={true}
             />
           )}
-          
+
           <PeriodEndDateModal
             isOpen={isModalOpen}
             onClose={() => setModalOpen(false)}
@@ -3182,10 +3208,10 @@ export const ViewSchedule = () => {
           {!scheduleLoading && !scheduleError && scheduleData.length > 0 && (
             <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
               <h3 className="text-lg font-semibold mb-3 text-gray-800">Add New Guard</h3>
-              
+
               <form onSubmit={onSubmitAddGuard} autoComplete="off">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-                  
+
                   {/* User Search */}
                   <div className="relative">
                     <input
@@ -3308,7 +3334,7 @@ export const ViewSchedule = () => {
                   {/* Auto Toggle and Buttons */}
                   <div className="flex items-center gap-2">
                     <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-                    
+
                     <button
                       type="submit"
                       disabled={submitLoader}
@@ -3328,15 +3354,15 @@ export const ViewSchedule = () => {
                     </button>
 
                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
-                      
+
                       <button
-                                        type="button"
-                                        onClick={resetAddGuardForm}
-                                        className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-                                      >
-                                        <RotateCcw className="w-4 h-4 mr-1" />
-                                        Reset
-                                      </button>
+                        type="button"
+                        onClick={resetAddGuardForm}
+                        className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Reset
+                      </button>
                     )}
                   </div>
                 </div>
@@ -3402,137 +3428,139 @@ export const ViewSchedule = () => {
                     </tr>
                   </thead>
                   <tbody className="relative">
-                    {uniqueUsers.map((user, userIndex) => {
-                      const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
-                      const rowCount = userShiftTimes.length;
-                      
-                      return (
-                        <React.Fragment key={user.id}>
-                          {userShiftTimes.map((shiftTime, shiftIndex) => (
-                            <tr 
-                              key={`${user.id}-${shiftTime.startTime}-${shiftTime.endTime}`}
-                              className={`hover:bg-blue-50 transition-colors ${
-                                (userIndex * rowCount + shiftIndex) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                              }`}
-                            >
-                              {shiftIndex === 0 && (
-                                <td 
-                                  className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap" 
-                                  rowSpan={rowCount}
-                                >
-                                  <div className="font-medium text-gray-800">{user.name}</div>
-                                  <div className="text-xs text-gray-500">{user.phone}</div>
-                                </td>
-                              )}
-                              {dateColumns.map(dateCol => {
-                                const shift = getShiftForUserDateAndTime(
-                                  user.id, 
-                                  dateCol.date, 
-                                  shiftTime.startTime, 
-                                  shiftTime.endTime, 
-                                  scheduleData
-                                );
-                                return (
-                                  <td 
-                                    key={dateCol.date} 
-                                    className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                                      dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date 
-                                        ? 'bg-blue-50 border-blue-300' 
-                                        : ''
-                                    }`}
-                                    onDragOver={(e) => handleDragOver(e, user.id, dateCol.date)}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={(e) => handleDrop(e, user.id, dateCol.date)}
-                                  >
-                                    {shift ? (
-                                      <div className="relative group">
-                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
-                                          <div 
-                                            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-                                            draggable
-                                            onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
-                                            onDragEnd={handleDragEnd}
-                                          >
-                                            <GripVertical className="w-3 h-3" />
-                                          </div>
-                                          <button
-                                            onClick={() => handleEditShift(user.id, dateCol.date, shift)}
-                                            className="text-blue-600 hover:text-blue-800 p-0.5"
-                                            title="Edit shift"
-                                          >
-                                            <Edit className="w-3 h-3" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
-                                            className="text-red-600 hover:text-red-800 p-0.5"
-                                            title="Delete shift"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                        <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                              <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                                {calculateShiftTimeTotal(user.id, shiftTime.startTime, shiftTime.endTime, scheduleData, dateColumns)}
-                              </td>
-                              {shiftIndex === 0 && (
-                                <td 
-                                  className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap" 
-                                  rowSpan={rowCount}
-                                >
-                                  <div className="flex items-center justify-center">
-                                    <ToggleSwitch 
-                                      enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
-                                      onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
-                                    />
-                                  </div>
-                                </td>
-                              )}
-                            </tr>
-                          ))}
-                          {/* User Total Row */}
-                          <tr className={`transition-colors ${
-                            (userIndex * 2 + 1) % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'
-                          }`}>
-                            <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
-                              Total
-                            </td>
-                            {dateColumns.map(dateCol => {
-                              const daySchedules = scheduleData.filter(item => 
-                                item.userId === user.id && item.startDate === dateCol.date
-                              );
-                              const dayTotal = daySchedules.reduce((total, schedule) => 
-                                total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
-                              );
-                              const roundedDayTotal = parseFloat(dayTotal.toFixed(2));
-                              return (
-                                <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
-                                  {roundedDayTotal > 0 ? roundedDayTotal : '-'}
-                                </td>
-                              );
-                            })}
-                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                              {calculateUserTotal(user.id)}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                              <button
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="text-red-600 hover:text-red-800 p-1"
-                                title="Delete all data for this user"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        </React.Fragment>
-                      );
-                    })}
+                  {uniqueUsers.map((user, userIndex) => {
+  const rowCount = getMaxShiftsPerDay(user.id, scheduleData);
+
+  return (
+    <React.Fragment key={user.id}>
+      {[...Array(rowCount)].map((_, rowIdx) => (
+        <tr
+          key={`${user.id}-row-${rowIdx}`}
+          className={`hover:bg-blue-50 transition-colors ${
+            (userIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+          }`}
+        >
+          {rowIdx === 0 && (
+            <td
+              className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+              rowSpan={rowCount}
+            >
+              <div className="font-medium text-gray-800">{user.name}</div>
+              <div className="text-xs text-gray-500">{user.phone}</div>
+            </td>
+          )}
+
+          {dateColumns.map(dateCol => {
+            const daySchedules = scheduleData.filter(
+              i => i.userId === user.id && i.startDate === dateCol.date
+            );
+            const sortedShifts = sortShiftsByTime(
+              daySchedules.flatMap(s => s.shifts)
+            );
+            const shift = sortedShifts[rowIdx]; // take nth shift of the day
+
+            return (
+              <td
+                key={dateCol.date + '-' + rowIdx}
+                className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
+                  dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
+                    ? 'bg-blue-50 border-blue-300'
+                    : ''
+                }`}
+                onDragOver={e => handleDragOver(e, user.id, dateCol.date)}
+                onDragLeave={handleDragLeave}
+                onDrop={e => handleDrop(e, user.id, dateCol.date)}
+              >
+                {shift ? (
+                  <div className="relative group">
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
+                      <div
+                        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                        draggable
+                        onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date)}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <GripVertical className="w-3 h-3" />
+                      </div>
+                      <button
+                        onClick={() => handleEditShift(user.id, dateCol.date, shift)}
+                        className="text-blue-600 hover:text-blue-800 p-0.5"
+                        title="Edit shift"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                        className="text-red-600 hover:text-red-800 p-0.5"
+                        title="Delete shift"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
+                  </div>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
+              </td>
+            );
+          })}
+
+          {rowIdx === 0 && (
+            <>
+              <td
+                className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
+                rowSpan={rowCount}
+              >
+                {calculateUserTotal(user.id)}
+              </td>
+              <td
+                className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
+                rowSpan={rowCount}
+              >
+                <div className="flex items-center justify-center">
+                  <ToggleSwitch
+                    enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
+                    onToggle={enabled => handleUserAutoToggle(user.id, enabled)}
+                  />
+                </div>
+              </td>
+            </>
+          )}
+        </tr>
+      ))}
+
+      <tr className={`transition-colors ${userIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
+        <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+          Total
+        </td>
+        {dateColumns.map(dateCol => {
+          const daySchedules = scheduleData.filter(
+            i => i.userId === user.id && i.startDate === dateCol.date
+          );
+          const dayTotal = daySchedules.reduce(
+            (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
+            0
+          );
+          const rounded = parseFloat(dayTotal.toFixed(2));
+          return (
+            <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
+              {rounded > 0 ? rounded : '-'}
+            </td>
+          );
+        })}
+        <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+          {calculateUserTotal(user.id)}
+        </td>
+        <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+          <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </td>
+      </tr>
+    </React.Fragment>
+  );
+})}
                     {/* Grand Total Row */}
                     <tr className="bg-gray-50 font-medium">
                       <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
@@ -3589,7 +3617,7 @@ export const ViewSchedule = () => {
                       <Printer className="w-5 h-5" />
                     )}
                   </button>
-                  
+
                   <button
                     onClick={handleDownloadExcel}
                     className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -3621,7 +3649,7 @@ export const ViewSchedule = () => {
                 Are you sure you want to delete this shift?
               </p>
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
@@ -3650,7 +3678,7 @@ export const ViewSchedule = () => {
             <div className="mb-4">
               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
@@ -3671,7 +3699,7 @@ export const ViewSchedule = () => {
                 />
               </div>
             </div>
-            
+
             <div className="flex space-x-3 justify-end mt-6">
               <button
                 type="button"
@@ -3703,7 +3731,7 @@ export const ViewSchedule = () => {
                 Are you sure you want to delete all data for this user?
               </p>
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
