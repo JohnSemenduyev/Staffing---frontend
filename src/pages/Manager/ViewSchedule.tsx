@@ -1882,10 +1882,13 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
 
   const handleCurrentWeek = () => {
     const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const weekEnd = new Date(today.setDate(diff + 6));
-    const formatted = weekEnd.toISOString().slice(0, 10);
+    const day = today.getUTCDay();
+    const daysSinceThursday = (day + 3) % 7; // Thursday = 4, so we subtract to get back to it
+    const startOfWeek = new Date(today);
+    startOfWeek.setUTCDate(today.getUTCDate() - daysSinceThursday);
+    startOfWeek.setUTCHours(0, 0, 0, 0);
+    
+    const formatted = startOfWeek.toISOString().slice(0, 10);
     setSelectedDate(formatted);
   };
 
@@ -3055,42 +3058,44 @@ export const ViewSchedule = () => {
   };
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string) => {
+  const handleDragStart = (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
     setDraggedShift({
       shift,
       sourceUserId,
-      sourceDate
+      sourceDate,
+      sourceRowIdx
     });
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
+  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-    setDragOverCell({ userId: targetUserId, date: targetDate });
+    setDragOverCell({ userId: targetUserId, date: targetDate, rowIdx: targetRowIdx });
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     setDragOverCell(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
+  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
     e.preventDefault();
-
+  
     if (!draggedShift) return;
-
-    const { shift, sourceUserId, sourceDate } = draggedShift;
-
-    if (sourceUserId === targetUserId && sourceDate === targetDate) {
+  
+    const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
+  
+    // Don't allow dropping on the same cell
+    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
       setDraggedShift(null);
       setDragOverCell(null);
       return;
     }
-
+  
     const existingSchedule = scheduleData.find(
       item => item.userId === targetUserId && item.startDate === targetDate
     );
-
+  
     if (existingSchedule) {
       const hasOverlap = existingSchedule.shifts.some(existingShift => {
         return doTimesOverlap(
@@ -3100,7 +3105,7 @@ export const ViewSchedule = () => {
           existingShift.endTime
         );
       });
-
+  
       if (hasOverlap) {
         hookToast({
           title: "Overlapping Shift",
@@ -3111,21 +3116,34 @@ export const ViewSchedule = () => {
         setDragOverCell(null);
         return;
       }
-
+  
+      // Handle the specific row position
       setScheduleData(prev => prev.map(item => {
         if (item.userId === targetUserId && item.startDate === targetDate) {
+          const currentShifts = [...item.shifts];
+          
+          // If dropping to a specific row position, insert at that position
+          if (targetRowIdx < currentShifts.length) {
+            // Replace the shift at the target row position
+            currentShifts[targetRowIdx] = { ...shift, id: Date.now(), date: targetDate };
+          } else {
+            // Add to the end if target row is beyond current shifts
+            currentShifts.push({ ...shift, id: Date.now(), date: targetDate });
+          }
+          
           return {
             ...item,
-            shifts: sortShiftsByTime([...item.shifts, { ...shift, id: Date.now(), date: targetDate }])
+            shifts: sortShiftsByTime(currentShifts)
           };
         }
         return item;
       }));
     } else {
+      // Create new schedule for target user/date
       const sourceSchedule = scheduleData.find(
         item => item.userId === sourceUserId && item.startDate === sourceDate
       );
-
+  
       if (sourceSchedule) {
         const targetUser = uniqueUsers.find(u => u.id === targetUserId);
         const newSchedule = {
@@ -3141,13 +3159,13 @@ export const ViewSchedule = () => {
           userName: targetUser?.name || sourceSchedule.userName,
           userPhone: targetUser?.phone || sourceSchedule.userPhone,
         };
-
+  
         setScheduleData(prev => [...prev, newSchedule]);
       }
     }
     setDraggedShift(null);
     setDragOverCell(null);
-
+  
     hookToast({
       title: "Shift Copied",
       description: "Shift has been copied successfully.",
@@ -3467,9 +3485,9 @@ export const ViewSchedule = () => {
                     ? 'bg-blue-50 border-blue-300'
                     : ''
                 }`}
-                onDragOver={e => handleDragOver(e, user.id, dateCol.date)}
+                onDragOver={e => handleDragOver(e, user.id, dateCol.date, rowIdx)}
                 onDragLeave={handleDragLeave}
-                onDrop={e => handleDrop(e, user.id, dateCol.date)}
+                onDrop={e => handleDrop(e, user.id, dateCol.date, rowIdx)}
               >
                 {shift ? (
                   <div className="relative group">
@@ -3477,24 +3495,24 @@ export const ViewSchedule = () => {
                       <div
                         className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
                         draggable
-                        onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date)}
+                        onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date, rowIdx)}
                         onDragEnd={handleDragEnd}
                       >
-                        <GripVertical className="w-3 h-3" />
+                        <GripVertical className="w-4 h-4" />
                       </div>
                       <button
                         onClick={() => handleEditShift(user.id, dateCol.date, shift)}
                         className="text-blue-600 hover:text-blue-800 p-0.5"
                         title="Edit shift"
                       >
-                        <Edit className="w-3 h-3" />
+                        <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
                         className="text-red-600 hover:text-red-800 p-0.5"
                         title="Delete shift"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                     <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
