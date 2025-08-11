@@ -1,3 +1,135 @@
+// import { useEffect } from "react";
+// import { GenericTable, TableColumn } from "../../components/GenericTable";
+// import Pagination from "../../components/Pagination";
+// import { useScheduleSessionContext } from "../../context/ClientList";
+
+// function ClientList() {
+//     const { state, fetchScheduleSessions, setCurrentPage } = useScheduleSessionContext();
+//     const { scheduleSessions, loading, error, lastPage, currentPage } = state;
+
+//     // Get current date in YYYY-MM-DD format
+//   const getCurrentDate = () => {
+//   const date = new Date(); // or pass a specific date here
+//   const mm = String(date.getMonth() + 1).padStart(2, '0');
+//   const dd = String(date.getDate()).padStart(2, '0');
+//   const yyyy = date.getFullYear();
+//    const formattedDate = `${yyyy}-${mm}-${dd}`;
+//   return formattedDate;  // ✅ You need to return it
+// };
+
+// useEffect(() => {
+//     // Fetch all schedule sessions without date filter
+//     fetchScheduleSessions(currentPage); // Remove the startDate parameter
+//     console.log("Fetching schedule sessions for client list", scheduleSessions);
+// }, [currentPage]);
+
+//     const tableColumns: TableColumn[] = [
+//         {
+//           key: "client.name",
+//           label: "Client Name",
+//           sortable: true,
+//           searchable: true,
+//           className: "whitespace-nowrap",
+//           width: "200px"
+//         },
+//         {
+//             key:"address.industry",
+//             label: "Industry",
+//             sortable: true,
+//             searchable: true,
+//             className: "whitespace-nowrap",
+//             width: "200px"
+//         },
+//         {
+//             key:"weeklyHours",
+//             label: "Weekly Hours",
+//             sortable: true,
+//             searchable: true,
+//             className: "whitespace-nowrap",
+//             width: "200px"
+//         },
+//         {
+//             key:"address.address",
+//             label: "Street Address",
+//             sortable: true,
+//             searchable: true,
+//             className: "whitespace-nowrap",
+//             width: "200px"
+//         },
+//         {
+//             key:"address.city",
+//             label: "City",
+//             sortable: true,
+//             searchable: true,
+//             className: "whitespace-nowrap",
+//             width: "200px"
+//         },
+//         {
+//             key:"address.state",
+//             label: "State",
+//             sortable: true,
+//             searchable: true,
+//             className: "whitespace-nowrap",
+//             width: "200px"
+//         },
+//         {
+//             key:"address.pincode",
+//             label: "Zip Code",
+//             sortable: true,
+//             searchable: true,
+//             className: "whitespace-nowrap",
+//             width: "200px"
+//         }
+        
+//     ];
+
+//     // Show error if there's one
+//     if (error) {
+//         return (
+//             <div className="min-h-screen p-6 font-sans">
+//                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+//                     Error: {error}
+//                 </div>
+//             </div>
+//         );
+//     }
+    
+//     return (
+//         <div className="min-h-screen p-6 font-sans">
+//       <div>
+//         <h2 className="text-xl font-semibold text-gray-800">
+//           Client List
+//         </h2>
+//         </div>
+            
+//             <GenericTable
+//                 data={scheduleSessions || []}
+//                 columns={tableColumns}
+//                 actions={[]}
+//                 loading={loading}
+//                 emptyMessage="No schedule sessions found."
+//                 searchable={true}
+//             />
+
+//             {lastPage > 1 && (
+//                 <div className="mt-6">
+//                     <Pagination
+//                         currentPage={currentPage}
+//                         lastPage={lastPage}
+//                         onPageChange={(page) => {
+//                             setCurrentPage(page);
+//                             fetchScheduleSessions(page); // Remove the startDate parameter
+//                         }}
+//                          loading={loading}
+//                     />
+//                 </div>
+//             )}
+//         </div>
+//     );
+// }
+
+// export default ClientList
+
 import { useEffect } from "react";
 import { GenericTable, TableColumn } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
@@ -7,21 +139,11 @@ function ClientList() {
     const { state, fetchScheduleSessions, setCurrentPage } = useScheduleSessionContext();
     const { scheduleSessions, loading, error, lastPage, currentPage } = state;
 
-    // Get current date in YYYY-MM-DD format
-  const getCurrentDate = () => {
-  const date = new Date(); // or pass a specific date here
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const yyyy = date.getFullYear();
-   const formattedDate = `${yyyy}-${mm}-${dd}`;
-  return formattedDate;  // ✅ You need to return it
-};
-
-useEffect(() => {
-    // Fetch all schedule sessions without date filter
-    fetchScheduleSessions(currentPage); // Remove the startDate parameter
-    console.log("Fetching schedule sessions for client list", scheduleSessions);
-}, [currentPage]);
+    useEffect(() => {
+        // Fetch all addresses without any parameters
+        fetchScheduleSessions(currentPage);
+        console.log("Fetching addresses for client list", scheduleSessions);
+    }, [currentPage]);
 
     const tableColumns: TableColumn[] = [
         {
@@ -33,7 +155,7 @@ useEffect(() => {
           width: "200px"
         },
         {
-            key:"address.industry",
+            key: "industry",
             label: "Industry",
             sortable: true,
             searchable: true,
@@ -41,46 +163,45 @@ useEffect(() => {
             width: "200px"
         },
         {
-            key:"weeklyHours",
-            label: "Weekly Hours",
+            key: "contractHour",
+            label: "Contract Hours",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap",
             width: "200px"
         },
         {
-            key:"address.address",
+            key: "address",
             label: "Street Address",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap",
-            width: "200px"
+            width: "250px"
         },
         {
-            key:"address.city",
+            key: "city",
             label: "City",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap",
-            width: "200px"
+            width: "150px"
         },
         {
-            key:"address.state",
+            key: "state",
             label: "State",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap",
-            width: "200px"
+            width: "100px"
         },
         {
-            key:"address.pincode",
+            key: "pincode",
             label: "Zip Code",
             sortable: true,
             searchable: true,
             className: "whitespace-nowrap",
-            width: "200px"
+            width: "120px"
         }
-        
     ];
 
     // Show error if there's one
@@ -96,20 +217,25 @@ useEffect(() => {
     
     return (
         <div className="min-h-screen p-6 font-sans">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-800">
-          Client List
-        </h2>
-        </div>
+            <div>
+                <h2 className="text-xl font-semibold text-gray-800">
+                    Client Address List
+                </h2>
+                <p className="text-gray-600 mt-1">
+                    Manage client locations and contract details
+                </p>
+            </div>
             
-            <GenericTable
-                data={scheduleSessions || []}
-                columns={tableColumns}
-                actions={[]}
-                loading={loading}
-                emptyMessage="No schedule sessions found."
-                searchable={true}
-            />
+            <div className="mt-6">
+                <GenericTable
+                    data={scheduleSessions || []}
+                    columns={tableColumns}
+                    actions={[]}
+                    loading={loading}
+                    emptyMessage="No client addresses found."
+                    searchable={true}
+                />
+            </div>
 
             {lastPage > 1 && (
                 <div className="mt-6">
@@ -118,9 +244,9 @@ useEffect(() => {
                         lastPage={lastPage}
                         onPageChange={(page) => {
                             setCurrentPage(page);
-                            fetchScheduleSessions(page); // Remove the startDate parameter
+                            fetchScheduleSessions(page);
                         }}
-                         loading={loading}
+                        loading={loading}
                     />
                 </div>
             )}
@@ -128,4 +254,4 @@ useEffect(() => {
     );
 }
 
-export default ClientList
+export default ClientList;
