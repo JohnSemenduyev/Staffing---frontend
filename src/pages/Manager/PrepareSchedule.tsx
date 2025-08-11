@@ -12,7 +12,8 @@ import { toast as toasted } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-// Custom Date Picker Component
+
+
 const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
   value: string;
   onChange: (field: string, value: string) => void;
@@ -44,23 +45,47 @@ const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, ma
     } else {
       onChange("date", '');
     }
-    setIsOpen(false);
+    // Close the calendar after date selection
+    setTimeout(() => setIsOpen(false), 100);
   };
 
+  // Handle click outside to close calendar
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const datePickerElement = event.target.closest('.custom-date-picker');
+      if (isOpen && !datePickerElement) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      // Use a small delay to prevent interference with date selection
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 100);
+
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isOpen]);
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full cursor-pointer custom-date-picker" onClick={() => setIsOpen(true)}>
       <input
         type="text"
         value={formatDateForDisplay(selectedDate)}
         onChange={() => { }} // Read-only input
         placeholder={placeholder || "MM-DD-YYYY"}
         className={className}
-        onClick={() => setIsOpen(true)}
         readOnly
       />
-      <Calendar
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-      />
+      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white px-1">
+        <Calendar
+          className="w-4 h-4 text-gray-400 pointer-events-none"
+        />
+      </div>
       {isOpen && (
         <div className="absolute z-50 mt-1">
           <DatePicker
@@ -277,6 +302,7 @@ export const PrepareSchedule = () => {
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const { toast } = useToast();
+  const [hasOverlapError, setHasOverlapError] = useState(false);
 
   // Client search hook
 
@@ -679,29 +705,19 @@ export const PrepareSchedule = () => {
       const formatedDate = convertDateFormat(form.date);
       const results = await handleCheck(form.clientId, formatedDate, form.addressId);
       if (results) {
-        // ✅ If overlap exists, reset form and exit
-        setForm({
-          clientId: "",
-          addressId: "",
-          userId: "",
-          date: "",
-          starttime: "",
-          endtime: "",
+        // ✅ If overlap exists, show toast and set error state but don't reset form
+        setHasOverlapError(true);
+        toast({
+          title: "Schedule Overlap Detected",
+          description: "There is an overlap with existing schedule. Please choose a different date or time.",
+          variant: "destructive",
         });
-        setClientSearch("");
-        setSelectedAddressText("");
-        setUserSearch("");
-        setAuto(false);
-        setErrors({});
-        setEditingId(null);
-        setCurrentWeekRange(null);
-        setScheduleData([]);
-        setIsPublished(false);
-        setApplyToAllDates(false);
-        setApplyAllWeek(false);
-
+        setSubmitLoader(false);
         return;
       }
+      
+      // Clear overlap error if no overlap detected
+      setHasOverlapError(false);
       let newScheduleItems = [];
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
@@ -740,8 +756,8 @@ export const PrepareSchedule = () => {
             // Create new schedule for this day
             newScheduleItems.push({
               id: Date.now() + i,
-              clientId: scheduleData[0]?.clientId || 0,
-              addressId: scheduleData[0]?.addressId || 0,
+              clientId: scheduleData[0]?.clientId || Number(form.clientId),
+              addressId: scheduleData[0]?.addressId || Number(form.addressId),
               userId: Number(form.userId),
               startDate: dateStr,
               auto,
@@ -754,8 +770,8 @@ export const PrepareSchedule = () => {
                   hours: calculateHours(form.starttime, form.endtime),
                 },
               ],
-              clientName: scheduleData[0]?.clientName || "Unknown Client",
-              address: scheduleData[0]?.address || "Unknown Address",
+              clientName: scheduleData[0]?.clientName || selectedClient?.name || "Unknown Client",
+              address: scheduleData[0]?.address || selectedAddress?.address || "Unknown Address",
               userName: selectedUser.name,
               userPhone: selectedUser.phone || '',
             });
@@ -808,8 +824,8 @@ export const PrepareSchedule = () => {
                 hours: calculateHours(form.starttime, form.endtime),
               },
             ],
-            clientName: selectedClient?.name,
-            address: selectedAddress?.address,
+            clientName: selectedClient?.name || "Unknown Client",
+            address: selectedAddress?.address || "Unknown Address",
             userName: selectedUser?.name,
             userPhone: selectedUser?.phone || '',
           });
@@ -1205,11 +1221,11 @@ export const PrepareSchedule = () => {
               )}
             </div>
             <div className="flex items-center">
-              <CustomDatePicker
+            <CustomDatePicker
                 value={form.date}
                 onChange={handleChange}
                 placeholder="Select Date"
-                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
+                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} ${hasOverlapError ? "border-red-500 focus:ring-red-500" : ""}`}
                 minDate={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
                 maxDate={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
               />
