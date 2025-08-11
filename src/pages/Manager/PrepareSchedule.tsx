@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, RotateCcw, Edit, Trash2, GripVertical } from "lucide-react";
+import { Plus, RotateCcw, Edit, Trash2, GripVertical, Calendar } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -9,6 +9,77 @@ import { useToast } from "../../hooks/use-toast";
 import { graphQLClient } from "../../GraphqlClient";
 import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
 import { toast as toasted } from "sonner";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
+// Custom Date Picker Component
+const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
+  value: string;
+  onChange: (field: string, value: string) => void;
+  placeholder?: string;
+  className?: string;
+  minDate?: string;
+  maxDate?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Convert YYYY-MM-DD to Date object
+  const selectedDate = value ? new Date(value) : null;
+
+  // Format date for display as MM-DD-YYYY
+  const formatDateForDisplay = (date) => {
+    if (!date) return '';
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}-${day}-${year}`;
+  };
+
+  // Handle date selection
+  const handleDateChange = (date) => {
+    if (date) {
+      // Convert to YYYY-MM-DD format for form state
+      const formattedDate = date.toISOString().split('T')[0];
+      onChange("date", formattedDate);
+    } else {
+      onChange("date", '');
+    }
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative w-full">
+      <input
+        type="text"
+        value={formatDateForDisplay(selectedDate)}
+        onChange={() => { }} // Read-only input
+        placeholder={placeholder || "MM-DD-YYYY"}
+        className={className}
+        onClick={() => setIsOpen(true)}
+        readOnly
+      />
+      <Calendar
+        className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+      />
+      {isOpen && (
+        <div className="absolute z-50 mt-1">
+          <DatePicker
+            selected={selectedDate}
+            onChange={handleDateChange}
+            inline
+            // minDate={minDate ? new Date(minDate) : undefined}
+            // maxDate={maxDate ? new Date(maxDate) : undefined}
+            dateFormat="MM/dd/yyyy"
+            showYearDropdown
+            scrollableYearDropdown
+            yearDropdownItemNumber={15}
+            onCalendarClose={() => setIsOpen(false)}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface FormData {
   clientId: string;
@@ -99,7 +170,7 @@ const doTimesOverlap = (start1, end1, start2, end2) => {
   const end1Minutes = timeToMinutes(end1);
   const start2Minutes = timeToMinutes(start2);
   const end2Minutes = timeToMinutes(end2);
-  
+
   // Two shifts overlap if:
   // - First shift starts before second ends AND first shift ends after second starts
   return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
@@ -123,7 +194,7 @@ const sortShiftsByTime = (shifts) => {
 const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
   const userSchedules = scheduleData.filter(item => item.userId === userId);
   const allShifts = userSchedules.flatMap(schedule => schedule.shifts);
-  
+
   const uniqueShiftTimes = new Map();
   allShifts.forEach(shift => {
     const key = `${shift.startTime}-${shift.endTime}`;
@@ -135,7 +206,7 @@ const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
       });
     }
   });
-  
+
   // Sort by start time
   return Array.from(uniqueShiftTimes.values()).sort((a, b) => {
     const timeToMinutes = (timeStr) => {
@@ -148,12 +219,12 @@ const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
 
 // Get shift for specific user, date, and time slot
 const getShiftForUserDateAndTime = (userId: number, date: string, startTime: string, endTime: string, scheduleData: ScheduleItem[]) => {
-  const daySchedules = scheduleData.filter(item => 
+  const daySchedules = scheduleData.filter(item =>
     item.userId === userId && item.startDate === date
   );
-  
+
   for (const schedule of daySchedules) {
-    const shift = schedule.shifts.find(s => 
+    const shift = schedule.shifts.find(s =>
       s.startTime === startTime && s.endTime === endTime
     );
     if (shift) return shift;
@@ -191,12 +262,12 @@ export const PrepareSchedule = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
   const [publishLoader, setPublishLoader] = useState(false);
-  const { createSession,checkClientWeekSchedule } = useScheduleSession();
+  const { createSession, checkClientWeekSchedule } = useScheduleSession();
   const [userSearch, setUserSearch] = useState("");
   const token = localStorage.getItem('token') || '';
 
   const debouncedUserSearch = useDebounce(userSearch, 300);
- const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
+  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [editingId, setEditingId] = useState(null);
@@ -206,17 +277,17 @@ export const PrepareSchedule = () => {
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const { toast } = useToast();
-  
+
   // Client search hook
 
-const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(
-  debouncedClientSearch,
-);  
+  const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(
+    debouncedClientSearch,
+  );
   // Modal states
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
   const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
   const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
-  
+
   // Drag and drop states
   const [draggedShift, setDraggedShift] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null);
@@ -229,62 +300,62 @@ const { data: searchedClients = [], isLoading: loadingClients } = useSearchClien
     if (!form.date) e.date = "Required";
     if (!form.starttime) e.starttime = "Required";
     if (!form.endtime) e.endtime = "Required";
-    
+
     // Check for overlapping shifts
     if (form.userId && form.date && form.starttime && form.endtime) {
       const existingShifts = scheduleData
         .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
         .flatMap(item => item.shifts);
-      
+
       const newStartTime = form.starttime;
       const newEndTime = form.endtime;
-      
+
       for (const shift of existingShifts) {
         if (shift.id === editModal.shift?.id) continue; // Skip current shift when editing
-        
+
         const existingStart = shift.startTime;
         const existingEnd = shift.endTime;
-        
+
         // Check if new shift overlaps with existing shift
         if (doTimesOverlap(newStartTime, newEndTime, shift.startTime, shift.endTime)) {
-  e.overlap = "Shift time overlaps with existing shift for this user and date";
-  break;
-}
+          e.overlap = "Shift time overlaps with existing shift for this user and date";
+          break;
+        }
       }
     }
-    
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-useEffect(() => {
-  const savedData = localStorage.getItem('scheduleData');
-  if (savedData) {
-    try {
-      const parsedData = JSON.parse(savedData);
-      setScheduleData(parsedData);
-      if (parsedData.length > 0) {
-        // Set the week range based on existing data
-        const firstDate = new Date(parsedData[0].startDate);
-        setCurrentWeekRange(getWeekRangeFromDate(firstDate));
-        
-        // Restore client name and address from saved data
-        const firstScheduleItem = parsedData[0];
-        setClientSearch(firstScheduleItem.clientName || '');
-        setSelectedAddressText(firstScheduleItem.address || '');
-        
-        // Also restore the form clientId and addressId
-        setForm(prevForm => ({
-          ...prevForm,
-          clientId: String(firstScheduleItem.clientId || ''),
-          addressId: String(firstScheduleItem.addressId || '')
-        }));
+  useEffect(() => {
+    const savedData = localStorage.getItem('scheduleData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setScheduleData(parsedData);
+        if (parsedData.length > 0) {
+          // Set the week range based on existing data
+          const firstDate = new Date(parsedData[0].startDate);
+          setCurrentWeekRange(getWeekRangeFromDate(firstDate));
+
+          // Restore client name and address from saved data
+          const firstScheduleItem = parsedData[0];
+          setClientSearch(firstScheduleItem.clientName || '');
+          setSelectedAddressText(firstScheduleItem.address || '');
+
+          // Also restore the form clientId and addressId
+          setForm(prevForm => ({
+            ...prevForm,
+            clientId: String(firstScheduleItem.clientId || ''),
+            addressId: String(firstScheduleItem.addressId || '')
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading data from localStorage:', error);
       }
-    } catch (error) {
-      console.error('Error loading data from localStorage:', error);
     }
-  }
-}, []);
+  }, []);
 
   // Control client search - only allow search when no schedule data or published
   useEffect(() => {
@@ -298,19 +369,19 @@ useEffect(() => {
   }, [scheduleData.length, isPublished, clientSearch]);
 
   useEffect(() => {
-  if (scheduleData.length > 0) {
-    localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
-  } else {
-    // Remove the item from localStorage when scheduleData is empty
-    localStorage.removeItem('scheduleData');
-  }
-}, [scheduleData]);
+    if (scheduleData.length > 0) {
+      localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
+    } else {
+      // Remove the item from localStorage when scheduleData is empty
+      localStorage.removeItem('scheduleData');
+    }
+  }, [scheduleData]);
   const handleChange = (field: keyof FormData, value: string) => {
     setForm((f) => ({
       ...f,
       [field]: value,
     }));
-    
+
     // Clear field-specific error and overlap error for fields that affect overlap validation
     if (field === 'starttime' || field === 'endtime' || field === 'userId' || field === 'date') {
       setErrors((e) => ({ ...e, [field]: undefined, overlap: undefined }));
@@ -322,12 +393,12 @@ useEffect(() => {
     if (field === 'date' && value) {
       const selectedDate = new Date(value);
       const weekRange = getWeekRangeFromDate(selectedDate);
-      
+
       // If there's existing data and it's not published, check if the week is different
       if (scheduleData.length > 0 && !isPublished && currentWeekRange) {
         const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
         const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
-        
+
         if (existingWeekStart !== newWeekStart) {
           toast({
             title: "Invalid Date Selection",
@@ -338,7 +409,7 @@ useEffect(() => {
           return;
         }
       }
-      
+
       setCurrentWeekRange(weekRange);
     }
   };
@@ -348,7 +419,7 @@ useEffect(() => {
     if (scheduleData.length > 0 && !isPublished) {
       const existingClientId = scheduleData[0]?.clientId;
       const existingAddressId = scheduleData[0]?.addressId;
-      
+
       if (String(existingClientId) !== String(client.id) || String(existingAddressId) !== String(addressId)) {
         toast({
           title: "Different Client/Address Selected",
@@ -389,13 +460,13 @@ useEffect(() => {
   };
 
   const resetForm = () => {
-    setForm({ 
-      clientId: "", 
-      addressId: "", 
-      userId: "", 
-      date: "", 
-      starttime: "", 
-      endtime: "" 
+    setForm({
+      clientId: "",
+      addressId: "",
+      userId: "",
+      date: "",
+      starttime: "",
+      endtime: ""
     });
     setClientSearch("");
     setSelectedAddressText("");
@@ -408,7 +479,7 @@ useEffect(() => {
     setIsPublished(false);
     setApplyToAllDates(false);
     setApplyAllWeek(false);
-    
+
     toast({
       title: "Form Reset",
       description: "Form has been reset successfully.",
@@ -417,16 +488,16 @@ useEffect(() => {
 
   const generateDateColumns = () => {
     if (!currentWeekRange) return [];
-    
+
     const dates = [];
     const startDate = new Date(currentWeekRange.startOfWeek);
-    
+
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       dates.push({
         date: date.toISOString().split('T')[0],
-        display: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+        display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
       });
     }
     return dates;
@@ -473,10 +544,10 @@ useEffect(() => {
 
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
     // Update auto setting for specific user's schedules
-    setScheduleData(prev => prev.map(item => 
+    setScheduleData(prev => prev.map(item =>
       item.userId === userId ? { ...item, auto: enabled } : item
     ));
-    
+
     toast({
       title: "Auto Setting Updated",
       description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
@@ -490,13 +561,13 @@ useEffect(() => {
       const backendData = uniqueUsers.map(user => {
         // Get all schedule items for this user
         const userSchedules = scheduleData.filter(item => item.userId === user.id);
-        
+
         // Get the first schedule item to extract common data
         const firstSchedule = userSchedules[0];
-        
+
         // Create a map to deduplicate shifts by date and time
         const shiftMap = new Map();
-        
+
         userSchedules.forEach(schedule => {
           schedule.shifts.forEach(shift => {
             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
@@ -510,13 +581,13 @@ useEffect(() => {
             }
           });
         });
-        
+
         // Convert map values to array
         const userShifts = Array.from(shiftMap.values());
-        
+
         // Calculate total weekly hours for this user
         const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
-        
+
         return {
           clientId: firstSchedule?.clientId,
           addressId: firstSchedule?.addressId,
@@ -532,38 +603,38 @@ useEffect(() => {
       console.log('Backend Data Structure:', backendData);
 
       // Send data to backend
-        const response = await graphQLClient.request(
-      CREATE_MULTIPLE_SCHEDULE_SESSIONS,
-      { input: backendData }, // Variables
-      { Authorization: `Bearer ${token}` } // Headers with token
-    );
+      const response = await graphQLClient.request(
+        CREATE_MULTIPLE_SCHEDULE_SESSIONS,
+        { input: backendData }, // Variables
+        { Authorization: `Bearer ${token}` } // Headers with token
+      );
 
       console.log('Backend Response:', response);
-      
+
       // Reset everything after successful API call
       setScheduleData([]);
       localStorage.removeItem('scheduleData');
       setIsPublished(false);
       setCurrentWeekRange(null);
       resetForm();
-      
+
       toast({
         title: "Schedule Published",
         description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
       });
     } catch (err) {
       console.error("Error publishing schedule sessions:", err);
-      
+
       // Handle specific backend error messages
       let errorMessage = "Failed to publish schedule sessions. Please try again.";
-      
+
       if (err.response?.errors && err.response.errors.length > 0) {
         const backendError = err.response.errors[0];
         if (backendError.message) {
           errorMessage = backendError.message;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -571,8 +642,8 @@ useEffect(() => {
       });
     }
     finally {
-    setPublishLoader(false);
-  }
+      setPublishLoader(false);
+    }
   };
   const handleCheck = async (
     clientId: string,
@@ -580,7 +651,7 @@ useEffect(() => {
     addressId: string
   ): Promise<boolean> => {
     try {
-      console.log(clientId,addressId,startDate);
+      console.log(clientId, addressId, startDate);
       const result = await checkClientWeekSchedule(Number(clientId), startDate, Number(addressId));
 
       if (result?.overlap === true) {
@@ -605,62 +676,94 @@ useEffect(() => {
       const selectedClient = searchedClients.find(c => String(c.id) === form.clientId);
       const selectedAddress = selectedClient?.addresses.find(a => String(a.id) === form.addressId);
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
-      const formatedDate=convertDateFormat(form.date);
-      const results= await handleCheck(form.clientId,formatedDate,form.addressId);
+      const formatedDate = convertDateFormat(form.date);
+      const results = await handleCheck(form.clientId, formatedDate, form.addressId);
       if (results) {
-      // ✅ If overlap exists, reset form and exit
-      setForm({
-        clientId:"",
-        addressId:"",
-        userId: "",
-        date: "",
-        starttime: "",
-        endtime: "",
-      });
-      setClientSearch("");
-    setSelectedAddressText("");
-    setUserSearch("");
-    setAuto(false);
-    setErrors({});
-    setEditingId(null);
-    setCurrentWeekRange(null);
-    setScheduleData([]);
-    setIsPublished(false);
-    setApplyToAllDates(false);
-    setApplyAllWeek(false);
-      
-      return;
-    }
+        // ✅ If overlap exists, reset form and exit
+        setForm({
+          clientId: "",
+          addressId: "",
+          userId: "",
+          date: "",
+          starttime: "",
+          endtime: "",
+        });
+        setClientSearch("");
+        setSelectedAddressText("");
+        setUserSearch("");
+        setAuto(false);
+        setErrors({});
+        setEditingId(null);
+        setCurrentWeekRange(null);
+        setScheduleData([]);
+        setIsPublished(false);
+        setApplyToAllDates(false);
+        setApplyAllWeek(false);
+
+        return;
+      }
       let newScheduleItems = [];
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
+        const updatedScheduleData = [...scheduleData];
+        
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = dateObj.toISOString().split('T')[0];
-          newScheduleItems.push({
-            id: Date.now() + i, // ensure unique id
-            clientId: Number(form.clientId),
-            addressId: Number(form.addressId),
-            userId: Number(form.userId),
-            startDate: dateStr,
-            auto,
-            shifts: [
+          
+          // Check if user already has a schedule for this date
+          const existingScheduleIndex = updatedScheduleData.findIndex(
+            item => item.userId === Number(form.userId) && item.startDate === dateStr
+          );
+      
+          if (existingScheduleIndex !== -1) {
+            // Add new shift to existing schedule
+            const newShifts = [
+              ...updatedScheduleData[existingScheduleIndex].shifts,
               {
-                id: Date.now() + i, // Ensure unique ID for shifts
+                id: Date.now() + i,
                 date: dateStr,
                 startTime: form.starttime,
                 endTime: form.endtime,
                 hours: calculateHours(form.starttime, form.endtime),
-              },
-            ],
-            clientName: selectedClient?.name,
-            address: selectedAddress?.address,
-            userName: selectedUser?.name,
-            userPhone: selectedUser?.phone || '',
-          });
+              }
+            ];
+      
+            // Sort shifts by time when adding
+            updatedScheduleData[existingScheduleIndex] = {
+              ...updatedScheduleData[existingScheduleIndex],
+              shifts: sortShiftsByTime(newShifts)
+            };
+          } else {
+            // Create new schedule for this day
+            newScheduleItems.push({
+              id: Date.now() + i,
+              clientId: scheduleData[0]?.clientId || 0,
+              addressId: scheduleData[0]?.addressId || 0,
+              userId: Number(form.userId),
+              startDate: dateStr,
+              auto,
+              shifts: [
+                {
+                  id: Date.now() + i,
+                  date: dateStr,
+                  startTime: form.starttime,
+                  endTime: form.endtime,
+                  hours: calculateHours(form.starttime, form.endtime),
+                },
+              ],
+              clientName: scheduleData[0]?.clientName || "Unknown Client",
+              address: scheduleData[0]?.address || "Unknown Address",
+              userName: selectedUser.name,
+              userPhone: selectedUser.phone || '',
+            });
+          }
         }
+        
+        // Update the schedule data with merged shifts
+        setScheduleData(updatedScheduleData);
       } else {
         // Check if user already has a schedule for this date
         const existingScheduleIndex = scheduleData.findIndex(
@@ -680,7 +783,7 @@ useEffect(() => {
               hours: calculateHours(form.starttime, form.endtime),
             }
           ];
-          
+
           // Sort shifts by time when adding
           updatedScheduleData[existingScheduleIndex] = {
             ...updatedScheduleData[existingScheduleIndex],
@@ -798,8 +901,8 @@ useEffect(() => {
       if (item.userId === userId && item.startDate === date) {
         return {
           ...item,
-          shifts: item.shifts.map(s => 
-            s.id === shift.id 
+          shifts: item.shifts.map(s =>
+            s.id === shift.id
               ? { ...s, startTime: form.starttime, endTime: form.endtime, hours: calculateHours(form.starttime, form.endtime) }
               : s
           )
@@ -880,11 +983,11 @@ useEffect(() => {
 
   const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string) => {
     e.preventDefault();
-    
+
     if (!draggedShift) return;
 
     const { shift, sourceUserId, sourceDate } = draggedShift;
-    
+
     // Don't allow dropping on the same cell
     if (sourceUserId === targetUserId && sourceDate === targetDate) {
       setDraggedShift(null);
@@ -900,14 +1003,14 @@ useEffect(() => {
     if (existingSchedule) {
       // Check for overlapping shifts
       // Check for overlapping shifts using the improved function
-const hasOverlap = existingSchedule.shifts.some(existingShift => {
-  return doTimesOverlap(
-    shift.startTime, 
-    shift.endTime, 
-    existingShift.startTime, 
-    existingShift.endTime
-  );
-});
+      const hasOverlap = existingSchedule.shifts.some(existingShift => {
+        return doTimesOverlap(
+          shift.startTime,
+          shift.endTime,
+          existingShift.startTime,
+          existingShift.endTime
+        );
+      });
 
       if (hasOverlap) {
         toast({
@@ -935,7 +1038,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
       const sourceSchedule = scheduleData.find(
         item => item.userId === sourceUserId && item.startDate === sourceDate
       );
-      
+
       if (sourceSchedule) {
         const targetUser = uniqueUsers.find(u => u.id === targetUserId);
         const newSchedule = {
@@ -951,13 +1054,13 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
           userName: targetUser?.name || sourceSchedule.userName,
           userPhone: targetUser?.phone || sourceSchedule.userPhone,
         };
-        
+
         setScheduleData(prev => [...prev, newSchedule]);
       }
     }
     setDraggedShift(null);
     setDragOverCell(null);
-    
+
     toast({
       title: "Shift Copied",
       description: "Shift has been copied successfully.",
@@ -968,7 +1071,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
     setDraggedShift(null);
     setDragOverCell(null);
   };
-  
+
   return (
     <div className="min-h-screen font-sans w-full p-6">
       <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
@@ -985,10 +1088,10 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
         >
           Prepare Schedule
         </h2>
-        
+
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
-            
+
             {/* Client Search */}
             <div className="relative">
               <input
@@ -1035,9 +1138,8 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                             onMouseDown={() =>
                               handleClientSelect(client, address.id)
                             }
-                            className={`p-4 cursor-pointer text-sm ${
-                              isEven ? "bg-white" : "bg-gray-50"
-                            } hover:bg-gray-100`}
+                            className={`p-4 cursor-pointer text-sm ${isEven ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100`}
                           >
                             <div className="font-semibold text-gray-600 text-base">
                               {client.name}
@@ -1101,82 +1203,91 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
               )}
             </div>
             <div className="flex items-center">
-              <input
-                type="date"
+              <CustomDatePicker
                 value={form.date}
-                onChange={(e) => handleChange("date", e.target.value)}
+                onChange={handleChange}
                 placeholder="Select Date"
-                onFocus={(e) => e.target.showPicker?.()}
                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-                min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
-                max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+                minDate={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+                maxDate={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
               />
               {errors.date && (
                 <span className="text-xs text-red-500">{errors.date}</span>
               )}
-              {form.date && (
-                <div className="flex items-center mt-2">
-                  <input
-                    id="applyAllWeek"
-                    type="checkbox"
-                    checked={applyAllWeek}
-                    onChange={e => setApplyAllWeek(e.target.checked)}
-                    className="ml-[-50px] mt-[-7px]"
-                  />
-                </div>
-              )}
+              <div className="flex items-center m-2 space-x-2">
+                <input
+                  id="applyAllWeek"
+                  type="checkbox"
+                  checked={applyAllWeek}
+                  disabled={!form.date}
+                  onChange={e => setApplyAllWeek(e.target.checked)}
+                  className={`w-4 h-4 rounded ${form.date
+                      ? "text-blue-600 focus:ring-blue-500 border-gray-300"
+                      : "text-gray-400 border-gray-200 cursor-not-allowed"
+                    }`}
+                />
+                <label
+                  htmlFor="applyAllWeek"
+                  className={`text-xs whitespace-nowrap ${form.date
+                      ? "text-gray-600 cursor-pointer"
+                      : "text-gray-400 cursor-not-allowed"
+                    }`}
+                >
+                  All Week
+                </label>
+              </div>
             </div>
 
             <div>
-  <input
-    type={form.starttime ? "time" : "text"}
-    value={form.starttime}
-    onChange={(e) => handleChange("starttime", e.target.value)}
-    placeholder="Start Time"
-    step="60"
-    onFocus={(e) => {
-      e.target.type = "time";
-      e.target.showPicker?.();
-    }}
-    onBlur={(e) => {
-      if (!e.target.value) {
-        e.target.type = "text";
-      }
-    }}
-    className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
-  />
-  {errors.starttime && (
-    <span className="text-xs text-red-500">{errors.starttime}</span>
-  )}
-</div>
-<div>
-  <input
-    type={form.endtime ? "time" : "text"}
-    value={form.endtime}
-    onChange={(e) => handleChange("endtime", e.target.value)}
-    placeholder="End Time"
-    onFocus={(e) => {
-      e.target.type = "time";
-      e.target.showPicker?.();
-    }}
-    onBlur={(e) => {
-      if (!e.target.value) {
-        e.target.type = "text";
-      }
-    }}
-    className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
-  />
-  {errors.endtime && (
-    <span className="text-xs text-red-500">{errors.endtime}</span>
-  )}
-  {errors.overlap && (
-    <span className="text-xs text-red-500">{errors.overlap}</span>
-  )}
-</div>
+              <input
+                type={form.starttime ? "time" : "text"}
+                value={form.starttime}
+                onChange={(e) => handleChange("starttime", e.target.value)}
+                placeholder="Start Time"
+                step="60"
+                onFocus={(e) => {
+                  e.target.type = "time";
+                  e.target.showPicker?.();
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) {
+                    e.target.type = "text";
+                  }
+                }}
+                className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
+              />
+              {errors.starttime && (
+                <span className="text-xs text-red-500">{errors.starttime}</span>
+              )}
+            </div>
+            <div>
+              <input
+                type={form.endtime ? "time" : "text"}
+                value={form.endtime}
+                onChange={(e) => handleChange("endtime", e.target.value)}
+                placeholder="End Time"
+                onFocus={(e) => {
+                  e.target.type = "time";
+                  e.target.showPicker?.();
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) {
+                    e.target.type = "text";
+                  }
+                }}
+                className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
+              />
+              {errors.endtime && (
+                <span className="text-xs text-red-500">{errors.endtime}</span>
+              )}
+              {errors.overlap && (
+                <span className="text-xs text-red-500">{errors.overlap}</span>
+              )}
+            </div>
             <div className="flex items-center">
               <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
             </div>
-            
+
             <div className="flex gap-2 justify-start">
               <button
                 type="submit"
@@ -1195,7 +1306,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                   </>
                 )}
               </button>
-              {(form.date || form.starttime || form.endtime || form.userId || form.addressId || form.clientId || auto ) && (
+              {(form.date || form.starttime || form.endtime || form.userId || form.addressId || form.clientId || auto) && (
                 <button
                   type="button"
                   onClick={resetForm}
@@ -1210,7 +1321,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
         </form>
       </div>
 
-             {scheduleData.length > 0 && (
+      {scheduleData.length > 0 && (
         <div className="w-full mt-2">
           <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
             <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
@@ -1248,19 +1359,18 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                   {uniqueUsers.map((user, userIndex) => {
                     const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
                     const rowCount = userShiftTimes.length;
-                    
+
                     return (
                       <React.Fragment key={user.id}>
                         {userShiftTimes.map((shiftTime, shiftIndex) => (
-                          <tr 
+                          <tr
                             key={`${user.id}-${shiftTime.startTime}-${shiftTime.endTime}`}
-                            className={`hover:bg-blue-50 transition-colors ${
-                              (userIndex * rowCount + shiftIndex) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                            }`}
+                            className={`hover:bg-blue-50 transition-colors ${(userIndex * rowCount + shiftIndex) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                              }`}
                           >
                             {shiftIndex === 0 && (
-                              <td 
-                                className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap" 
+                              <td
+                                className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
                                 rowSpan={rowCount}
                               >
                                 <div className="font-medium text-gray-800">{user.name}</div>
@@ -1269,20 +1379,19 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                             )}
                             {dateColumns.map(dateCol => {
                               const shift = getShiftForUserDateAndTime(
-                                user.id, 
-                                dateCol.date, 
-                                shiftTime.startTime, 
-                                shiftTime.endTime, 
+                                user.id,
+                                dateCol.date,
+                                shiftTime.startTime,
+                                shiftTime.endTime,
                                 scheduleData
                               );
                               return (
-                                <td 
-                                  key={dateCol.date} 
-                                  className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                                    dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date 
-                                      ? 'bg-blue-50 border-blue-300' 
-                                      : ''
-                                  }`}
+                                <td
+                                  key={dateCol.date}
+                                  className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
+                                    ? 'bg-blue-50 border-blue-300'
+                                    : ''
+                                    }`}
                                   onDragOver={(e) => handleDragOver(e, user.id, dateCol.date)}
                                   onDragLeave={handleDragLeave}
                                   onDrop={(e) => handleDrop(e, user.id, dateCol.date)}
@@ -1290,7 +1399,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                                   {shift ? (
                                     <div className="relative group">
                                       <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
-                                        <div 
+                                        <div
                                           className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
                                           draggable
                                           onDragStart={(e) => handleDragStart(e, shift, user.id, dateCol.date)}
@@ -1325,14 +1434,14 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                               {calculateShiftTimeTotal(user.id, shiftTime.startTime, shiftTime.endTime, scheduleData, dateColumns)}
                             </td>
                             {shiftIndex === 0 && (
-                              <td 
-                                className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap" 
+                              <td
+                                className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
                                 rowSpan={rowCount}
                               >
                                 <div className="flex items-center justify-center">
-                                  <ToggleSwitch 
-                                    enabled={scheduleData.find(item => item.userId === user.id)?.auto || false} 
-                                    onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)} 
+                                  <ToggleSwitch
+                                    enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
+                                    onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)}
                                   />
                                 </div>
                               </td>
@@ -1340,17 +1449,16 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                           </tr>
                         ))}
                         {/* User Total Row */}
-                        <tr className={`transition-colors ${
-                          (userIndex * 2 + 1) % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'
-                        }`}>
+                        <tr className={`transition-colors ${(userIndex * 2 + 1) % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'
+                          }`}>
                           <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                             Total
                           </td>
                           {dateColumns.map(dateCol => {
-                            const daySchedules = scheduleData.filter(item => 
+                            const daySchedules = scheduleData.filter(item =>
                               item.userId === user.id && item.startDate === dateCol.date
                             );
-                            const dayTotal = daySchedules.reduce((total, schedule) => 
+                            const dayTotal = daySchedules.reduce((total, schedule) =>
                               total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
                             );
                             const roundedDayTotal = parseFloat(dayTotal.toFixed(2));
@@ -1395,20 +1503,20 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
 
             {/* Publish Button */}
             <div className="p-4 border-t bg-white">
-              <button 
-  onClick={handlePublish}
-  className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
-  disabled={isPublished || publishLoader}
->
-  {publishLoader ? (
-    <>
-      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block" />
-      Publishing...
-    </>
-  ) : (
-    isPublished ? 'Published' : 'Publish'
-  )}
-</button>
+              <button
+                onClick={handlePublish}
+                className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                disabled={isPublished || publishLoader}
+              >
+                {publishLoader ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block" />
+                    Publishing...
+                  </>
+                ) : (
+                  isPublished ? 'Published' : 'Publish'
+                )}
+              </button>
               <p className="text-sm text-gray-600 mt-2">
                 Employees who had change in the schedule should get "Your schedule has been updated!" notification after Publish is clicked.
               </p>
@@ -1426,7 +1534,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 Are you sure you want to delete this shift?
               </p>
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
@@ -1455,7 +1563,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
             <div className="mb-4">
               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
@@ -1476,7 +1584,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 />
               </div>
             </div>
-            
+
             <div className="flex space-x-3 justify-end mt-6">
               <button
                 type="button"
@@ -1507,7 +1615,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 Are you sure you want to delete all data for this user?
               </p>
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
