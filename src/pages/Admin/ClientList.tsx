@@ -18,8 +18,8 @@ function ClientList() {
 };
 
 useEffect(() => {
-    // Fetch all schedule sessions without date filter
-    fetchScheduleSessions(currentPage); // Remove the startDate parameter
+    const currentDate = getCurrentDate();
+    fetchScheduleSessions(currentPage, currentDate);
     console.log("Fetching schedule sessions for client list", scheduleSessions);
 }, [currentPage]);
 
@@ -118,7 +118,8 @@ useEffect(() => {
                         lastPage={lastPage}
                         onPageChange={(page) => {
                             setCurrentPage(page);
-                            fetchScheduleSessions(page); // Remove the startDate parameter
+                            const currentDate = getCurrentDate();
+                            fetchScheduleSessions(page, currentDate); // Remove the startDate parameter
                         }}
                          loading={loading}
                     />

@@ -330,8 +330,8 @@ useEffect(() => {
         
         if (existingWeekStart !== newWeekStart) {
           toast({
-            title: "Invalid Date Selection",
-            description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+            title: "⚠️ Week Mismatch Warning",
+            description: "You have existing schedule items for the current week. Please select a date from the same week (Thursday to Wednesday) to maintain schedule consistency.",
             variant: "destructive",
           });
           setForm(f => ({ ...f, date: "" }));
@@ -1108,12 +1108,13 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 placeholder="Select Date"
                 onFocus={(e) => e.target.showPicker?.()}
                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-                min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
-                max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+                // min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+                // max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
               />
               {errors.date && (
                 <span className="text-xs text-red-500">{errors.date}</span>
               )}
+              
               {form.date && (
                 <div className="flex items-center mt-2">
                   <input
