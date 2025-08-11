@@ -408,7 +408,7 @@
 // };
 
 import React, { useEffect, useState } from "react";
-import {  Printer, Share2, Upload } from "lucide-react";
+import {  Printer, RotateCcw, Share2, Upload } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -480,6 +480,20 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const dd = String(dateObj.getDate()).padStart(2, '0');
   return `${mm}-${dd}-${yyyy}`;   // ✅ YYYY-MM-DD
 };
+const handleReset = () => {
+    setForm({
+       clientId: "",
+    addressId: "",  
+    date: "",
+    });
+    setClientSearch("");
+    
+    setSelectedAddressText("");
+    setErrors({});
+   
+    setShowClientDropdown(false);
+    
+  };
 const onSubmit = async (e) => {
   e.preventDefault();
   if (!validate()) return;
@@ -943,7 +957,7 @@ const onSubmit = async (e) => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-start">               
+            <div className="flex justify-start gap-2">               
               <button                 
                 type="submit"                 
                 disabled={submitLoader}                 
@@ -957,7 +971,17 @@ const onSubmit = async (e) => {
                 ) : (                   
                   "Run"                 
                 )}               
-              </button>             
+              </button> 
+              { (form.addressId || form.clientId || form.date)&&
+                (<button
+                type="button"
+                onClick={handleReset}
+                disabled={submitLoader}
+                className="inline-flex items-center px-4 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Reset
+              </button>) }            
             </div>
           </div>
         </form>

@@ -15,6 +15,7 @@ export interface TableColumn {
   className?: string;
   headerClassName?: string;
   width?: string;
+  height?:string
 }
 
 export interface TableAction {
@@ -134,7 +135,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                   className={`px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap ${column.headerClassName || ''}`}
                   style={{ 
                     width: column.width || 'auto',
-                    minWidth: column.width || 'auto'
+                    minWidth: column.width || 'auto',
+                    height:column.height || 'auto'
                   }}
                 >
                   <div className="flex items-center">

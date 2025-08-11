@@ -1119,9 +1119,7 @@ export const PrepareSchedule = () => {
                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && clientSearch !== scheduleData[0]?.clientName ? 'bg-gray-100' : ''}`}
               />
               {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-              {errors.addressId && (
-                <span className="text-xs text-red-500 block">{errors.addressId}</span>
-              )}
+              
               {showClientDropdown && clientSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
                   {loadingClients ? (
@@ -1163,6 +1161,10 @@ export const PrepareSchedule = () => {
                 readOnly
                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
               />
+              {errors.addressId && (
+                <span className="text-xs text-red-500 block">{errors.addressId}</span>
+              )}
+
             </div>
 
             {/* User Search */}
