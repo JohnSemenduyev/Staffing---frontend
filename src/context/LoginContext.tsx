@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode } from "react";
+import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { graphQLClient } from "../GraphqlClient";
 import { gql } from "graphql-request";
 
@@ -16,6 +16,7 @@ const LOGIN_USER = gql`
 type AuthContextType = {
   token: string | null;
   role: string | null;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 };
@@ -30,7 +31,26 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
   const [role, setRole] = useState<string | null>(() => localStorage.getItem("role"));
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const initializeAuth = () => {
+      try {
+        const storedToken = localStorage.getItem("token");
+        const storedRole = localStorage.getItem("role");
+        
+        if (storedToken && storedRole) {
+          setToken(storedToken);
+          setRole(storedRole);
+        }
+      } catch (error) {
+        console.error("Error reading from localStorage:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    initializeAuth();
+  }, []);
 const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
   try {
     const variables = { email, password };
@@ -63,13 +83,14 @@ const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("role");
   localStorage.removeItem("admin_portal_user"); // ✅ Add this line
-  
-  // Optional: Clear all localStorage if you want to be extra sure
-  // localStorage.clear();
+  localStorage.removeItem("scheduleData");
+  localStorage.clear();
+  window.location.reload();
+
 };
 
   return (
-    <AuthContext.Provider value={{ token, role, login, logout }}>
+    <AuthContext.Provider value={{ token, role, login, logout ,isLoading}}>
       {children}
     </AuthContext.Provider>
   );

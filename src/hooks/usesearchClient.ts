@@ -37,6 +37,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { graphQLClient } from "../GraphqlClient";
 import { SEARCH_CLIENTS } from "../graphql/queries";
+import { useAuth } from "../context/LoginContext";
 
 type Address = {
   id: number | string;
@@ -55,8 +56,9 @@ type Client = {
   createdAt?: string;
   addresses: Address[];
 };
-const token=localStorage.getItem('token');
 export const useSearchClient = (search: String) => {
+  const { token } = useAuth();
+
   return useQuery({
     queryKey: ["searchClients", search],
     queryFn: async () => {
