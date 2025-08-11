@@ -2561,6 +2561,7 @@ export const ViewSchedule = () => {
   };
 
   // Print functionality
+  // Print functionality
   const generatePrintableTable = () => {
     if (!scheduleData || scheduleData.length === 0) {
       return `
@@ -2571,10 +2572,9 @@ export const ViewSchedule = () => {
       `;
     }
 
-    // Table headers
+    // Table headers - removed Phone
     const headers = [
       'Employee Name',
-      'Phone',
       ...dateColumns.map(col => col.display),
       'Total Hours',
       'Auto'
@@ -2596,17 +2596,11 @@ export const ViewSchedule = () => {
         
         let row = `<tr style="${rowStyle}">`;
         
-        // Employee name (only on first shift row)
+        // Employee name (only on first shift row) - removed phone number
         if (shiftIndex === 0) {
-          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;" rowspan="${userShiftTimes.length}">
-            <div style="font-weight: bold;">${user.name}</div>
-            <div style="font-size: 9px; color: #666;">${user.phone || ''}</div>
+          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px; font-weight: bold;" rowspan="${userShiftTimes.length}">
+            ${user.name}
           </td>`;
-        }
-        
-        // Phone (merged with name)
-        if (shiftIndex === 0) {
-          // This is handled in the name cell
         }
         
         // Date columns with shift times
@@ -2647,7 +2641,6 @@ export const ViewSchedule = () => {
       const totalRowStyle = rowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
       let totalRow = `<tr style="${totalRowStyle}">`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
-      totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
       
       dateColumns.forEach(dateCol => {
         const daySchedules = scheduleData.filter(item => 
@@ -2672,7 +2665,6 @@ export const ViewSchedule = () => {
     // Grand total row
     let grandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
-    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
     
     dateColumns.forEach(dateCol => {
       grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">

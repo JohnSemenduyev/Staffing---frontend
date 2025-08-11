@@ -469,3 +469,21 @@ export const CHECK_CLIENT_WEEK_SCHEDULE = gql`
     }
   }
 `;
+export const GET_NOTIFICATIONS = gql`
+  query Notifications($clientId: Int, $addressId: Int, $userId: Int, $date: String) {
+    notifications(clientId: $clientId, addressId: $addressId, userId: $userId, date: $date) {
+      address {
+        address
+      }
+      client {
+        name
+      }
+      user {
+        name
+        lastName
+      }
+      startDate
+      endDate
+    }
+  }
+`;

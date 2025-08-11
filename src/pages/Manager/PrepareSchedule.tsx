@@ -1016,9 +1016,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && clientSearch !== scheduleData[0]?.clientName ? 'bg-gray-100' : ''}`}
               />
               {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-              {errors.addressId && (
-                <span className="text-xs text-red-500 block">{errors.addressId}</span>
-              )}
+              
               {showClientDropdown && clientSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
                   {loadingClients ? (
@@ -1061,6 +1059,10 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 readOnly
                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
               />
+              {errors.addressId && (
+                <span className="text-xs text-red-500 block">{errors.addressId}</span>
+              )}
+
             </div>
 
             {/* User Search */}
@@ -1100,32 +1102,44 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
                 </div>
               )}
             </div>
-            <div className="flex items-center">
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => handleChange("date", e.target.value)}
-                placeholder="Select Date"
-                onFocus={(e) => e.target.showPicker?.()}
-                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-                min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
-                max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
-              />
-              {errors.date && (
-                <span className="text-xs text-red-500">{errors.date}</span>
-              )}
-              {form.date && (
-                <div className="flex items-center mt-2">
-                  <input
-                    id="applyAllWeek"
-                    type="checkbox"
-                    checked={applyAllWeek}
-                    onChange={e => setApplyAllWeek(e.target.checked)}
-                    className="ml-[-50px] mt-[-7px]"
-                  />
-                </div>
-              )}
-            </div>
+            <div>
+  <div className="flex items-center">
+    <input
+  type={form.date ? "date" : "text"}
+  value={form.date}
+  onChange={(e) => handleChange("date", e.target.value)}
+  placeholder="Select Date"
+  onFocus={(e) => {
+    e.target.type = "date";
+    e.target.showPicker?.();
+  }}
+  onBlur={(e) => {
+    if (!e.target.value) {
+      e.target.type = "text";
+    }
+  }}
+  className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
+  min={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
+  max={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+/>
+    
+    {form.date && (
+      <div className="flex items-center mt-2">
+        <input
+          id="applyAllWeek"
+          type="checkbox"
+          checked={applyAllWeek}
+          onChange={e => setApplyAllWeek(e.target.checked)}
+          className="ml-[-50px] mt-[-7px]"
+        />
+       
+      </div>
+    )}
+  </div>
+  {errors.date && (
+    <span className="text-xs text-red-500">{errors.date}</span>
+  )}
+</div>
 
             <div>
   <input
@@ -1167,7 +1181,7 @@ const hasOverlap = existingSchedule.shifts.some(existingShift => {
     className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
   />
   {errors.endtime && (
-    <span className="text-xs text-red-500">{errors.endtime}</span>
+    <span className="text-xs  text-red-500">{errors.endtime}</span>
   )}
   {errors.overlap && (
     <span className="text-xs text-red-500">{errors.overlap}</span>
