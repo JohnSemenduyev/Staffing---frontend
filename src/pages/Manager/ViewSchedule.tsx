@@ -10,75 +10,10 @@ import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { ActualTimeTable } from "../../components/ActualTimeTable";
+import { CustomDatePicker } from "../../components/CustomDatePicker";
 
-// Custom Date Picker Component
-const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
-  value: string;
-  onChange: (field: string, value: string) => void;
-  placeholder?: string;
-  className?: string;
-  minDate?: string;
-  maxDate?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
 
-  // Convert YYYY-MM-DD to Date object
-  const selectedDate = value ? new Date(value) : null;
-
-  // Format date for display as MM-DD-YYYY
-  const formatDateForDisplay = (date) => {
-    if (!date) return '';
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}-${day}-${year}`;
-  };
-
-  // Handle date selection
-  const handleDateChange = (date) => {
-    if (date) {
-      // Convert to YYYY-MM-DD format for form state
-      const formattedDate = date.toISOString().split('T')[0];
-      onChange("date", formattedDate);
-    } else {
-      onChange("date", '');
-    }
-    setIsOpen(false);
-  };
-
-  return (
-    <div className="relative w-full">
-      <input
-        type="text"
-        value={formatDateForDisplay(selectedDate)}
-        onChange={() => { }} // Read-only input
-        placeholder={placeholder || "MM-DD-YYYY"}
-        className={className}
-        onClick={() => setIsOpen(true)}
-        readOnly
-      />
-      <Calendar
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-      />
-      {isOpen && (
-        <div className="absolute z-50 mt-1">
-          <DatePicker
-            selected={selectedDate}
-            onChange={handleDateChange}
-            inline
-            // minDate={minDate ? new Date(minDate) : undefined}
-            // maxDate={maxDate ? new Date(maxDate) : undefined}
-            dateFormat="MM/dd/yyyy"
-            showYearDropdown
-            scrollableYearDropdown
-            yearDropdownItemNumber={15}
-            onCalendarClose={() => setIsOpen(false)}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
@@ -329,7 +264,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
           value={selectedDate}
           onChange={(field, value) => setSelectedDate(value)}
           placeholder="Select Date"
-          className="border border-gray-300 rounded w-full p-2 mb-4"
+          className="mb-4"
         />
         <button
           onClick={handleSubmit}
@@ -408,6 +343,9 @@ export const ViewSchedule = () => {
   // Drag and drop states
   const [draggedShift, setDraggedShift] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null);
+
+  // Add new state for table selection
+  const [activeTable, setActiveTable] = useState<'schedule' | 'actual'>('schedule');
 
   const handleView = (rowData: any) => {
     // Extract the full client data from the row
@@ -1736,7 +1674,6 @@ useEffect(() => {
                       value={form.date}
                       onChange={handleFormChange}
                       placeholder="Select Date"
-                      className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
                       minDate={currentWeekRange?.startOfWeek.toISOString().split('T')[0]}
                       maxDate={currentWeekRange?.endOfWeek.toISOString().split('T')[0]}
                     />
