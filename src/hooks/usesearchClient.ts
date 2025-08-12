@@ -51,6 +51,7 @@ type Address = {
 type Client = {
   id: string;
   name: string;
+  lastName:string;
   email?: string;
   phone?: string;
   createdAt?: string;
