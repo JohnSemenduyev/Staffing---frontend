@@ -381,6 +381,7 @@ export const ViewSchedule = () => {
   const { toast: hookToast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Form states for adding new guards
   const [form, setForm] = useState<FormData>({
@@ -1638,7 +1639,12 @@ useEffect(() => {
     setScheduleData([]);
     setCurrentWeekRange(null);
     setSelectedDate("");
+    setIsEditMode(false);
     clearScheduleData(); // Clear API data
+  };
+
+  const toggleEditMode = () => {
+    setIsEditMode(!isEditMode);
   };
 
   return (
@@ -1679,7 +1685,7 @@ useEffect(() => {
           </div>
 
           {/* Add New Guard Form */}
-          {!scheduleLoading && !scheduleError && scheduleData.length > 0 && (
+          {!scheduleLoading && !scheduleError && scheduleData.length > 0 && isEditMode && (
             <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
               <h3 className="text-lg font-semibold mb-3 text-gray-800">Edit Schedule</h3>
 
@@ -1951,30 +1957,32 @@ useEffect(() => {
                                   >
                                     {shift ? (
                                       <div className="relative group">
-                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
-                                          <div
-                                            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-                                            draggable
-                                            onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date, rowIdx)}
-                                            onDragEnd={handleDragEnd}
-                                          >
-                                            <GripVertical className="w-4 h-4" />
+                                        {isEditMode && (
+                                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
+                                            <div
+                                              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                              draggable
+                                              onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date, rowIdx)}
+                                              onDragEnd={handleDragEnd}
+                                            >
+                                              <GripVertical className="w-4 h-4" />
+                                            </div>
+                                            <button
+                                              onClick={() => handleEditShift(user.id, dateCol.date, shift)}
+                                              className="text-blue-600 hover:text-blue-800 p-0.5"
+                                              title="Edit shift"
+                                            >
+                                              <Edit className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                              className="text-red-600 hover:text-red-800 p-0.5"
+                                              title="Delete shift"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
                                           </div>
-                                          <button
-                                            onClick={() => handleEditShift(user.id, dateCol.date, shift)}
-                                            className="text-blue-600 hover:text-blue-800 p-0.5"
-                                            title="Edit shift"
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
-                                            className="text-red-600 hover:text-red-800 p-0.5"
-                                            title="Delete shift"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        </div>
+                                        )}
                                         <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
                                       </div>
                                     ) : (
@@ -2031,9 +2039,11 @@ useEffect(() => {
                               {calculateUserTotal(user.id)}
                             </td>
                             <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                              <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {isEditMode && (
+                                <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         </React.Fragment>
@@ -2056,29 +2066,39 @@ useEffect(() => {
                 </table>
               </div>
 
-              {/* Publish, Print and Download buttons - Bottom Corner */}
+              {/* Action buttons - Bottom Corner */}
               <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
-                {/* Publish button - Leftmost */}
-                <button
-                  onClick={handlePublish}
-                  disabled={isPublishing}
-                  className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
-                  title="Publish Schedule"
-                >
-                  {isPublishing ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      <span>Publishing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Publish
-                    </>
-                  )}
-                </button>
+                {/* Publish/Cancel button - Leftmost */}
+                {isEditMode ? (
+                  <button
+                    onClick={toggleEditMode}
+                    className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
+                    title="Cancel Edit Mode"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePublish}
+                    disabled={isPublishing}
+                    className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
+                    title="Publish Schedule"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        <span>Publishing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Publish
+                      </>
+                    )}
+                  </button>
+                )}
 
-                {/* Print and Download buttons - Right side */}
+                {/* Print, Download and Edit buttons - Right side */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handlePrint}
@@ -2102,6 +2122,18 @@ useEffect(() => {
                     title="Download Excel"
                   >
                     <Upload className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    onClick={toggleEditMode}
+                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      isEditMode 
+                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
+                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+                    }`}
+                    title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+                  >
+                    <Edit className="w-5 h-5" />
                   </button>
                 </div>
               </div>
