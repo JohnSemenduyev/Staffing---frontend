@@ -1,103 +1,156 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { 
-  GET_NOTIFICATIONS
-} from "../graphql/queries";
+import { GET_NOTIFICATIONS } from "../graphql/queries"; // <-- New query import
 
-// Types
-type Address = { address: string };
-type Client = { name: string };
-type User = { name: string; lastName: string };
+// Backend types
+type NotificationShift = {
+  id: number;
+  startTime: string;
+  date: string;
+};
 
-export type Notification = {
-  address: Address;
-  client: Client;
-  user: User;
+type RawNotification = {
+  id: number;
+  client: { name: string };
+  address: { address: string };
+  user: { name: string; lastName: string };
+  notificationType: string;
+  scheduleSessionId: number;
+  message: string;
+  managerId: number;
   startDate: string;
   endDate: string;
+  shift?: NotificationShift;
 };
 
-type NotificationsQueryResponse = {
-  notifications: Notification[];
+// Final frontend format
+export type NotificationEntry = {
+  guardFirst: { name: string };
+  guardLast: { name: string };
+  date: string;
+  client: { name: string };
+  address: { address: string };
+  notificationType: string;
+  message: string;
+  shiftTime?: string;
 };
 
-type NotificationContextType = {
-  notifications: Notification[] | null;
+type NotificationsContextType = {
+  data: NotificationEntry[] | null;
   loading: boolean;
   error: string | null;
-  fetchNotifications: (filters?: {
-    clientId?: number;
-    addressId?: number;
-    userId?: number;
-    date?: string;
-  }) => Promise<void>;
-  clearNotifications: () => void;
+  fetchNotifications: (
+    variables: {
+      addressId?: number;
+      clientId?: number;
+      userId?: number;
+      date?: string;
+      shiftId?: number;
+    }
+  ) => Promise<void>;
 };
 
-// Context
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
-export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const [notifications, setNotifications] = useState<Notification[] | null>(null);
+// Helper function to safely parse dates
+const parseDate = (dateValue: any): string => {
+  if (!dateValue) return "";
+  
+  let date: Date;
+  
+  try {
+    // If it's already a valid date string (ISO format)
+    if (typeof dateValue === 'string' && dateValue.includes('-')) {
+      date = new Date(dateValue);
+    }
+    // If it's a timestamp (number or numeric string)
+    else if (!isNaN(Number(dateValue))) {
+      const timestamp = Number(dateValue);
+      
+      // Check if it's a valid timestamp (reasonable range)
+      if (timestamp > 0 && timestamp < 9999999999999) {
+        // Handle both seconds and milliseconds timestamps
+        date = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
+      } else {
+        console.warn('Invalid timestamp:', timestamp);
+        return "";
+      }
+    }
+    // Try parsing as-is
+    else {
+      date = new Date(dateValue);
+    }
+    
+    // Validate the date object
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date value:', dateValue);
+      return "";
+    }
+    
+    return date.toISOString().split("T")[0];
+  } catch (error) {
+    console.error('Error parsing date:', dateValue, error);
+    return "";
+  }
+};
+
+export const NotificationsProvider = ({ children }: { children: ReactNode }) => {
+  const [data, setData] = useState<NotificationEntry[] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotifications = async (filters?: {
-    clientId?: number;
+  const fetchNotifications = async (variables: {
     addressId?: number;
+    clientId?: number;
     userId?: number;
     date?: string;
+    shiftId?: number;
   }) => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        setError("No authentication token found.");
-        setLoading(false);
-        return;
-      }
 
-      const response = await graphQLClient.request<NotificationsQueryResponse>(
+      const response = await graphQLClient.request<{ notifications: RawNotification[] }>(
         GET_NOTIFICATIONS,
-        filters || {},
+        variables,
         { Authorization: `Bearer ${token}` }
       );
 
-      setNotifications(response.notifications || []);
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-      setError("Error fetching notifications.");
-      setNotifications(null);
+      const rawData = response.notifications || [];
+
+      // ✅ Transform backend data into frontend format with safe date parsing
+      const transformed: NotificationEntry[] = rawData.map((n) => ({
+        guardFirst: { name: n.user?.name || "" },
+        guardLast: { name: n.user?.lastName || "" },
+        date: parseDate(n.shift?.date), // ← Fixed date parsing
+        client: { name: n.client?.name || "" },
+        address: { address: n.address?.address || "" },
+        notificationType: n.notificationType,
+        message: n.message,
+        shiftTime: n.shift?.startTime || undefined,
+      }));
+
+      setData(transformed);
+    } catch (err: any) {
+      console.error("Error fetching notifications:", err);
+      setError("Failed to fetch notifications.");
     } finally {
       setLoading(false);
     }
   };
 
-  const clearNotifications = () => {
-    setNotifications(null);
-    setError(null);
-  };
-
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        loading,
-        error,
-        fetchNotifications,
-        clearNotifications,
-      }}
-    >
+    <NotificationsContext.Provider value={{ data, loading, error, fetchNotifications }}>
       {children}
-    </NotificationContext.Provider>
+    </NotificationsContext.Provider>
   );
 };
 
 export const useNotifications = () => {
-  const context = useContext(NotificationContext);
+  const context = useContext(NotificationsContext);
   if (!context) {
-    throw new Error("useNotifications must be used within a NotificationProvider");
+    throw new Error("useNotifications must be used within NotificationsProvider");
   }
   return context;
 };
