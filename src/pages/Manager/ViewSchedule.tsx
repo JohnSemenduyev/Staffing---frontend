@@ -492,63 +492,81 @@ export const ViewSchedule = () => {
   }, [clientSessions]);
 
   // Transform API data when it arrives - UPDATED
-  useEffect(() => {
-    if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
-      console.log("Raw API data:", apiScheduleData);
+// ... existing code ...
 
-      // Transform API data to match your component's expected format
-      const transformedData: ScheduleItem[] = [];
+// Transform API data when it arrives - FIXED VERSION
+useEffect(() => {
+  if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
+    console.log("Raw API data:", apiScheduleData);
 
-      // Process each schedule group in the array
-      apiScheduleData.forEach(scheduleGroup => {
-        if (scheduleGroup.shifts && scheduleGroup.user) {
-          // Group shifts by date for this user
-          const shiftsByDate = new Map();
+    // Transform API data to match your component's expected format
+    const transformedData: ScheduleItem[] = [];
 
-          scheduleGroup.shifts.forEach(shift => {
-            // Convert timestamp to readable date
-            const readableDate = convertTimestampToDate(shift.date);
+    // Process each schedule group in the array
+    apiScheduleData.forEach(scheduleGroup => {
+      if (scheduleGroup.shifts && scheduleGroup.user) {
+        // Group shifts by date for this user
+        const shiftsByDate = new Map();
 
-            if (!shiftsByDate.has(readableDate)) {
-              shiftsByDate.set(readableDate, []);
+        scheduleGroup.shifts.forEach(shift => {
+          // Convert ISO date string to YYYY-MM-DD format
+          let readableDate;
+          try {
+            if (shift.date) {
+              // Handle ISO date string like "2025-08-08T00:00:00.000Z"
+              const dateObj = new Date(shift.date);
+              readableDate = dateObj.toISOString().split('T')[0];
+            } else {
+              console.warn('Missing date for shift:', shift);
+              return; // Skip this shift
             }
+          } catch (error) {
+            console.error('Error converting date:', shift.date, error);
+            return; // Skip this shift
+          }
 
-            shiftsByDate.get(readableDate).push({
-              id: shift.id,
-              date: readableDate,
-              startTime: shift.startTime,
-              endTime: shift.endTime,
-              hours: shift.hours,
-              scheduleSessionId: shift.scheduleSessionId // Updated: Preserve scheduleSessionId from API
-            });
+          if (!shiftsByDate.has(readableDate)) {
+            shiftsByDate.set(readableDate, []);
+          }
+
+          shiftsByDate.get(readableDate).push({
+            id: shift.id,
+            date: readableDate,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            hours: shift.hours,
+            scheduleSessionId: shift.scheduleSessionId
           });
+        });
 
-          // Create a ScheduleItem for each date
-          shiftsByDate.forEach((dateShifts, date) => {
-            transformedData.push({
-              id: transformedData.length + 1,
-              clientId: scheduleGroup.clientId,
-              addressId: scheduleGroup.addressId,
-              userId: scheduleGroup.user.id,
-              startDate: date,
-              auto: false, // You might need to get this from another source
-              shifts: dateShifts,
-              clientName: selectedClient?.name || "Unknown Client",
-              address: selectedClient?.address || "Unknown Address",
-              userName: scheduleGroup.user.name, // Now using actual user name
-              userPhone: "" // You might need to fetch user phone separately
-            });
+        // Create a ScheduleItem for each date
+        shiftsByDate.forEach((dateShifts, date) => {
+          transformedData.push({
+            id: transformedData.length + 1,
+            clientId: scheduleGroup.clientId,
+            addressId: scheduleGroup.addressId,
+            userId: scheduleGroup.user.id,
+            startDate: date,
+            auto: false, // You might need to get this from another source
+            shifts: dateShifts,
+            clientName: selectedClient?.name || "Unknown Client",
+            address: selectedClient?.address || "Unknown Address",
+            userName: scheduleGroup.user.name,
+            userPhone: "" // You might need to fetch user phone separately
           });
-        }
-      });
+        });
+      }
+    });
 
-      console.log("Transformed schedule data:", transformedData);
-      setScheduleData(transformedData);
-    } else {
-      console.log("No API schedule data or empty array:", apiScheduleData);
-      setScheduleData([]);
-    }
-  }, [apiScheduleData, selectedClient]);
+    console.log("Transformed schedule data:", transformedData);
+    setScheduleData(transformedData);
+  } else {
+    console.log("No API schedule data or empty array:", apiScheduleData);
+    setScheduleData([]);
+  }
+}, [apiScheduleData, selectedClient]);
+
+// ... existing code ...
 
   const tableColumns: TableColumn[] = [
     { key: "clientName", label: "Client Name", sortable: true, searchable: true, width: "225px" },
