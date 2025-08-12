@@ -7,6 +7,7 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useNotifications } from "../../context/NotificatoinContext";
 import { toast } from "sonner";
+import ResetButton from "../../components/ui/ResetButton";
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -268,9 +269,8 @@ const tableColumns: TableColumn[] = [
           Notification
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-4 gap-4 items-start">
-            {/* Client Search Field */}
-            <div className="relative">
+<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
+           <div className="relative">
   <input
     type="text"
     value={clientSearch}
@@ -523,15 +523,8 @@ const tableColumns: TableColumn[] = [
                 )}
               </button>
               {(form.addressId || form.clientId || form.Enddate || form.Startdate || form.notification.length > 0 || form.userId) &&
-                (<button
-                  type="button"
-                  onClick={handleReset}
-                  disabled={submitLoader}
-                  className="inline-flex items-center px-4 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </button>)}
+                (<ResetButton onClick={handleReset}
+                  disabled={submitLoader}/>)}
             </div>
           </div>
         </form>
