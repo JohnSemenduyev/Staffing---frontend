@@ -1881,7 +1881,7 @@ useEffect(() => {
             <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
               <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
                 {/* Client Info */}
-                <div className="p-4 border-b bg-gray-50">
+                {/* <div className="p-4 border-b bg-gray-50">
                   <div className="font-medium text-gray-800">
                     {scheduleData[0]?.clientName || 'Client Name'}
                   </div>
@@ -1891,7 +1891,7 @@ useEffect(() => {
                   <div className="text-sm text-gray-500">
                     Selected Date: {selectedDate}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Table */}
                 <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
