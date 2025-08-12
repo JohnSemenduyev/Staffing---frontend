@@ -12,10 +12,7 @@ import { toast as toasted } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
-
-
-
-
+import {  toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 interface FormData {
   clientId: string;
@@ -82,18 +79,24 @@ const inputClasses = `
   appearance-none
 `;
 
-const getWeekRangeFromDate = (baseDate) => {
-  const day = baseDate.getUTCDay();
-  const daysSinceThursday = (day + 3) % 7; // Thursday = 4, so we subtract to get back to it
-  const startOfWeek = new Date(baseDate);
-  startOfWeek.setUTCDate(baseDate.getUTCDate() - daysSinceThursday);
-  startOfWeek.setUTCHours(0, 0, 0, 0);
 
+const getWeekRangeFromDate = (baseDate, timezone = 'UTC') => {
+  const zonedDate = toZonedTime(baseDate, timezone);
+  const day = zonedDate.getDay();
+  const daysSinceThursday = (day + 3) % 7;
+  
+  const startOfWeek = new Date(zonedDate);
+  startOfWeek.setDate(zonedDate.getDate() - daysSinceThursday);
+  startOfWeek.setHours(0, 0, 0, 0);
+  
   const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6); // +6 days means 7 total days (Thu to Wed)
-  endOfWeek.setUTCHours(23, 59, 59, 999);
-
-  return { startOfWeek, endOfWeek };
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  
+  return { 
+    startOfWeek,
+    endOfWeek
+  };
 };
 const timeToMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -414,22 +417,28 @@ export const PrepareSchedule = () => {
     });
   };
 
-  const generateDateColumns = () => {
-    if (!currentWeekRange) return [];
 
-    const dates = [];
-    const startDate = new Date(currentWeekRange.startOfWeek);
+const generateDateColumns = () => {
+  if (!currentWeekRange) return [];
 
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      dates.push({
-        date: date.toISOString().split('T')[0],
-        display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
-      });
-    }
-    return dates;
-  };
+  const dates = [];
+  const startDate = new Date(currentWeekRange.startOfWeek);
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + i);
+    
+    // Use the exact date from the week range (no timezone conversion)
+    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    dates.push({
+      date: dateStr, // Use exact date to match API
+      display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}` // Same date for display
+    });
+  }
+  return dates;
+};
+
 
   const dateColumns = generateDateColumns();
 
