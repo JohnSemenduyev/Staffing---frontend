@@ -707,11 +707,11 @@ export const PrepareSchedule = () => {
       if (results) {
         // ✅ If overlap exists, show toast and set error state but don't reset form
         setHasOverlapError(true);
-        toast({
-          title: "Schedule Overlap Detected",
-          description: "There is an overlap with existing schedule. Please choose a different date or time.",
-          variant: "destructive",
-        });
+        // toast({
+        //   title: "Schedule Overlap Detected",
+        //   description: "There is an overlap with existing schedule. Please choose a different date or time.",
+        //   variant: "destructive",
+        // });
         setSubmitLoader(false);
         return;
       }
@@ -1029,11 +1029,11 @@ export const PrepareSchedule = () => {
       });
 
       if (hasOverlap) {
-        toast({
-          title: "Overlapping Shift",
-          description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
-          variant: "destructive",
-        });
+        // toast({
+        //   title: "Overlapping Shift",
+        //   description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
+        //   variant: "destructive",
+        // });
         setDraggedShift(null);
         setDragOverCell(null);
         return;
@@ -1225,7 +1225,7 @@ export const PrepareSchedule = () => {
                 value={form.date}
                 onChange={handleChange}
                 placeholder="Select Date"
-                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} ${hasOverlapError ? "border-red-500 focus:ring-red-500" : ""}`}
+                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
                 minDate={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
                 maxDate={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
               />
