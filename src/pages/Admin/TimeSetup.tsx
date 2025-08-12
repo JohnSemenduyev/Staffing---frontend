@@ -67,7 +67,10 @@ export const TimeSetup = () => {
     setShowErrors(false);
   };
 
-  const handleClientSelect = (client: { id: string | number; name: string }, addressId: number | string) => {
+const handleClientSelect = (
+    client: { id: string | number; name: string; lastName:string },
+    addressId: number | string
+  ) => {
     setForm((f) => ({
       ...f,
       clientId: String(client.id),
@@ -75,11 +78,14 @@ export const TimeSetup = () => {
     }));
     setClientSearch(client.name);
     setShowClientDropdown(false);
-    setErrors({});
-    setShowErrors(false);
+    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
 
-    const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
-    const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
+    const selectedClient = searchedClients.find(
+      (c) => String(c.id) === String(client.id)
+    );
+    const selectedAddress = selectedClient?.addresses.find(
+      (a) => String(a.id) === String(addressId)
+    );
     setSelectedAddressText(selectedAddress?.address || "");
   };
 
@@ -240,55 +246,81 @@ export const TimeSetup = () => {
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <div className="relative">
-              <input
-                type="text"
-                value={clientSearch}
-                onFocus={() => setShowClientDropdown(true)}
-                onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                onChange={(e) => {
-                  setClientSearch(e.target.value);
-                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                  setSelectedAddressText("");
-                  setErrors({});
-                  setShowErrors(false);
-                }}
-                placeholder="Client Name"
-                className={getFieldClasses('clientId')}
-              />
-              {showErrors && errors.clientId && (
-                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  <span>{errors.clientId}</span>
+                                    <div className="relative">
+  <input
+    type="text"
+    value={clientSearch}
+    onFocus={() => setShowClientDropdown(true)}
+    onBlur={() =>
+      setTimeout(() => setShowClientDropdown(false), 200)
+    }
+    onChange={(e) => {
+      setClientSearch(e.target.value);
+      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+      setSelectedAddressText("");
+    }}
+    placeholder="Client Name"
+    className={inputClasses}
+  />
+  {errors.clientId && (
+    <span className="text-xs text-red-500">{errors.clientId}</span>
+  )}
+
+  {showClientDropdown && clientSearch.length >= 2 && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+      {loadingClients ? (
+        <div className="p-2 text-sm text-gray-500">
+          Searching clients...
+        </div>
+      ) : searchedClients.length === 0 ? (
+        <div className="p-2 text-gray-500 text-sm">
+          No clients found
+        </div>
+      ) : (
+        searchedClients.flatMap((client, clientIndex) =>
+          client.addresses.map((address, addressIndex) => {
+            const isEven = (clientIndex + addressIndex) % 2 === 0;
+            
+            // Generate initials from first letter of name and lastName
+            const initials = `${client.name.charAt(0).toUpperCase()}${client.lastName.charAt(0).toUpperCase()}`;
+            
+            return (
+              <div
+                key={`${client.id}-${address.id}`}
+                onMouseDown={() =>
+                  handleClientSelect(
+                    { id: client.id, name: client.name, lastName: client.lastName },
+                    address.id
+                  )
+                }
+                className={`p-3 cursor-pointer flex items-center space-x-3 ${
+                  isEven ? "bg-white" : "bg-gray-50"
+                } hover:bg-gray-100 transition-colors duration-150`}
+              >
+                {/* Circular Avatar with Initials */}
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-medium">
+                    {initials}
+                  </span>
                 </div>
-              )}
-              {showClientDropdown && clientSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
-                  {loadingClients ? (
-                    <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-                  ) : searchedClients.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">No clients found</div>
-                  ) : (
-                    searchedClients.flatMap((client, ci) =>
-                      client.addresses.map((address, ai) => (
-                        <div
-                          key={`${client.id}-${address.id}`}
-                          onMouseDown={() =>
-                            handleClientSelect({ id: client.id, name: client.name }, address.id)
-                          }
-                          className={`p-4 cursor-pointer text-sm ${((ci + ai) % 2 === 0) ? "bg-white" : "bg-gray-50"} hover:bg-gray-100`}
-                        >
-                          <div className="font-semibold text-gray-600 text-base">{client.name}</div>
-                          <div className="text-xs text-gray-500">{address.label || address.address}</div>
-                        </div>
-                      ))
-                    )
-                  )}
+                
+                {/* Client Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-blue-800 text-sm truncate">
+                    {`${client.name} ${client.lastName}`}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {address.label || address.address}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            );
+          })
+        )
+      )}
+    </div>
+  )}
+</div>
             <div>
               <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${getFieldClasses('addressId')} bg-gray-50`} />
               {showErrors && errors.addressId && (

@@ -31,6 +31,7 @@ export const SEARCH_CLIENTS = gql`
     searchClients(search: $search) {
       id
       name
+      lastName
       addresses {
         id
         address
