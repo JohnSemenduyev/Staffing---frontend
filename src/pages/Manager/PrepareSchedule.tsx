@@ -11,100 +11,11 @@ import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
 import { toast as toasted } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { CustomDatePicker } from "../../components/CustomDatePicker";
 
 
 
-const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
-  value: string;
-  onChange: (field: string, value: string) => void;
-  placeholder?: string;
-  className?: string;
-  minDate?: string;
-  maxDate?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
 
-  // Convert YYYY-MM-DD to Date object
-  const selectedDate = value ? new Date(value) : null;
-
-  // Format date for display as MM-DD-YYYY
-  const formatDateForDisplay = (date) => {
-    if (!date) return '';
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}-${day}-${year}`;
-  };
-
-  // Handle date selection
-  const handleDateChange = (date) => {
-    if (date) {
-      // Convert to YYYY-MM-DD format for form state
-      const formattedDate = date.toISOString().split('T')[0];
-      onChange("date", formattedDate);
-    } else {
-      onChange("date", '');
-    }
-    // Close the calendar after date selection
-    setTimeout(() => setIsOpen(false), 100);
-  };
-
-  // Handle click outside to close calendar
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const datePickerElement = event.target.closest('.custom-date-picker');
-      if (isOpen && !datePickerElement) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      // Use a small delay to prevent interference with date selection
-      const timeoutId = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 100);
-
-      return () => {
-        clearTimeout(timeoutId);
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [isOpen]);
-
-  return (
-    <div className="relative w-full cursor-pointer custom-date-picker" onClick={() => setIsOpen(true)}>
-      <input
-        type="text"
-        value={formatDateForDisplay(selectedDate)}
-        onChange={() => { }} // Read-only input
-        placeholder={placeholder || "MM-DD-YYYY"}
-        className={className}
-        readOnly
-      />
-      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white px-1">
-        <Calendar
-          className="w-4 h-4 text-gray-400 pointer-events-none"
-        />
-      </div>
-      {isOpen && (
-        <div className="absolute z-50 mt-1">
-          <DatePicker
-            selected={selectedDate}
-            onChange={handleDateChange}
-            inline
-            // minDate={minDate ? new Date(minDate) : undefined}
-            // maxDate={maxDate ? new Date(maxDate) : undefined}
-            dateFormat="MM/dd/yyyy"
-            showYearDropdown
-            scrollableYearDropdown
-            yearDropdownItemNumber={15}
-            onCalendarClose={() => setIsOpen(false)}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface FormData {
   clientId: string;

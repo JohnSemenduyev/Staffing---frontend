@@ -6,6 +6,7 @@ import { useSearchUsers } from "../../hooks/useSearchUser";
 import { GenericTable,TableAction,TableColumn } from "../../components/GenericTable";
 import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useUniformCompliance } from "../../context/unifromCompliace";
+import { CustomDatePicker } from "../../components/CustomDatePicker";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -509,19 +510,13 @@ const onSubmit = async (e: React.FormEvent) => {
                 )}
               </div>
                <div>
-              <input
-                type="text"
-                placeholder="Select Start Date"
+              <CustomDatePicker
                 value={form.startDate}
-                onChange={(e) => handleChange("startDate", e.target.value)}
-                onFocus={(e) => (e.target.type = "date")}
-                onBlur={(e) => {
-  setTimeout(() => {
-    if (!form.startDate) e.target.type = "text";
-  }, 200);
-}}
-                min={startDateConstraints.min}
-                max={startDateConstraints.max}
+                onChange={handleChange}
+                placeholder="Select Start Date"
+                fieldName="startDate"
+                minDate={startDateConstraints.min}
+                maxDate={startDateConstraints.max}
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.startDate && (
@@ -530,19 +525,13 @@ const onSubmit = async (e: React.FormEvent) => {
             </div>
             
             <div>
-              <input
-                type="text"
-                placeholder="Select End Date"
+              <CustomDatePicker
                 value={form.endDate}
-                onChange={(e) => handleChange("endDate", e.target.value)}
-                onFocus={(e) => (e.target.type = "date")}
-                onBlur={(e) => {
-  setTimeout(() => {
-    if (!form.endDate) e.target.type = "text";
-  }, 200);
-}}
-                min={endDateConstraints.min}
-                max={endDateConstraints.max}
+                onChange={handleChange}
+                placeholder="Select End Date"
+                fieldName="endDate"
+                minDate={endDateConstraints.min}
+                maxDate={endDateConstraints.max}
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.endDate && (
