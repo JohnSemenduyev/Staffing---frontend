@@ -417,6 +417,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
 import ResetButton from "../../components/ui/ResetButton";
+import { CustomDatePicker } from "../../components/CustomDatePicker";
 export const Summary = () => {
   const [form, setForm] = useState({
     clientId: "",
@@ -951,15 +952,11 @@ const onSubmit = async (e) => {
             </div>
             
             <div>
-              <input
-                type="text"
-                placeholder="Select date"
+              <CustomDatePicker
                 value={form.date}
-                onChange={(e) => handleChange("date", e.target.value)}
-                onFocus={(e) => (e.target.type = "date")}
-                onBlur={(e) => {
-                  if (!form.date) e.target.type = "text";
-                }}
+                onChange={handleChange}
+                placeholder="Select date"
+                fieldName="date"
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.date && (

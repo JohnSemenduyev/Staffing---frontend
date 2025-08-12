@@ -8,6 +8,8 @@ import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useNotifications } from "../../context/NotificatoinContext";
 import { toast } from "sonner";
 import ResetButton from "../../components/ui/ResetButton";
+import { CustomDatePicker } from "../../components/CustomDatePicker";
+
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -409,15 +411,11 @@ const tableColumns: TableColumn[] = [
             </div>
 
             <div>
-              <input
-                type="text"
-                placeholder="Select Start Date"
+              <CustomDatePicker
                 value={form.Startdate}
-                onChange={(e) => handleChange("Startdate", e.target.value)}
-                onFocus={(e) => (e.target.type = "date")}
-                onBlur={(e) => {
-                  if (!form.Startdate) e.target.type = "text";
-                }}
+                onChange={handleChange}
+                placeholder="Select Start Date"
+                fieldName="Startdate"
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.Startdate && (
@@ -426,15 +424,11 @@ const tableColumns: TableColumn[] = [
             </div>
 
             <div>
-              <input
-                type="text"
-                placeholder="Select End Date"
+              <CustomDatePicker
                 value={form.Enddate}
-                onChange={(e) => handleChange("Enddate", e.target.value)}
-                onFocus={(e) => (e.target.type = "date")}
-                onBlur={(e) => {
-                  if (!form.Enddate) e.target.type = "text";
-                }}
+                onChange={handleChange}
+                placeholder="Select End Date"
+                fieldName="Enddate"
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.Enddate && (
