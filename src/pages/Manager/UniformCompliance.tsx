@@ -375,7 +375,7 @@ const onSubmit = async (e: React.FormEvent) => {
           <h2 className="text-xl font-semibold mb-2">
            Uniform Compliance</h2>
         <form onSubmit={onSubmit} autoComplete="off">
-<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">   
             {/* Client Search Field */}
                         <div className="relative">
   <input
