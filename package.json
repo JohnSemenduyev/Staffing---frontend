@@ -23,6 +23,7 @@
     "@types/react-datepicker": "^7.0.0",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
+    "date-fns-tz": "^3.2.0",
     "dayjs": "^1.11.13",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",

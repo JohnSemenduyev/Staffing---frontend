@@ -11,8 +11,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
-
-
+import { toZonedTime } from 'date-fns-tz';
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
@@ -79,17 +78,23 @@ const inputClasses = `
 `;
 
 const getWeekRangeFromDate = (baseDate) => {
-  const day = baseDate.getUTCDay();
+  // Convert the base date to Eastern timezone
+  const easternDate = toZonedTime(baseDate, 'America/New_York');
+  const day = easternDate.getDay();
   const daysSinceThursday = (day + 3) % 7;
-  const startOfWeek = new Date(baseDate);
-  startOfWeek.setUTCDate(baseDate.getUTCDate() - daysSinceThursday);
-  startOfWeek.setUTCHours(0, 0, 0, 0);
-
+  
+  const startOfWeek = new Date(easternDate);
+  startOfWeek.setDate(easternDate.getDate() - daysSinceThursday);
+  startOfWeek.setHours(0, 0, 0, 0);
+  
   const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
-  endOfWeek.setUTCHours(23, 59, 59, 999);
-
-  return { startOfWeek, endOfWeek };
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  
+  return { 
+    startOfWeek,
+    endOfWeek
+  };
 };
 
 const timeToMinutes = (timeStr) => {
@@ -242,12 +247,14 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
   };
 
   const handleCurrentWeek = () => {
-    const today = new Date();
-    const day = today.getUTCDay();
-    const daysSinceThursday = (day + 3) % 7; // Thursday = 4, so we subtract to get back to it
+    const today = new Date(Date.now());
+    const day = today.getDay();
+    console.log("day  "+day);
+    const daysSinceThursday = (day + 3) % 7; 
     const startOfWeek = new Date(today);
-    startOfWeek.setUTCDate(today.getUTCDate() - daysSinceThursday);
-    startOfWeek.setUTCHours(0, 0, 0, 0);
+    startOfWeek.setDate(today.getDate() - daysSinceThursday);
+    startOfWeek.setHours(0, 0, 0, 0);
+    console.log("startOfWeek "+startOfWeek);
 
     const formatted = startOfWeek.toISOString().slice(0, 10);
     setSelectedDate(formatted);
@@ -316,6 +323,7 @@ export const ViewSchedule = () => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [currentTimezone, setCurrentTimezone] = useState<string>('America/New_York'); // Eastern timezone
 
   // Form states for adding new guards
   const [form, setForm] = useState<FormData>({
@@ -366,33 +374,36 @@ export const ViewSchedule = () => {
   const handleDateSubmit = async (date: string) => {
     setSelectedDate(date);
     setShowScheduleTable(true);
-
+  
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
-
+  
     // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
     const formattedDate = convertDateFormat(date);
-
+  
     console.log("Submitting with:", {
       clientId,
       addressId,
       date: formattedDate,
       originalDate: date
     });
-
+  
     if (!clientId || !addressId) {
       toast.error("Missing client or address information!");
       return;
     }
-
-    // Generate week range (use original date format for frontend calculations)
-    const selectedDateObj = new Date(date);
-    const weekRange = getWeekRangeFromDate(selectedDateObj);
+  
+    // Convert the selected date to Eastern timezone before calculating week range
+    const selectedDateObj = new Date(date + 'T00:00:00'); // Create date object
+    const easternDate = toZonedTime(selectedDateObj, 'America/New_York');
+    
+    // Generate week range using Eastern timezone
+    const weekRange = getWeekRangeFromDate(easternDate);
     setCurrentWeekRange(weekRange);
-
+  
     // Clear any existing schedule data
     clearScheduleData();
-
+  
     // Fetch actual schedule data from API using formatted date
     try {
       await fetchScheduleData(clientId, addressId, formattedDate);
@@ -527,21 +538,25 @@ useEffect(() => {
   // Generate date columns for the schedule table
   const generateDateColumns = () => {
     if (!currentWeekRange) return [];
-
+  
     const dates = [];
     const startDate = new Date(currentWeekRange.startOfWeek);
-
+  
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
+      
+      // Convert to Eastern timezone for display
+      const easternDate = toZonedTime(date, 'America/New_York');
+      const dateStr = easternDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
       dates.push({
-        date: date.toISOString().split('T')[0],
-        display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
+        date: dateStr, // Use Eastern timezone date to match API
+        display: `${String(easternDate.getMonth() + 1).padStart(2, '0')}-${String(easternDate.getDate()).padStart(2, '0')}-${easternDate.getFullYear()}` // Eastern display
       });
     }
     return dates;
   };
-
   const dateColumns = generateDateColumns();
 
   // Get unique users from schedule data

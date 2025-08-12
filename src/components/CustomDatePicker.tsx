@@ -27,7 +27,13 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   // Convert YYYY-MM-DD to Date object
-  const selectedDate = value ? new Date(value) : null;
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // Local time, midnight
+  };
+  
+  const selectedDate = value ? parseLocalDate(value) : null;
+  
 
   // Format date for display as MM-DD-YYYY
   const formatDateForDisplay = (date: Date | null) => {
