@@ -9,6 +9,7 @@ import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { useAssignment } from "../../context/Assignment";
 import { inputClasses } from "./GeoLocationSetup";
+import ResetButton from "../../components/ui/ResetButton";
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -642,16 +643,10 @@ export default function AssignmentNew() {
                   {isEditing ? "Update" : "Add"}
                 </SubmitButton>
                 {hasTextInput && (
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    disabled={submitLoader}
-                    className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-1" />
-                    Reset
-                  </button>
+                  
+                  <ResetButton onClick={resetForm} disabled={submitLoader}/>
                 )}
+
               </div>
             </div>
           </form>

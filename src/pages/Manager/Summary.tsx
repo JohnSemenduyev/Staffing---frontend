@@ -416,6 +416,7 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
+import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 export const Summary = () => {
   const [form, setForm] = useState({
@@ -861,7 +862,7 @@ const onSubmit = async (e) => {
           View Time Summary
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-4 gap-4 items-start">
+<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
             {/* Client Search Field */}
                         <div className="relative">
   <input
@@ -980,15 +981,8 @@ const onSubmit = async (e) => {
                 )}               
               </button> 
               { (form.addressId || form.clientId || form.date)&&
-                (<button
-                type="button"
-                onClick={handleReset}
-                disabled={submitLoader}
-                className="inline-flex items-center px-4 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Reset
-              </button>) }            
+                (<ResetButton onClick={handleReset}
+                disabled={submitLoader}/>) }            
             </div>
           </div>
         </form>
