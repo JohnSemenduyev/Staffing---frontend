@@ -354,22 +354,10 @@ export const PrepareSchedule = () => {
     }
   };
 
-  const handleClientSelect = (client: Client, addressId: string | number) => {
-    // Check if this is a different client/address than what's already in the schedule
-    if (scheduleData.length > 0 && !isPublished) {
-      const existingClientId = scheduleData[0]?.clientId;
-      const existingAddressId = scheduleData[0]?.addressId;
-
-      if (String(existingClientId) !== String(client.id) || String(existingAddressId) !== String(addressId)) {
-        toast({
-          title: "Different Client/Address Selected",
-          description: "After publishing the existing schedule, the new client/address will be selected.",
-          variant: "destructive",
-        });
-        return; // Don't allow selection of different client/address
-      }
-    }
-
+   const handleClientSelect = (
+    client: { id: string | number; name: string; lastName:string },
+    addressId: number | string
+  ) => {
     setForm((f) => ({
       ...f,
       clientId: String(client.id),
@@ -379,11 +367,14 @@ export const PrepareSchedule = () => {
     setShowClientDropdown(false);
     setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
 
-    const selectedClient = searchedClients.find((c) => String(c.id) === String(client.id));
-    const selectedAddress = selectedClient?.addresses.find((a) => String(a.id) === String(addressId));
+    const selectedClient = searchedClients.find(
+      (c) => String(c.id) === String(client.id)
+    );
+    const selectedAddress = selectedClient?.addresses.find(
+      (a) => String(a.id) === String(addressId)
+    );
     setSelectedAddressText(selectedAddress?.address || "");
   };
-
   const handleUserSelect = (user: User) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
     setUserSearch(user.name);
@@ -1029,66 +1020,81 @@ const generateDateColumns = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
 
             {/* Client Search */}
-            <div className="relative">
-              <input
-                type="text"
-                value={clientSearch}
-                onFocus={() => {
-                  // Allow focus in all cases, we'll validate the selection later
-                  setShowClientDropdown(true);
-                }}
-                onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                onChange={(e) => {
-                  // Allow change if no schedule data, published, or if trying to re-select same client
-                  if (scheduleData.length === 0 || isPublished) {
-                    setClientSearch(e.target.value);
-                    setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                    setSelectedAddressText("");
-                  } else if (scheduleData.length > 0 && !isPublished) {
-                    // Always allow typing, but we'll validate the selection later
-                    setClientSearch(e.target.value);
-                    setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                    setSelectedAddressText("");
-                  }
-                }}
-                placeholder="Client Name"
-                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && clientSearch !== scheduleData[0]?.clientName ? 'bg-gray-100' : ''}`}
-              />
-              {errors.clientId && <span className="text-xs text-red-500">{errors.clientId}</span>}
-              
-              {showClientDropdown && clientSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-                  {loadingClients ? (
-                    <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-                  ) : searchedClients.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">No clients found</div>
-                  ) : (
-                    searchedClients.flatMap((client, clientIndex) =>
-                      client.addresses.map((address, addressIndex) => {
-                        const isEven = (clientIndex + addressIndex) % 2 === 0;
-                        return (
-                          <div
-                            key={`${client.id}-${address.id}`}
-                            onMouseDown={() =>
-                              handleClientSelect(client, address.id)
-                            }
-                            className={`p-4 cursor-pointer text-sm ${isEven ? "bg-white" : "bg-gray-50"
-                              } hover:bg-gray-100`}
-                          >
-                            <div className="font-semibold text-gray-600 text-base">
-                              {client.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {address.label || address.address}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )
-                  )}
+                                  <div className="relative">
+  <input
+    type="text"
+    value={clientSearch}
+    onFocus={() => setShowClientDropdown(true)}
+    onBlur={() =>
+      setTimeout(() => setShowClientDropdown(false), 200)
+    }
+    onChange={(e) => {
+      setClientSearch(e.target.value);
+      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+      setSelectedAddressText("");
+    }}
+    placeholder="Client Name"
+    className={inputClasses}
+  />
+  {errors.clientId && (
+    <span className="text-xs text-red-500">{errors.clientId}</span>
+  )}
+
+  {showClientDropdown && clientSearch.length >= 2 && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+      {loadingClients ? (
+        <div className="p-2 text-sm text-gray-500">
+          Searching clients...
+        </div>
+      ) : searchedClients.length === 0 ? (
+        <div className="p-2 text-gray-500 text-sm">
+          No clients found
+        </div>
+      ) : (
+        searchedClients.flatMap((client, clientIndex) =>
+          client.addresses.map((address, addressIndex) => {
+            const isEven = (clientIndex + addressIndex) % 2 === 0;
+            
+            // Generate initials from first letter of name and lastName
+            const initials = `${client.name.charAt(0).toUpperCase()}${client.lastName.charAt(0).toUpperCase()}`;
+            
+            return (
+              <div
+                key={`${client.id}-${address.id}`}
+                onMouseDown={() =>
+                  handleClientSelect(
+                    { id: client.id, name: client.name, lastName: client.lastName },
+                    address.id
+                  )
+                }
+                className={`p-3 cursor-pointer flex items-center space-x-3 ${
+                  isEven ? "bg-white" : "bg-gray-50"
+                } hover:bg-gray-100 transition-colors duration-150`}
+              >
+                {/* Circular Avatar with Initials */}
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-medium">
+                    {initials}
+                  </span>
                 </div>
-              )}
-            </div>
+                
+                {/* Client Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-blue-800 text-sm truncate">
+                    {`${client.name} ${client.lastName}`}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {address.label || address.address}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )
+      )}
+    </div>
+  )}
+</div>
             <div>
               <input
                 type="text"

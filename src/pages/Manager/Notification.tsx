@@ -7,7 +7,9 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useNotifications } from "../../context/NotificatoinContext";
 import { toast } from "sonner";
+import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
+
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -22,8 +24,8 @@ export const Notification = () => {
     notification: [] as NotificationOption[],
   });
 
-  const { fetchNotifications, loading, notifications, error } = useNotifications();
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+ const { data, loading, error, fetchNotifications } = useNotifications();
+   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -69,7 +71,7 @@ export const Notification = () => {
   };
 
   const handleClientSelect = (
-    client: { id: string | number; name: string },
+    client: { id: string | number; name: string; lastName:string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -139,6 +141,10 @@ export const Notification = () => {
     setShowUserDropdown(false);
     setShowNotificationDropdown(false);
   };
+  useEffect(()=>{
+    console.log(data);
+    
+  },[data])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +163,7 @@ export const Notification = () => {
         clientId: Number(form.clientId),
         addressId: Number(form.addressId),
         userId: Number(form.userId),
-        date: form.Startdate
+        date: form.Startdate ||null
       });
       
       console.log("Notification filters applied:", {
@@ -184,46 +190,79 @@ export const Notification = () => {
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
 
-  const tableColumns: TableColumn[] = [
-    {
-      key: "client.name",
-      label: "Client Name",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-      height:"40px"
-    },
-    {
-      key: "address.address",
-      label: "Address",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap max-w-[200px]",
-      render: (value: string) => <div className="truncate" title={value}>{value || "-"}</div>
-    },
-    {
-      key: "user.name",
-      label: "User Name",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap max-w-[200px]",
-      render: (value: any, row: any) => `${row.user.name} ${row.user.lastName}`
-    },
-    {
-      key: "startDate",
-      label: "Start Date",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap max-w-[200px]"
-    },
-    {
-      key: "endDate",
-      label: "End Date",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap max-w-[200px]"
+  // Updated table columns with better error handling
+const tableColumns: TableColumn[] = [
+  {
+    key: "client.name",
+    label: "Client Name",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+    height: "40px",
+    render: (value: string) => value || "-"
+  },
+  {
+    key: "address.address",
+    label: "Address",
+    sortable: true,
+    searchable: true,
+    className: "whitespace-nowrap max-w-[200px]",
+    render: (value: string) => (
+      <div className="truncate" title={value || ""}>
+        {value || "-"}
+      </div>
+    )
+  },
+  {
+    key: "guardFirst.name",
+    label: "User Name",
+    sortable: true,
+    searchable: true,
+    className: "whitespace-nowrap max-w-[200px]",
+    
+  },
+  {
+    key: "date",
+    label: "Date",
+    sortable: true,
+    searchable: true,
+    className: "whitespace-nowrap max-w-[200px]",
+    render: (value: string) => {
+      if (!value) return "-";
+      try {
+        // Format the date nicely if it's a valid date
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? value : date.toLocaleDateString();
+      } catch {
+        return value || "-";
+      }
     }
-  ];
+  },
+  {
+    key: "notificationType",
+    label: "Type",
+    sortable: true,
+    searchable: true,
+    className: "whitespace-nowrap max-w-[150px]",
+    render: (value: string) => (
+      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+        {value || "Unknown"}
+      </span>
+    )
+  },
+  {
+    key: "message",
+    label: "Message",
+    sortable: false,
+    searchable: true,
+    className: "max-w-[300px]",
+    render: (value: string) => (
+      <div className="truncate" title={value || ""}>
+        {value || "-"}
+      </div>
+    )
+  }
+];
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
@@ -232,69 +271,82 @@ export const Notification = () => {
           Notification
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-4 gap-4 items-start">
-            {/* Client Search Field */}
-            <div className="relative">
-              <input
-                type="text"
-                value={clientSearch}
-                onFocus={() => setShowClientDropdown(true)}
-                onBlur={() =>
-                  setTimeout(() => setShowClientDropdown(false), 200)
-                }
-                onChange={(e) => {
-                  setClientSearch(e.target.value);
-                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                  setSelectedAddressText("");
-                }}
-                placeholder="Client Name"
-                className={fieldInputClasses}
-              />
-              {errors.clientId && (
-                <span className="text-xs text-red-500">{errors.clientId}</span>
-              )}
+<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
+           <div className="relative">
+  <input
+    type="text"
+    value={clientSearch}
+    onFocus={() => setShowClientDropdown(true)}
+    onBlur={() =>
+      setTimeout(() => setShowClientDropdown(false), 200)
+    }
+    onChange={(e) => {
+      setClientSearch(e.target.value);
+      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+      setSelectedAddressText("");
+    }}
+    placeholder="Client Name"
+    className={fieldInputClasses}
+  />
+  {errors.clientId && (
+    <span className="text-xs text-red-500">{errors.clientId}</span>
+  )}
 
-              {showClientDropdown && clientSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-                  {loadingClients ? (
-                    <div className="p-2 text-sm text-gray-500">
-                      Searching clients...
-                    </div>
-                  ) : searchedClients.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">
-                      No clients found
-                    </div>
-                  ) : (
-                    searchedClients.flatMap((client, clientIndex) =>
-                      client.addresses.map((address, addressIndex) => {
-                        const isEven = (clientIndex + addressIndex) % 2 === 0;
-                        return (
-                          <div
-                            key={`${client.id}-${address.id}`}
-                            onMouseDown={() =>
-                              handleClientSelect(
-                                { id: client.id, name: client.name },
-                                address.id
-                              )
-                            }
-                            className={`p-4 cursor-pointer text-sm ${
-                              isEven ? "bg-white" : "bg-gray-50"
-                            } hover:bg-gray-100`}
-                          >
-                            <div className="font-semibold text-gray-600 text-base">
-                              {client.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {address.label || address.address}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )
-                  )}
+  {showClientDropdown && clientSearch.length >= 2 && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+      {loadingClients ? (
+        <div className="p-2 text-sm text-gray-500">
+          Searching clients...
+        </div>
+      ) : searchedClients.length === 0 ? (
+        <div className="p-2 text-gray-500 text-sm">
+          No clients found
+        </div>
+      ) : (
+        searchedClients.flatMap((client, clientIndex) =>
+          client.addresses.map((address, addressIndex) => {
+            const isEven = (clientIndex + addressIndex) % 2 === 0;
+            
+            // Generate initials from first letter of name and lastName
+            const initials = `${client.name.charAt(0).toUpperCase()}${client.lastName.charAt(0).toUpperCase()}`;
+            
+            return (
+              <div
+                key={`${client.id}-${address.id}`}
+                onMouseDown={() =>
+                  handleClientSelect(
+                    { id: client.id, name: client.name, lastName: client.lastName },
+                    address.id
+                  )
+                }
+                className={`p-3 cursor-pointer flex items-center space-x-3 ${
+                  isEven ? "bg-white" : "bg-gray-50"
+                } hover:bg-gray-100 transition-colors duration-150`}
+              >
+                {/* Circular Avatar with Initials */}
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-medium">
+                    {initials}
+                  </span>
                 </div>
-              )}
-            </div>
+                
+                {/* Client Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-blue-800 text-sm truncate">
+                    {`${client.name} ${client.lastName}`}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {address.label || address.address}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )
+      )}
+    </div>
+  )}
+</div>
 
             {/* Address (read-only) */}
             <div>
@@ -465,15 +517,8 @@ export const Notification = () => {
                 )}
               </button>
               {(form.addressId || form.clientId || form.Enddate || form.Startdate || form.notification.length > 0 || form.userId) &&
-                (<button
-                  type="button"
-                  onClick={handleReset}
-                  disabled={submitLoader}
-                  className="inline-flex items-center px-4 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </button>)}
+                (<ResetButton onClick={handleReset}
+                  disabled={submitLoader}/>)}
             </div>
           </div>
         </form>
@@ -487,7 +532,7 @@ export const Notification = () => {
       )}
 
       <GenericTable
-        data={notifications || []}
+        data={data || []}
         columns={tableColumns}
         loading={loading}
         emptyMessage="No notifications found matching your search criteria."

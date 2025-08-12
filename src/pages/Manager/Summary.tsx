@@ -416,6 +416,7 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
+import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 export const Summary = () => {
   const [form, setForm] = useState({
@@ -452,9 +453,9 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
     setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
-  const handleClientSelect = (
-    client,
-    addressId
+ const handleClientSelect = (
+    client: { id: string | number; name: string; lastName:string },
+    addressId: number | string
   ) => {
     setForm((f) => ({
       ...f,
@@ -861,73 +862,83 @@ const onSubmit = async (e) => {
           View Time Summary
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-4 gap-4 items-start">
+<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
             {/* Client Search Field */}
-            <div className="relative">
-              <input
-                type="text"
-                value={clientSearch}
-                onFocus={() => setShowClientDropdown(true)}
-                onBlur={() =>
-                  setTimeout(() => setShowClientDropdown(false), 200)
+                        <div className="relative">
+  <input
+    type="text"
+    value={clientSearch}
+    onFocus={() => setShowClientDropdown(true)}
+    onBlur={() =>
+      setTimeout(() => setShowClientDropdown(false), 200)
+    }
+    onChange={(e) => {
+      setClientSearch(e.target.value);
+      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+      setSelectedAddressText("");
+    }}
+    placeholder="Client Name"
+    className={fieldInputClasses}
+  />
+  {errors.clientId && (
+    <span className="text-xs text-red-500">{errors.clientId}</span>
+  )}
+
+  {showClientDropdown && clientSearch.length >= 2 && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+      {loadingClients ? (
+        <div className="p-2 text-sm text-gray-500">
+          Searching clients...
+        </div>
+      ) : searchedClients.length === 0 ? (
+        <div className="p-2 text-gray-500 text-sm">
+          No clients found
+        </div>
+      ) : (
+        searchedClients.flatMap((client, clientIndex) =>
+          client.addresses.map((address, addressIndex) => {
+            const isEven = (clientIndex + addressIndex) % 2 === 0;
+            
+            // Generate initials from first letter of name and lastName
+            const initials = `${client.name.charAt(0).toUpperCase()}${client.lastName.charAt(0).toUpperCase()}`;
+            
+            return (
+              <div
+                key={`${client.id}-${address.id}`}
+                onMouseDown={() =>
+                  handleClientSelect(
+                    { id: client.id, name: client.name, lastName: client.lastName },
+                    address.id
+                  )
                 }
-                onChange={(e) => {
-                  setClientSearch(e.target.value);
-                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-                  setSelectedAddressText("");
-                }}
-                placeholder="Client Name"
-                className={fieldInputClasses}
-              />
-              {errors.clientId && (
-                <span className="text-xs text-red-500">{errors.clientId}</span>
-              )}
-              {errors.addressId && (
-                <span className="text-xs text-red-500 block">
-                  {errors.addressId}
-                </span>
-              )}
-              {showClientDropdown && clientSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-                  {loadingClients ? (
-                    <div className="p-2 text-sm text-gray-500">
-                      Searching clients...
-                    </div>
-                  ) : searchedClients.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">
-                      No clients found
-                    </div>
-                  ) : (
-                    searchedClients.flatMap((client, clientIndex) =>
-                      client.addresses.map((address, addressIndex) => {
-                        const isEven = (clientIndex + addressIndex) % 2 === 0;
-                        return (
-                          <div
-                            key={`${client.id}-${address.id}`}
-                            onMouseDown={() =>
-                              handleClientSelect(
-                                { id: client.id, name: client.name },
-                                address.id
-                              )
-                            }
-                            className={`p-4 cursor-pointer text-sm ${
-                              isEven ? "bg-white" : "bg-gray-50"
-                            } hover:bg-gray-100`}
-                          >
-                            <div className="font-semibold text-gray-600 text-base">
-                              {client.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {address.label || address.address}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )
-                  )}
+                className={`p-3 cursor-pointer flex items-center space-x-3 ${
+                  isEven ? "bg-white" : "bg-gray-50"
+                } hover:bg-gray-100 transition-colors duration-150`}
+              >
+                {/* Circular Avatar with Initials */}
+                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-medium">
+                    {initials}
+                  </span>
                 </div>
-              )}
-            </div>
+                
+                {/* Client Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-blue-800 text-sm truncate">
+                    {`${client.name} ${client.lastName}`}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {address.label || address.address}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )
+      )}
+    </div>
+  )}
+</div>
 
             {/* Address (read-only) */}
             <div>
@@ -970,15 +981,8 @@ const onSubmit = async (e) => {
                 )}               
               </button> 
               { (form.addressId || form.clientId || form.date)&&
-                (<button
-                type="button"
-                onClick={handleReset}
-                disabled={submitLoader}
-                className="inline-flex items-center px-4 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Reset
-              </button>) }            
+                (<ResetButton onClick={handleReset}
+                disabled={submitLoader}/>) }            
             </div>
           </div>
         </form>

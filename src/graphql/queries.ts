@@ -31,6 +31,7 @@ export const SEARCH_CLIENTS = gql`
     searchClients(search: $search) {
       id
       name
+      lastName
       addresses {
         id
         address
@@ -470,20 +471,44 @@ export const CHECK_CLIENT_WEEK_SCHEDULE = gql`
   }
 `;
 export const GET_NOTIFICATIONS = gql`
-  query Notifications($clientId: Int, $addressId: Int, $userId: Int, $date: String) {
-    notifications(clientId: $clientId, addressId: $addressId, userId: $userId, date: $date) {
-      address {
-        address
-      }
+  query Notifications(
+    $addressId: Int
+    $clientId: Int
+    $userId: Int
+    $date: String
+    $shiftId: Int
+  ) {
+    notifications(
+      addressId: $addressId
+      clientId: $clientId
+      userId: $userId
+      date: $date
+      shiftId: $shiftId
+    ) {
+      id
+      clientId
+      addressId
+      userId
+      notificationType
+      scheduleSessionId
+      message
+      managerId
+      startDate
+      endDate
       client {
         name
       }
-      user {
-        name
-        lastName
+      address {
+        address
       }
-      startDate
-      endDate
+      shift {
+        id
+        startTime
+        date
+      }
+        user {
+      name
+    }
     }
   }
 `;

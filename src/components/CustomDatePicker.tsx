@@ -33,7 +33,6 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   };
   
   const selectedDate = value ? parseLocalDate(value) : null;
-  
 
   // Format date for display as MM-DD-YYYY
   const formatDateForDisplay = (date: Date | null) => {
@@ -47,8 +46,11 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   // Handle date selection
   const handleDateChange = (date: Date | null) => {
     if (date) {
-      // Convert to YYYY-MM-DD format for form state
-      const formattedDate = date.toISOString().split('T')[0];
+      // Format the date manually to avoid timezone conversion issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
       onChange(fieldName, formattedDate);
     } else {
       onChange(fieldName, '');
