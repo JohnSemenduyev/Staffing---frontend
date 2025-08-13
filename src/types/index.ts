@@ -55,3 +55,8 @@ export interface User {
   role: UserRole;
   createdAt: string;
 }
+export interface UpdateOneSessionTimesInput {
+  sessionId: number;
+  clockIn: string;
+  clockOut: string;
+}

@@ -411,3 +411,14 @@ export const BULK_UPSERT_SCHEDULE_SESSION = gql`
     }
   }
 `;
+export const UPDATE_MANY_SESSION_TIMES = gql`
+  mutation UpdateManySessionTimes($items: [UpdateOneSessionTimesInput!]!) {
+    updateManySessionTimes(items: $items) {
+      id
+      clockIn
+      clockOut
+      workedTime
+    }
+  }
+`;
+

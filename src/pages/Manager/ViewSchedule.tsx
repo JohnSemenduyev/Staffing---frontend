@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useClientSessions } from "../../context/ViewSchedule";
+import { useClientSessions, UpdateOneSessionTimesInput } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { GET_SESSIONS_BY_SCHEDULE_SESSION } from "../../graphql/queries";
 import { graphQLClient } from "../../GraphqlClient";
@@ -15,9 +15,9 @@ import { ScheduleTable } from "./ViewSchedule/ScheduleTable";
 import { Modals } from "./ViewSchedule/Modals";
 // Import our custom hooks and utilities
 import { useScheduleState, useScheduleActions } from "./ViewSchedule/hooks";
-import { 
-  generateDateColumns, 
-  convertDateFormat, 
+import {
+  generateDateColumns,
+  convertDateFormat,
   getWeekRangeFromDate,
   getUniqueUsers,
   calculateUserTotal,
@@ -41,7 +41,9 @@ export const ViewSchedule = () => {
     scheduleError,
     fetchScheduleData,
     clearScheduleData,
-    bulkUpsertScheduleSessions
+    bulkUpsertScheduleSessions,
+    updateManySessionTimes, 
+    mutationLoading
   } = useClientSessions();
 
   // Use our custom state hook
@@ -87,20 +89,20 @@ export const ViewSchedule = () => {
     handleDragEnd
   } = useScheduleActions(
     scheduleData,
-  setScheduleData,
-  currentWeekRange,
-  deleteModal, // Add this
-  setDeleteModal,
-  editModal, // Add this
-  setEditModal,
-  deleteUserModal, // Add this
-  setDeleteUserModal,
-  editForm, // Add this
-  setEditForm,
-  draggedShift, // Add this
-  setDraggedShift,
-  setDragOverCell
- );
+    setScheduleData,
+    currentWeekRange,
+    deleteModal, // Add this
+    setDeleteModal,
+    editModal, // Add this
+    setEditModal,
+    deleteUserModal, // Add this
+    setDeleteUserModal,
+    editForm, // Add this
+    setEditForm,
+    draggedShift, // Add this
+    setDraggedShift,
+    setDragOverCell
+  );
 
   // Wrapper handlers for schedule table that set the flag
   const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
@@ -176,9 +178,9 @@ export const ViewSchedule = () => {
   };
 
   const handleSessionUserAutoToggle = (userId: number, enabled: boolean) => {
-    setSessionData(prev => 
-      prev.map(item => 
-        item.userId === userId 
+    setSessionData(prev =>
+      prev.map(item =>
+        item.userId === userId
           ? { ...item, auto: enabled }
           : item
       )
@@ -207,79 +209,79 @@ export const ViewSchedule = () => {
   const handleSessionDragLeave = (e: React.DragEvent) => {
     setDragOverCell(null);
   };
-  
-  
 
-// Replace the session drag handlers with these corrected versions:
-// Fix the session drop handler to create a deep copy
-const handleSessionDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-  e.preventDefault();
-  
-  if (!draggedShift) return;
 
-  const { shift, sourceUserId, sourceDate } = draggedShift;
-  console.log('Session drop:', { shift, sourceUserId, sourceDate, targetUserId, targetDate, targetRowIdx });
 
-  // Check if target user-date combination already exists
-  const existingItem = sessionData.find(item => 
-    item.userId === targetUserId && item.startDate === targetDate
-  );
+  // Replace the session drag handlers with these corrected versions:
+  // Fix the session drop handler to create a deep copy
+  const handleSessionDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+    e.preventDefault();
 
-  if (existingItem) {
-    // Replace existing shifts at target position (copy operation)
-    setSessionData(prev => 
-      prev.map(item => {
-        if (item.userId === targetUserId && item.startDate === targetDate) {
-          const newShifts = [...item.shifts];
-          // Create a deep copy of the shift to avoid reference issues
-          const deepCopiedShift = JSON.parse(JSON.stringify(shift));
-          // Replace at the target position (remove existing if any)
-          newShifts.splice(targetRowIdx, 1, { 
-            ...deepCopiedShift, 
+    if (!draggedShift) return;
+
+    const { shift, sourceUserId, sourceDate } = draggedShift;
+    console.log('Session drop:', { shift, sourceUserId, sourceDate, targetUserId, targetDate, targetRowIdx });
+
+    // Check if target user-date combination already exists
+    const existingItem = sessionData.find(item =>
+      item.userId === targetUserId && item.startDate === targetDate
+    );
+
+    if (existingItem) {
+      // Replace existing shifts at target position (copy operation)
+      setSessionData(prev =>
+        prev.map(item => {
+          if (item.userId === targetUserId && item.startDate === targetDate) {
+            const newShifts = [...item.shifts];
+            // Create a deep copy of the shift to avoid reference issues
+            const deepCopiedShift = JSON.parse(JSON.stringify(shift));
+            // Replace at the target position (remove existing if any)
+            newShifts.splice(targetRowIdx, 1, {
+              ...deepCopiedShift,
+              date: targetDate,
+              id: Date.now() + Math.random() // Generate new ID to avoid conflicts
+            });
+            return { ...item, shifts: newShifts };
+          }
+          return item;
+        })
+      );
+    } else {
+      // Create new item for target user-date combination
+      const sourceItem = sessionData.find(item =>
+        item.userId === sourceUserId && item.startDate === sourceDate
+      );
+
+      if (sourceItem) {
+        const deepCopiedShift = JSON.parse(JSON.stringify(shift));
+        const newSessionItem = {
+          ...sourceItem,
+          userId: targetUserId,
+          startDate: targetDate,
+          shifts: [{
+            ...deepCopiedShift,
             date: targetDate,
-            id: Date.now() + Math.random() // Generate new ID to avoid conflicts
-          });
-          return { ...item, shifts: newShifts };
-        }
-        return item;
-      })
-    );
-  } else {
-    // Create new item for target user-date combination
-    const sourceItem = sessionData.find(item => 
-      item.userId === sourceUserId && item.startDate === sourceDate
-    );
-    
-    if (sourceItem) {
-      const deepCopiedShift = JSON.parse(JSON.stringify(shift));
-      const newSessionItem = {
-        ...sourceItem,
-        userId: targetUserId,
-        startDate: targetDate,
-        shifts: [{ 
-          ...deepCopiedShift, 
-          date: targetDate,
-          id: Date.now() + Math.random()
-        }]
-      };
-      
-      setSessionData(prev => [...prev, newSessionItem]);
-    }
-  }
+            id: Date.now() + Math.random()
+          }]
+        };
 
-  setDraggedShift(null);
-  setDragOverCell(null);
-};
-const handleSessionDragEnd = () => {
-  setDraggedShift(null);
-  setDragOverCell(null);
-};
+        setSessionData(prev => [...prev, newSessionItem]);
+      }
+    }
+
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
+  const handleSessionDragEnd = () => {
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
 
   // Session-specific modal handlers
   const handleSessionConfirmDeleteShift = () => {
     if (!deleteModal.isOpen || !deleteModal.userId || !deleteModal.date || !deleteModal.shiftId) return;
 
-    setSessionData(prev => 
+    setSessionData(prev =>
       prev.map(item => {
         if (item.userId === deleteModal.userId && item.startDate === deleteModal.date) {
           const newShifts = item.shifts.filter(shift => shift.id !== deleteModal.shiftId);
@@ -295,11 +297,11 @@ const handleSessionDragEnd = () => {
   const handleSessionConfirmEditShift = () => {
     if (!editModal.isOpen || !editModal.userId || !editModal.date || !editModal.shift) return;
 
-    setSessionData(prev => 
+    setSessionData(prev =>
       prev.map(item => {
         if (item.userId === editModal.userId && item.startDate === editModal.date) {
-          const newShifts = item.shifts.map(shift => 
-            shift.id === editModal.shift.id 
+          const newShifts = item.shifts.map(shift =>
+            shift.id === editModal.shift.id
               ? { ...shift, startTime: editForm.starttime, endTime: editForm.endtime }
               : shift
           );
@@ -319,7 +321,74 @@ const handleSessionDragEnd = () => {
     setSessionData(prev => prev.filter(item => item.userId !== deleteUserModal.userId));
     setDeleteUserModal({ isOpen: false, userId: null });
   };
-
+  const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> } => {
+    const valid: UpdateOneSessionTimesInput[] = [];
+    const invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> = [];
+  
+    sessionTimeUpdates.forEach(session => {
+      const { sessionId, clockIn, clockOut } = session;
+      
+      // Convert times to minutes for easier comparison
+      const parseTime = (timeStr: string): number => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+  
+      const clockInMinutes = parseTime(clockIn);
+      const clockOutMinutes = parseTime(clockOut);
+  
+      // Check for invalid time format
+      if (isNaN(clockInMinutes) || isNaN(clockOutMinutes)) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Invalid time format"
+        });
+        return;
+      }
+  
+      // Check for overnight shifts (clockOut < clockIn)
+      if (clockOutMinutes < clockInMinutes) {
+        // This is a valid overnight shift, but we need to handle it differently
+        // For now, we'll skip these and log them for manual review
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Overnight shift detected - requires manual handling"
+        });
+        return;
+      }
+  
+      // Check for zero duration shifts
+      if (clockOutMinutes === clockInMinutes) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Zero duration shift"
+        });
+        return;
+      }
+  
+      // Check for unreasonable shift durations (more than 24 hours)
+      const durationMinutes = clockOutMinutes - clockInMinutes;
+      if (durationMinutes > 24 * 60) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Shift duration exceeds 24 hours"
+        });
+        return;
+      }
+  
+      valid.push(session);
+    });
+  
+    return { valid, invalid };
+  };
   // Local state
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -359,7 +428,7 @@ const handleSessionDragEnd = () => {
       }
 
       const allSessions: any[] = [];
-      
+
       // Fetch session data for each schedule session ID
       for (const sessionId of sessionIds) {
         const response = await graphQLClient.request<{ sessionsByScheduleSession: any[] }>(
@@ -392,9 +461,9 @@ const handleSessionDragEnd = () => {
     sessions.forEach(session => {
       const shift = session.shift;
       const date = new Date(shift.date).toISOString().split('T')[0];
-      
+
       // Find the corresponding schedule item to get user info
-      const scheduleItem = scheduleData.find(item => 
+      const scheduleItem = scheduleData.find(item =>
         item.shifts.some((s: any) => s.scheduleSessionId === session.scheduleSessionId)
       );
 
@@ -422,11 +491,11 @@ const handleSessionDragEnd = () => {
 
     // Convert to schedule format
     const transformedData: any[] = [];
-    
+
     userSessionMap.forEach((userData, userId) => {
       // Group sessions by date
       const sessionsByDate = new Map();
-      
+
       userData.sessions.forEach((session: any) => {
         if (!sessionsByDate.has(session.date)) {
           sessionsByDate.set(session.date, []);
@@ -436,7 +505,7 @@ const handleSessionDragEnd = () => {
 
       // Create schedule items for each date
       sessionsByDate.forEach((dateSessions, date) => {
-        const scheduleItem = scheduleData.find(item => 
+        const scheduleItem = scheduleData.find(item =>
           item.userId === userId && item.startDate === date
         );
 
@@ -482,39 +551,46 @@ const handleSessionDragEnd = () => {
   const handleDateSubmit = async (date: string) => {
     setSelectedDate(date);
     setShowScheduleTable(true);
-  
+
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
-  
+
     const formattedDate = convertDateFormat(date);
-  
+
     console.log("Submitting with:", {
       clientId,
       addressId,
       date: formattedDate,
       originalDate: date
     });
-  
+
     if (!clientId || !addressId) {
       toast.error("Missing client or address information!");
       return;
     }
-  
+
     const selectedDateObj = new Date(date + 'T00:00:00');
     const easternDate = toZonedTime(selectedDateObj, 'America/New_York');
-    
+
     const weekRange = getWeekRangeFromDate(easternDate);
     setCurrentWeekRange(weekRange);
-  
+
     clearScheduleData();
-  
+    setSessionData([]); // Clear session data as well
+
     try {
+      // Start both loading states immediately
+      setSessionLoading(true);
+
+      // Fetch schedule data
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
       toast.error("Failed to load schedule data!");
+      setSessionLoading(false); // Stop session loading if schedule fails
     }
   };
+
 
   useEffect(() => {
     fetchClientSessions();
@@ -607,7 +683,7 @@ const handleSessionDragEnd = () => {
   useEffect(() => {
     if (scheduleData.length > 0) {
       fetchSessionData();
-    } 
+    }
   }, [scheduleData.length]);
   useEffect(() => {
     if (scheduleData.length === 0) {
@@ -722,6 +798,7 @@ const handleSessionDragEnd = () => {
     try {
       setIsPublishing(true);
 
+      // First API call: Publish schedule data
       const selectedDateObj = new Date(selectedDate);
       const weekRange = getWeekRangeFromDate(selectedDateObj);
       const startDate = weekRange.startOfWeek.toISOString().split('T')[0];
@@ -788,11 +865,65 @@ const handleSessionDragEnd = () => {
       await bulkUpsertScheduleSessions(scheduleInput);
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
-      toast.success("Schedule published successfully!");
+      // Second API call: Update session times (if session data exists)
+      if (sessionData && sessionData.length > 0) {
+        console.log("=== UPDATING SESSION TIMES ===");
+        
+        const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
+        
+        sessionData.forEach(item => {
+          item.shifts.forEach(shift => {
+            // Only include sessions that have actual clock in/out times (not N/A)
+            if (shift.startTime !== "N/A" && shift.endTime !== "N/A" && shift.scheduleSessionId) {
+              sessionTimeUpdates.push({
+                sessionId: shift.scheduleSessionId,
+                clockIn: shift.startTime,
+                clockOut: shift.endTime
+              });
+            }
+          });
+        });
+      
+        if (sessionTimeUpdates.length > 0) {
+          console.log("Session time updates:", JSON.stringify(sessionTimeUpdates, null, 2));
+          
+          // Validate session times before sending to API
+          const validation = validateSessionTimes(sessionTimeUpdates);
+          
+          if (validation.invalid.length > 0) {
+            console.warn("Invalid session times detected:", validation.invalid);
+            
+            // Show warning for invalid sessions
+            const invalidMessages = validation.invalid.map(inv => 
+              `Session ${inv.sessionId}: ${inv.reason} (${inv.clockIn} - ${inv.clockOut})`
+            ).join('\n');
+            
+            toast.error(`Some session times could not be updated:\n${invalidMessages}`, {
+              duration: 5000
+            });
+          }
+      
+          if (validation.valid.length > 0) {
+            console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
+            await updateManySessionTimes(validation.valid);
+            console.log("Valid session times updated successfully");
+          } else {
+            console.log("No valid session time updates to process");
+          }
+        } else {
+          console.log("No session time updates to process");
+        }
+      }
+
+      toast.success("Schedule and session times published successfully!");
+      
+      // Exit edit mode only on successful publish
+      setIsEditMode(false);
 
     } catch (error) {
       console.error("Error publishing schedule:", error);
       toast.error("Failed to publish schedule. Please try again.");
+      // Don't exit edit mode on error - stay in edit mode
     } finally {
       setIsPublishing(false);
     }
@@ -1217,7 +1348,7 @@ const handleSessionDragEnd = () => {
               <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Schedule Time</h3>
               </div>
-              
+
               <ScheduleTable
                 scheduleData={scheduleData}
                 setScheduleData={setScheduleData}
@@ -1245,7 +1376,7 @@ const handleSessionDragEnd = () => {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-800">Actual Time</h3>
                   </div>
-                  
+
                   {sessionLoading && (
                     <div className="flex justify-center items-center p-4">
                       <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -1266,43 +1397,36 @@ const handleSessionDragEnd = () => {
                     </div>
                   )}
 
-                                                                               {!sessionLoading && !sessionError && (
-                       <ScheduleTable
-                         scheduleData={sessionData}
-                         setScheduleData={setSessionData}
-                         dateColumns={dateColumns}
-                         isEditMode={isEditMode} // Use same edit mode as schedule table
-                         readOnly={false} // Add this line to enable drag and drop
-                         draggedShift={draggedShift}
-                         setDraggedShift={setDraggedShift}
-                         dragOverCell={dragOverCell}
-                         setDragOverCell={setDragOverCell}
-                         onEditShift={handleSessionEditShift} // Session-specific edit functionality
-                         onDeleteShift={handleSessionDeleteShift} // Session-specific delete functionality
-                         onDeleteUser={handleSessionDeleteUser} // Session-specific delete user functionality
-                         onUserAutoToggle={handleSessionUserAutoToggle} // Session-specific toggle functionality
-                         onDragStart={handleSessionDragStart} // Session-specific drag functionality
-                         onDragOver={handleSessionDragOver} // Session-specific drag over functionality
-                         onDragLeave={handleSessionDragLeave} // Session-specific drag leave functionality
-                         onDrop={handleSessionDrop} // Session-specific drop functionality
-                         onDragEnd={handleSessionDragEnd} // Session-specific drag end functionality
-                       />
-                     )}
+                  {!sessionLoading && !sessionError && (
+                    <ScheduleTable
+                      scheduleData={sessionData}
+                      setScheduleData={setSessionData}
+                      dateColumns={dateColumns}
+                      isEditMode={isEditMode} // Use same edit mode as schedule table
+                      readOnly={false} // Add this line to enable drag and drop
+                      draggedShift={draggedShift}
+                      setDraggedShift={setDraggedShift}
+                      dragOverCell={dragOverCell}
+                      setDragOverCell={setDragOverCell}
+                      onEditShift={handleSessionEditShift} // Session-specific edit functionality
+                      onDeleteShift={handleSessionDeleteShift} // Session-specific delete functionality
+                      onDeleteUser={handleSessionDeleteUser} // Session-specific delete user functionality
+                      onUserAutoToggle={handleSessionUserAutoToggle} // Session-specific toggle functionality
+                      onDragStart={handleSessionDragStart} // Session-specific drag functionality
+                      onDragOver={handleSessionDragOver} // Session-specific drag over functionality
+                      onDragLeave={handleSessionDragLeave} // Session-specific drag leave functionality
+                      onDrop={handleSessionDrop} // Session-specific drop functionality
+                      onDragEnd={handleSessionDragEnd} // Session-specific drag end functionality
+                    />
+                  )}
                 </div>
               )}
 
               {/* Action buttons - Bottom Corner */}
               <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
-                {/* Publish/Cancel button - Leftmost */}
-                {isEditMode ? (
-                  <button
-                    onClick={toggleEditMode}
-                    className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
-                    title="Cancel Edit Mode"
-                  >
-                    Cancel
-                  </button>
-                ) : (
+                {/* Publish and Cancel buttons - Left side */}
+                <div className="flex items-center gap-2">
+                  {/* Publish button - always visible */}
                   <button
                     onClick={handlePublish}
                     disabled={isPublishing}
@@ -1321,7 +1445,18 @@ const handleSessionDragEnd = () => {
                       </>
                     )}
                   </button>
-                )}
+
+                  {/* Cancel button - only visible in edit mode */}
+                  {isEditMode && (
+                    <button
+                      onClick={toggleEditMode}
+                      className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
+                      title="Cancel Edit Mode"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
 
                 {/* Print, Download and Edit buttons - Right side */}
                 <div className="flex items-center gap-2">
@@ -1351,11 +1486,10 @@ const handleSessionDragEnd = () => {
 
                   <button
                     onClick={toggleEditMode}
-                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      isEditMode 
-                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
+                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
+                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
                         : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-                    }`}
+                      }`}
                     title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
                   >
                     <Edit className="w-5 h-5" />
@@ -1374,20 +1508,20 @@ const handleSessionDragEnd = () => {
         </div>
       )}
 
-                           {/* Modals */}
-        <Modals
-          deleteModal={deleteModal}
-          editModal={editModal}
-          deleteUserModal={deleteUserModal}
-          editForm={editForm}
-          setEditForm={setEditForm}
-          onCancelDeleteShift={cancelDeleteShift}
-          onConfirmDeleteShift={confirmDeleteShift}
-          onCancelEditShift={cancelEditShift}
-          onConfirmEditShift={confirmEditShift}
-          onCancelDeleteUser={cancelDeleteUser}
-          onConfirmDeleteUser={confirmDeleteUser}
-        />
+      {/* Modals */}
+      <Modals
+        deleteModal={deleteModal}
+        editModal={editModal}
+        deleteUserModal={deleteUserModal}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onCancelDeleteShift={cancelDeleteShift}
+        onConfirmDeleteShift={confirmDeleteShift}
+        onCancelEditShift={cancelEditShift}
+        onConfirmEditShift={confirmEditShift}
+        onCancelDeleteUser={cancelDeleteUser}
+        onConfirmDeleteUser={confirmDeleteUser}
+      />
     </div>
   );
 };
