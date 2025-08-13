@@ -37,6 +37,8 @@ import { UniformComplianceProvider } from "./context/unifromCompliace";
 import { AuthProvider } from "./context/LoginContext";
 import { ViewTimeSummaryProvider } from "./context/ViewTimeSummaryContext";
 import { NotificationsProvider } from "./context/NotificatoinContext";
+import Signup from "./pages/Signup";
+import { UserRegistrationProvider } from "./context/SignupContext";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -57,11 +59,14 @@ const App = () => (
                   <ScheduleSessionProviderClient>
                     <UniformComplianceProvider>
                       <AuthProvider>
+                        <UserRegistrationProvider>
                         <NotificationsProvider>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<AuthRedirect />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup/>}/>
+
                   <Route element={<AppLayout />}>
                     <Route path="/assign-user-permission" element={<AssignmentNew />} />
                     <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
@@ -87,6 +92,7 @@ const App = () => (
                 </Routes>
               </BrowserRouter>
               </NotificationsProvider>
+              </UserRegistrationProvider>
               </AuthProvider>
               </UniformComplianceProvider>
               </ScheduleSessionProviderClient>
