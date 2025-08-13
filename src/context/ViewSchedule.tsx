@@ -66,7 +66,12 @@ export type ShiftInput = {
   hours: number;
   shiftId?: number;
 };
-
+export type SessionTimeInput = {
+  sessionId?: number | null;  
+  shiftId?: number;           
+  clockIn: string;
+  clockOut: string;
+};
 export type ScheduleSessionInputExtended = {
   scheduleSessionId?: number | null;
   clientId: number | null;

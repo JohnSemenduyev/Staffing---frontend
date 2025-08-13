@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useClientSessions, UpdateOneSessionTimesInput } from "../../context/ViewSchedule";
+import { useClientSessions, UpdateOneSessionTimesInput, SessionTimeInput } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { GET_SESSIONS_BY_SCHEDULE_SESSION } from "../../graphql/queries";
 import { graphQLClient } from "../../GraphqlClient";
@@ -484,7 +484,7 @@ export const ViewSchedule = () => {
           clockIn: session.clockIn,
           clockOut: session.clockOut,
           workedTime: session.workedTime,
-          shiftId: session.shiftId
+          sessionId: session.id || null,
         });
       }
     });
@@ -517,7 +517,7 @@ export const ViewSchedule = () => {
             startTime: session.clockIn || "N/A",
             endTime: session.clockOut || "N/A",
             hours: session.workedTime || 0,
-            scheduleSessionId: session.shiftId
+            scheduleSessionId: session.sessionId  || null
           }));
 
           transformedData.push({
@@ -870,49 +870,100 @@ export const ViewSchedule = () => {
         console.log("=== UPDATING SESSION TIMES ===");
         
         const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
+        const newSessions: SessionTimeInput[] = [];
         
         sessionData.forEach(item => {
           item.shifts.forEach(shift => {
             // Only include sessions that have actual clock in/out times (not N/A)
-            if (shift.startTime !== "N/A" && shift.endTime !== "N/A" && shift.scheduleSessionId) {
-              sessionTimeUpdates.push({
-                sessionId: shift.scheduleSessionId,
-                clockIn: shift.startTime,
-                clockOut: shift.endTime
-              });
+            if (shift.startTime !== "N/A" && shift.endTime !== "N/A") {
+              if (shift.scheduleSessionId) {
+                // Existing session - update with session ID
+                sessionTimeUpdates.push({
+                  sessionId: shift.scheduleSessionId,
+                  clockIn: shift.startTime,
+                  clockOut: shift.endTime
+                });
+              } else {
+                // New session - needs to be created with shiftId
+                newSessions.push({
+                  sessionId: null,  // null for new sessions
+                  shiftId: shift.id, // required for new session creation
+                  clockIn: shift.startTime,
+                  clockOut: shift.endTime
+                });
+              }
             }
           });
         });
       
-        if (sessionTimeUpdates.length > 0) {
-          console.log("Session time updates:", JSON.stringify(sessionTimeUpdates, null, 2));
+        if (sessionData && sessionData.length > 0) {
+          console.log("=== UPDATING SESSION TIMES ===");
           
-          // Validate session times before sending to API
-          const validation = validateSessionTimes(sessionTimeUpdates);
+          const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
+          const newSessions: SessionTimeInput[] = []; // For new sessions that need to be created
           
-          if (validation.invalid.length > 0) {
-            console.warn("Invalid session times detected:", validation.invalid);
-            
-            // Show warning for invalid sessions
-            const invalidMessages = validation.invalid.map(inv => 
-              `Session ${inv.sessionId}: ${inv.reason} (${inv.clockIn} - ${inv.clockOut})`
-            ).join('\n');
-            
-            toast.error(`Some session times could not be updated:\n${invalidMessages}`, {
-              duration: 5000
+          sessionData.forEach(item => {
+            item.shifts.forEach(shift => {
+              // Only include sessions that have actual clock in/out times (not N/A)
+              if (shift.startTime !== "N/A" && shift.endTime !== "N/A") {
+                if (shift.scheduleSessionId) {
+                  // Existing session - update with session ID
+                  sessionTimeUpdates.push({
+                    sessionId: shift.scheduleSessionId,
+                    clockIn: shift.startTime,
+                    clockOut: shift.endTime
+                  });
+                } else {
+                  // New session - needs to be created with shiftId
+                  newSessions.push({
+                    sessionId: null,  // null for new sessions
+                    shiftId: shift.id, // required for new session creation
+                    clockIn: shift.startTime,
+                    clockOut: shift.endTime
+                  });
+                }
+              }
             });
+          });
+        
+          // Handle existing session updates
+          if (sessionTimeUpdates.length > 0) {
+            console.log("Session time updates:", JSON.stringify(sessionTimeUpdates, null, 2));
+            
+            // Validate session times before sending to API
+            const validation = validateSessionTimes(sessionTimeUpdates);
+            
+            if (validation.invalid.length > 0) {
+              console.warn("Invalid session times detected:", validation.invalid);
+              
+              // Show warning for invalid sessions
+              const invalidMessages = validation.invalid.map(inv => 
+                `Session ${inv.sessionId}: ${inv.reason} (${inv.clockIn} - ${inv.clockOut})`
+              ).join('\n');
+              
+              toast.error(`Some session times could not be updated:\n${invalidMessages}`, {
+                duration: 5000
+              });
+            }
+        
+            if (validation.valid.length > 0) {
+              console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
+              await updateManySessionTimes(validation.valid);
+              console.log("Valid session times updated successfully");
+            } else {
+              console.log("No valid session time updates to process");
+            }
           }
-      
-          if (validation.valid.length > 0) {
-            console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
-            await updateManySessionTimes(validation.valid);
-            console.log("Valid session times updated successfully");
-          } else {
-            console.log("No valid session time updates to process");
+  
+          // Handle new session creation
+          if (newSessions.length > 0) {
+            console.log("New sessions to create:", JSON.stringify(newSessions, null, 2));
+            // TODO: Add API call to create new sessions with shiftId
+            // await createNewSessions(newSessions);
+            console.log("New sessions creation not yet implemented");
           }
-        } else {
-          console.log("No session time updates to process");
         }
+
       }
 
       toast.success("Schedule and session times published successfully!");
