@@ -33,7 +33,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   };
   
   const selectedDate = value ? parseLocalDate(value) : null;
-
+  
   // Format date for display as MM-DD-YYYY
   const formatDateForDisplay = (date: Date | null) => {
     if (!date) return '';
@@ -80,13 +80,13 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
       };
     }
   }, [isOpen]);
-
+  
   const defaultClasses = `
     w-full
     px-3
-    py-2
+    py-1
     border
-    border-[#d0d4d9]
+    border-[#D2D5DAFF]
     rounded-md
     placeholder:text-gray-500
     font-normal
@@ -105,9 +105,10 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         value={formatDateForDisplay(selectedDate)}
         onChange={() => {}} // Read-only input
         placeholder={placeholder}
-        className={`${defaultClasses} ${className}`}
+        className={`${defaultClasses} ${className} text-gray-500`}
         readOnly
         disabled={disabled}
+        
       />
       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white px-1">
         <Calendar

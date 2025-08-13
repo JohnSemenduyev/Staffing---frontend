@@ -26,6 +26,22 @@ export const GET_CLIENTS = gql`
 `;
 
 
+export const SESSIONS_BY_SCHEDULE_SESSION = gql`
+  query SessionsByScheduleSession($scheduleSessionId: Int!) {
+    sessionsByScheduleSession(scheduleSessionId: $scheduleSessionId) {
+      id
+      shiftId
+      scheduleSessionId
+      clockIn
+      clockOut
+      workedTime
+      shift {
+        id
+        date
+      }
+    }
+  }
+`;
 export const SEARCH_CLIENTS = gql`
   query SearchClients($search: String!) {
     searchClients(search: $search) {
@@ -509,6 +525,23 @@ export const GET_NOTIFICATIONS = gql`
         user {
       name
     }
+    }
+  }
+`;
+
+export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
+  query SessionsByScheduleSession($scheduleSessionId: Int!) {
+    sessionsByScheduleSession(scheduleSessionId: $scheduleSessionId) {
+      id
+      shiftId
+      scheduleSessionId
+      clockIn
+      clockOut
+      workedTime
+      shift {
+        id
+        date
+      }
     }
   }
 `;

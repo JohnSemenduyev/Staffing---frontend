@@ -5,7 +5,7 @@ import {
   GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
   SCHEDULE_SESSIONS_BY_CLIENT_WEEK 
 } from "../graphql/queries";
-import { BULK_UPSERT_SCHEDULE_SESSION } from "../graphql/mutation";
+import { BULK_UPSERT_SCHEDULE_SESSION, UPDATE_MANY_SESSION_TIMES } from "../graphql/mutation";
 import { toast as toasted } from "sonner";
 
 // Types
@@ -15,7 +15,11 @@ export type Address = {
   state: string;
   pincode: string;
 };
-
+export type UpdateOneSessionTimesInput = {
+  sessionId: number;
+  clockIn: string;
+  clockOut: string;
+};
 export type Client = {
   name: string;
 };
@@ -62,7 +66,12 @@ export type ShiftInput = {
   hours: number;
   shiftId?: number;
 };
-
+export type SessionTimeInput = {
+  sessionId?: number | null;  
+  shiftId?: number;           
+  clockIn: string;
+  clockOut: string;
+};
 export type ScheduleSessionInputExtended = {
   scheduleSessionId?: number | null;
   clientId: number | null;
@@ -89,6 +98,12 @@ type ClientSessionContextType = {
   clearScheduleData: () => void;
 
   bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<void>;
+  updateManySessionTimes: (items: UpdateOneSessionTimesInput[]) => Promise<{
+    id: number;
+    clockIn: string;
+    clockOut: string;
+    workedTime: number;
+  }[]>;  
   mutationLoading: boolean;
 };
 
@@ -171,7 +186,33 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       setMutationLoading(false);
     }
   };
-
+  const updateManySessionTimes = async (items: UpdateOneSessionTimesInput[]) => {
+    setMutationLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await graphQLClient.request<{
+        updateManySessionTimes: Array<{
+          id: number;
+          clockIn: string;
+          clockOut: string;
+          workedTime: number;
+        }>;
+      }>(
+        UPDATE_MANY_SESSION_TIMES,
+        { items },
+        { Authorization: `Bearer ${token}` }
+      );
+      toasted.success("Session times updated successfully!");
+      console.log("Update session times response:", response);
+      return response.updateManySessionTimes;
+    } catch (err) {
+      console.error("Failed to update session times:", err);
+      toasted.error("Failed to update session times.");
+      throw err;
+    } finally {
+      setMutationLoading(false);
+    }
+  };
   return (
     <ClientSessionContext.Provider
       value={{
@@ -185,6 +226,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         fetchScheduleData,
         clearScheduleData,
         bulkUpsertScheduleSessions,
+        updateManySessionTimes,
         mutationLoading
       }}
     >

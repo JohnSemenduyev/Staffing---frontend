@@ -1,302 +1,34 @@
 import React, { useEffect, useState } from "react";
-import { useClientSessions } from "../../context/ViewSchedule";
+import { useClientSessions, UpdateOneSessionTimesInput, SessionTimeInput } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
-import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
-import ToggleSwitch from "../../components/ui/toggle";
-import { useToast } from "../../hooks/use-toast";
+import { GET_SESSIONS_BY_SCHEDULE_SESSION } from "../../graphql/queries";
+import { graphQLClient } from "../../GraphqlClient";
+import { Eye, RotateCcw, Printer, Upload, Send, Edit } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { useSearchUsers } from "../../hooks/useSearchUser";
-import { useDebounce } from "../../hooks/useDebounce";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { toZonedTime } from 'date-fns-tz';
 
-interface PeriodEndDateModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (date: string) => void;
-}
+// Import our refactored components
+import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
+import { AddGuardForm } from "./ViewSchedule/AddGuardForm";
+import { ScheduleTable } from "./ViewSchedule/ScheduleTable";
+import { Modals } from "./ViewSchedule/Modals";
+// Import our custom hooks and utilities
+import { useScheduleState, useScheduleActions } from "./ViewSchedule/hooks";
+import {
+  generateDateColumns,
+  convertDateFormat,
+  getWeekRangeFromDate,
+  getUniqueUsers,
+  calculateUserTotal,
+  calculateDayTotal,
+  calculateGrandTotal,
+  getUniqueShiftTimes,
+  getShiftForUserDateAndTime
+} from "./ViewSchedule/utils";
 
-interface FormData {
-  userId: string;
-  date: string;
-  starttime: string;
-  endtime: string;
-}
-
-interface User {
-  id: string | number;
-  name: string;
-  phone?: string;
-}
-
-interface Shift {
-  id: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  hours: number;
-  scheduleSessionId?: number; // Updated: Added scheduleSessionId property
-}
-
-interface ScheduleItem {
-  id: number;
-  clientId: number;
-  addressId: number;
-  userId: number;
-  startDate: string;
-  auto: boolean;
-  shifts: Shift[];
-  clientName: string;
-  address: string;
-  userName: string;
-  userPhone: string;
-}
-
-interface User {
-  id: string | number;
-  name: string;
-  phone?: string;
-}
-
-const inputClasses = `
-  w-full
-  px-3
-  py-1
-  border
-  border-[#d0d4d9]
-  rounded-md
-  placeholder:text-gray-500
-  font-normal
-  focus:outline-none
-  focus:ring-2
-  focus:ring-[#004175]
-  transition
-  appearance-none
-`;
-
-const getWeekRangeFromDate = (baseDate) => {
-  // Convert the base date to Eastern timezone
-  const easternDate = toZonedTime(baseDate, 'America/New_York');
-  const day = easternDate.getDay();
-  const daysSinceThursday = (day + 3) % 7;
-  
-  const startOfWeek = new Date(easternDate);
-  startOfWeek.setDate(easternDate.getDate() - daysSinceThursday);
-  startOfWeek.setHours(0, 0, 0, 0);
-  
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-  
-  return { 
-    startOfWeek,
-    endOfWeek
-  };
-};
-
-const timeToMinutes = (timeStr) => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-};
-
-const doTimesOverlap = (start1, end1, start2, end2) => {
-  const start1Minutes = timeToMinutes(start1);
-  const end1Minutes = timeToMinutes(end1);
-  const start2Minutes = timeToMinutes(start2);
-  const end2Minutes = timeToMinutes(end2);
-
-  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
-};
-
-const sortShiftsByTime = (shifts) => {
-  return [...shifts].sort((a, b) => {
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-  });
-};
-const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
-  const userDays = scheduleData.filter(i => i.userId === userId);
-  let max = 1;
-  for (const d of userDays) max = Math.max(max, d.shifts.length);
-  return max;
-};
-const userHasMultiShiftDay = (userId: number, scheduleData: ScheduleItem[]) => {
-  const userSchedules = scheduleData.filter(item => item.userId === userId);
-
-  // Group shifts by date to check if any date has multiple shifts
-  const shiftsByDate = new Map<string, Shift[]>();
-
-  userSchedules.forEach(schedule => {
-    schedule.shifts.forEach(shift => {
-      const date = shift.date;
-      if (!shiftsByDate.has(date)) {
-        shiftsByDate.set(date, []);
-      }
-      shiftsByDate.get(date)!.push(shift);
-    });
-  });
-
-  // Check if any date has multiple shifts
-  for (const [date, shifts] of shiftsByDate) {
-    if (shifts.length > 1) {
-      return true; // User has multiple shifts on at least one day
-    }
-  }
-
-  return false; // User has at most one shift per day
-};
-const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]) => {
-  const userSchedules = scheduleData.filter(item => item.userId === userId);
-  const uniqueTimes = new Set<string>();
-  const shiftTimes: { startTime: string; endTime: string }[] = [];
-
-  userSchedules.forEach(schedule => {
-    schedule.shifts.forEach(shift => {
-      const timeKey = `${shift.startTime}-${shift.endTime}`;
-      if (!uniqueTimes.has(timeKey)) {
-        uniqueTimes.add(timeKey);
-        shiftTimes.push({
-          startTime: shift.startTime,
-          endTime: shift.endTime
-        });
-      }
-    });
-  });
-
-  return shiftTimes;
-};
-
-const getShiftForUserDateAndTime = (userId: number, date: string, startTime: string, endTime: string, scheduleData: ScheduleItem[]) => {
-  const daySchedules = scheduleData.filter(item =>
-    item.userId === userId && item.startDate === date
-  );
-
-  for (const schedule of daySchedules) {
-    const shift = schedule.shifts.find(s =>
-      s.startTime === startTime && s.endTime === endTime
-    );
-    if (shift) return shift;
-  }
-  return null;
-};
-
-const calculateShiftTimeTotal = (userId: number, startTime: string, endTime: string, scheduleData: ScheduleItem[], dateColumns: any[]) => {
-  let total = 0;
-  dateColumns.forEach(dateCol => {
-    const shift = getShiftForUserDateAndTime(userId, dateCol.date, startTime, endTime, scheduleData);
-    if (shift) {
-      total += shift.hours;
-    }
-  });
-  return parseFloat(total.toFixed(2));
-};
-
-// Utility function to convert date from YYYY-MM-DD to MM-DD-YYYY
-const convertDateFormat = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-');
-  return `${month}-${day}-${year}`;
-};
-
-// Utility function to convert timestamp to YYYY-MM-DD format
-const convertTimestampToDate = (timestamp: string) => {
-  const date = new Date(parseInt(timestamp));
-  return date.toISOString().split('T')[0];
-};
-
-// Form validation function
-const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingShiftId?: number) => {
-  const e: { [key: string]: string } = {};
-  if (!formData.userId) e.userId = "Required";
-  if (!formData.date) e.date = "Required";
-  if (!formData.starttime) e.starttime = "Required";
-  if (!formData.endtime) e.endtime = "Required";
-
-  // Check for overlapping shifts
-  if (formData.userId && formData.date && formData.starttime && formData.endtime) {
-    const existingShifts = scheduleData
-      .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
-      .flatMap(item => item.shifts);
-
-    for (const shift of existingShifts) {
-      if (shift.id === editingShiftId) continue; // Skip current shift when editing
-
-      if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
-        e.overlap = "Shift time overlaps with existing shift for this user and date";
-        break;
-      }
-    }
-  }
-
-  return e;
-};
-
-export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, onClose, onSubmit }) => {
-  const [selectedDate, setSelectedDate] = useState("");
-
-  const handleSubmit = () => {
-    if (selectedDate) {
-      onSubmit(selectedDate);
-      onClose();
-    }
-  };
-
-  const handleCurrentWeek = () => {
-    const today = new Date(Date.now());
-    const day = today.getDay();
-    console.log("day  "+day);
-    const daysSinceThursday = (day + 3) % 7; 
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - daysSinceThursday);
-    startOfWeek.setHours(0, 0, 0, 0);
-    console.log("startOfWeek "+startOfWeek);
-
-    const formatted = startOfWeek.toISOString().slice(0, 10);
-    setSelectedDate(formatted);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-80 shadow-lg">
-        <h2 className="text-lg font-semibold mb-4 text-center">Period End Date</h2>
-        <CustomDatePicker
-          value={selectedDate}
-          onChange={(field, value) => setSelectedDate(value)}
-          placeholder="Select Date"
-          className="mb-4"
-        />
-        <button
-          onClick={handleSubmit}
-          className="w-full py-2 rounded mb-4 text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
-        >
-          Enter
-        </button>
-
-        <div className="flex justify-between">
-          <button
-            onClick={handleCurrentWeek}
-            className="w-[48%] py-2 rounded text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
-          >
-            Current Week
-          </button>
-          <button
-            onClick={onClose}
-            className="w-[48%] py-2 rounded text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
-          >
-            Return
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Import types
+import { ScheduleItem, DateColumn } from "./ViewSchedule/types";
 
 export const ViewSchedule = () => {
   const {
@@ -304,58 +36,503 @@ export const ViewSchedule = () => {
     loading,
     error,
     fetchClientSessions,
-    // Add these new properties from the updated context
     scheduleData: apiScheduleData,
     scheduleLoading,
     scheduleError,
     fetchScheduleData,
     clearScheduleData,
-    bulkUpsertScheduleSessions // Updated: Added bulkUpsertScheduleSessions
+    bulkUpsertScheduleSessions,
+    updateManySessionTimes, 
+    mutationLoading
   } = useClientSessions();
 
+  // Use our custom state hook
+  const {
+    scheduleData,
+    setScheduleData,
+    currentWeekRange,
+    setCurrentWeekRange,
+    selectedDate,
+    setSelectedDate,
+    isEditMode,
+    setIsEditMode,
+    draggedShift,
+    setDraggedShift,
+    dragOverCell,
+    setDragOverCell,
+    deleteModal,
+    setDeleteModal,
+    editModal,
+    setEditModal,
+    deleteUserModal,
+    setDeleteUserModal,
+    editForm,
+    setEditForm
+  } = useScheduleState();
+
+  // Use our custom actions hook for schedule table
+  const {
+    handleDeleteShift: originalHandleDeleteShift,
+    confirmDeleteShift: originalConfirmDeleteShift,
+    cancelDeleteShift,
+    handleEditShift: originalHandleEditShift,
+    confirmEditShift: originalConfirmEditShift,
+    cancelEditShift,
+    handleDeleteUser: originalHandleDeleteUser,
+    confirmDeleteUser: originalConfirmDeleteUser,
+    cancelDeleteUser,
+    handleUserAutoToggle,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd
+  } = useScheduleActions(
+    scheduleData,
+    setScheduleData,
+    currentWeekRange,
+    deleteModal, // Add this
+    setDeleteModal,
+    editModal, // Add this
+    setEditModal,
+    deleteUserModal, // Add this
+    setDeleteUserModal,
+    editForm, // Add this
+    setEditForm,
+    draggedShift, // Add this
+    setDraggedShift,
+    setDragOverCell
+  );
+
+  // Wrapper handlers for schedule table that set the flag
+  const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
+    setIsEditingSession(false);
+    originalHandleDeleteShift(userId, date, shiftId);
+  };
+
+  const handleEditShift = (userId: number, date: string, shift: any) => {
+    setIsEditingSession(false);
+    originalHandleEditShift(userId, date, shift);
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    setIsEditingSession(false);
+    originalHandleDeleteUser(userId);
+  };
+
+  const confirmDeleteShift = () => {
+    if (isEditingSession) {
+      handleSessionConfirmDeleteShift();
+    } else {
+      originalConfirmDeleteShift();
+    }
+  };
+
+  const confirmEditShift = () => {
+    if (isEditingSession) {
+      handleSessionConfirmEditShift();
+    } else {
+      originalConfirmEditShift();
+    }
+  };
+
+  const confirmDeleteUser = () => {
+    if (isEditingSession) {
+      handleSessionConfirmDeleteUser();
+    } else {
+      originalConfirmDeleteUser();
+    }
+  };
+
+  // Create separate action handlers for session table
+  const handleSessionDeleteShift = (userId: number, date: string, shiftId: number) => {
+    setIsEditingSession(true);
+    setDeleteModal({
+      isOpen: true,
+      userId,
+      date,
+      shiftId
+    });
+  };
+
+  const handleSessionEditShift = (userId: number, date: string, shift: any) => {
+    setIsEditingSession(true);
+    setEditModal({
+      isOpen: true,
+      userId,
+      date,
+      shift
+    });
+    setEditForm({
+      starttime: shift.startTime,
+      endtime: shift.endTime
+    });
+  };
+
+  const handleSessionDeleteUser = (userId: number) => {
+    setIsEditingSession(true);
+    setDeleteUserModal({
+      isOpen: true,
+      userId
+    });
+  };
+
+  const handleSessionUserAutoToggle = (userId: number, enabled: boolean) => {
+    setSessionData(prev =>
+      prev.map(item =>
+        item.userId === userId
+          ? { ...item, auto: enabled }
+          : item
+      )
+    );
+  };
+  const handleSessionDragStart = (e: React.DragEvent, shift: any, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
+    console.log('Session drag start:', { shift, sourceUserId, sourceDate, sourceRowIdx });
+    setDraggedShift({
+      shift,
+      sourceUserId,
+      sourceDate,
+      sourceRowIdx
+    });
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleSessionDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setDragOverCell({
+      userId: targetUserId,
+      date: targetDate,
+      rowIdx: targetRowIdx
+    });
+  };
+  const handleSessionDragLeave = (e: React.DragEvent) => {
+    setDragOverCell(null);
+  };
+
+
+
+  // Replace the session drag handlers with these corrected versions:
+  // Fix the session drop handler to create a deep copy
+  const handleSessionDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+    e.preventDefault();
+
+    if (!draggedShift) return;
+
+    const { shift, sourceUserId, sourceDate } = draggedShift;
+    console.log('Session drop:', { shift, sourceUserId, sourceDate, targetUserId, targetDate, targetRowIdx });
+
+    // Check if target user-date combination already exists
+    const existingItem = sessionData.find(item =>
+      item.userId === targetUserId && item.startDate === targetDate
+    );
+
+    if (existingItem) {
+      // Replace existing shifts at target position (copy operation)
+      setSessionData(prev =>
+        prev.map(item => {
+          if (item.userId === targetUserId && item.startDate === targetDate) {
+            const newShifts = [...item.shifts];
+            // Create a deep copy of the shift to avoid reference issues
+            const deepCopiedShift = JSON.parse(JSON.stringify(shift));
+            // Replace at the target position (remove existing if any)
+            newShifts.splice(targetRowIdx, 1, {
+              ...deepCopiedShift,
+              date: targetDate,
+              id: Date.now() + Math.random() // Generate new ID to avoid conflicts
+            });
+            return { ...item, shifts: newShifts };
+          }
+          return item;
+        })
+      );
+    } else {
+      // Create new item for target user-date combination
+      const sourceItem = sessionData.find(item =>
+        item.userId === sourceUserId && item.startDate === sourceDate
+      );
+
+      if (sourceItem) {
+        const deepCopiedShift = JSON.parse(JSON.stringify(shift));
+        const newSessionItem = {
+          ...sourceItem,
+          userId: targetUserId,
+          startDate: targetDate,
+          shifts: [{
+            ...deepCopiedShift,
+            date: targetDate,
+            id: Date.now() + Math.random()
+          }]
+        };
+
+        setSessionData(prev => [...prev, newSessionItem]);
+      }
+    }
+
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
+  const handleSessionDragEnd = () => {
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
+
+  // Session-specific modal handlers
+  const handleSessionConfirmDeleteShift = () => {
+    if (!deleteModal.isOpen || !deleteModal.userId || !deleteModal.date || !deleteModal.shiftId) return;
+
+    setSessionData(prev =>
+      prev.map(item => {
+        if (item.userId === deleteModal.userId && item.startDate === deleteModal.date) {
+          const newShifts = item.shifts.filter(shift => shift.id !== deleteModal.shiftId);
+          return { ...item, shifts: newShifts };
+        }
+        return item;
+      })
+    );
+
+    setDeleteModal({ isOpen: false, userId: null, date: null, shiftId: null });
+  };
+
+  const handleSessionConfirmEditShift = () => {
+    if (!editModal.isOpen || !editModal.userId || !editModal.date || !editModal.shift) return;
+
+    setSessionData(prev =>
+      prev.map(item => {
+        if (item.userId === editModal.userId && item.startDate === editModal.date) {
+          const newShifts = item.shifts.map(shift =>
+            shift.id === editModal.shift.id
+              ? { ...shift, startTime: editForm.starttime, endTime: editForm.endtime }
+              : shift
+          );
+          return { ...item, shifts: newShifts };
+        }
+        return item;
+      })
+    );
+
+    setEditModal({ isOpen: false, userId: null, date: null, shift: null });
+    setEditForm({ starttime: '', endtime: '' });
+  };
+
+  const handleSessionConfirmDeleteUser = () => {
+    if (!deleteUserModal.isOpen || !deleteUserModal.userId) return;
+
+    setSessionData(prev => prev.filter(item => item.userId !== deleteUserModal.userId));
+    setDeleteUserModal({ isOpen: false, userId: null });
+  };
+  const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> } => {
+    const valid: UpdateOneSessionTimesInput[] = [];
+    const invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> = [];
+  
+    sessionTimeUpdates.forEach(session => {
+      const { sessionId, clockIn, clockOut } = session;
+      
+      // Convert times to minutes for easier comparison
+      const parseTime = (timeStr: string): number => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+  
+      const clockInMinutes = parseTime(clockIn);
+      const clockOutMinutes = parseTime(clockOut);
+  
+      // Check for invalid time format
+      if (isNaN(clockInMinutes) || isNaN(clockOutMinutes)) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Invalid time format"
+        });
+        return;
+      }
+  
+      // Check for overnight shifts (clockOut < clockIn)
+      if (clockOutMinutes < clockInMinutes) {
+        // This is a valid overnight shift, but we need to handle it differently
+        // For now, we'll skip these and log them for manual review
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Overnight shift detected - requires manual handling"
+        });
+        return;
+      }
+  
+      // Check for zero duration shifts
+      if (clockOutMinutes === clockInMinutes) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Zero duration shift"
+        });
+        return;
+      }
+  
+      // Check for unreasonable shift durations (more than 24 hours)
+      const durationMinutes = clockOutMinutes - clockInMinutes;
+      if (durationMinutes > 24 * 60) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Shift duration exceeds 24 hours"
+        });
+        return;
+      }
+  
+      valid.push(session);
+    });
+  
+    return { valid, invalid };
+  };
+  // Local state
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [showScheduleTable, setShowScheduleTable] = useState(false);
-  const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
-  const [currentWeekRange, setCurrentWeekRange] = useState(null);
-  const [selectedDate, setSelectedDate] = useState("");
-  const { toast: hookToast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [currentTimezone, setCurrentTimezone] = useState<string>('America/New_York'); // Eastern timezone
+  const [tableData, setTableData] = useState([]);
+  const [sessionData, setSessionData] = useState<any[]>([]);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [isEditingSession, setIsEditingSession] = useState(false);
 
-  // Form states for adding new guards
-  const [form, setForm] = useState<FormData>({
-    userId: "",
-    date: "",
-    starttime: "",
-    endtime: "",
-  });
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [userSearch, setUserSearch] = useState("");
-  const debouncedUserSearch = useDebounce(userSearch, 300);
-  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [submitLoader, setSubmitLoader] = useState(false);
-  const [auto, setAuto] = useState(false);
-  const [applyAllWeek, setApplyAllWeek] = useState(false);
+  // Function to fetch session data
+  const fetchSessionData = async () => {
+    if (!scheduleData || scheduleData.length === 0) {
+      setSessionData([]);
+      return;
+    }
 
-  // Modal states for edit/delete functionality
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
-  const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
-  const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
-  const [editForm, setEditForm] = useState({ starttime: "", endtime: "" });
+    setSessionLoading(true);
+    setSessionError(null);
 
-  // Drag and drop states
-  const [draggedShift, setDraggedShift] = useState(null);
-  const [dragOverCell, setDragOverCell] = useState(null);
+    try {
+      // Get unique schedule session IDs from the schedule data
+      const sessionIds = new Set<number>();
+      scheduleData.forEach(item => {
+        item.shifts.forEach((shift: any) => {
+          if (shift.scheduleSessionId) {
+            sessionIds.add(shift.scheduleSessionId);
+          }
+        });
+      });
 
-  // Add new state for table selection
-  const [activeTable, setActiveTable] = useState<'schedule' | 'actual'>('schedule');
+      if (sessionIds.size === 0) {
+        setSessionData([]);
+        return;
+      }
+
+      const allSessions: any[] = [];
+
+      // Fetch session data for each schedule session ID
+      for (const sessionId of sessionIds) {
+        const response = await graphQLClient.request<{ sessionsByScheduleSession: any[] }>(
+          GET_SESSIONS_BY_SCHEDULE_SESSION,
+          { scheduleSessionId: sessionId }
+        );
+        allSessions.push(...response.sessionsByScheduleSession);
+      }
+
+      // Transform session data to match schedule data format
+      const transformedSessionData = transformSessionDataToScheduleFormat(allSessions);
+      setSessionData(transformedSessionData);
+
+    } catch (err: any) {
+      console.error("Error fetching session data:", err);
+      setSessionError("Failed to fetch session data");
+      toast.error("Failed to load session data!");
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  // Function to transform session data to schedule format
+  const transformSessionDataToScheduleFormat = (sessions: any[]) => {
+    if (!sessions.length || !scheduleData.length) return [];
+
+    // Group sessions by user and date
+    const userSessionMap = new Map();
+
+    sessions.forEach(session => {
+      const shift = session.shift;
+      const date = new Date(shift.date).toISOString().split('T')[0];
+
+      // Find the corresponding schedule item to get user info
+      const scheduleItem = scheduleData.find(item =>
+        item.shifts.some((s: any) => s.scheduleSessionId === session.scheduleSessionId)
+      );
+
+      if (scheduleItem) {
+        const userId = scheduleItem.userId;
+        const userName = scheduleItem.userName;
+
+        if (!userSessionMap.has(userId)) {
+          userSessionMap.set(userId, {
+            userId,
+            userName,
+            sessions: []
+          });
+        }
+
+        userSessionMap.get(userId).sessions.push({
+          date,
+          clockIn: session.clockIn,
+          clockOut: session.clockOut,
+          workedTime: session.workedTime,
+          sessionId: session.id || null,
+        });
+      }
+    });
+
+    // Convert to schedule format
+    const transformedData: any[] = [];
+
+    userSessionMap.forEach((userData, userId) => {
+      // Group sessions by date
+      const sessionsByDate = new Map();
+
+      userData.sessions.forEach((session: any) => {
+        if (!sessionsByDate.has(session.date)) {
+          sessionsByDate.set(session.date, []);
+        }
+        sessionsByDate.get(session.date).push(session);
+      });
+
+      // Create schedule items for each date
+      sessionsByDate.forEach((dateSessions, date) => {
+        const scheduleItem = scheduleData.find(item =>
+          item.userId === userId && item.startDate === date
+        );
+
+        if (scheduleItem) {
+          // Convert sessions to shifts format
+          const shifts = dateSessions.map((session: any, index: number) => ({
+            id: session.shiftId || (Date.now() + index),
+            date: session.date,
+            startTime: session.clockIn || "N/A",
+            endTime: session.clockOut || "N/A",
+            hours: session.workedTime || 0,
+            scheduleSessionId: session.sessionId  || null
+          }));
+
+          transformedData.push({
+            ...scheduleItem,
+            shifts: shifts,
+            isSessionData: true // Flag to identify this as session data
+          });
+        }
+      });
+    });
+
+    return transformedData;
+  };
 
   const handleView = (rowData: any) => {
-    // Extract the full client data from the row
     const clientData = {
       clientId: rowData.clientId,
       addressId: rowData.addressId,
@@ -374,54 +551,50 @@ export const ViewSchedule = () => {
   const handleDateSubmit = async (date: string) => {
     setSelectedDate(date);
     setShowScheduleTable(true);
-  
+
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
-  
-    // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
+
     const formattedDate = convertDateFormat(date);
-  
+
     console.log("Submitting with:", {
       clientId,
       addressId,
       date: formattedDate,
       originalDate: date
     });
-  
+
     if (!clientId || !addressId) {
       toast.error("Missing client or address information!");
       return;
     }
-  
-    // Convert the selected date to Eastern timezone before calculating week range
-    const selectedDateObj = new Date(date + 'T00:00:00'); // Create date object
+
+    const selectedDateObj = new Date(date + 'T00:00:00');
     const easternDate = toZonedTime(selectedDateObj, 'America/New_York');
-    
-    // Generate week range using Eastern timezone
+
     const weekRange = getWeekRangeFromDate(easternDate);
     setCurrentWeekRange(weekRange);
-  
-    // Clear any existing schedule data
+
     clearScheduleData();
-  
-    // Fetch actual schedule data from API using formatted date
+    setSessionData([]); // Clear session data as well
+
     try {
+      // Start both loading states immediately
+      setSessionLoading(true);
+
+      // Fetch schedule data
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
       toast.error("Failed to load schedule data!");
+      setSessionLoading(false); // Stop session loading if schedule fails
     }
   };
 
+
   useEffect(() => {
-    fetchClientSessions(); // Fetch only when needed
+    fetchClientSessions();
   }, []);
-
-  const [tableData, setTableData] = useState([]);
-
-  useEffect(() => {
-    console.log(tableData);
-  }, [tableData])
 
   useEffect(() => {
     if (clientSessions && Array.isArray(clientSessions)) {
@@ -436,87 +609,87 @@ export const ViewSchedule = () => {
       }));
       setTableData(flatData);
     } else {
-      setTableData([]); // fallback if clientSessions is null or not an array
+      setTableData([]);
     }
   }, [clientSessions]);
 
-  // Transform API data when it arrives - UPDATED
-// ... existing code ...
+  // Transform API data when it arrives
+  useEffect(() => {
+    if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
+      console.log("Raw API data:", apiScheduleData);
 
-// Transform API data when it arrives - FIXED VERSION
-useEffect(() => {
-  if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
-    console.log("Raw API data:", apiScheduleData);
+      const transformedData: ScheduleItem[] = [];
 
-    // Transform API data to match your component's expected format
-    const transformedData: ScheduleItem[] = [];
+      apiScheduleData.forEach(scheduleGroup => {
+        if (scheduleGroup.shifts && scheduleGroup.user) {
+          const shiftsByDate = new Map();
 
-    // Process each schedule group in the array
-    apiScheduleData.forEach(scheduleGroup => {
-      if (scheduleGroup.shifts && scheduleGroup.user) {
-        // Group shifts by date for this user
-        const shiftsByDate = new Map();
-
-        scheduleGroup.shifts.forEach(shift => {
-          // Convert ISO date string to YYYY-MM-DD format
-          let readableDate;
-          try {
-            if (shift.date) {
-              // Handle ISO date string like "2025-08-08T00:00:00.000Z"
-              const dateObj = new Date(shift.date);
-              readableDate = dateObj.toISOString().split('T')[0];
-            } else {
-              console.warn('Missing date for shift:', shift);
-              return; // Skip this shift
+          scheduleGroup.shifts.forEach(shift => {
+            let readableDate;
+            try {
+              if (shift.date) {
+                const dateObj = new Date(shift.date);
+                readableDate = dateObj.toISOString().split('T')[0];
+              } else {
+                console.warn('Missing date for shift:', shift);
+                return;
+              }
+            } catch (error) {
+              console.error('Error converting date:', shift.date, error);
+              return;
             }
-          } catch (error) {
-            console.error('Error converting date:', shift.date, error);
-            return; // Skip this shift
-          }
 
-          if (!shiftsByDate.has(readableDate)) {
-            shiftsByDate.set(readableDate, []);
-          }
+            if (!shiftsByDate.has(readableDate)) {
+              shiftsByDate.set(readableDate, []);
+            }
 
-          shiftsByDate.get(readableDate).push({
-            id: shift.id,
-            date: readableDate,
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            hours: shift.hours,
-            scheduleSessionId: shift.scheduleSessionId
+            shiftsByDate.get(readableDate).push({
+              id: shift.id,
+              date: readableDate,
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+              hours: shift.hours,
+              scheduleSessionId: shift.scheduleSessionId
+            });
           });
-        });
 
-        // Create a ScheduleItem for each date
-        shiftsByDate.forEach((dateShifts, date) => {
-          transformedData.push({
-            id: transformedData.length + 1,
-            clientId: scheduleGroup.clientId,
-            addressId: scheduleGroup.addressId,
-            userId: scheduleGroup.user.id,
-            startDate: date,
-            auto: false, // You might need to get this from another source
-            shifts: dateShifts,
-            clientName: selectedClient?.name || "Unknown Client",
-            address: selectedClient?.address || "Unknown Address",
-            userName: scheduleGroup.user.name,
-            userPhone: "" // You might need to fetch user phone separately
+          shiftsByDate.forEach((dateShifts, date) => {
+            transformedData.push({
+              id: transformedData.length + 1,
+              clientId: scheduleGroup.clientId,
+              addressId: scheduleGroup.addressId,
+              userId: scheduleGroup.user.id,
+              startDate: date,
+              auto: false,
+              shifts: dateShifts,
+              clientName: selectedClient?.name || "Unknown Client",
+              address: selectedClient?.address || "Unknown Address",
+              userName: scheduleGroup.user.name,
+              userPhone: ""
+            });
           });
-        });
-      }
-    });
+        }
+      });
 
-    console.log("Transformed schedule data:", transformedData);
-    setScheduleData(transformedData);
-  } else {
-    console.log("No API schedule data or empty array:", apiScheduleData);
-    setScheduleData([]);
-  }
-}, [apiScheduleData, selectedClient]);
+      console.log("Transformed schedule data:", transformedData);
+      setScheduleData(transformedData);
+    } else {
+      console.log("No API schedule data or empty array:", apiScheduleData);
+      setScheduleData([]);
+    }
+  }, [apiScheduleData, selectedClient]);
 
-// ... existing code ...
-
+  // Fetch session data when schedule data changes
+  useEffect(() => {
+    if (scheduleData.length > 0) {
+      fetchSessionData();
+    }
+  }, [scheduleData.length]);
+  useEffect(() => {
+    if (scheduleData.length === 0) {
+      setSessionData([]);
+    }
+  }, [scheduleData.length]);
   const tableColumns: TableColumn[] = [
     { key: "clientName", label: "Client Name", sortable: true, searchable: true, width: "225px" },
     { key: "address", label: "Street Name", sortable: true, searchable: true, width: "225px" },
@@ -535,298 +708,20 @@ useEffect(() => {
     }
   ];
 
-  // Generate date columns for the schedule table
-  const generateDateColumns = () => {
-    if (!currentWeekRange) return [];
-  
-    const dates = [];
-    const startDate = new Date(currentWeekRange.startOfWeek);
-  
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      
-      // Convert to Eastern timezone for display
-      const easternDate = toZonedTime(date, 'America/New_York');
-      const dateStr = easternDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-      
-      dates.push({
-        date: dateStr, // Use Eastern timezone date to match API
-        display: `${String(easternDate.getMonth() + 1).padStart(2, '0')}-${String(easternDate.getDate()).padStart(2, '0')}-${easternDate.getFullYear()}` // Eastern display
-      });
-    }
-    return dates;
-  };
-  const dateColumns = generateDateColumns();
-
-  // Get unique users from schedule data
-  const getUniqueUsers = () => {
-    const userMap = new Map();
-    scheduleData.forEach(item => {
-      if (!userMap.has(item.userId)) {
-        userMap.set(item.userId, {
-          id: item.userId,
-          name: item.userName,
-          phone: item.userPhone
-        });
-      }
-    });
-    return Array.from(userMap.values());
-  };
-
-  const uniqueUsers = getUniqueUsers();
-
-  // Form handler functions
-  const handleFormChange = (field: keyof FormData, value: string) => {
-    setForm((f) => ({
-      ...f,
-      [field]: value,
-    }));
-
-    // Clear field-specific error and overlap error for fields that affect overlap validation
-    if (field === 'starttime' || field === 'endtime' || field === 'userId' || field === 'date') {
-      setErrors((e) => ({ ...e, [field]: undefined, overlap: undefined }));
-    } else {
-      setErrors((e) => ({ ...e, [field]: undefined }));
-    }
-
-    // Check week range when date changes
-    if (field === 'date' && value && currentWeekRange) {
-      const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDate(selectedDate);
-
-      const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
-      const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
-
-      if (existingWeekStart !== newWeekStart) {
-        hookToast({
-          title: "Invalid Date Selection",
-          description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
-          variant: "destructive",
-        });
-        setForm(f => ({ ...f, date: "" }));
-        return;
-      }
-    }
-  };
-
-  const handleUserSelect = (user: User) => {
-    setForm((f) => ({ ...f, userId: String(user.id) }));
-    setUserSearch(user.name);
-    setShowUserDropdown(false);
-    setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
-  };
-
-  const resetAddGuardForm = () => {
-    setForm({
-      userId: "",
-      date: "",
-      starttime: "",
-      endtime: ""
-    });
-    setUserSearch("");
-    setAuto(false);
-    setErrors({});
-    setApplyAllWeek(false);
-
-    hookToast({
-      title: "Form Reset",
-      description: "Add guard form has been reset successfully.",
-    });
-  };
-
-  const calculateHours = (start, end) => {
-    const [startH, startM] = start.split(":").map(Number);
-    const [endH, endM] = end.split(":").map(Number);
-    let hours = endH - startH + (endM - startM) / 60;
-    if (hours < 0) hours += 24;
-    return parseFloat(hours.toFixed(2));
-  };
-
-  const onSubmitAddGuard = async (e) => {
-    e.preventDefault();
-    const formErrors = validateForm(form, scheduleData);
-    setErrors(formErrors);
-  
-    if (Object.keys(formErrors).length > 0) return;
-  
-    setSubmitLoader(true);
-  
-    try {
-      // Get user details from the hook data
-      const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
-  
-      if (!selectedUser) {
-        hookToast({
-          title: "Error",
-          description: "Selected user not found.",
-          variant: "destructive",
-        });
-        return;
-      }
-  
-      // Create a copy of current schedule data to work with
-      const updatedScheduleData = [...scheduleData];
-      const newShift = {
-        id: Date.now(),
-        startTime: form.starttime,
-        endTime: form.endtime,
-        hours: calculateHours(form.starttime, form.endtime),
-      };
-  
-      if (applyAllWeek && currentWeekRange) {
-        // Add for each day in the week (Thu-Wed)
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        
-        for (let i = 0; i < 7; i++) {
-          const dateObj = new Date(startDate);
-          dateObj.setDate(startDate.getDate() + i);
-          const dateStr = dateObj.toISOString().split('T')[0];
-          
-          // Check if user already has a schedule for this date
-          const existingScheduleIndex = updatedScheduleData.findIndex(
-            item => item.userId === Number(form.userId) && item.startDate === dateStr
-          );
-  
-          if (existingScheduleIndex !== -1) {
-            // Add new shift to existing schedule
-            const newShifts = [
-              ...updatedScheduleData[existingScheduleIndex].shifts,
-              {
-                ...newShift,
-                id: Date.now() + i, // Ensure unique ID
-                date: dateStr,
-              }
-            ];
-  
-            // Sort shifts by time when adding
-            updatedScheduleData[existingScheduleIndex] = {
-              ...updatedScheduleData[existingScheduleIndex],
-              shifts: sortShiftsByTime(newShifts)
-            };
-          } else {
-            // Create new schedule for this day
-            updatedScheduleData.push({
-              id: Date.now() + i,
-              clientId: scheduleData[0]?.clientId || 0,
-              addressId: scheduleData[0]?.addressId || 0,
-              userId: Number(form.userId),
-              startDate: dateStr,
-              auto,
-              shifts: [
-                {
-                  ...newShift,
-                  id: Date.now() + i,
-                  date: dateStr,
-                },
-              ],
-              clientName: scheduleData[0]?.clientName || "Unknown Client",
-              address: scheduleData[0]?.address || "Unknown Address",
-              userName: selectedUser.name,
-              userPhone: selectedUser.phone || '',
-            });
-          }
-        }
-      } else {
-        // Single day entry
-        const existingScheduleIndex = updatedScheduleData.findIndex(
-          item => item.userId === Number(form.userId) && item.startDate === form.date
-        );
-  
-        if (existingScheduleIndex !== -1) {
-          // Add new shift to existing schedule
-          const newShifts = [
-            ...updatedScheduleData[existingScheduleIndex].shifts,
-            {
-              ...newShift,
-              date: form.date,
-            }
-          ];
-  
-          // Sort shifts by time when adding
-          updatedScheduleData[existingScheduleIndex] = {
-            ...updatedScheduleData[existingScheduleIndex],
-            shifts: sortShiftsByTime(newShifts)
-          };
-        } else {
-          // Create new schedule
-          updatedScheduleData.push({
-            id: Date.now(),
-            clientId: scheduleData[0]?.clientId || 0,
-            addressId: scheduleData[0]?.addressId || 0,
-            userId: Number(form.userId),
-            startDate: form.date,
-            auto,
-            shifts: [
-              {
-                ...newShift,
-                date: form.date,
-              },
-            ],
-            clientName: scheduleData[0]?.clientName || "Unknown Client",
-            address: scheduleData[0]?.address || "Unknown Address",
-            userName: selectedUser.name,
-            userPhone: selectedUser.phone || '',
-          });
-        }
-      }
-  
-      // Update schedule data and re-render table
-      setScheduleData(updatedScheduleData);
-  
-      resetAddGuardForm();
-  
-      hookToast({
-        title: "Success",
-        description: "New guard shift added successfully!",
-      });
-    } catch (err) {
-      console.error("Error adding guard shift:", err);
-      hookToast({
-        title: "Error",
-        description: "Failed to add guard shift.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitLoader(false);
-    }
-  };
-  
-
-  // Calculate totals
-  const calculateDayTotal = (date: string) => {
-    const total = scheduleData
-      .filter(item => item.startDate === date)
-      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-    return parseFloat(total.toFixed(2));
-  };
-
-  const calculateUserTotal = (userId: number) => {
-    const total = scheduleData
-      .filter(item => item.userId === userId)
-      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-    return parseFloat(total.toFixed(2));
-  };
-
-  const calculateGrandTotal = () => {
-    const total = scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-    return parseFloat(total.toFixed(2));
-  };
+  const dateColumns = generateDateColumns(currentWeekRange);
 
   // Excel Download functionality
   const generateExcelFile = () => {
     const formattedData = [];
+    const uniqueUsers = getUniqueUsers(scheduleData);
 
-    // Add data rows for each user - matching table structure exactly
     uniqueUsers.forEach(user => {
       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
 
-      // First row for each user: Employee name with phone number below
       const userMainRow = {
         "Employee Name": `${user.name}\n${user.phone || ""}`,
       };
 
-      // Add shift times for each date (only show shifts if they exist)
       dateColumns.forEach(dateCol => {
         const userSchedulesForDate = scheduleData.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
@@ -841,12 +736,11 @@ useEffect(() => {
         }
       });
 
-      userMainRow["Total"] = calculateUserTotal(user.id);
+      userMainRow["Total"] = calculateUserTotal(user.id, scheduleData);
       userMainRow["Auto"] = scheduleData.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
 
       formattedData.push(userMainRow);
 
-      // Add user total row
       const totalRow = {
         "Employee Name": "Total",
       };
@@ -859,30 +753,28 @@ useEffect(() => {
         );
         totalRow[dateCol.display] = dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-";
       });
-      totalRow["Total"] = calculateUserTotal(user.id);
+      totalRow["Total"] = calculateUserTotal(user.id, scheduleData);
       totalRow["Auto"] = "";
       formattedData.push(totalRow);
     });
 
-    // Add grand total row
     const grandTotalRow = {
       "Employee Name": "Grand Total",
     };
     dateColumns.forEach(dateCol => {
-      grandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date) || "-";
+      grandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date, scheduleData) || "-";
     });
-    grandTotalRow["Total"] = calculateGrandTotal();
+    grandTotalRow["Total"] = calculateGrandTotal(scheduleData);
     grandTotalRow["Auto"] = "";
     formattedData.push(grandTotalRow);
 
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
 
-    // Set column widths for better formatting
     const colWidths = [
-      { wch: 20 }, // Employee Name
-      ...dateColumns.map(() => ({ wch: 15 })), // Date columns
-      { wch: 10 }, // Total
-      { wch: 8 }   // Auto
+      { wch: 20 },
+      ...dateColumns.map(() => ({ wch: 15 })),
+      { wch: 10 },
+      { wch: 8 }
     ];
     worksheet['!cols'] = colWidths;
 
@@ -896,7 +788,7 @@ useEffect(() => {
     return blob;
   };
 
-  // Updated Publish functionality
+  // Publish functionality
   const handlePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
       toast.error("No data available to publish!");
@@ -906,43 +798,36 @@ useEffect(() => {
     try {
       setIsPublishing(true);
 
-      // Calculate week start and end dates from the selected date
+      // First API call: Publish schedule data
       const selectedDateObj = new Date(selectedDate);
       const weekRange = getWeekRangeFromDate(selectedDateObj);
       const startDate = weekRange.startOfWeek.toISOString().split('T')[0];
       const endDate = weekRange.endOfWeek.toISOString().split('T')[0];
 
-      // Group schedule data by user to create the required format
       const userScheduleMap = new Map();
 
-      // Process each schedule item
       scheduleData.forEach(item => {
         const userId = item.userId;
-
-        // Get scheduleSessionId from the first shift (all shifts for a user should have the same scheduleSessionId)
         const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId
           ? item.shifts[0].scheduleSessionId
           : null;
 
         if (!userScheduleMap.has(userId)) {
           userScheduleMap.set(userId, {
-            scheduleSessionId: scheduleSessionId, // Take from shift data
+            scheduleSessionId: scheduleSessionId,
             clientId: item.clientId,
             addressId: item.addressId,
             userId: userId,
             startDate: convertDateFormat(startDate),
             endDate: convertDateFormat(endDate),
             auto: item.auto,
-            weeklyHours: 0, // Will calculate below
+            weeklyHours: 0,
             shifts: []
           });
         } else {
-          // If user already exists, keep the first scheduleSessionId we found
-          // but update auto setting if it's different (take the latest one)
           const existingSchedule = userScheduleMap.get(userId);
-          existingSchedule.auto = item.auto; // Update with latest auto setting
+          existingSchedule.auto = item.auto;
 
-          // If we don't have a scheduleSessionId yet, try to get it from this item
           if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
             existingSchedule.scheduleSessionId = scheduleSessionId;
           }
@@ -950,7 +835,6 @@ useEffect(() => {
 
         const userSchedule = userScheduleMap.get(userId);
 
-        // Add shifts for this user
         item.shifts.forEach(shift => {
           const isClientGeneratedId = shift.id > 1000000000000;
           userSchedule.shifts.push({
@@ -963,9 +847,7 @@ useEffect(() => {
         });
       });
 
-      // Calculate weekly hours for each user and prepare final array
       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
-        // Calculate total weekly hours
         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
 
         return {
@@ -979,17 +861,120 @@ useEffect(() => {
       console.log("Total Users:", scheduleInput.length);
       console.log("Week Range:", { startDate, endDate });
       console.log("=====================================");
-      console.log(scheduleInput);
 
-      // Call the context function
       await bulkUpsertScheduleSessions(scheduleInput);
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
-      toast.success("Schedule published successfully!");
+      // Second API call: Update session times (if session data exists)
+      if (sessionData && sessionData.length > 0) {
+        console.log("=== UPDATING SESSION TIMES ===");
+        
+        const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
+        const newSessions: SessionTimeInput[] = [];
+        
+        sessionData.forEach(item => {
+          item.shifts.forEach(shift => {
+            // Only include sessions that have actual clock in/out times (not N/A)
+            if (shift.startTime !== "N/A" && shift.endTime !== "N/A") {
+              if (shift.scheduleSessionId) {
+                // Existing session - update with session ID
+                sessionTimeUpdates.push({
+                  sessionId: shift.scheduleSessionId,
+                  clockIn: shift.startTime,
+                  clockOut: shift.endTime
+                });
+              } else {
+                // New session - needs to be created with shiftId
+                newSessions.push({
+                  sessionId: null,  // null for new sessions
+                  shiftId: shift.id, // required for new session creation
+                  clockIn: shift.startTime,
+                  clockOut: shift.endTime
+                });
+              }
+            }
+          });
+        });
+      
+        if (sessionData && sessionData.length > 0) {
+          console.log("=== UPDATING SESSION TIMES ===");
+          
+          const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
+          const newSessions: SessionTimeInput[] = []; // For new sessions that need to be created
+          
+          sessionData.forEach(item => {
+            item.shifts.forEach(shift => {
+              // Only include sessions that have actual clock in/out times (not N/A)
+              if (shift.startTime !== "N/A" && shift.endTime !== "N/A") {
+                if (shift.scheduleSessionId) {
+                  // Existing session - update with session ID
+                  sessionTimeUpdates.push({
+                    sessionId: shift.scheduleSessionId,
+                    clockIn: shift.startTime,
+                    clockOut: shift.endTime
+                  });
+                } else {
+                  // New session - needs to be created with shiftId
+                  newSessions.push({
+                    sessionId: null,  // null for new sessions
+                    shiftId: shift.id, // required for new session creation
+                    clockIn: shift.startTime,
+                    clockOut: shift.endTime
+                  });
+                }
+              }
+            });
+          });
+        
+          // Handle existing session updates
+          if (sessionTimeUpdates.length > 0) {
+            console.log("Session time updates:", JSON.stringify(sessionTimeUpdates, null, 2));
+            
+            // Validate session times before sending to API
+            const validation = validateSessionTimes(sessionTimeUpdates);
+            
+            if (validation.invalid.length > 0) {
+              console.warn("Invalid session times detected:", validation.invalid);
+              
+              // Show warning for invalid sessions
+              const invalidMessages = validation.invalid.map(inv => 
+                `Session ${inv.sessionId}: ${inv.reason} (${inv.clockIn} - ${inv.clockOut})`
+              ).join('\n');
+              
+              toast.error(`Some session times could not be updated:\n${invalidMessages}`, {
+                duration: 5000
+              });
+            }
+        
+            if (validation.valid.length > 0) {
+              console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
+              await updateManySessionTimes(validation.valid);
+              console.log("Valid session times updated successfully");
+            } else {
+              console.log("No valid session time updates to process");
+            }
+          }
+  
+          // Handle new session creation
+          if (newSessions.length > 0) {
+            console.log("New sessions to create:", JSON.stringify(newSessions, null, 2));
+            // TODO: Add API call to create new sessions with shiftId
+            // await createNewSessions(newSessions);
+            console.log("New sessions creation not yet implemented");
+          }
+        }
+
+      }
+
+      toast.success("Schedule and session times published successfully!");
+      
+      // Exit edit mode only on successful publish
+      setIsEditMode(false);
 
     } catch (error) {
       console.error("Error publishing schedule:", error);
       toast.error("Failed to publish schedule. Please try again.");
+      // Don't exit edit mode on error - stay in edit mode
     } finally {
       setIsPublishing(false);
     }
@@ -1014,7 +999,6 @@ useEffect(() => {
   };
 
   // Print functionality
-  // Print functionality
   const generatePrintableTable = () => {
     if (!scheduleData || scheduleData.length === 0) {
       return `
@@ -1025,7 +1009,6 @@ useEffect(() => {
       `;
     }
 
-    // Table headers - removed Phone
     const headers = [
       'Employee Name',
       ...dateColumns.map(col => col.display),
@@ -1037,9 +1020,9 @@ useEffect(() => {
       `<th style="background-color: #004175; color: white; font-weight: bold; padding: 8px 4px; text-align: center; border: 1px solid #004175; font-size: 10px;">${header}</th>`
     ).join('');
 
-    // Table rows from schedule data
     let dataRows = '';
     let rowIndex = 0;
+    const uniqueUsers = getUniqueUsers(scheduleData);
 
     uniqueUsers.forEach(user => {
       const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
@@ -1067,14 +1050,12 @@ useEffect(() => {
           </td>`;
         });
 
-        // Total hours (only on first shift row)
         if (shiftIndex === 0) {
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${userShiftTimes.length}">
-            ${calculateUserTotal(user.id)}
+            ${calculateUserTotal(user.id, scheduleData)}
           </td>`;
         }
 
-        // Auto (only on first shift row)
         if (shiftIndex === 0) {
           const autoValue = scheduleData.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;" rowspan="${userShiftTimes.length}">
@@ -1087,7 +1068,6 @@ useEffect(() => {
         rowIndex++;
       });
 
-      // User total row
       const totalRowStyle = rowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
       let totalRow = `<tr style="${totalRowStyle}">`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
@@ -1104,30 +1084,28 @@ useEffect(() => {
         </td>`;
       });
 
-      totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id)}</td>`;
+      totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id, scheduleData)}</td>`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
       totalRow += '</tr>';
       dataRows += totalRow;
       rowIndex++;
     });
 
-    // Grand total row
     let grandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
     dateColumns.forEach(dateCol => {
       grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
-        ${calculateDayTotal(dateCol.date) || '-'}
+        ${calculateDayTotal(dateCol.date, scheduleData) || '-'}
       </td>`;
     });
 
-    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal()}</td>`;
+    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal(scheduleData)}</td>`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
     grandTotalRow += '</tr>';
     dataRows += grandTotalRow;
 
-    // Calculate totals
     const totalRecords = uniqueUsers.length;
-    const totalHours = calculateGrandTotal();
+    const totalHours = calculateGrandTotal(scheduleData);
 
     return `
       <div style="margin-bottom: 20px;">
@@ -1156,7 +1134,6 @@ useEffect(() => {
     try {
       setIsPrinting(true);
 
-      // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const tableContent = generatePrintableTable();
@@ -1319,12 +1296,10 @@ useEffect(() => {
       printWindow.document.write(printContent);
       printWindow.document.close();
 
-      // Wait for content to load, then focus and print
       printWindow.onload = () => {
         printWindow.focus();
         setTimeout(() => {
           printWindow.print();
-          // Don't close automatically - let user choose
         }, 500);
       };
 
@@ -1338,261 +1313,14 @@ useEffect(() => {
     }
   };
 
-  // Delete individual shift
-  const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
-    setDeleteModal({ isOpen: true, shiftId, userId, date });
-  };
-
-  const confirmDeleteShift = () => {
-    const { userId, date, shiftId } = deleteModal;
-    setScheduleData(prev => prev.map(item => {
-      if (item.userId === userId && item.startDate === date) {
-        return {
-          ...item,
-          shifts: item.shifts.filter(shift => shift.id !== shiftId)
-        };
-      }
-      return item;
-    }).filter(item => item.shifts.length > 0));
-
-    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
-    hookToast({
-      title: "Shift Deleted",
-      description: "Shift has been deleted successfully.",
-    });
-  };
-
-  const cancelDeleteShift = () => {
-    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
-  };
-
-  // Edit individual shift
-  const handleEditShift = (userId: number, date: string, shift: Shift) => {
-    setEditModal({ isOpen: true, shift, userId, date });
-    setEditForm({
-      starttime: shift.startTime,
-      endtime: shift.endTime
-    });
-  };
-
-  const confirmEditShift = () => {
-    const { userId, date, shift } = editModal;
-
-    // Validate the edit form
-    const tempForm = {
-      userId: String(userId),
-      date: date,
-      starttime: editForm.starttime,
-      endtime: editForm.endtime
-    };
-
-    const editErrors = validateForm(tempForm, scheduleData, shift.id);
-
-    if (Object.keys(editErrors).length > 0) {
-      // Show error toast for overlapping shifts
-      if (editErrors.overlap) {
-        hookToast({
-          title: "Overlapping Shift",
-          description: editErrors.overlap,
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-
-    const calculateHours = (start, end) => {
-      const [startH, startM] = start.split(":").map(Number);
-      const [endH, endM] = end.split(":").map(Number);
-      let hours = endH - startH + (endM - startM) / 60;
-      if (hours < 0) hours += 24;
-      return parseFloat(hours.toFixed(2));
-    };
-
-    setScheduleData(prev => prev.map(item => {
-      if (item.userId === userId && item.startDate === date) {
-        return {
-          ...item,
-          shifts: item.shifts.map(s =>
-            s.id === shift.id
-              ? { ...s, startTime: editForm.starttime, endTime: editForm.endtime, hours: calculateHours(editForm.starttime, editForm.endtime) }
-              : s
-          )
-        };
-      }
-      return item;
-    }));
-
-    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
-    setEditForm({ starttime: "", endtime: "" });
-    hookToast({
-      title: "Shift Updated",
-      description: "Shift has been updated successfully.",
-    });
-  };
-
-  const cancelEditShift = () => {
-    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
-    setEditForm({ starttime: "", endtime: "" });
-  };
-
-  // Delete all data for a user
-  const handleDeleteUser = (userId: number) => {
-    setDeleteUserModal({ isOpen: true, userId });
-  };
-
-  const confirmDeleteUser = () => {
-    const { userId } = deleteUserModal;
-    setScheduleData(prev => prev.filter(item => item.userId !== userId));
-    setDeleteUserModal({ isOpen: false, userId: null });
-    hookToast({
-      title: "User Data Deleted",
-      description: "All data for this user has been deleted successfully.",
-    });
-  };
-
-  const cancelDeleteUser = () => {
-    setDeleteUserModal({ isOpen: false, userId: null });
-  };
-
-  // Auto toggle handler
-  const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-    setScheduleData(prev => prev.map(item =>
-      item.userId === userId ? { ...item, auto: enabled } : item
-    ));
-
-    hookToast({
-      title: "Auto Setting Updated",
-      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
-    });
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
-    setDraggedShift({
-      shift,
-      sourceUserId,
-      sourceDate,
-      sourceRowIdx
-    });
-    e.dataTransfer.effectAllowed = 'copy';
-  };
-
-  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    setDragOverCell({ userId: targetUserId, date: targetDate, rowIdx: targetRowIdx });
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    setDragOverCell(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-    e.preventDefault();
-
-    if (!draggedShift) return;
-
-    const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
-
-    // Don't allow dropping on the same cell
-    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
-      setDraggedShift(null);
-      setDragOverCell(null);
-      return;
-    }
-
-    const existingSchedule = scheduleData.find(
-      item => item.userId === targetUserId && item.startDate === targetDate
-    );
-
-    if (existingSchedule) {
-      const hasOverlap = existingSchedule.shifts.some(existingShift => {
-        return doTimesOverlap(
-          shift.startTime,
-          shift.endTime,
-          existingShift.startTime,
-          existingShift.endTime
-        );
-      });
-
-      if (hasOverlap) {
-        hookToast({
-          title: "Overlapping Shift",
-          description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
-          variant: "destructive",
-        });
-        setDraggedShift(null);
-        setDragOverCell(null);
-        return;
-      }
-
-      // Handle the specific row position
-      setScheduleData(prev => prev.map(item => {
-        if (item.userId === targetUserId && item.startDate === targetDate) {
-          const currentShifts = [...item.shifts];
-
-          // If dropping to a specific row position, insert at that position
-          if (targetRowIdx < currentShifts.length) {
-            // Replace the shift at the target row position
-            currentShifts[targetRowIdx] = { ...shift, id: Date.now(), date: targetDate };
-          } else {
-            // Add to the end if target row is beyond current shifts
-            currentShifts.push({ ...shift, id: Date.now(), date: targetDate });
-          }
-
-          return {
-            ...item,
-            shifts: sortShiftsByTime(currentShifts)
-          };
-        }
-        return item;
-      }));
-    } else {
-      // Create new schedule for target user/date
-      const sourceSchedule = scheduleData.find(
-        item => item.userId === sourceUserId && item.startDate === sourceDate
-      );
-
-      if (sourceSchedule) {
-        const targetUser = uniqueUsers.find(u => u.id === targetUserId);
-        const newSchedule = {
-          id: Date.now(),
-          clientId: sourceSchedule.clientId,
-          addressId: sourceSchedule.addressId,
-          userId: targetUserId,
-          startDate: targetDate,
-          auto: sourceSchedule.auto,
-          shifts: [{ ...shift, id: Date.now(), date: targetDate }],
-          clientName: sourceSchedule.clientName,
-          address: sourceSchedule.address,
-          userName: targetUser?.name || sourceSchedule.userName,
-          userPhone: targetUser?.phone || sourceSchedule.userPhone,
-        };
-
-        setScheduleData(prev => [...prev, newSchedule]);
-      }
-    }
-    setDraggedShift(null);
-    setDragOverCell(null);
-
-    hookToast({
-      title: "Shift Copied",
-      description: "Shift has been copied successfully.",
-    });
-  };
-
-  const handleDragEnd = () => {
-    setDraggedShift(null);
-    setDragOverCell(null);
-  };
-
   const resetScheduleView = () => {
     setShowScheduleTable(false);
     setScheduleData([]);
+    setSessionData([]);
     setCurrentWeekRange(null);
     setSelectedDate("");
     setIsEditMode(false);
-    clearScheduleData(); // Clear API data
+    clearScheduleData();
   };
 
   const toggleEditMode = () => {
@@ -1637,175 +1365,13 @@ useEffect(() => {
           </div>
 
           {/* Add New Guard Form */}
-          {!scheduleLoading && !scheduleError && scheduleData.length > 0 && isEditMode && (
-            <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">Edit Schedule</h3>
+          <AddGuardForm
+            scheduleData={scheduleData}
+            setScheduleData={setScheduleData}
+            currentWeekRange={currentWeekRange}
+            isEditMode={isEditMode}
+          />
 
-              <form onSubmit={onSubmitAddGuard} autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-
-                  {/* User Search */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={userSearch}
-                      onFocus={() => setShowUserDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
-                      onChange={e => {
-                        setUserSearch(e.target.value);
-                        setForm(f => ({ ...f, userId: "" }));
-                      }}
-                      placeholder="Guard Name"
-                      className={inputClasses}
-                    />
-                    {errors.userId && (
-                      <span className="text-xs text-red-500">{errors.userId}</span>
-                    )}
-                    {showUserDropdown && userSearch.length >= 2 && (
-                      <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                        {loadingUsers ? (
-                          <div className="p-2 text-sm text-gray-500">Searching guards...</div>
-                        ) : searchedUsers.length === 0 ? (
-                          <div className="p-2 text-gray-500 text-sm">No guards found</div>
-                        ) : (
-                          searchedUsers.map(user => (
-                            <div
-                              key={user.id}
-                              className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                              onMouseDown={() => handleUserSelect(user)}
-                            >
-                              {user.name}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Date */}
-                  <div className="flex items-center">
-                    <CustomDatePicker
-                      value={form.date}
-                      onChange={handleFormChange}
-                      placeholder="Select Date"
-                      minDate={currentWeekRange?.startOfWeek.toISOString().split('T')[0]}
-                      maxDate={currentWeekRange?.endOfWeek.toISOString().split('T')[0]}
-                    />
-                    {errors.date && (
-                      <span className="text-xs text-red-500">{errors.date}</span>
-                    )}
-                    <div className="flex items-center m-2 space-x-2">
-                      <input
-                        id="applyAllWeek"
-                        type="checkbox"
-                        checked={applyAllWeek}
-                        disabled={!form.date}
-                        onChange={e => setApplyAllWeek(e.target.checked)}
-                        className={`w-4 h-4 rounded ${form.date
-                            ? "text-blue-600 focus:ring-blue-500 border-gray-300"
-                            : "text-gray-400 border-gray-200 cursor-not-allowed"
-                          }`}
-                      />
-                      <label
-                        htmlFor="applyAllWeek"
-                        className={`text-xs whitespace-nowrap ${form.date
-                            ? "text-gray-600 cursor-pointer"
-                            : "text-gray-400 cursor-not-allowed"
-                          }`}
-                      >
-                        All Week
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Start Time */}
-                  <div>
-                    <input
-                      type={form.starttime ? "time" : "text"}
-                      value={form.starttime}
-                      onChange={(e) => handleFormChange("starttime", e.target.value)}
-                      placeholder="Start Time"
-                      step="60"
-                      onFocus={(e) => {
-                        e.target.type = "time";
-                        e.target.showPicker?.();
-                      }}
-                      onBlur={(e) => {
-                        if (!e.target.value) {
-                          e.target.type = "text";
-                        }
-                      }}
-                      className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
-                    />
-                    {errors.starttime && (
-                      <span className="text-xs text-red-500">{errors.starttime}</span>
-                    )}
-                  </div>
-
-                  {/* End Time */}
-                  <div>
-                    <input
-                      type={form.endtime ? "time" : "text"}
-                      value={form.endtime}
-                      onChange={(e) => handleFormChange("endtime", e.target.value)}
-                      placeholder="End Time"
-                      onFocus={(e) => {
-                        e.target.type = "time";
-                        e.target.showPicker?.();
-                      }}
-                      onBlur={(e) => {
-                        if (!e.target.value) {
-                          e.target.type = "text";
-                        }
-                      }}
-                      className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
-                    />
-                    {errors.endtime && (
-                      <span className="text-xs text-red-500">{errors.endtime}</span>
-                    )}
-                    {errors.overlap && (
-                      <span className="text-xs text-red-500">{errors.overlap}</span>
-                    )}
-                  </div>
-
-                  {/* Auto Toggle and Buttons */}
-                  <div className="flex items-center gap-2">
-                    <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-
-                    <button
-                      type="submit"
-                      disabled={submitLoader}
-                      className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-                    >
-                      {submitLoader ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add
-                        </>
-                      )}
-                    </button>
-
-                    {(form.date || form.starttime || form.endtime || form.userId || auto) && (
-
-                      <button
-                        type="button"
-                        onClick={resetAddGuardForm}
-                        className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-                      >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </form>
-            </div>
-          )}
           {scheduleLoading && (
             <div className="flex justify-center items-center p-8">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -1813,7 +1379,6 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Add error state */}
           {scheduleError && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
               <div className="flex">
@@ -1829,206 +1394,90 @@ useEffect(() => {
 
           {/* Show table only if we have data and not loading */}
           {!scheduleLoading && !scheduleError && scheduleData.length > 0 && (
-            <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
-              <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
-                {/* Client Info */}
-                {/* <div className="p-4 border-b bg-gray-50">
-                  <div className="font-medium text-gray-800">
-                    {scheduleData[0]?.clientName || 'Client Name'}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {scheduleData[0]?.address || 'Address'}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Selected Date: {selectedDate}
-                  </div>
-                </div> */}
-
-                {/* Table */}
-                <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
-                  <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-                    <tr>
-                      <th className="px-4 py-3 text-left border border-gray-300 whitespace-nowrap">
-                        Employee Name
-                      </th>
-                      {dateColumns.map(dateCol => (
-                        <th key={dateCol.date} className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
-                          {dateCol.display}
-                        </th>
-                      ))}
-                      <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap">
-                        Total
-                      </th>
-                      <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap w-16">
-                        Auto
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="relative">
-                    {uniqueUsers.map((user, userIndex) => {
-                      const rowCount = getMaxShiftsPerDay(user.id, scheduleData);
-
-                      return (
-                        <React.Fragment key={user.id}>
-                          {[...Array(rowCount)].map((_, rowIdx) => (
-                            <tr
-                              key={`${user.id}-row-${rowIdx}`}
-                              className={`hover:bg-blue-50 transition-colors ${(userIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                                }`}
-                            >
-                              {rowIdx === 0 && (
-                                <td
-                                  className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
-                                  rowSpan={rowCount}
-                                >
-                                  <div className="font-medium text-gray-800">{user.name}</div>
-                                  <div className="text-xs text-gray-500">{user.phone}</div>
-                                </td>
-                              )}
-
-                              {dateColumns.map(dateCol => {
-                                const daySchedules = scheduleData.filter(
-                                  i => i.userId === user.id && i.startDate === dateCol.date
-                                );
-                                const sortedShifts = sortShiftsByTime(
-                                  daySchedules.flatMap(s => s.shifts)
-                                );
-                                const shift = sortedShifts[rowIdx]; // take nth shift of the day
-
-                                return (
-                                  <td
-                                    key={dateCol.date + '-' + rowIdx}
-                                    className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
-                                        ? 'bg-blue-50 border-blue-300'
-                                        : ''
-                                      }`}
-                                    onDragOver={e => handleDragOver(e, user.id, dateCol.date, rowIdx)}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={e => handleDrop(e, user.id, dateCol.date, rowIdx)}
-                                  >
-                                    {shift ? (
-                                      <div className="relative group">
-                                        {isEditMode && (
-                                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
-                                            <div
-                                              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-                                              draggable
-                                              onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date, rowIdx)}
-                                              onDragEnd={handleDragEnd}
-                                            >
-                                              <GripVertical className="w-4 h-4" />
-                                            </div>
-                                            <button
-                                              onClick={() => handleEditShift(user.id, dateCol.date, shift)}
-                                              className="text-blue-600 hover:text-blue-800 p-0.5"
-                                              title="Edit shift"
-                                            >
-                                              <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                              onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
-                                              className="text-red-600 hover:text-red-800 p-0.5"
-                                              title="Delete shift"
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </button>
-                                          </div>
-                                        )}
-                                        <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-
-                              {rowIdx === 0 && (
-                                <>
-                                  <td
-                                    className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
-                                    rowSpan={rowCount}
-                                  >
-                                    {calculateUserTotal(user.id)}
-                                  </td>
-                                  <td
-                                    className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
-                                    rowSpan={rowCount}
-                                  >
-                                    <div className="flex items-center justify-center">
-                                      <ToggleSwitch
-                                        enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
-                                        onToggle={enabled => handleUserAutoToggle(user.id, enabled)}
-                                      />
-                                    </div>
-                                  </td>
-                                </>
-                              )}
-                            </tr>
-                          ))}
-
-                          <tr className={`transition-colors ${userIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
-                            <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
-                              Total
-                            </td>
-                            {dateColumns.map(dateCol => {
-                              const daySchedules = scheduleData.filter(
-                                i => i.userId === user.id && i.startDate === dateCol.date
-                              );
-                              const dayTotal = daySchedules.reduce(
-                                (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
-                                0
-                              );
-                              const rounded = parseFloat(dayTotal.toFixed(2));
-                              return (
-                                <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
-                                  {rounded > 0 ? rounded : '-'}
-                                </td>
-                              );
-                            })}
-                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                              {calculateUserTotal(user.id)}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                              {isEditMode && (
-                                <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        </React.Fragment>
-                      );
-                    })}
-                    {/* Grand Total Row */}
-                    <tr className="bg-gray-50 font-medium">
-                      <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
-                      {dateColumns.map(dateCol => (
-                        <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                          {calculateDayTotal(dateCol.date) || '-'}
-                        </td>
-                      ))}
-                      <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                        {calculateGrandTotal()}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>
-                    </tr>
-                  </tbody>
-                </table>
+            <>
+              {/* Schedule Time Header */}
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Schedule Time</h3>
               </div>
+
+              <ScheduleTable
+                scheduleData={scheduleData}
+                setScheduleData={setScheduleData}
+                dateColumns={dateColumns}
+                isEditMode={isEditMode}
+                readOnly={false} // Add this line to enable drag and drop
+                draggedShift={draggedShift}
+                setDraggedShift={setDraggedShift}
+                dragOverCell={dragOverCell}
+                setDragOverCell={setDragOverCell}
+                onEditShift={handleEditShift}
+                onDeleteShift={handleDeleteShift}
+                onDeleteUser={handleDeleteUser}
+                onUserAutoToggle={handleUserAutoToggle}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+              />
+
+              {/* Session Table - Using the same ScheduleTable component */}
+              {sessionData.length > 0 && (
+                <div className="mt-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Actual Time</h3>
+                  </div>
+
+                  {sessionLoading && (
+                    <div className="flex justify-center items-center p-4">
+                      <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="ml-2 text-gray-600">Loading session data...</span>
+                    </div>
+                  )}
+
+                  {sessionError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                      <div className="flex">
+                        <div className="text-red-800">
+                          <h3 className="text-sm font-medium">Error loading session data</h3>
+                          <div className="mt-2 text-sm">
+                            <p>{sessionError}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!sessionLoading && !sessionError && (
+                    <ScheduleTable
+                      scheduleData={sessionData}
+                      setScheduleData={setSessionData}
+                      dateColumns={dateColumns}
+                      isEditMode={isEditMode} // Use same edit mode as schedule table
+                      readOnly={false} // Add this line to enable drag and drop
+                      draggedShift={draggedShift}
+                      setDraggedShift={setDraggedShift}
+                      dragOverCell={dragOverCell}
+                      setDragOverCell={setDragOverCell}
+                      onEditShift={handleSessionEditShift} // Session-specific edit functionality
+                      onDeleteShift={handleSessionDeleteShift} // Session-specific delete functionality
+                      onDeleteUser={handleSessionDeleteUser} // Session-specific delete user functionality
+                      onUserAutoToggle={handleSessionUserAutoToggle} // Session-specific toggle functionality
+                      onDragStart={handleSessionDragStart} // Session-specific drag functionality
+                      onDragOver={handleSessionDragOver} // Session-specific drag over functionality
+                      onDragLeave={handleSessionDragLeave} // Session-specific drag leave functionality
+                      onDrop={handleSessionDrop} // Session-specific drop functionality
+                      onDragEnd={handleSessionDragEnd} // Session-specific drag end functionality
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Action buttons - Bottom Corner */}
               <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
-                {/* Publish/Cancel button - Leftmost */}
-                {isEditMode ? (
-                  <button
-                    onClick={toggleEditMode}
-                    className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
-                    title="Cancel Edit Mode"
-                  >
-                    Cancel
-                  </button>
-                ) : (
+                {/* Publish and Cancel buttons - Left side */}
+                <div className="flex items-center gap-2">
+                  {/* Publish button - always visible */}
                   <button
                     onClick={handlePublish}
                     disabled={isPublishing}
@@ -2047,7 +1496,18 @@ useEffect(() => {
                       </>
                     )}
                   </button>
-                )}
+
+                  {/* Cancel button - only visible in edit mode */}
+                  {isEditMode && (
+                    <button
+                      onClick={toggleEditMode}
+                      className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
+                      title="Cancel Edit Mode"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
 
                 {/* Print, Download and Edit buttons - Right side */}
                 <div className="flex items-center gap-2">
@@ -2077,18 +1537,17 @@ useEffect(() => {
 
                   <button
                     onClick={toggleEditMode}
-                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      isEditMode 
-                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
+                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
+                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
                         : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-                    }`}
+                      }`}
                     title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
                   >
                     <Edit className="w-5 h-5" />
                   </button>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Show empty state if no data and not loading */}
@@ -2100,119 +1559,20 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Delete Shift Confirmation Modal */}
-      {deleteModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Shift</h3>
-              <p className="text-sm text-gray-500">
-                Are you sure you want to delete this shift?
-              </p>
-            </div>
-
-            <div className="flex space-x-3 justify-end">
-              <button
-                type="button"
-                onClick={cancelDeleteShift}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteShift}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Shift Modal */}
-      {editModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={editForm.starttime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, starttime: e.target.value }))}
-                  className={inputClasses}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={editForm.endtime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, endtime: e.target.value }))}
-                  className={inputClasses}
-                />
-              </div>
-            </div>
-
-            <div className="flex space-x-3 justify-end mt-6">
-              <button
-                type="button"
-                onClick={cancelEditShift}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmEditShift}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Update
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete User Confirmation Modal */}
-      {deleteUserModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete User Data</h3>
-              <p className="text-sm text-gray-500">
-                Are you sure you want to delete all data for this user?
-              </p>
-            </div>
-
-            <div className="flex space-x-3 justify-end">
-              <button
-                type="button"
-                onClick={cancelDeleteUser}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteUser}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete All
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
+      <Modals
+        deleteModal={deleteModal}
+        editModal={editModal}
+        deleteUserModal={deleteUserModal}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onCancelDeleteShift={cancelDeleteShift}
+        onConfirmDeleteShift={confirmDeleteShift}
+        onCancelEditShift={cancelEditShift}
+        onConfirmEditShift={confirmEditShift}
+        onCancelDeleteUser={cancelDeleteUser}
+        onConfirmDeleteUser={confirmDeleteUser}
+      />
     </div>
   );
 };
