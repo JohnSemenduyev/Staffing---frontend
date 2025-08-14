@@ -51,6 +51,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onDrop,
   onDragEnd
 }) => {
+  console.log('ScheduleTable render:', { isEditMode, readOnly, scheduleDataLength: scheduleData.length });
   // Get unique users from schedule data
   const getUniqueUsers = () => {
     const userMap = new Map();
@@ -145,22 +146,34 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                       <GripVertical className="w-4 h-4" />
                                     </div>
                                     <button
-                                      onClick={() => onEditShift(user.id, dateCol.date, shift)}
-                                      className="text-blue-600 hover:text-blue-800 p-0.5"
+                                      onClick={() => {
+                                        console.log('Edit button clicked for shift:', shift);
+                                        onEditShift(user.id, dateCol.date, shift);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
                                       title="Edit shift"
                                     >
                                       <Edit className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => onDeleteShift(user.id, dateCol.date, shift.id)}
-                                      className="text-red-600 hover:text-red-800 p-0.5"
+                                      className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
                                       title="Delete shift"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
                                 )}
-                                <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
+                                <span className="text-sm">
+                                  {/* Session data has clockIn/clockOut, Shift data has startTime/endTime */}
+                                  {shift.clockIn !== undefined || shift.clockOut !== undefined ? (
+                                    // Session data - use clockIn/clockOut
+                                    `${shift.clockIn || 'N/A'} - ${shift.clockOut || 'N/A'}`
+                                  ) : (
+                                    // Shift data - use startTime/endTime
+                                    `${shift.startTime} - ${shift.endTime}`
+                                  )}
+                                </span>
                               </div>
                             ) : (
                               <span className="text-gray-400">-</span>

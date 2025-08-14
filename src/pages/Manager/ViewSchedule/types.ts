@@ -37,6 +37,15 @@ export interface Shift {
   endTime: string;
   hours: number;
   scheduleSessionId?: number;
+  // Add these properties for session data
+  clockIn?: string | null;
+  clockOut?: string | null;
+  workedTime?: number | null;
+  shiftId?: number;
+  shift?: {
+    id: number;
+    date: string;
+  };
 }
 
 export interface ScheduleItem {
