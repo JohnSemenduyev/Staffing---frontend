@@ -243,6 +243,7 @@ const tableColumns: TableColumn[] = [
     label: "Type",
     sortable: true,
     searchable: true,
+    width:"200px",
     className: "whitespace-nowrap max-w-[150px]",
     render: (value: string) => (
       <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">

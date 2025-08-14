@@ -291,15 +291,7 @@ export default function AssignmentNew() {
   },
   { 
     key: "role", 
-    label: "Role", 
-    sortable: true, 
-    searchable: true,
-    width: "200px",
-    
-  },
-    { 
-    key: "guard.name", 
-    label: "Guard Name", 
+    label: " User Role", 
     sortable: true, 
     searchable: true,
     width: "200px",
@@ -307,7 +299,15 @@ export default function AssignmentNew() {
   },
   { 
     key: "access", 
-    label: "Access", 
+    label: "Schedule  Access", 
+    sortable: true, 
+    searchable: true,
+    width: "200px",
+    
+  },
+   { 
+    key: "guard.name", 
+    label: "User Notified", 
     sortable: true, 
     searchable: true,
     width: "200px",
@@ -315,7 +315,7 @@ export default function AssignmentNew() {
   },
   {
     key: "notification",
-    label: "Notifications",
+    label: "Notification",
     sortable: false,
     width: "400px",
 
@@ -438,50 +438,49 @@ export default function AssignmentNew() {
               </div>
               
               {/* User Search */}
-              
-              
-              {/* Guard Search */}
               <div className="relative">
                 <input
                   type="text"
-                  value={guardSearch}
-                  onFocus={() => setShowGuardDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowGuardDropdown(false), 200)}
+                  value={userSearch}
+                  onFocus={() => setShowUserDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
                   onChange={e => {
-                    setGuardSearch(e.target.value);
-                    setForm(f => ({ ...f, guardId: "" }));
+                    setUserSearch(e.target.value);
+                    setForm(f => ({ ...f, userId: "" }));
                   }}
-                  placeholder="Guard Name"
-                  className={getFieldClasses('guardId')}
+                  placeholder="Select User"
+                  className={getFieldClasses('userId')}
                 />
-                {showErrors && errors.guardId && (
+                {showErrors && errors.userId && (
                   <div className="mt-1 flex items-center text-sm text-red-600">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                    {errors.guardId}
+                    {errors.userId}
                   </div>
                 )}
-                {showGuardDropdown && guardSearch.length >= 2 && (
+                {showUserDropdown && userSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                    {loadingGuards ? (
-                      <div className="p-2 text-sm text-gray-500">Searching guards...</div>
-                    ) : searchedGuards.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No guards found</div>
+                    {loadingUsers ? (
+                      <div className="p-2 text-sm text-gray-500">Searching users...</div>
+                    ) : searchedUsers.length === 0 ? (
+                      <div className="p-2 text-gray-500 text-sm">No users found</div>
                     ) : (
-                      searchedGuards.map(guard => (
+                      searchedUsers.map(user => (
                         <div
-                          key={guard.id}
+                          key={user.id}
                           className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                          onMouseDown={() => handleGuardSelect(guard)}
+                          onMouseDown={() => handleUserSelect(user)}
                         >
-                          {guard.name}
+                          {user.name}
                         </div>
                       ))
                     )}
                   </div>
                 )}
               </div>
+              
+              
 
               {/* Role Select */}
               <div>
@@ -526,41 +525,42 @@ export default function AssignmentNew() {
                   </div>
                 )}
               </div>
-<div className="relative">
+{/* Guard Search */}
+              <div className="relative">
                 <input
                   type="text"
-                  value={userSearch}
-                  onFocus={() => setShowUserDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
+                  value={guardSearch}
+                  onFocus={() => setShowGuardDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowGuardDropdown(false), 200)}
                   onChange={e => {
-                    setUserSearch(e.target.value);
-                    setForm(f => ({ ...f, userId: "" }));
+                    setGuardSearch(e.target.value);
+                    setForm(f => ({ ...f, guardId: "" }));
                   }}
-                  placeholder="User Name"
-                  className={getFieldClasses('userId')}
+                  placeholder="Select User Notified"
+                  className={getFieldClasses('guardId')}
                 />
-                {showErrors && errors.userId && (
+                {showErrors && errors.guardId && (
                   <div className="mt-1 flex items-center text-sm text-red-600">
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
-                    {errors.userId}
+                    {errors.guardId}
                   </div>
                 )}
-                {showUserDropdown && userSearch.length >= 2 && (
+                {showGuardDropdown && guardSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                    {loadingUsers ? (
-                      <div className="p-2 text-sm text-gray-500">Searching users...</div>
-                    ) : searchedUsers.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No users found</div>
+                    {loadingGuards ? (
+                      <div className="p-2 text-sm text-gray-500">Searching guards...</div>
+                    ) : searchedGuards.length === 0 ? (
+                      <div className="p-2 text-gray-500 text-sm">No guards found</div>
                     ) : (
-                      searchedUsers.map(user => (
+                      searchedGuards.map(guard => (
                         <div
-                          key={user.id}
+                          key={guard.id}
                           className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                          onMouseDown={() => handleUserSelect(user)}
+                          onMouseDown={() => handleGuardSelect(guard)}
                         >
-                          {user.name}
+                          {guard.name}
                         </div>
                       ))
                     )}

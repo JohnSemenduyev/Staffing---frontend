@@ -105,40 +105,43 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
- const { token, role, login, logout } = useAuth();
+  const { token, role, login, logout } = useAuth();
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  const result = await login(username, password);  // ✅ Await login here
-  console.log(result);
-  if (result.success) {
-    const storedRole = localStorage.getItem('role'); // ✅ Get role from localStorage
-    let redirectPath = '/';
-    if (storedRole === 'admin') {
-      redirectPath = '/assign-user-permission';
-    } else if (storedRole === 'manager') {
-      redirectPath = '/prepare-schedule';
+    const result = await login(username, password);  // ✅ Await login here
+    console.log(result);
+    if (result.success) {
+      const storedRole = localStorage.getItem('role'); // ✅ Get role from localStorage
+      let redirectPath = '/';
+      if (storedRole === 'admin') {
+        redirectPath = '/assign-user-permission';
+      } else if (storedRole === 'manager') {
+        redirectPath = '/prepare-schedule';
+      }
+
+      toast({
+        title: "Login successful",
+        description: "Welcome to the portal",
+      });
+
+      navigate(redirectPath);
+    } else {
+      toast({
+        title: "Login failed",
+        description: result.error || "Invalid credentials or user not authorized",
+        variant: "destructive",
+      });
     }
 
-    toast({
-      title: "Login successful",
-      description: "Welcome to the portal",
-    });
+    setIsLoading(false);
+  };
 
-    navigate(redirectPath);
-  } else {
-    toast({
-      title: "Login failed",
-      description: result.error || "Invalid credentials or user not authorized",
-      variant: "destructive",
-    });
-  }
-
-  setIsLoading(false);
-};
-
+  const handleSignupRedirect = () => {
+    navigate('/signup'); // Redirect to signup page
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -190,7 +193,14 @@ const Login = () => {
               />
             </div>
 
-            <div className="text-right text-sm">
+            <div className="flex justify-between items-center text-sm">
+              <button 
+                type="button"
+                onClick={handleSignupRedirect}
+                className="text-[#004175] hover:underline font-medium"
+              >
+                Create account
+              </button>
               <a href="#" className="text-[#004175] hover:underline">
                 Forgot password?
               </a>
@@ -198,15 +208,28 @@ const Login = () => {
 
             <button 
               type="submit" 
-              className="w-full py-2 px-4 rounded-md transition cursor-pointer bg-[#004175] text-white hover:bg-[#00325d]"
+              className="w-full py-2 px-4 rounded-md transition cursor-pointer bg-[#004175] text-white hover:bg-[#00325d] disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </form>
+
+          {/* Alternative: Signup Section at Bottom */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-center text-sm text-gray-600">
+              Don't have an account?{' '}
+              <button 
+                onClick={handleSignupRedirect}
+                className="text-[#004175] hover:underline font-medium"
+              >
+                Sign up here
+              </button>
+            </p>
+          </div>
         </div>
       </div>
-      </div>
+    </div>
   );
 };
 

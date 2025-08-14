@@ -56,18 +56,18 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
 
       // ✅ Transform backend data into frontend format
       const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
-        session.shifts.map((shift) => {
-          const formattedDate = new Date(Number(shift.date)).toISOString().split("T")[0];
-          return {
-            guardFirst: { name: session.user.name },
-            guardLast: { name: session.user.lastName },
-            date: formattedDate,
-            Client: { name: session.client.name },
-            address: { address: session.address.address },
-            time: shift.hours,
-          };
-        })
-      );
+  session.shifts.map((shift) => {
+    const formattedDate = new Date(shift.date).toISOString().split("T")[0];
+    return {
+      guardFirst: { name: session.user.name },
+      guardLast: { name: session.user.lastName },
+      date: formattedDate,
+      Client: { name: session.client.name },
+      address: { address: session.address.address },
+      time: shift.hours,
+    };
+  })
+);
 
       setData(transformed);
     } catch (err: any) {

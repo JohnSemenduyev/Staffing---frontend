@@ -422,3 +422,56 @@ export const UPDATE_MANY_SESSION_TIMES = gql`
   }
 `;
 
+export const CREATE_USER_ = gql`
+  mutation CreateUser(
+    $name: String!
+    $email: String!
+    $password: String!
+    $role: UserRole!
+    $address: String
+    $zipcode: String
+    $state: String
+    $city: String
+    $phone: String
+    $lastName: String
+  ) {
+    createUser(
+      name: $name
+      email: $email
+      password: $password
+      role: $role
+      address: $address
+      zipcode: $zipcode
+      state: $state
+      city: $city
+      phone: $phone
+      lastName: $lastName
+    ) {
+      id
+      name
+      lastName
+    }
+  }
+`;
+export const CREATE_CLIENT_REGISTRATION = gql`
+  mutation CreateClientRegistration($input: CreateClientRegistrationInput!) {
+    createClientRegistration(input: $input) {
+      id
+      company
+      createdAt
+      email
+      name
+      lastName
+      phone
+      addresses {
+        id
+        label
+        address
+        city
+        state
+        pincode
+        industry
+      }
+    }
+  }
+`;
