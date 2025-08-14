@@ -7,7 +7,8 @@ import {
   sortShiftsByTime, 
   calculateUserTotal, 
   calculateDayTotal, 
-  calculateGrandTotal 
+  calculateGrandTotal,
+  calculateHours // Add this import
 } from "./utils";
 import { toast } from "sonner";
 
@@ -16,6 +17,7 @@ interface ActualTimeTableProps {
   dateColumns: DateColumn[];
   isEditMode: boolean;
   scheduleDataForShifts?: ScheduleItem[]; // New prop for shift selection
+  scheduleDataForComparison?: ScheduleItem[]; // New prop for comparison with schedule table
 }
 
 interface DeleteModalState {
@@ -53,7 +55,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   scheduleData,
   dateColumns,
   isEditMode,
-  scheduleDataForShifts
+  scheduleDataForShifts,
+  scheduleDataForComparison
 }) => {
   // Local state for the actual time table
   const [actualTimeData, setActualTimeData] = useState<ScheduleItem[]>(scheduleData);
@@ -166,6 +169,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       return;
     }
 
+    // Calculate new hours based on the updated times
+    const newHours = calculateHours(editForm.starttime, editForm.endtime);
+
     setActualTimeData(prev => {
       const updated = prev.map(item => {
         if (item.userId === editModal.userId && item.startDate === editModal.date) {
@@ -176,7 +182,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                   clockIn: editForm.starttime, 
                   clockOut: editForm.endtime,
                   startTime: editForm.starttime, 
-                  endTime: editForm.endtime 
+                  endTime: editForm.endtime,
+                  hours: newHours // Add this line to update the hours
                 }
               : shift
           );
@@ -232,6 +239,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       return;
     }
 
+    // Calculate hours based on the new times
+    const newHours = calculateHours(addSessionForm.starttime, addSessionForm.endtime);
+
     setActualTimeData(prev => {
       // Check if there's already an item for this user-date combination
       const existingItem = prev.find(item => 
@@ -249,7 +259,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
               clockIn: addSessionForm.starttime,
               clockOut: addSessionForm.endtime,
               startTime: addSessionForm.starttime,
-              endTime: addSessionForm.endtime
+              endTime: addSessionForm.endtime,
+              hours: newHours // Add this line to set the hours
             };
             
             // Add the new session to the existing shifts array
@@ -267,7 +278,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
           clockIn: addSessionForm.starttime,
           clockOut: addSessionForm.endtime,
           startTime: addSessionForm.starttime,
-          endTime: addSessionForm.endtime
+          endTime: addSessionForm.endtime,
+          hours: newHours // Add this line to set the hours
         };
 
         // Find a reference item to get user details
@@ -518,6 +530,25 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     setDragOverCell(null);
   };
 
+  // Calculate grand totals for comparison
+  const actualTimeGrandTotal = calculateGrandTotal(actualTimeData);
+  const scheduleGrandTotal = scheduleDataForComparison ? calculateGrandTotal(scheduleDataForComparison) : 0;
+
+  // Determine grand total cell styling based on comparison
+  const getGrandTotalCellStyle = () => {
+    if (!scheduleDataForComparison || scheduleGrandTotal === 0) {
+      return ""; // No comparison data or schedule total is 0
+    }
+
+    if (actualTimeGrandTotal < scheduleGrandTotal) {
+      return "bg-red-100"; // Light red for smaller actual time total
+    } else if (actualTimeGrandTotal > scheduleGrandTotal) {
+      return "bg-green-100"; // Light green for bigger actual time total
+    }
+    
+    return ""; // Default styling for equal totals
+  };
+
   return (
     <>
       <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
@@ -703,7 +734,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                     {calculateDayTotal(dateCol.date, actualTimeData) || '-'}
                   </td>
                 ))}
-                <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                <td className={`border border-gray-300 px-4 py-3 text-center whitespace-nowrap ${getGrandTotalCellStyle()}`}>
                   {calculateGrandTotal(actualTimeData)}
                 </td>
                 <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>

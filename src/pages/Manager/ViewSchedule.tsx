@@ -1969,8 +1969,7 @@ export const ViewSchedule = () => {
 
                       {/* Actual Time Table Controls - Directly below Actual Time Table */}
                       <div className="flex items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl mt-2">
-                        <span className="text-sm font-medium text-gray-700 mr-2">Actual Time:</span>
-                        
+                    
                         {/* Actual Time Publish button */}
                         <button
                           onClick={handleActualTimePublish}
