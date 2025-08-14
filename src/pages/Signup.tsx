@@ -13,6 +13,7 @@
 //   phoneNumber: string;
 //   password: string;
 //   role: string;
+//   company?: string; // Added company field for clients
 //   addresses: AddressData[];
 // }
 
@@ -24,12 +25,13 @@
 //     phoneNumber: '',
 //     password: '',
 //     role: '',
+//     company: '',
 //     addresses: [{ address: '', city: '', state: '', zipcode: '' }]
 //   });
 //   const [isLoading, setIsLoading] = useState(false);
 //   const navigate = useNavigate();
 //   const { toast } = useToast();
-//   const { createUser, loading: contextLoading } = useUserRegistration();
+//   const { createUser, createClientRegistration, loading: contextLoading } = useUserRegistration();
 
 //   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
 //     const { name, value } = e.target;
@@ -105,21 +107,44 @@
 //     }
 
 //     try {
-//       // Handle client role (simulation for now)
 //       if (formData.role === 'client') {
-//         console.log('Client signup data:', formData);
-        
-//         // Simulate API call for client
-//         await new Promise(resolve => setTimeout(resolve, 2000));
-        
-//         toast({
-//           title: "Account created successfully",
-//           description: "Welcome to Maximal Security! Please login with your credentials.",
-//         });
+//         // Handle client role with actual API call
+//         const clientData = {
+//           name: formData.name,
+//           lastName: formData.lastname,
+//           email: formData.email,
+//           phone: formData.phoneNumber,
+//           company: formData.company || undefined,
+//           password: formData.password,
+//           addresses: formData.addresses.map((addr, index) => ({
+//             label: `Address ${index + 1}`, // Default label
+//             address: addr.address,
+//             city: addr.city,
+//             state: addr.state,
+//             pincode: addr.zipcode, // Map zipcode to pincode
+//             industry: undefined // Optional field
+//           }))
+//         };
 
-//         navigate('/login');
+//         console.log('🚀 Client Registration Data:', clientData);
+
+//         const result = await createClientRegistration(clientData);
+
+//         if (result.success) {
+//           toast({
+//             title: "Account created successfully",
+//             description: "Welcome to Maximal Security! Please login with your credentials.",
+//           });
+//           navigate('/login');
+//         } else {
+//           toast({
+//             title: "Signup failed",
+//             description: result.error || "Failed to create client account. Please try again.",
+//             variant: "destructive",
+//           });
+//         }
 //       } else {
-//         // Handle admin, manager, guard roles with actual API call
+//         // Handle admin, manager, guard roles with existing API call
 //         const userData = {
 //           name: formData.name,
 //           lastName: formData.lastname,
@@ -132,6 +157,8 @@
 //           state: formData.addresses[0].state,
 //           zipcode: formData.addresses[0].zipcode,
 //         };
+
+//         console.log('🚀 User Registration Data:', userData);
 
 //         const result = await createUser(userData);
 
@@ -150,6 +177,7 @@
 //         }
 //       }
 //     } catch (error) {
+//       console.error('❌ Signup Error:', error);
 //       toast({
 //         title: "Signup failed",
 //         description: "Failed to create account. Please try again.",
@@ -271,6 +299,23 @@
 //                 <option value="client">Client</option>
 //               </select>
 //             </div>
+
+//             {/* Company Field - Only for Clients */}
+//             {isClient && (
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-1">
+//                   Company
+//                 </label>
+//                 <input
+//                   type="text"
+//                   name="company"
+//                   value={formData.company || ''}
+//                   onChange={handleInputChange}
+//                   placeholder="Your Company Name"
+//                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-sm"
+//                 />
+//               </div>
+//             )}
 
 //             {/* Addresses Section */}
 //             {formData.role && (
@@ -554,9 +599,9 @@ const Signup = () => {
   const isClient = formData.role === 'client';
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left Side - Logo */}
-      <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 min-h-[40vh] md:min-h-screen">
+    <div className="h-screen flex flex-col md:flex-row overflow-hidden">
+      {/* Left Side - Logo (Fixed) */}
+      <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
         <div className="flex items-center justify-center w-full h-full">
           <img 
             src={img}
@@ -566,9 +611,9 @@ const Signup = () => {
         </div>
       </div>
 
-      {/* Right Side - Signup Form */}
-      <div className="flex justify-center items-start bg-[#004175] w-full md:w-[35%] min-h-[60vh] md:min-h-screen p-6 overflow-y-auto">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 my-4">
+      {/* Right Side - Signup Form (Scrollable) */}
+      <div className="flex justify-center items-start bg-[#004175] w-full md:w-[35%] h-[60vh] md:h-full overflow-y-auto">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 my-4 mx-4">
           {/* Signup Header */}
           <h2 className="text-3xl font-bold text-center text-[#004175] mb-2">Sign Up</h2>
           <p className="text-sm text-center text-gray-600 mb-6">Create your account to get started!</p>

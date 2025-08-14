@@ -534,7 +534,7 @@ const onSubmit = async (e) => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${fieldInputClasses} appearance-none bg-gray-50`}
+                className={`${fieldInputClasses} appearance-none `}
               />
             </div>
             
@@ -547,7 +547,7 @@ const onSubmit = async (e) => {
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.date && (
-                <span className="text-xs text-red-500">{errors.date}</span>
+                <span className="text-xs text-red-500 ">{errors.date}</span>
               )}
             </div>
 
