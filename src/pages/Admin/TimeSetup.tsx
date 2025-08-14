@@ -10,6 +10,7 @@ import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { inputClasses } from "./GeoLocationSetup";
+import { ErrorMessage } from "../../components/ui/error-message";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -263,7 +264,7 @@ const handleClientSelect = (
     className={inputClasses}
   />
   {errors.clientId && (
-    <span className="text-xs text-red-500">{errors.clientId}</span>
+    <ErrorMessage message={errors.clientId} />
   )}
 
   {showClientDropdown && clientSearch.length >= 2 && (
@@ -324,56 +325,31 @@ const handleClientSelect = (
             <div>
               <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${getFieldClasses('addressId')} bg-gray-50`} />
               {showErrors && errors.addressId && (
-                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  <span>{errors.addressId}</span>
-                </div>
+                <ErrorMessage message={errors.addressId} />
               )}
             </div>
             <div>
               <input type="number" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={getFieldClasses('distance')} />
               {showErrors && errors.distance && (
-                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  <span>{errors.distance}</span>
-                </div>
+                <ErrorMessage message={errors.distance} />
               )}
             </div>
             <div>
               <input type="number" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={getFieldClasses('time')} />
               {showErrors && errors.time && (
-                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  <span>{errors.time}</span>
-                </div>
+                <ErrorMessage message={errors.time} />
               )}
             </div>
             <div>
               <input type="number" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={getFieldClasses('hours')} />
               {showErrors && errors.hours && (
-                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  <span>{errors.hours}</span>
-                </div>
+                <ErrorMessage message={errors.hours} />
               )}
             </div>
             <div>
               <input type="number" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={getFieldClasses('reminder')} />
               {showErrors && errors.reminder && (
-                <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  <span>{errors.reminder}</span>
-                </div>
+                <ErrorMessage message={errors.reminder} />
               )}
             </div>
             <ToggleSwitch enabled={overlap} onToggle={setOverlap} label="Overlap" />

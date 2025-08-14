@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAssignment } from "../../context/Assignment";
 import { inputClasses } from "./GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
+import { ErrorMessage } from "../../components/ui/error-message";
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -367,7 +368,7 @@ export default function AssignmentNew() {
     className={inputClasses}
   />
   {errors.clientId && (
-    <span className="text-xs text-red-500">{errors.clientId}</span>
+    <ErrorMessage message={errors.clientId} />
   )}
 
   {showClientDropdown && clientSearch.length >= 2 && (
@@ -455,12 +456,7 @@ export default function AssignmentNew() {
                   className={getFieldClasses('guardId')}
                 />
                 {showErrors && errors.guardId && (
-                  <div className="mt-1 flex items-center text-sm text-red-600">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {errors.guardId}
-                  </div>
+                  <ErrorMessage message={errors.guardId} />
                 )}
                 {showGuardDropdown && guardSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -497,12 +493,7 @@ export default function AssignmentNew() {
                   <option value="Client">Client</option>
                 </select>
                 {showErrors && errors.role && (
-                  <div className="mt-1 flex items-center text-sm text-red-600">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {errors.role}
-                  </div>
+                  <ErrorMessage message={errors.role} />
                 )}
               </div>
 
@@ -518,12 +509,7 @@ export default function AssignmentNew() {
                   <option value="Edit">Edit</option>
                 </select>
                 {showErrors && errors.access && (
-                  <div className="mt-1 flex items-center text-sm text-red-600">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {errors.access}
-                  </div>
+                  <ErrorMessage message={errors.access} />
                 )}
               </div>
 <div className="relative">
@@ -540,12 +526,7 @@ export default function AssignmentNew() {
                   className={getFieldClasses('userId')}
                 />
                 {showErrors && errors.userId && (
-                  <div className="mt-1 flex items-center text-sm text-red-600">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {errors.userId}
-                  </div>
+                  <ErrorMessage message={errors.userId} />
                 )}
                 {showUserDropdown && userSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -624,12 +605,7 @@ export default function AssignmentNew() {
                 )}
                 
                 {showErrors && errors.notification && (
-                  <div className="mt-1 flex items-center text-sm text-red-600">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {errors.notification}
-                  </div>
+                  <ErrorMessage message={errors.notification} />
                 )}
               </div>
               

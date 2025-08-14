@@ -401,8 +401,6 @@ export const LOGIN_USER = gql`
     }
   }
 `;
-
-
 export const BULK_UPSERT_SCHEDULE_SESSION = gql`
   mutation BulkUpsertScheduleSession($input: [ScheduleSessionInputExtended!]!) {
     bulkUpsertScheduleSession(input: $input) {
@@ -411,6 +409,7 @@ export const BULK_UPSERT_SCHEDULE_SESSION = gql`
     }
   }
 `;
+
 export const UPDATE_MANY_SESSION_TIMES = gql`
   mutation UpdateManySessionTimes($items: [UpdateOneSessionTimesInput!]!) {
     updateManySessionTimes(items: $items) {

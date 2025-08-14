@@ -9,6 +9,7 @@ import { useNotifications } from "../../context/NotificatoinContext";
 import { toast } from "sonner";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
+import { ErrorMessage } from "../../components/ui/error-message";
 
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
@@ -289,7 +290,7 @@ const tableColumns: TableColumn[] = [
     className={fieldInputClasses}
   />
   {errors.clientId && (
-    <span className="text-xs text-red-500">{errors.clientId}</span>
+    <ErrorMessage message={errors.clientId} />
   )}
 
   {showClientDropdown && clientSearch.length >= 2 && (
@@ -358,9 +359,7 @@ const tableColumns: TableColumn[] = [
                 className={`${fieldInputClasses} appearance-none `}
               />
               {errors.addressId && (
-                <span className="text-xs text-red-500 block">
-                  {errors.addressId}
-                </span>
+                <ErrorMessage message={errors.addressId} />
               )}
             </div>
 
@@ -378,7 +377,7 @@ const tableColumns: TableColumn[] = [
                 className={getFieldClasses('userId')}
               />
               {errors.userId && (
-                <span className="text-xs text-red-500">{errors.userId}</span>
+                <ErrorMessage message={errors.userId} />
               )}
 
               {showErrors && errors.userId && (
@@ -419,7 +418,7 @@ const tableColumns: TableColumn[] = [
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.Startdate && (
-                <span className="text-xs text-red-500">{errors.Startdate}</span>
+                <ErrorMessage message={errors.Startdate} />
               )}
             </div>
 
@@ -432,7 +431,7 @@ const tableColumns: TableColumn[] = [
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.Enddate && (
-                <span className="text-xs text-red-500">{errors.Enddate}</span>
+                <ErrorMessage message={errors.Enddate} />
               )}
             </div>
 

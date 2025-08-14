@@ -418,6 +418,7 @@ import * as XLSX from "xlsx";
 import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
+import { ErrorMessage } from "../../components/ui/error-message";
 export const Summary = () => {
   const [form, setForm] = useState({
     clientId: "",
@@ -881,7 +882,7 @@ const onSubmit = async (e) => {
     className={fieldInputClasses}
   />
   {errors.clientId && (
-    <span className="text-xs text-red-500">{errors.clientId}</span>
+    <ErrorMessage message={errors.clientId} />
   )}
 
   {showClientDropdown && clientSearch.length >= 2 && (
@@ -960,7 +961,7 @@ const onSubmit = async (e) => {
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.date && (
-                <span className="text-xs text-red-500">{errors.date}</span>
+                <ErrorMessage message={errors.date} />
               )}
             </div>
 
