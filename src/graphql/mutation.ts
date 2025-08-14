@@ -453,3 +453,25 @@ export const CREATE_USER_ = gql`
     }
   }
 `;
+export const CREATE_CLIENT_REGISTRATION = gql`
+  mutation CreateClientRegistration($input: CreateClientRegistrationInput!) {
+    createClientRegistration(input: $input) {
+      id
+      company
+      createdAt
+      email
+      name
+      lastName
+      phone
+      addresses {
+        id
+        label
+        address
+        city
+        state
+        pincode
+        industry
+      }
+    }
+  }
+`;

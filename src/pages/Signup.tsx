@@ -3,6 +3,7 @@
 // import { useToast } from '../hooks/use-toast';
 // import { Plus } from 'lucide-react';
 // import AddressComponent, { AddressData } from '../components/Address';
+// import { useUserRegistration } from '../context/SignupContext';
 // import img from "../assets/images/Logo.webp";
 
 // interface SignupFormData {
@@ -28,6 +29,7 @@
 //   const [isLoading, setIsLoading] = useState(false);
 //   const navigate = useNavigate();
 //   const { toast } = useToast();
+//   const { createUser, loading: contextLoading } = useUserRegistration();
 
 //   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
 //     const { name, value } = e.target;
@@ -103,19 +105,50 @@
 //     }
 
 //     try {
-//       // Add your signup API call here
-//       console.log('Signup data:', formData);
-      
-//       // Simulate API call
-//       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-//       toast({
-//         title: "Account created successfully",
-//         description: "Welcome to Maximal Security! Please login with your credentials.",
-//       });
+//       // Handle client role (simulation for now)
+//       if (formData.role === 'client') {
+//         console.log('Client signup data:', formData);
+        
+//         // Simulate API call for client
+//         await new Promise(resolve => setTimeout(resolve, 2000));
+        
+//         toast({
+//           title: "Account created successfully",
+//           description: "Welcome to Maximal Security! Please login with your credentials.",
+//         });
 
-//       // Redirect to login page
-//       navigate('/login');
+//         navigate('/login');
+//       } else {
+//         // Handle admin, manager, guard roles with actual API call
+//         const userData = {
+//           name: formData.name,
+//           lastName: formData.lastname,
+//           email: formData.email,
+//           phone: formData.phoneNumber,
+//           password: formData.password,
+//           role: formData.role.toLowerCase() as 'admin' | 'manager' | 'guard',
+//           address: formData.addresses[0].address,
+//           city: formData.addresses[0].city,
+//           state: formData.addresses[0].state,
+//           zipcode: formData.addresses[0].zipcode,
+//         };
+
+//         const result = await createUser(userData);
+
+//         if (result.success) {
+//           toast({
+//             title: "Account created successfully",
+//             description: "Welcome to Maximal Security! Please login with your credentials.",
+//           });
+//           navigate('/login');
+//         } else {
+//           toast({
+//             title: "Signup failed",
+//             description: result.error || "Failed to create account. Please try again.",
+//             variant: "destructive",
+//           });
+//         }
+//       }
 //     } catch (error) {
 //       toast({
 //         title: "Signup failed",
@@ -291,9 +324,9 @@
 //             <button 
 //               type="submit" 
 //               className="w-full py-2 px-4 rounded-md transition cursor-pointer bg-[#004175] text-white hover:bg-[#00325d] disabled:opacity-50 disabled:cursor-not-allowed mt-6"
-//               disabled={isLoading}
+//               disabled={isLoading || contextLoading}
 //             >
-//               {isLoading ? 'Creating Account...' : 'Create Account'}
+//               {(isLoading || contextLoading) ? 'Creating Account...' : 'Create Account'}
 //             </button>
 
 //             {/* Back to Login */}
@@ -339,6 +372,7 @@ interface SignupFormData {
   phoneNumber: string;
   password: string;
   role: string;
+  company?: string; // Added company field for clients
   addresses: AddressData[];
 }
 
@@ -350,12 +384,13 @@ const Signup = () => {
     phoneNumber: '',
     password: '',
     role: '',
+    company: '',
     addresses: [{ address: '', city: '', state: '', zipcode: '' }]
   });
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { createUser, loading: contextLoading } = useUserRegistration();
+  const { createUser, createClientRegistration, loading: contextLoading } = useUserRegistration();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -431,21 +466,44 @@ const Signup = () => {
     }
 
     try {
-      // Handle client role (simulation for now)
       if (formData.role === 'client') {
-        console.log('Client signup data:', formData);
-        
-        // Simulate API call for client
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        toast({
-          title: "Account created successfully",
-          description: "Welcome to Maximal Security! Please login with your credentials.",
-        });
+        // Handle client role with actual API call
+        const clientData = {
+          name: formData.name,
+          lastName: formData.lastname,
+          email: formData.email,
+          phone: formData.phoneNumber,
+          company: formData.company || undefined,
+          password: formData.password,
+          addresses: formData.addresses.map((addr, index) => ({
+            label: `Address ${index + 1}`, // Default label
+            address: addr.address,
+            city: addr.city,
+            state: addr.state,
+            pincode: addr.zipcode, // Map zipcode to pincode
+            industry: undefined // Optional field
+          }))
+        };
 
-        navigate('/login');
+        console.log('🚀 Client Registration Data:', clientData);
+
+        const result = await createClientRegistration(clientData);
+
+        if (result.success) {
+          toast({
+            title: "Account created successfully",
+            description: "Welcome to Maximal Security! Please login with your credentials.",
+          });
+          navigate('/login');
+        } else {
+          toast({
+            title: "Signup failed",
+            description: result.error || "Failed to create client account. Please try again.",
+            variant: "destructive",
+          });
+        }
       } else {
-        // Handle admin, manager, guard roles with actual API call
+        // Handle admin, manager, guard roles with existing API call
         const userData = {
           name: formData.name,
           lastName: formData.lastname,
@@ -458,6 +516,8 @@ const Signup = () => {
           state: formData.addresses[0].state,
           zipcode: formData.addresses[0].zipcode,
         };
+
+        console.log('🚀 User Registration Data:', userData);
 
         const result = await createUser(userData);
 
@@ -476,6 +536,7 @@ const Signup = () => {
         }
       }
     } catch (error) {
+      console.error('❌ Signup Error:', error);
       toast({
         title: "Signup failed",
         description: "Failed to create account. Please try again.",
@@ -597,6 +658,23 @@ const Signup = () => {
                 <option value="client">Client</option>
               </select>
             </div>
+
+            {/* Company Field - Only for Clients */}
+            {isClient && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  name="company"
+                  value={formData.company || ''}
+                  onChange={handleInputChange}
+                  placeholder="Your Company Name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-sm"
+                />
+              </div>
+            )}
 
             {/* Addresses Section */}
             {formData.role && (
