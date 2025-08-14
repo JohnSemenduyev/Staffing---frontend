@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Edit, Trash2, GripVertical } from "lucide-react";
+import { Edit, Trash2, GripVertical, Plus } from "lucide-react";
 import ToggleSwitch from "../../../components/ui/toggle";
 import { ScheduleItem, Shift, DateColumn, DraggedShift, DragOverCell } from "./types";
 import { 
@@ -15,6 +15,7 @@ interface ActualTimeTableProps {
   scheduleData: ScheduleItem[];
   dateColumns: DateColumn[];
   isEditMode: boolean;
+  scheduleDataForShifts?: ScheduleItem[]; // New prop for shift selection
 }
 
 interface DeleteModalState {
@@ -31,6 +32,18 @@ interface EditModalState {
   shift: Shift | null;
 }
 
+interface AddSessionModalState {
+  isOpen: boolean;
+  userId: number | null;
+  date: string | null;
+  shift: Shift | null;
+}
+
+interface AddShiftModalState {
+  isOpen: boolean;
+  date: string | null;
+}
+
 interface DeleteUserModalState {
   isOpen: boolean;
   userId: number | null;
@@ -39,7 +52,8 @@ interface DeleteUserModalState {
 export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   scheduleData,
   dateColumns,
-  isEditMode
+  isEditMode,
+  scheduleDataForShifts
 }) => {
   // Local state for the actual time table
   const [actualTimeData, setActualTimeData] = useState<ScheduleItem[]>(scheduleData);
@@ -57,11 +71,23 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     date: null, 
     shift: null 
   });
+  const [addSessionModal, setAddSessionModal] = useState<AddSessionModalState>({ 
+    isOpen: false, 
+    userId: null, 
+    date: null, 
+    shift: null 
+  });
+  const [addShiftModal, setAddShiftModal] = useState<AddShiftModalState>({ 
+    isOpen: false, 
+    date: null 
+  });
   const [deleteUserModal, setDeleteUserModal] = useState<DeleteUserModalState>({ 
     isOpen: false, 
     userId: null 
   });
   const [editForm, setEditForm] = useState({ starttime: "", endtime: "" });
+  const [addSessionForm, setAddSessionForm] = useState({ starttime: "", endtime: "" });
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
   // Update actual time data when schedule data changes
   React.useEffect(() => {
@@ -103,8 +129,40 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     });
   };
 
+  // Time overlap validation function
+  const hasTimeOverlap = (userId: number, date: string, startTime: string, endTime: string, excludeShiftId?: number) => {
+    const userSessions = actualTimeData.find(item => 
+      item.userId === userId && item.startDate === date
+    );
+
+    if (!userSessions) return false;
+
+    return userSessions.shifts.some(shift => {
+      // Skip the shift being edited
+      if (excludeShiftId && shift.id === excludeShiftId) return false;
+
+      const existingStart = shift.clockIn || shift.startTime;
+      const existingEnd = shift.clockOut || shift.endTime;
+
+      // Check for overlap: new session starts before existing ends AND new session ends after existing starts
+      return startTime < existingEnd && endTime > existingStart;
+    });
+  };
+
   const confirmEditShift = () => {
     if (!editModal.isOpen || !editModal.userId || !editModal.date || !editModal.shift) {
+      return;
+    }
+
+    // Validate time overlap
+    if (hasTimeOverlap(editModal.userId, editModal.date, editForm.starttime, editForm.endtime, editModal.shift.id)) {
+      toast.error('Time overlap detected! This session overlaps with an existing session.');
+      return;
+    }
+
+    // Validate that start time is before end time
+    if (editForm.starttime >= editForm.endtime) {
+      toast.error('Start time must be before end time.');
       return;
     }
 
@@ -137,6 +195,170 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   const cancelEditShift = () => {
     setEditModal({ isOpen: false, userId: null, date: null, shift: null });
     setEditForm({ starttime: '', endtime: '' });
+  };
+
+  // Add session functionality
+  const handleAddSession = (userId: number, date: string, shift: Shift) => {
+    console.log('Add session called with:', { userId, date, shift });
+    setAddSessionModal({
+      isOpen: true,
+      userId,
+      date,
+      shift
+    });
+    // Pre-populate with the same times as the existing shift
+    const startTime = shift.clockIn !== undefined ? shift.clockIn : shift.startTime;
+    const endTime = shift.clockOut !== undefined ? shift.clockOut : shift.endTime;
+    setAddSessionForm({
+      starttime: startTime || '',
+      endtime: endTime || ''
+    });
+  };
+
+  const confirmAddSession = () => {
+    if (!addSessionModal.isOpen || !addSessionModal.userId || !addSessionModal.date || !addSessionModal.shift) {
+      return;
+    }
+
+    // Validate that start time is before end time
+    if (addSessionForm.starttime >= addSessionForm.endtime) {
+      toast.error('Start time must be before end time.');
+      return;
+    }
+
+    // Validate time overlap
+    if (hasTimeOverlap(addSessionModal.userId, addSessionModal.date, addSessionForm.starttime, addSessionForm.endtime)) {
+      toast.error('Time overlap detected! This session overlaps with an existing session.');
+      return;
+    }
+
+    setActualTimeData(prev => {
+      // Check if there's already an item for this user-date combination
+      const existingItem = prev.find(item => 
+        item.userId === addSessionModal.userId && item.startDate === addSessionModal.date
+      );
+
+      if (existingItem) {
+        // Update existing item with new session
+        const updated = prev.map(item => {
+          if (item.userId === addSessionModal.userId && item.startDate === addSessionModal.date) {
+            // Create new session with the form data
+            const newSession = {
+              ...addSessionModal.shift!,
+              id: Date.now() + Math.random(), // Generate new ID
+              clockIn: addSessionForm.starttime,
+              clockOut: addSessionForm.endtime,
+              startTime: addSessionForm.starttime,
+              endTime: addSessionForm.endtime
+            };
+            
+            // Add the new session to the existing shifts array
+            const newShifts = [...item.shifts, newSession];
+            return { ...item, shifts: newShifts };
+          }
+          return item;
+        });
+        return updated;
+      } else {
+        // Create new item for this user-date combination
+        const newSession = {
+          ...addSessionModal.shift!,
+          id: Date.now() + Math.random(), // Generate new ID
+          clockIn: addSessionForm.starttime,
+          clockOut: addSessionForm.endtime,
+          startTime: addSessionForm.starttime,
+          endTime: addSessionForm.endtime
+        };
+
+        // Find a reference item to get user details
+        const referenceItem = prev.find(item => item.userId === addSessionModal.userId);
+        
+        if (referenceItem) {
+          // Create new item with user details
+          const newItem: ScheduleItem = {
+            id: Date.now() + Math.random(), // Generate new ID for the item
+            userId: addSessionModal.userId,
+            userName: referenceItem.userName,
+            userPhone: referenceItem.userPhone,
+            clientId: referenceItem.clientId,
+            addressId: referenceItem.addressId,
+            clientName: referenceItem.clientName,
+            address: referenceItem.address,
+            startDate: addSessionModal.date,
+            auto: referenceItem.auto,
+            shifts: [newSession]
+          };
+          
+          return [...prev, newItem];
+        } else {
+          // If no reference item found, return unchanged
+          return prev;
+        }
+      }
+    });
+
+    setAddSessionModal({ isOpen: false, userId: null, date: null, shift: null });
+    setAddSessionForm({ starttime: '', endtime: '' });
+    toast.success('New session added successfully!');
+  };
+
+  const cancelAddSession = () => {
+    setAddSessionModal({ isOpen: false, userId: null, date: null, shift: null });
+    setAddSessionForm({ starttime: '', endtime: '' });
+  };
+
+  // Add shift from header functionality
+  const handleAddShiftFromHeader = (date: string) => {
+    setAddShiftModal({ isOpen: true, date });
+  };
+
+  const handleShiftSelection = (shift: Shift) => {
+    setSelectedShift(shift);
+    setAddShiftModal({ isOpen: false, date: null });
+    // Open the add session modal with the selected shift
+    setAddSessionModal({
+      isOpen: true,
+      userId: null, // Will be set when user selects
+      date: addShiftModal.date,
+      shift
+    });
+    // Pre-populate with the shift times
+    const startTime = shift.clockIn !== undefined ? shift.clockIn : shift.startTime;
+    const endTime = shift.clockOut !== undefined ? shift.clockOut : shift.endTime;
+    setAddSessionForm({
+      starttime: startTime || '',
+      endtime: endTime || ''
+    });
+  };
+
+  const cancelAddShift = () => {
+    setAddShiftModal({ isOpen: false, date: null });
+    setSelectedShift(null);
+  };
+
+  // Get available shifts for selection
+  const getAvailableShifts = () => {
+    if (!scheduleDataForShifts || !addShiftModal.date) {
+      return [];
+    }
+    
+    // Get all unique shifts from the schedule data for the specific date with non-null IDs
+    const shifts = new Map();
+    scheduleDataForShifts.forEach(item => {
+      // Only include shifts for the same date
+      if (item.startDate === addShiftModal.date) {
+        item.shifts.forEach(shift => {
+          // Only include shifts that have a non-null ID
+          if (shift.id !== null && shift.id !== undefined) {
+            const shiftKey = `${shift.startTime}-${shift.endTime}-${shift.id}`;
+            if (!shifts.has(shiftKey)) {
+              shifts.set(shiftKey, shift);
+            }
+          }
+        });
+      }
+    });
+    return Array.from(shifts.values());
   };
 
   // Delete shift functionality
@@ -306,11 +528,20 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                 <th className="px-4 py-3 text-left border border-gray-300 whitespace-nowrap">
                   Employee Name
                 </th>
-                {dateColumns.map(dateCol => (
-                  <th key={dateCol.date} className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
-                    {dateCol.display}
-                  </th>
-                ))}
+                                 {dateColumns.map(dateCol => (
+                   <th key={dateCol.date} className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap relative" style={{ minWidth: '120px' }}>
+                     <span>{dateCol.display}</span>
+                     {isEditMode && (
+                       <button
+                         onClick={() => handleAddShiftFromHeader(dateCol.date)}
+                         className="absolute right-1 top-1/2 transform -translate-y-1/2 text-green-600 hover:text-green-800 p-1.5 hover:bg-green-50 rounded"
+                         title={`Add shift for ${dateCol.display}`}
+                       >
+                         <Plus className="w-4 h-4" />
+                       </button>
+                     )}
+                   </th>
+                 ))}
                 <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap">
                   Total
                 </th>
@@ -373,20 +604,20 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                       >
                                         <GripVertical className="w-4 h-4" />
                                       </div>
-                                      <button
-                                        onClick={() => handleEditShift(user.id, dateCol.date, shift)}
-                                        className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
-                                        title="Edit shift"
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
-                                        className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
-                                        title="Delete shift"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
+                                                                             <button
+                                         onClick={() => handleEditShift(user.id, dateCol.date, shift)}
+                                         className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
+                                         title="Edit shift"
+                                       >
+                                         <Edit className="w-4 h-4" />
+                                       </button>
+                                       <button
+                                         onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                         className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
+                                         title="Delete shift"
+                                       >
+                                         <Trash2 className="w-4 h-4" />
+                                       </button>
                                     </div>
                                   )}
                                   <span className="text-sm">
@@ -419,12 +650,12 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                               className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
                               rowSpan={rowCount}
                             >
-                              <div className="flex items-center justify-center">
+                              {/* <div className="flex items-center justify-center">
                                 <ToggleSwitch
                                   enabled={actualTimeData.find(item => item.userId === user.id)?.auto || false}
                                   onToggle={enabled => handleUserAutoToggle(user.id, enabled)}
                                 />
-                              </div>
+                              </div> */}
                             </td>
                           </>
                         )}
@@ -453,13 +684,13 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                       <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
                         {calculateUserTotal(user.id, actualTimeData)}
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                      {/* <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
                         {isEditMode && (
                           <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
-                      </td>
+                      </td> */}
                     </tr>
                   </React.Fragment>
                 );
@@ -526,26 +757,26 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={editForm.starttime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, starttime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={editForm.endtime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, endtime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
-                />
-              </div>
-            </div>
+                         <div className="space-y-4">
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
+                 <input
+                   type="time"
+                   value={editForm.starttime}
+                   onChange={(e) => setEditForm(prev => ({ ...prev, starttime: e.target.value }))}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
+                 <input
+                   type="time"
+                   value={editForm.endtime}
+                   onChange={(e) => setEditForm(prev => ({ ...prev, endtime: e.target.value }))}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                 />
+               </div>
+             </div>
 
             <div className="flex space-x-3 justify-end mt-6">
               <button
@@ -567,6 +798,128 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
           </div>
         </div>
       )}
+
+             {/* Shift Selection Modal */}
+       {addShiftModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Select Shift</h3>
+               <p className="text-sm text-gray-500 mt-1">
+                 Choose a shift to add for {addShiftModal.date}
+               </p>
+             </div>
+
+             <div className="space-y-2 max-h-60 overflow-y-auto">
+               {getAvailableShifts().length > 0 ? (
+                 getAvailableShifts().map((shift, index) => (
+                   <button
+                     key={index}
+                     onClick={() => handleShiftSelection(shift)}
+                     className="w-full p-3 text-left border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                   >
+                     <div className="font-medium text-gray-900">
+                       {shift.clockIn !== undefined || shift.clockOut !== undefined ? (
+                         `${shift.clockIn || 'N/A'} - ${shift.clockOut || 'N/A'}`
+                       ) : (
+                         `${shift.startTime} - ${shift.endTime}`
+                       )}
+                     </div>
+                     {shift.hours && (
+                       <div className="text-sm text-gray-500">
+                         {shift.hours} hours
+                       </div>
+                     )}
+                   </button>
+                 ))
+               ) : (
+                 <div className="text-center text-gray-500 py-4">
+                   No shifts available. Please add some shifts first.
+                 </div>
+               )}
+             </div>
+
+             <div className="flex space-x-3 justify-end mt-6">
+               <button
+                 type="button"
+                 onClick={cancelAddShift}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Add Session Modal */}
+       {addSessionModal.isOpen && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+             <div className="mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Add New Session</h3>
+               <p className="text-sm text-gray-500 mt-1">
+                 Add a new session for the selected shift and date
+               </p>
+             </div>
+
+             <div className="space-y-4">
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">User</label>
+                 <select
+                   value={addSessionModal.userId || ''}
+                   onChange={(e) => setAddSessionModal(prev => ({ ...prev, userId: Number(e.target.value) }))}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                 >
+                   <option value="">Select a user</option>
+                   {uniqueUsers.map(user => (
+                     <option key={user.id} value={user.id}>
+                       {user.name}
+                     </option>
+                   ))}
+                 </select>
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
+                 <input
+                   type="time"
+                   value={addSessionForm.starttime}
+                   onChange={(e) => setAddSessionForm(prev => ({ ...prev, starttime: e.target.value }))}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
+                 <input
+                   type="time"
+                   value={addSessionForm.endtime}
+                   onChange={(e) => setAddSessionForm(prev => ({ ...prev, endtime: e.target.value }))}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                 />
+               </div>
+             </div>
+
+             <div className="flex space-x-3 justify-end mt-6">
+               <button
+                 type="button"
+                 onClick={cancelAddSession}
+                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="button"
+                 onClick={confirmAddSession}
+                 disabled={!addSessionModal.userId}
+                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                 <Plus className="w-4 h-4 mr-2" />
+                 Add Session
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
 
       {/* Delete User Confirmation Modal */}
       {deleteUserModal.isOpen && (

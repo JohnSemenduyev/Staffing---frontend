@@ -18,7 +18,7 @@ export type Address = {
 export type UpdateOneSessionTimesInput = {
   sessionId: number;
   clockIn: string;
-  clockOut: string;
+  clockOut: string | null;
 };
 export type Client = {
   name: string;
