@@ -8,6 +8,7 @@ import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useUniformCompliance } from "../../context/unifromCompliace";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
+import { ErrorMessage } from "../../components/ui/error-message";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -403,7 +404,7 @@ const onSubmit = async (e: React.FormEvent) => {
     className={fieldInputClasses}
   />
   {errors.clientId && (
-    <span className="text-xs text-red-500">{errors.clientId}</span>
+    <ErrorMessage message={errors.clientId} />
   )}
 
   {showClientDropdown && clientSearch.length >= 2 && (
@@ -472,9 +473,7 @@ const onSubmit = async (e: React.FormEvent) => {
                 className={`${fieldInputClasses} appearance-none bg-gray-50`}
               />
               {errors.addressId && (
-                <span className="text-xs text-red-500 block">
-                  {errors.addressId}
-                </span>
+                <ErrorMessage message={errors.addressId} />
               )}
             </div>
            
@@ -530,7 +529,7 @@ const onSubmit = async (e: React.FormEvent) => {
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.startDate && (
-                <span className="text-xs text-red-500">{errors.startDate}</span>
+                <ErrorMessage message={errors.startDate} />
               )}
             </div>
             
@@ -545,7 +544,7 @@ const onSubmit = async (e: React.FormEvent) => {
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.endDate && (
-                <span className="text-xs text-red-500">{errors.endDate}</span>
+                <ErrorMessage message={errors.endDate} />
               )}
             </div>
             {/* Action Buttons */}

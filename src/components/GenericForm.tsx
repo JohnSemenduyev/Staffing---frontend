@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, ChevronDown } from "lucide-react";
+import { ErrorMessage } from "./ui/error-message";
 
 export interface FormField {
   key: string;
@@ -62,7 +63,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
               className={fieldInputClasses}
             />
             {hasError && (
-              <span className="text-xs text-red-500 block">{hasError}</span>
+              <ErrorMessage message={hasError} />
             )}
             {field.showDropdown && field.searchValue && field.searchValue.length >= 2 && (
               <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
@@ -107,7 +108,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
             {hasError && (
-              <span className="text-xs text-red-500">{hasError}</span>
+              <ErrorMessage message={hasError} />
             )}
           </div>
         );
@@ -137,7 +138,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
               className={fieldInputClasses}
             />
             {hasError && (
-              <span className="text-xs text-red-500">{hasError}</span>
+              <ErrorMessage message={hasError} />
             )}
           </div>
         );
@@ -153,7 +154,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
               className={fieldInputClasses}
             />
             {hasError && (
-              <span className="text-xs text-red-500">{hasError}</span>
+              <ErrorMessage message={hasError} />
             )}
           </div>
         );

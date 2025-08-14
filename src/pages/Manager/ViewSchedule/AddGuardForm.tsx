@@ -13,6 +13,7 @@ import {
     sortShiftsByTime,
     getWeekRangeFromDate 
   } from "./utils";
+import { ErrorMessage } from "../../../components/ui/error-message";
 interface AddGuardFormProps {
   scheduleData: ScheduleItem[];
   setScheduleData: React.Dispatch<React.SetStateAction<ScheduleItem[]>>;
@@ -263,7 +264,7 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
               className={inputClasses}
             />
             {errors.userId && (
-              <span className="text-xs text-red-500">{errors.userId}</span>
+              <ErrorMessage message={errors.userId} />
             )}
             {showUserDropdown && userSearch.length >= 2 && (
               <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -288,16 +289,15 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
 
           {/* Date */}
           <div className="flex items-center">
-            <CustomDatePicker
+            <div className="flex items-center flex-row w-full ">
+              <CustomDatePicker
               value={form.date}
               onChange={handleFormChange}
               placeholder="Select Date"
               minDate={currentWeekRange?.startOfWeek.toISOString().split('T')[0]}
               maxDate={currentWeekRange?.endOfWeek.toISOString().split('T')[0]}
             />
-            {errors.date && (
-              <span className="text-xs text-red-500">{errors.date}</span>
-            )}
+            
             <div className="flex items-center m-2 space-x-2">
               <input
                 id="applyAllWeek"
@@ -320,6 +320,11 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
                 All Week
               </label>
             </div>
+            </div>
+            
+            {errors.date && (
+              <ErrorMessage message={errors.date} />
+            )}
           </div>
 
           {/* Start Time */}
@@ -342,7 +347,7 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
               className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
             />
             {errors.starttime && (
-              <span className="text-xs text-red-500">{errors.starttime}</span>
+              <ErrorMessage message={errors.starttime} />
             )}
           </div>
 
@@ -365,10 +370,10 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
               className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
             />
             {errors.endtime && (
-              <span className="text-xs text-red-500">{errors.endtime}</span>
+              <ErrorMessage message={errors.endtime} />
             )}
             {errors.overlap && (
-              <span className="text-xs text-red-500">{errors.overlap}</span>
+              <ErrorMessage message={errors.overlap} />
             )}
           </div>
 
