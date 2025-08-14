@@ -171,7 +171,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                 </th>
               ))}
               {actions.length > 0 && (
-                <th className="px-2 sm:px-3 py-3 text-left whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
+                <th className="px-4 py-1 text-left whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
                   Actions
                 </th>
               )}
@@ -179,11 +179,18 @@ export const GenericTable: React.FC<GenericTableProps> = ({
             {searchable && (
               <tr className="bg-white text-gray-700 font-sans w-full">
                 {columns.map((column) => (
-                  <th key={`search-${column.key}`} className="px-5 sm:px-2 py-2 text-left">
+                  <th 
+                    key={`search-${column.key}`} 
+                    className="px-4 py-2 text-left"
+                    style={{ 
+                      width: column.width || 'auto',
+                      minWidth: column.width || 'auto'
+                    }}
+                  >
                     {column.searchable ? (
                       <input
                         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
-                        className="w-40 px-2 ml-1 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                         type="text"
                         value={searchTerms[column.key] || ''}
                         onChange={(e) =>
@@ -192,11 +199,15 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                             [column.key]: e.target.value,
                           }))
                         }
+                        style={{
+                          maxWidth: '100%',
+                          minWidth: column.width ? `calc(${column.width} - 32px)` : 'auto'
+                        }}
                       />
                     ) : null}
                   </th>
                 ))}
-                {actions.length > 0 && <th className="px-1 sm:px-2 py-2"></th>}
+                {actions.length > 0 && <th className="px-4 py-2"></th>}
               </tr>
             )}
           </thead>
@@ -241,7 +252,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                       );
                     })}
                     {actions.length > 0 && (
-                      <td className="px-1 sm:px-2 py-3 whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
                         <div className="flex items-center gap-2">
                           {actions.map((action, actionIndex) => (
                             <button

@@ -68,17 +68,26 @@ const { uniformCompliances,  error, fetchUniformCompliances } = useUniformCompli
     return date.toISOString().split('T')[0];
   };
 
-  const formatDate = (timestamp: string | number) => {
-  const date = new Date(Number(timestamp));
-  return date.toLocaleDateString(); // e.g., "8/6/2025"
+
+
+
+const formatDate = (dateString: string | number) => {
+  if (!dateString) return '-';
+  
+  // Handle both ISO strings and timestamps
+  const date = typeof dateString === 'string' 
+    ? new Date(dateString)  // For ISO strings like "2025-08-12T00:00:00.000Z"
+    : new Date(Number(dateString)); // For timestamps
+    
+  return date.toLocaleDateString(); // e.g., "8/12/2025"
 };
 
 const transformComplianceData = (uniformCompliances: any[]) => {
   return uniformCompliances.map((item) => ({
-    id: `${item.scheduleSessionId}-${item.shiftId}`, // Now unique
+    id: `${item.scheduleSessionId}-${item.shiftId}`,
     guardFirst: { name: item.scheduleSession.user.name },
     guardLast: { name: item.scheduleSession.user.lastName },
-    date: formatDate(item.shift.date),
+    date: formatDate(item.shift.date), // Apply formatting here
     Client: { name: item.scheduleSession.client.name },
     address: { address: item.scheduleSession.address.address },
     images: [item.topUniformImage, item.bottomUniformImage],
@@ -262,7 +271,7 @@ const onSubmit = async (e: React.FormEvent) => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap max-w-[200px]",
-      render: (value: any) => `${value} Mins`
+     
     },
     {
       key: "Client.name",
@@ -376,7 +385,7 @@ const onSubmit = async (e: React.FormEvent) => {
           <h2 className="text-xl font-semibold mb-2">
            Uniform Compliance</h2>
         <form onSubmit={onSubmit} autoComplete="off">
-<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">   
             {/* Client Search Field */}
                         <div className="relative">
   <input

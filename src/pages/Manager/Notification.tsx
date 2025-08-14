@@ -244,6 +244,7 @@ const tableColumns: TableColumn[] = [
     label: "Type",
     sortable: true,
     searchable: true,
+    width:"200px",
     className: "whitespace-nowrap max-w-[150px]",
     render: (value: string) => (
       <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -272,7 +273,7 @@ const tableColumns: TableColumn[] = [
           Notification
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-<div className="grid grid-cols-4 gap-4 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-1 items-start">   
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">   
            <div className="relative">
   <input
     type="text"
