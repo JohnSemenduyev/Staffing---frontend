@@ -71,6 +71,10 @@ export const ViewSchedule = () => {
     setEditForm
   } = useScheduleState();
 
+  // Separate edit modes for each table
+  const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
+  const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
+
   // Use our custom actions hook for schedule table
   const {
     handleDeleteShift: originalHandleDeleteShift,
@@ -92,15 +96,15 @@ export const ViewSchedule = () => {
     scheduleData,
     setScheduleData,
     currentWeekRange,
-    deleteModal, // Add this
+    deleteModal, 
     setDeleteModal,
-    editModal, // Add this
+    editModal, 
     setEditModal,
-    deleteUserModal, // Add this
+    deleteUserModal, 
     setDeleteUserModal,
-    editForm, // Add this
+    editForm, 
     setEditForm,
-    draggedShift, // Add this
+    draggedShift, 
     setDraggedShift,
     setDragOverCell
   );
@@ -139,9 +143,9 @@ export const ViewSchedule = () => {
 
 
 
-  const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> } => {
+  const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string | null, reason: string }> } => {
     const valid: UpdateOneSessionTimesInput[] = [];
-    const invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> = [];
+    const invalid: Array<{ sessionId: number, clockIn: string, clockOut: string | null, reason: string }> = [];
   
     sessionTimeUpdates.forEach(session => {
       const { sessionId, clockIn, clockOut } = session;
@@ -152,16 +156,33 @@ export const ViewSchedule = () => {
         return hours * 60 + minutes;
       };
   
+      // Validate clockIn time
       const clockInMinutes = parseTime(clockIn);
-      const clockOutMinutes = parseTime(clockOut);
-  
-      // Check for invalid time format
-      if (isNaN(clockInMinutes) || isNaN(clockOutMinutes)) {
+      if (isNaN(clockInMinutes)) {
         invalid.push({
           sessionId,
           clockIn,
           clockOut,
-          reason: "Invalid time format"
+          reason: "Invalid clock-in time format"
+        });
+        return;
+      }
+  
+      // Handle null/undefined clockOut (ongoing shifts)
+      if (!clockOut || clockOut === "N/A") {
+        // This is a valid ongoing shift - only check-in time is required
+        valid.push(session);
+        return;
+      }
+  
+      // Validate clockOut time
+      const clockOutMinutes = parseTime(clockOut);
+      if (isNaN(clockOutMinutes)) {
+        invalid.push({
+          sessionId,
+          clockIn,
+          clockOut,
+          reason: "Invalid clock-out time format"
         });
         return;
       }
@@ -213,6 +234,7 @@ export const ViewSchedule = () => {
   const [showScheduleTable, setShowScheduleTable] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [tableData, setTableData] = useState([]);
   const [sessionData, setSessionData] = useState<any[]>([]);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -222,6 +244,12 @@ export const ViewSchedule = () => {
   // Add state to store original API data for comparison
   const [originalScheduleData, setOriginalScheduleData] = useState<any[]>([]);
   const [originalSessionData, setOriginalSessionData] = useState<any[]>([]);
+  
+  // Add state to track publish status
+  const [isSchedulePublished, setIsSchedulePublished] = useState(false);
+  const [isActualTimePublished, setIsActualTimePublished] = useState(false);
+  const [publishedScheduleData, setPublishedScheduleData] = useState<any[]>([]);
+  const [publishedSessionData, setPublishedSessionData] = useState<any[]>([]);
 
   // Function to detect changes in schedule data
   const detectScheduleChanges = (currentData: any[], originalData: any[]) => {
@@ -375,6 +403,8 @@ export const ViewSchedule = () => {
       const transformedSessionData = transformSessionDataToScheduleFormat(allSessions);
       setSessionData(transformedSessionData);
       setOriginalSessionData(transformedSessionData); // Store original session data
+      setPublishedSessionData([]);
+      setIsActualTimePublished(false);
 
     } catch (err: any) {
       console.error("Error fetching session data:", err);
@@ -642,6 +672,8 @@ export const ViewSchedule = () => {
       console.log("No API schedule data or empty array:", apiScheduleData);
       setScheduleData([]);
       setOriginalScheduleData([]);
+      setPublishedScheduleData([]);
+      setIsSchedulePublished(false);
     }
   }, [apiScheduleData, selectedClient]);
 
@@ -682,19 +714,19 @@ export const ViewSchedule = () => {
     return `${year}-${month}-${day}`;
   };
   // Excel Download functionality
-  const generateExcelFile = () => {
+  const generateExcelFile = (dataToUse = scheduleData) => {
     const formattedData = [];
-    const uniqueUsers = getUniqueUsers(scheduleData);
+    const uniqueUsers = getUniqueUsers(dataToUse);
 
     uniqueUsers.forEach(user => {
-      const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
+      const userShiftTimes = getUniqueShiftTimes(user.id, dataToUse);
 
       const userMainRow = {
         "Employee Name": `${user.name}\n${user.phone || ""}`,
       };
 
       dateColumns.forEach(dateCol => {
-        const userSchedulesForDate = scheduleData.filter(item =>
+        const userSchedulesForDate = dataToUse.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
         );
 
@@ -707,8 +739,8 @@ export const ViewSchedule = () => {
         }
       });
 
-      userMainRow["Total"] = calculateUserTotal(user.id, scheduleData);
-      userMainRow["Auto"] = scheduleData.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
+      userMainRow["Total"] = calculateUserTotal(user.id, dataToUse);
+      userMainRow["Auto"] = dataToUse.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
 
       formattedData.push(userMainRow);
 
@@ -716,7 +748,7 @@ export const ViewSchedule = () => {
         "Employee Name": "Total",
       };
       dateColumns.forEach(dateCol => {
-        const daySchedules = scheduleData.filter(item =>
+        const daySchedules = dataToUse.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
         );
         const dayTotal = daySchedules.reduce((total, schedule) =>
@@ -724,7 +756,7 @@ export const ViewSchedule = () => {
         );
         totalRow[dateCol.display] = dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-";
       });
-      totalRow["Total"] = calculateUserTotal(user.id, scheduleData);
+      totalRow["Total"] = calculateUserTotal(user.id, dataToUse);
       totalRow["Auto"] = "";
       formattedData.push(totalRow);
     });
@@ -733,9 +765,9 @@ export const ViewSchedule = () => {
       "Employee Name": "Grand Total",
     };
     dateColumns.forEach(dateCol => {
-      grandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date, scheduleData) || "-";
+      grandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date, dataToUse) || "-";
     });
-    grandTotalRow["Total"] = calculateGrandTotal(scheduleData);
+    grandTotalRow["Total"] = calculateGrandTotal(dataToUse);
     grandTotalRow["Auto"] = "";
     formattedData.push(grandTotalRow);
 
@@ -916,13 +948,239 @@ export const ViewSchedule = () => {
     }
   };
 
-  const handleDownloadExcel = () => {
+  // Separate publish handlers for each table
+  const handleSchedulePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
+      toast.error("No schedule data available to publish!");
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      
+      // Reset published status when starting a new publish
+      setIsSchedulePublished(false);
+
+      // Process ALL schedule data (not just changes)
+      if (scheduleData.length > 0) {
+        // First API call: Publish ALL schedule data
+        // Fix: Handle both YYYY-MM-DD and MM-DD-YYYY formats
+        let year: number, month: number, day: number;
+        
+        if (selectedDate.includes('-')) {
+          const parts = selectedDate.split('-').map(Number);
+          
+          // Check if it's YYYY-MM-DD format (first part is 4 digits)
+          if (parts[0] > 1000) {
+            // YYYY-MM-DD format
+            [year, month, day] = parts;
+          } else {
+            // MM-DD-YYYY format
+            [month, day, year] = parts;
+          }
+        } else {
+          // Fallback
+          [month, day, year] = selectedDate.split('-').map(Number);
+        }
+        
+        const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0);
+        const weekRange = getWeekRangeFromDate(selectedDateObj);
+        const startDate = formatDateToYYYYMMDD(weekRange.startOfWeek);
+        const endDate = formatDateToYYYYMMDD(weekRange.endOfWeek);
+        
+        const userScheduleMap = new Map();
+
+        // Process ALL schedule data instead of just changes
+        scheduleData.forEach(item => {
+          const userId = item.userId;
+          const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId
+            ? item.shifts[0].scheduleSessionId
+            : null;
+
+          if (!userScheduleMap.has(userId)) {
+            userScheduleMap.set(userId, {
+              scheduleSessionId: scheduleSessionId,
+              clientId: item.clientId,
+              addressId: item.addressId,
+              userId: userId,
+              startDate: convertDateFormat(startDate),
+              endDate: convertDateFormat(endDate),
+              auto: item.auto,
+              weeklyHours: 0,
+              shifts: []
+            });
+          } else {
+            const existingSchedule = userScheduleMap.get(userId);
+            existingSchedule.auto = item.auto;
+
+            if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
+              existingSchedule.scheduleSessionId = scheduleSessionId;
+            }
+          }
+
+          const userSchedule = userScheduleMap.get(userId);
+
+          // Include ALL shifts for this user-date combination
+          item.shifts.forEach(shift => {
+            const isClientGeneratedId = shift.id > 1000000000000;
+            userSchedule.shifts.push({
+              date: convertDateFormat(shift.date),
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+              hours: shift.hours,
+              shiftId: isClientGeneratedId ? null : shift.id
+            });
+          });
+        });
+
+        const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
+          const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
+
+          return {
+            ...userSchedule,
+            weeklyHours: parseFloat(weeklyHours.toFixed(2))
+          };
+        });
+
+        console.log("=== PUBLISHING SCHEDULE DATA ===");
+        console.log("Complete Schedule Input:", JSON.stringify(scheduleInput, null, 2));
+        console.log("Total Users:", scheduleInput.length);
+        
+        // Uncomment the API call
+        await bulkUpsertScheduleSessions(scheduleInput);
+        
+        console.log("=== EXACT SCHEDULE API PAYLOAD THAT WOULD BE SENT ===");
+        console.log("Mutation:", "BulkUpsertScheduleSession");
+        console.log("Variables:", JSON.stringify({ input: scheduleInput }, null, 2));
+        console.log("===================================================");
+        
+        // Store the published data and mark as published
+        setPublishedScheduleData([...scheduleData]);
+        setIsSchedulePublished(true);
+      }
+
+      toast.success("Schedule data published successfully!");
+      
+      // Exit schedule edit mode only on successful publish
+      setIsScheduleEditMode(false);
+
+    } catch (error) {
+      console.error("Error publishing schedule data:", error);
+      toast.error("Failed to publish schedule data. Please try again.");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleActualTimePublish = async () => {
+    if (!sessionData || sessionData.length === 0) {
+      toast.error("No actual time data available to publish!");
+      return;
+    }
+
+    try {
+      setIsActualTimePublishing(true);
+      
+      // Reset published status when starting a new publish
+      setIsActualTimePublished(false);
+      
+      console.log("=== DEBUGGING ACTUAL TIME PUBLISH ===");
+      console.log("sessionData length:", sessionData.length);
+      console.log("scheduleData length:", scheduleData.length);
+      console.log("Sample scheduleData item:", scheduleData[0]);
+
+      // Process ALL session data (not just changes)
+      if (sessionData.length > 0) {
+        console.log("=== UPDATING ALL SESSION TIMES ===");
+        console.log("Raw sessionData:", JSON.stringify(sessionData, null, 2));
+        
+        // Collect ALL session times from session data
+        const allSessionTimes: UpdateOneSessionTimesInput[] = [];
+        
+        sessionData.forEach(sessionItem => {
+          console.log("Processing sessionItem:", sessionItem);
+          sessionItem.shifts.forEach((shift: any) => {
+            console.log("Processing shift:", shift);
+            console.log("shift.scheduleSessionId:", shift.scheduleSessionId);
+            console.log("shift.startTime:", shift.startTime);
+            console.log("shift.endTime:", shift.endTime);
+            
+            if (shift.scheduleSessionId && 
+                shift.startTime && 
+                shift.startTime !== "N/A") {
+              // For actual time, we can publish sessions with just check-in time
+              // Check-out can be null/undefined/"N/A" for ongoing shifts
+              const clockOut = (shift.endTime && shift.endTime !== "N/A") ? shift.endTime : null;
+              
+              allSessionTimes.push({
+                sessionId: shift.scheduleSessionId,
+                clockIn: shift.startTime,
+                clockOut: clockOut
+              });
+              
+              console.log("Including session:", {
+                sessionId: shift.scheduleSessionId,
+                clockIn: shift.startTime,
+                clockOut: clockOut
+              });
+            } else {
+              console.log("Skipping shift - missing scheduleSessionId or invalid start time");
+              console.log("  scheduleSessionId:", shift.scheduleSessionId);
+              console.log("  startTime:", shift.startTime);
+              console.log("  endTime:", shift.endTime);
+            }
+          });
+        });
+        
+        console.log("All session time updates:", JSON.stringify(allSessionTimes, null, 2));
+        console.log("Total sessions processed:", sessionData.reduce((total, item) => total + item.shifts.length, 0));
+        console.log("Valid sessions for publishing:", allSessionTimes.length);
+        
+        // Validate session times before sending to API
+        const validation = validateSessionTimes(allSessionTimes);
+        
+        if (validation.valid.length > 0) {
+          console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
+          
+          // Comment out the API call
+          // await updateManySessionTimes(validation.valid);
+          
+          console.log("=== EXACT SESSION TIMES API PAYLOAD THAT WOULD BE SENT ===");
+          console.log("Mutation:", "UpdateManySessionTimes");
+          console.log("Variables:", JSON.stringify({ items: validation.valid }, null, 2));
+          console.log("=========================================================");
+          
+          // Store the published data and mark as published
+          setPublishedSessionData([...sessionData]);
+          setIsActualTimePublished(true);
+        } else {
+          console.log("No valid sessions to publish - all sessions have incomplete data");
+        }
+      }
+
+      toast.success("Actual time data published successfully!");
+      
+      // Exit actual time edit mode only on successful publish
+      setIsActualTimeEditMode(false);
+
+    } catch (error) {
+      console.error("Error publishing actual time data:", error);
+      toast.error("Failed to publish actual time data. Please try again.");
+    } finally {
+      setIsActualTimePublishing(false);
+    }
+  };
+
+  const handleDownloadExcel = () => {
+    // Use published data if available, otherwise use original data
+    const dataToUse = isSchedulePublished ? publishedScheduleData : originalScheduleData;
+    
+    if (!dataToUse || dataToUse.length === 0) {
       toast.error("No data available to export!");
       return;
     }
 
-    const blob = generateExcelFile();
+    const blob = generateExcelFile(dataToUse);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -936,7 +1194,10 @@ export const ViewSchedule = () => {
 
   // Print functionality
   const generatePrintableTable = () => {
-    if (!scheduleData || scheduleData.length === 0) {
+    // Use published data if available, otherwise use original data
+    const dataToUse = isSchedulePublished ? publishedScheduleData : originalScheduleData;
+    
+    if (!dataToUse || dataToUse.length === 0) {
       return `
         <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
           <p>No data available to print</p>
@@ -958,10 +1219,10 @@ export const ViewSchedule = () => {
 
     let dataRows = '';
     let rowIndex = 0;
-    const uniqueUsers = getUniqueUsers(scheduleData);
+    const uniqueUsers = getUniqueUsers(dataToUse);
 
     uniqueUsers.forEach(user => {
-      const userShiftTimes = getUniqueShiftTimes(user.id, scheduleData);
+      const userShiftTimes = getUniqueShiftTimes(user.id, dataToUse);
 
       userShiftTimes.forEach((shiftTime, shiftIndex) => {
         const rowStyle = rowIndex % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
@@ -979,7 +1240,7 @@ export const ViewSchedule = () => {
             dateCol.date,
             shiftTime.startTime,
             shiftTime.endTime,
-            scheduleData
+            dataToUse
           );
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
             ${shift ? `${shift.startTime} - ${shift.endTime}` : '-'}
@@ -988,12 +1249,12 @@ export const ViewSchedule = () => {
 
         if (shiftIndex === 0) {
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${userShiftTimes.length}">
-            ${calculateUserTotal(user.id, scheduleData)}
+            ${calculateUserTotal(user.id, dataToUse)}
           </td>`;
         }
 
         if (shiftIndex === 0) {
-          const autoValue = scheduleData.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
+          const autoValue = dataToUse.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
           row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;" rowspan="${userShiftTimes.length}">
             ${autoValue}
           </td>`;
@@ -1008,7 +1269,7 @@ export const ViewSchedule = () => {
       let totalRow = `<tr style="${totalRowStyle}">`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
       dateColumns.forEach(dateCol => {
-        const daySchedules = scheduleData.filter(item =>
+        const daySchedules = dataToUse.filter(item =>
           item.userId === user.id && item.startDate === dateCol.date
         );
         const dayTotal = daySchedules.reduce((total, schedule) =>
@@ -1020,7 +1281,7 @@ export const ViewSchedule = () => {
         </td>`;
       });
 
-      totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id, scheduleData)}</td>`;
+      totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id, dataToUse)}</td>`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
       totalRow += '</tr>';
       dataRows += totalRow;
@@ -1031,22 +1292,22 @@ export const ViewSchedule = () => {
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
     dateColumns.forEach(dateCol => {
       grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
-        ${calculateDayTotal(dateCol.date, scheduleData) || '-'}
+        ${calculateDayTotal(dateCol.date, dataToUse) || '-'}
       </td>`;
     });
 
-    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal(scheduleData)}</td>`;
+    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal(dataToUse)}</td>`;
     grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
     grandTotalRow += '</tr>';
     dataRows += grandTotalRow;
 
     const totalRecords = uniqueUsers.length;
-    const totalHours = calculateGrandTotal(scheduleData);
+    const totalHours = calculateGrandTotal(dataToUse);
 
     return `
       <div style="margin-bottom: 20px;">
-        <p style="margin: 5px 0; font-size: 14px;"><strong>Client:</strong> ${scheduleData[0]?.clientName || 'N/A'}</p>
-        <p style="margin: 5px 0; font-size: 14px;"><strong>Address:</strong> ${scheduleData[0]?.address || 'N/A'}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Client:</strong> ${dataToUse[0]?.clientName || 'N/A'}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Address:</strong> ${dataToUse[0]?.address || 'N/A'}</p>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Total Employees:</strong> ${totalRecords}</p>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Total Hours:</strong> ${totalHours}</p>
       </div>
@@ -1062,7 +1323,10 @@ export const ViewSchedule = () => {
   };
 
   const handlePrint = async () => {
-    if (!scheduleData || scheduleData.length === 0) {
+    // Use published data if available, otherwise use original data
+    const dataToUse = isSchedulePublished ? publishedScheduleData : originalScheduleData;
+    
+    if (!dataToUse || dataToUse.length === 0) {
       toast.error("No data available to print!");
       return;
     }
@@ -1307,7 +1571,7 @@ export const ViewSchedule = () => {
             scheduleData={scheduleData}
             setScheduleData={setScheduleData}
             currentWeekRange={currentWeekRange}
-            isEditMode={isEditMode}
+            isEditMode={isScheduleEditMode}
           />
 
           {scheduleLoading && (
@@ -1342,8 +1606,8 @@ export const ViewSchedule = () => {
                 scheduleData={scheduleData}
                 setScheduleData={setScheduleData}
                 dateColumns={dateColumns}
-                isEditMode={isEditMode}
-                readOnly={false} // Add this line to enable drag and drop
+                isEditMode={isScheduleEditMode}
+                readOnly={false}
                 draggedShift={draggedShift}
                 setDraggedShift={setDraggedShift}
                 dragOverCell={dragOverCell}
@@ -1358,6 +1622,60 @@ export const ViewSchedule = () => {
                 onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
               />
+
+              {/* Schedule Table Controls - Directly below Schedule Table */}
+              <div className="flex items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl mt-2">
+                
+                {/* Schedule Publish button */}
+                <button
+                  onClick={handleSchedulePublish}
+                  disabled={isPublishing}
+                  className="inline-flex items-center px-3 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm text-sm"
+                  title="Publish Schedule"
+                >
+                  {isPublishing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-1" />
+                      Publish
+                    </>
+                  )}
+                </button>
+
+                {/* Schedule Edit button */}
+                <button
+                  onClick={() => {
+                    setIsScheduleEditMode(!isScheduleEditMode);
+                    // Reset published status when entering edit mode
+                    if (!isScheduleEditMode) {
+                      setIsSchedulePublished(false);
+                    }
+                  }}
+                  className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm ${isScheduleEditMode
+                      ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+                    }`}
+                  title={isScheduleEditMode ? "Exit Schedule Edit Mode" : "Enter Schedule Edit Mode"}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </button>
+
+                {/* Schedule Cancel button - only visible in edit mode */}
+                {isScheduleEditMode && (
+                  <button
+                    onClick={() => setIsScheduleEditMode(false)}
+                    className="inline-flex items-center px-3 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm text-sm"
+                    title="Cancel Schedule Edit Mode"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
 
               {/* Actual Time Table - Using the new ActualTimeTable component */}
               {sessionData.length > 0 && (
@@ -1387,88 +1705,98 @@ export const ViewSchedule = () => {
                   )}
 
                   {!sessionLoading && !sessionError && (
-                    <ActualTimeTable
-                      scheduleData={sessionData}
-                      dateColumns={dateColumns}
-                      isEditMode={isEditMode}
-                    />
+                    <>
+                      <ActualTimeTable
+                        scheduleData={sessionData}
+                        dateColumns={dateColumns}
+                        isEditMode={isActualTimeEditMode}
+                        scheduleDataForShifts={scheduleData}
+                      />
+
+                      {/* Actual Time Table Controls - Directly below Actual Time Table */}
+                      <div className="flex items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl mt-2">
+                        <span className="text-sm font-medium text-gray-700 mr-2">Actual Time:</span>
+                        
+                        {/* Actual Time Publish button */}
+                        <button
+                          onClick={handleActualTimePublish}
+                          disabled={isActualTimePublishing}
+                          className="inline-flex items-center px-3 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm text-sm"
+                          title="Publish Actual Time"
+                        >
+                          {isActualTimePublishing ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                              <span>Publishing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4 mr-1" />
+                              Publish
+                            </>
+                          )}
+                        </button>
+
+                        {/* Actual Time Edit button */}
+                        <button
+                          onClick={() => {
+                            setIsActualTimeEditMode(!isActualTimeEditMode);
+                            // Reset published status when entering edit mode
+                            if (!isActualTimeEditMode) {
+                              setIsActualTimePublished(false);
+                            }
+                          }}
+                          className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm ${isActualTimeEditMode
+                              ? 'text-green-600 hover:text-green-800 hover:bg-green-50 focus:ring-green-500'
+                              : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+                            }`}
+                          title={isActualTimeEditMode ? "Exit Actual Time Edit Mode" : "Enter Actual Time Edit Mode"}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </button>
+
+                        {/* Actual Time Cancel button - only visible in edit mode */}
+                        {isActualTimeEditMode && (
+                          <button
+                            onClick={() => setIsActualTimeEditMode(false)}
+                            className="inline-flex items-center px-3 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm text-sm"
+                            title="Cancel Actual Time Edit Mode"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
 
-              {/* Action buttons - Bottom Corner */}
-              <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
-                {/* Publish and Cancel buttons - Left side */}
-                <div className="flex items-center gap-2">
-                  {/* Publish button - always visible */}
-                  <button
-                    onClick={handlePublish}
-                    disabled={isPublishing}
-                    className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
-                    title="Publish Schedule"
-                  >
-                    {isPublishing ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        <span>Publishing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Publish
-                      </>
-                    )}
-                  </button>
-
-                  {/* Cancel button - only visible in edit mode */}
-                  {isEditMode && (
-                    <button
-                      onClick={toggleEditMode}
-                      className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
-                      title="Cancel Edit Mode"
-                    >
-                      Cancel
-                    </button>
+              {/* Print and Download buttons - Bottom */}
+              <div className="flex justify-end items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl mt-4">
+                <button
+                  onClick={handlePrint}
+                  disabled={isPrinting}
+                  className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  title="Print Report"
+                >
+                  {isPrinting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                      <span className="text-sm">Preparing...</span>
+                    </>
+                  ) : (
+                    <Printer className="w-5 h-5" />
                   )}
-                </div>
+                </button>
 
-                {/* Print, Download and Edit buttons - Right side */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handlePrint}
-                    disabled={isPrinting}
-                    className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    title="Print Report"
-                  >
-                    {isPrinting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-                        <span className="text-sm">Preparing...</span>
-                      </>
-                    ) : (
-                      <Printer className="w-5 h-5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={handleDownloadExcel}
-                    className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    title="Download Excel"
-                  >
-                    <Upload className="w-5 h-5" />
-                  </button>
-
-                  <button
-                    onClick={toggleEditMode}
-                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
-                        ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
-                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-                      }`}
-                    title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
-                  >
-                    <Edit className="w-5 h-5" />
-                  </button>
-                </div>
+                <button
+                  onClick={handleDownloadExcel}
+                  className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  title="Download Excel"
+                >
+                  <Upload className="w-5 h-5" />
+                </button>
               </div>
             </>
           )}
