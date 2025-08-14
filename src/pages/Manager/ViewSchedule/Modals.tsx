@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { 
   DeleteModalState, 
@@ -20,6 +20,17 @@ interface ModalsProps {
   onConfirmEditShift: () => void;
   onCancelDeleteUser: () => void;
   onConfirmDeleteUser: () => void;
+  // Make new props optional with default values
+  shiftSelectionModal?: {
+    isOpen: boolean;
+    targetUserId: number;
+    targetDate: string;
+    targetRowIdx: number;
+    draggedShift: any;
+    availableShifts: any[];
+  };
+  onShiftSelection?: (selectedShift: any) => void;
+  onCancelShiftSelection?: () => void;
 }
 
 export const Modals: React.FC<ModalsProps> = ({
@@ -33,7 +44,17 @@ export const Modals: React.FC<ModalsProps> = ({
   onCancelEditShift,
   onConfirmEditShift,
   onCancelDeleteUser,
-  onConfirmDeleteUser
+  onConfirmDeleteUser,
+  shiftSelectionModal = {
+    isOpen: false,
+    targetUserId: 0,
+    targetDate: '',
+    targetRowIdx: 0,
+    draggedShift: null,
+    availableShifts: []
+  },
+  onShiftSelection = () => {},
+  onCancelShiftSelection = () => {}
 }) => {
   return (
     <>
@@ -75,6 +96,9 @@ export const Modals: React.FC<ModalsProps> = ({
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-4">
               <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Update the start and end times for this shift
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -145,6 +169,53 @@ export const Modals: React.FC<ModalsProps> = ({
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shift Selection Modal */}
+      {shiftSelectionModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Select Shift</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Choose a shift for the session on {shiftSelectionModal.targetDate}
+              </p>
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {shiftSelectionModal.availableShifts.length > 0 ? (
+                shiftSelectionModal.availableShifts.map((shift, index) => (
+                  <button
+                    key={shift.id || index}
+                    onClick={() => onShiftSelection(shift)}
+                    className="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">
+                      {shift.startTime} - {shift.endTime}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Hours: {shift.hours}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">
+                  No shifts available for this date
+                </p>
+              )}
+            </div>
+
+            <div className="flex space-x-3 justify-end mt-6">
+              <button
+                type="button"
+                onClick={onCancelShiftSelection}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
               </button>
             </div>
           </div>

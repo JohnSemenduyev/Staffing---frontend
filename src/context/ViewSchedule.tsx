@@ -146,6 +146,11 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setScheduleError(null);
     try {
       const token = localStorage.getItem("token");
+      
+      console.log("=== FETCH SCHEDULE DATA DEBUG ===");
+      console.log("Parameters:", { clientId, addressId, date });
+      console.log("Token exists:", !!token);
+      
       const response = await graphQLClient.request<{
         ScheduleSessionsByClientWeek: ScheduleData;
       }>(
@@ -153,6 +158,11 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         { clientId, addressId, date },
         { Authorization: `Bearer ${token}` }
       );
+      
+      console.log("Raw API response:", response);
+      console.log("ScheduleSessionsByClientWeek:", response.ScheduleSessionsByClientWeek);
+      console.log("=================================");
+      
       setScheduleData(response.ScheduleSessionsByClientWeek);
     } catch (err) {
       console.error("Failed to fetch schedule data:", err);

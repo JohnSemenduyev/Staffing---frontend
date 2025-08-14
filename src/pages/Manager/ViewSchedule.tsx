@@ -12,6 +12,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
 import { AddGuardForm } from "./ViewSchedule/AddGuardForm";
 import { ScheduleTable } from "./ViewSchedule/ScheduleTable";
+import { ActualTimeTable } from "./ViewSchedule/ActualTimeTable";
 import { Modals } from "./ViewSchedule/Modals";
 // Import our custom hooks and utilities
 import { useScheduleState, useScheduleActions } from "./ViewSchedule/hooks";
@@ -106,221 +107,38 @@ export const ViewSchedule = () => {
 
   // Wrapper handlers for schedule table that set the flag
   const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
-    setIsEditingSession(false);
     originalHandleDeleteShift(userId, date, shiftId);
   };
 
   const handleEditShift = (userId: number, date: string, shift: any) => {
-    setIsEditingSession(false);
     originalHandleEditShift(userId, date, shift);
   };
 
   const handleDeleteUser = (userId: number) => {
-    setIsEditingSession(false);
     originalHandleDeleteUser(userId);
   };
 
   const confirmDeleteShift = () => {
-    if (isEditingSession) {
-      handleSessionConfirmDeleteShift();
-    } else {
-      originalConfirmDeleteShift();
-    }
+    originalConfirmDeleteShift();
   };
 
   const confirmEditShift = () => {
-    if (isEditingSession) {
-      handleSessionConfirmEditShift();
-    } else {
-      originalConfirmEditShift();
-    }
+    originalConfirmEditShift();
   };
 
   const confirmDeleteUser = () => {
-    if (isEditingSession) {
-      handleSessionConfirmDeleteUser();
-    } else {
-      originalConfirmDeleteUser();
-    }
-  };
-
-  // Create separate action handlers for session table
-  const handleSessionDeleteShift = (userId: number, date: string, shiftId: number) => {
-    setIsEditingSession(true);
-    setDeleteModal({
-      isOpen: true,
-      userId,
-      date,
-      shiftId
-    });
-  };
-
-  const handleSessionEditShift = (userId: number, date: string, shift: any) => {
-    setIsEditingSession(true);
-    setEditModal({
-      isOpen: true,
-      userId,
-      date,
-      shift
-    });
-    setEditForm({
-      starttime: shift.startTime,
-      endtime: shift.endTime
-    });
-  };
-
-  const handleSessionDeleteUser = (userId: number) => {
-    setIsEditingSession(true);
-    setDeleteUserModal({
-      isOpen: true,
-      userId
-    });
-  };
-
-  const handleSessionUserAutoToggle = (userId: number, enabled: boolean) => {
-    setSessionData(prev =>
-      prev.map(item =>
-        item.userId === userId
-          ? { ...item, auto: enabled }
-          : item
-      )
-    );
-  };
-  const handleSessionDragStart = (e: React.DragEvent, shift: any, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
-    console.log('Session drag start:', { shift, sourceUserId, sourceDate, sourceRowIdx });
-    setDraggedShift({
-      shift,
-      sourceUserId,
-      sourceDate,
-      sourceRowIdx
-    });
-    e.dataTransfer.effectAllowed = 'copy';
-  };
-
-  const handleSessionDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    setDragOverCell({
-      userId: targetUserId,
-      date: targetDate,
-      rowIdx: targetRowIdx
-    });
-  };
-  const handleSessionDragLeave = (e: React.DragEvent) => {
-    setDragOverCell(null);
+    originalConfirmDeleteUser();
   };
 
 
 
-  // Replace the session drag handlers with these corrected versions:
-  // Fix the session drop handler to create a deep copy
-  const handleSessionDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-    e.preventDefault();
 
-    if (!draggedShift) return;
 
-    const { shift, sourceUserId, sourceDate } = draggedShift;
-    console.log('Session drop:', { shift, sourceUserId, sourceDate, targetUserId, targetDate, targetRowIdx });
 
-    // Check if target user-date combination already exists
-    const existingItem = sessionData.find(item =>
-      item.userId === targetUserId && item.startDate === targetDate
-    );
 
-    if (existingItem) {
-      // Replace existing shifts at target position (copy operation)
-      setSessionData(prev =>
-        prev.map(item => {
-          if (item.userId === targetUserId && item.startDate === targetDate) {
-            const newShifts = [...item.shifts];
-            // Create a deep copy of the shift to avoid reference issues
-            const deepCopiedShift = JSON.parse(JSON.stringify(shift));
-            // Replace at the target position (remove existing if any)
-            newShifts.splice(targetRowIdx, 1, {
-              ...deepCopiedShift,
-              date: targetDate,
-              id: Date.now() + Math.random() // Generate new ID to avoid conflicts
-            });
-            return { ...item, shifts: newShifts };
-          }
-          return item;
-        })
-      );
-    } else {
-      // Create new item for target user-date combination
-      const sourceItem = sessionData.find(item =>
-        item.userId === sourceUserId && item.startDate === sourceDate
-      );
 
-      if (sourceItem) {
-        const deepCopiedShift = JSON.parse(JSON.stringify(shift));
-        const newSessionItem = {
-          ...sourceItem,
-          userId: targetUserId,
-          startDate: targetDate,
-          shifts: [{
-            ...deepCopiedShift,
-            date: targetDate,
-            id: Date.now() + Math.random()
-          }]
-        };
 
-        setSessionData(prev => [...prev, newSessionItem]);
-      }
-    }
 
-    setDraggedShift(null);
-    setDragOverCell(null);
-  };
-  const handleSessionDragEnd = () => {
-    setDraggedShift(null);
-    setDragOverCell(null);
-  };
-
-  // Session-specific modal handlers
-  const handleSessionConfirmDeleteShift = () => {
-    if (!deleteModal.isOpen || !deleteModal.userId || !deleteModal.date || !deleteModal.shiftId) return;
-
-    setSessionData(prev =>
-      prev.map(item => {
-        if (item.userId === deleteModal.userId && item.startDate === deleteModal.date) {
-          const newShifts = item.shifts.filter(shift => shift.id !== deleteModal.shiftId);
-          return { ...item, shifts: newShifts };
-        }
-        return item;
-      })
-    );
-
-    setDeleteModal({ isOpen: false, userId: null, date: null, shiftId: null });
-  };
-
-  const handleSessionConfirmEditShift = () => {
-    if (!editModal.isOpen || !editModal.userId || !editModal.date || !editModal.shift) return;
-
-    setSessionData(prev =>
-      prev.map(item => {
-        if (item.userId === editModal.userId && item.startDate === editModal.date) {
-          const newShifts = item.shifts.map(shift =>
-            shift.id === editModal.shift.id
-              ? { ...shift, startTime: editForm.starttime, endTime: editForm.endtime }
-              : shift
-          );
-          return { ...item, shifts: newShifts };
-        }
-        return item;
-      })
-    );
-
-    setEditModal({ isOpen: false, userId: null, date: null, shift: null });
-    setEditForm({ starttime: '', endtime: '' });
-  };
-
-  const handleSessionConfirmDeleteUser = () => {
-    if (!deleteUserModal.isOpen || !deleteUserModal.userId) return;
-
-    setSessionData(prev => prev.filter(item => item.userId !== deleteUserModal.userId));
-    setDeleteUserModal({ isOpen: false, userId: null });
-  };
   const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> } => {
     const valid: UpdateOneSessionTimesInput[] = [];
     const invalid: Array<{ sessionId: number, clockIn: string, clockOut: string, reason: string }> = [];
@@ -399,7 +217,122 @@ export const ViewSchedule = () => {
   const [sessionData, setSessionData] = useState<any[]>([]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [isEditingSession, setIsEditingSession] = useState(false);
+
+
+  // Add state to store original API data for comparison
+  const [originalScheduleData, setOriginalScheduleData] = useState<any[]>([]);
+  const [originalSessionData, setOriginalSessionData] = useState<any[]>([]);
+
+  // Function to detect changes in schedule data
+  const detectScheduleChanges = (currentData: any[], originalData: any[]) => {
+    const changes: any[] = [];
+    
+    currentData.forEach(currentItem => {
+      const originalItem = originalData.find(item => 
+        item.userId === currentItem.userId && 
+        item.startDate === currentItem.startDate
+      );
+      
+      if (!originalItem) {
+        // New item - add to changes
+        changes.push(currentItem);
+        return;
+      }
+      
+      // Check if shifts have changed
+      const currentShifts = currentItem.shifts || [];
+      const originalShifts = originalItem.shifts || [];
+      
+      if (currentShifts.length !== originalShifts.length) {
+        // Number of shifts changed
+        changes.push(currentItem);
+        return;
+      }
+      
+      // Check individual shifts for changes
+      const shiftsChanged = currentShifts.some((currentShift: any, index: number) => {
+        const originalShift = originalShifts[index];
+        return (
+          currentShift.startTime !== originalShift.startTime ||
+          currentShift.endTime !== originalShift.endTime ||
+          currentShift.hours !== originalShift.hours ||
+          currentShift.date !== originalShift.date
+        );
+      });
+      
+      if (shiftsChanged) {
+        changes.push(currentItem);
+      }
+    });
+    
+    return changes;
+  };
+
+  // Function to detect changes in session data
+  const detectSessionChanges = (currentData: any[], originalData: any[]) => {
+    const changes: UpdateOneSessionTimesInput[] = [];
+    
+    currentData.forEach(currentItem => {
+      currentItem.shifts.forEach((currentShift: any) => {
+        const originalItem = originalData.find(item => 
+          item.userId === currentItem.userId && 
+          item.startDate === currentItem.startDate
+        );
+        
+        if (!originalItem) {
+          // New session data
+          if (currentShift.scheduleSessionId && 
+              currentShift.startTime !== "N/A" && 
+              currentShift.endTime !== "N/A") {
+            changes.push({
+              sessionId: currentShift.scheduleSessionId,
+              clockIn: currentShift.startTime,
+              clockOut: currentShift.endTime
+            });
+          }
+          return;
+        }
+        
+        const originalShift = originalItem.shifts.find((s: any) => s.id === currentShift.id);
+        
+        if (!originalShift) {
+          // New shift
+          if (currentShift.scheduleSessionId && 
+              currentShift.startTime !== "N/A" && 
+              currentShift.endTime !== "N/A") {
+            changes.push({
+              sessionId: currentShift.scheduleSessionId,
+              clockIn: currentShift.startTime,
+              clockOut: currentShift.endTime
+            });
+          }
+        } else {
+          // Check if shift times changed
+          if (currentShift.startTime !== originalShift.startTime ||
+              currentShift.endTime !== originalShift.endTime) {
+            if (currentShift.scheduleSessionId && 
+                currentShift.startTime !== "N/A" && 
+                currentShift.endTime !== "N/A") {
+              changes.push({
+                sessionId: currentShift.scheduleSessionId,
+                clockIn: currentShift.startTime,
+                clockOut: currentShift.endTime
+              });
+            }
+          }
+        }
+      });
+    });
+    
+    return changes;
+  };
+
+  // Helper function to process schedule changes
+  const processScheduleChanges = (changes: any[]) => {
+    return changes.map(change => ({
+      // ... format the changed data for API ...
+    }));
+  };
 
   // Function to fetch session data
   const fetchSessionData = async () => {
@@ -441,6 +374,7 @@ export const ViewSchedule = () => {
       // Transform session data to match schedule data format
       const transformedSessionData = transformSessionDataToScheduleFormat(allSessions);
       setSessionData(transformedSessionData);
+      setOriginalSessionData(transformedSessionData); // Store original session data
 
     } catch (err: any) {
       console.error("Error fetching session data:", err);
@@ -555,7 +489,36 @@ export const ViewSchedule = () => {
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
 
-    const formattedDate = convertDateFormat(date);
+    console.log("=== DATE DEBUGGING ===");
+    console.log("Original date received:", date);
+    console.log("Date type:", typeof date);
+    console.log("Date length:", date.length);
+    
+    // Fix: Handle both YYYY-MM-DD and MM-DD-YYYY formats
+    let formattedDate: string;
+    let year: number, month: number, day: number;
+    
+    if (date.includes('-')) {
+      const parts = date.split('-').map(Number);
+      
+      // Check if it's YYYY-MM-DD format (first part is 4 digits)
+      if (parts[0] > 1000) {
+        // YYYY-MM-DD format - convert to MM-DD-YYYY for API
+        [year, month, day] = parts;
+        formattedDate = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}-${year}`;
+      } else {
+        // MM-DD-YYYY format - already correct
+        [month, day, year] = parts;
+        formattedDate = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}-${year}`;
+      }
+    } else {
+      // Fallback to original logic
+      [month, day, year] = date.split('-').map(Number);
+      formattedDate = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}-${year}`;
+    }
+    
+    console.log("Formatted date for API:", formattedDate);
+    console.log("=====================");
 
     console.log("Submitting with:", {
       clientId,
@@ -569,7 +532,8 @@ export const ViewSchedule = () => {
       return;
     }
 
-    const selectedDateObj = new Date(date + 'T00:00:00');
+    // Fix: Properly parse MM-DD-YYYY format
+    const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0);
     const easternDate = toZonedTime(selectedDateObj, 'America/New_York');
 
     const weekRange = getWeekRangeFromDate(easternDate);
@@ -673,9 +637,11 @@ export const ViewSchedule = () => {
 
       console.log("Transformed schedule data:", transformedData);
       setScheduleData(transformedData);
+      setOriginalScheduleData(transformedData); // Store original data for comparison
     } else {
       console.log("No API schedule data or empty array:", apiScheduleData);
       setScheduleData([]);
+      setOriginalScheduleData([]);
     }
   }, [apiScheduleData, selectedClient]);
 
@@ -709,7 +675,12 @@ export const ViewSchedule = () => {
   ];
 
   const dateColumns = generateDateColumns(currentWeekRange);
-
+   const formatDateToYYYYMMDD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   // Excel Download functionality
   const generateExcelFile = () => {
     const formattedData = [];
@@ -798,182 +769,147 @@ export const ViewSchedule = () => {
     try {
       setIsPublishing(true);
 
-      // First API call: Publish schedule data
-      const selectedDateObj = new Date(selectedDate);
-      const weekRange = getWeekRangeFromDate(selectedDateObj);
-      const startDate = weekRange.startOfWeek.toISOString().split('T')[0];
-      const endDate = weekRange.endOfWeek.toISOString().split('T')[0];
-
-      const userScheduleMap = new Map();
-
-      scheduleData.forEach(item => {
-        const userId = item.userId;
-        const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId
-          ? item.shifts[0].scheduleSessionId
-          : null;
-
-        if (!userScheduleMap.has(userId)) {
-          userScheduleMap.set(userId, {
-            scheduleSessionId: scheduleSessionId,
-            clientId: item.clientId,
-            addressId: item.addressId,
-            userId: userId,
-            startDate: convertDateFormat(startDate),
-            endDate: convertDateFormat(endDate),
-            auto: item.auto,
-            weeklyHours: 0,
-            shifts: []
-          });
-        } else {
-          const existingSchedule = userScheduleMap.get(userId);
-          existingSchedule.auto = item.auto;
-
-          if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
-            existingSchedule.scheduleSessionId = scheduleSessionId;
+      // Process ALL schedule data (not just changes)
+      if (scheduleData.length > 0) {
+        // First API call: Publish ALL schedule data
+        // Fix: Handle both YYYY-MM-DD and MM-DD-YYYY formats
+        let year: number, month: number, day: number;
+        
+        if (selectedDate.includes('-')) {
+          const parts = selectedDate.split('-').map(Number);
+          
+          // Check if it's YYYY-MM-DD format (first part is 4 digits)
+          if (parts[0] > 1000) {
+            // YYYY-MM-DD format
+            [year, month, day] = parts;
+          } else {
+            // MM-DD-YYYY format
+            [month, day, year] = parts;
           }
+        } else {
+          // Fallback
+          [month, day, year] = selectedDate.split('-').map(Number);
         }
-
-        const userSchedule = userScheduleMap.get(userId);
-
-        item.shifts.forEach(shift => {
-          const isClientGeneratedId = shift.id > 1000000000000;
-          userSchedule.shifts.push({
-            date: convertDateFormat(shift.date),
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            hours: shift.hours,
-            shiftId: isClientGeneratedId ? null : shift.id
-          });
-        });
-      });
-
-      const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
-        const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
-
-        return {
-          ...userSchedule,
-          weeklyHours: parseFloat(weeklyHours.toFixed(2))
-        };
-      });
-
-      console.log("=== PUBLISHING SCHEDULE DATA ===");
-      console.log("Schedule Input:", JSON.stringify(scheduleInput, null, 2));
-      console.log("Total Users:", scheduleInput.length);
-      console.log("Week Range:", { startDate, endDate });
-      console.log("=====================================");
-
-      await bulkUpsertScheduleSessions(scheduleInput);
-      console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
-
-      // Second API call: Update session times (if session data exists)
-      if (sessionData && sessionData.length > 0) {
-        console.log("=== UPDATING SESSION TIMES ===");
         
-        const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
-        const newSessions: SessionTimeInput[] = [];
+        const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0);
+        const weekRange = getWeekRangeFromDate(selectedDateObj);
+        const startDate = formatDateToYYYYMMDD(weekRange.startOfWeek);
+        const endDate = formatDateToYYYYMMDD(weekRange.endOfWeek);
         
-        sessionData.forEach(item => {
-          item.shifts.forEach(shift => {
-            // Only include sessions that have actual clock in/out times (not N/A)
-            if (shift.startTime !== "N/A" && shift.endTime !== "N/A") {
-              if (shift.scheduleSessionId) {
-                // Existing session - update with session ID
-                sessionTimeUpdates.push({
-                  sessionId: shift.scheduleSessionId,
-                  clockIn: shift.startTime,
-                  clockOut: shift.endTime
-                });
-              } else {
-                // New session - needs to be created with shiftId
-                newSessions.push({
-                  sessionId: null,  // null for new sessions
-                  shiftId: shift.id, // required for new session creation
-                  clockIn: shift.startTime,
-                  clockOut: shift.endTime
-                });
-              }
+        const userScheduleMap = new Map();
+
+        // Process ALL schedule data instead of just changes
+        scheduleData.forEach(item => {
+          const userId = item.userId;
+          const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId
+            ? item.shifts[0].scheduleSessionId
+            : null;
+
+          if (!userScheduleMap.has(userId)) {
+            userScheduleMap.set(userId, {
+              scheduleSessionId: scheduleSessionId,
+              clientId: item.clientId,
+              addressId: item.addressId,
+              userId: userId,
+              startDate: convertDateFormat(startDate),
+              endDate: convertDateFormat(endDate),
+              auto: item.auto,
+              weeklyHours: 0,
+              shifts: []
+            });
+          } else {
+            const existingSchedule = userScheduleMap.get(userId);
+            existingSchedule.auto = item.auto;
+
+            if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
+              existingSchedule.scheduleSessionId = scheduleSessionId;
             }
-          });
-        });
-      
-        if (sessionData && sessionData.length > 0) {
-          console.log("=== UPDATING SESSION TIMES ===");
-          
-          const sessionTimeUpdates: UpdateOneSessionTimesInput[] = [];
-          const newSessions: SessionTimeInput[] = []; // For new sessions that need to be created
-          
-          sessionData.forEach(item => {
-            item.shifts.forEach(shift => {
-              // Only include sessions that have actual clock in/out times (not N/A)
-              if (shift.startTime !== "N/A" && shift.endTime !== "N/A") {
-                if (shift.scheduleSessionId) {
-                  // Existing session - update with session ID
-                  sessionTimeUpdates.push({
-                    sessionId: shift.scheduleSessionId,
-                    clockIn: shift.startTime,
-                    clockOut: shift.endTime
-                  });
-                } else {
-                  // New session - needs to be created with shiftId
-                  newSessions.push({
-                    sessionId: null,  // null for new sessions
-                    shiftId: shift.id, // required for new session creation
-                    clockIn: shift.startTime,
-                    clockOut: shift.endTime
-                  });
-                }
-              }
+          }
+
+          const userSchedule = userScheduleMap.get(userId);
+
+          // Include ALL shifts for this user-date combination
+          item.shifts.forEach(shift => {
+            const isClientGeneratedId = shift.id > 1000000000000;
+            userSchedule.shifts.push({
+              date: convertDateFormat(shift.date),
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+              hours: shift.hours,
+              shiftId: isClientGeneratedId ? null : shift.id
             });
           });
-        
-          // Handle existing session updates
-          if (sessionTimeUpdates.length > 0) {
-            console.log("Session time updates:", JSON.stringify(sessionTimeUpdates, null, 2));
-            
-            // Validate session times before sending to API
-            const validation = validateSessionTimes(sessionTimeUpdates);
-            
-            if (validation.invalid.length > 0) {
-              console.warn("Invalid session times detected:", validation.invalid);
-              
-              // Show warning for invalid sessions
-              const invalidMessages = validation.invalid.map(inv => 
-                `Session ${inv.sessionId}: ${inv.reason} (${inv.clockIn} - ${inv.clockOut})`
-              ).join('\n');
-              
-              toast.error(`Some session times could not be updated:\n${invalidMessages}`, {
-                duration: 5000
-              });
-            }
-        
-            if (validation.valid.length > 0) {
-              console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
-              await updateManySessionTimes(validation.valid);
-              console.log("Valid session times updated successfully");
-            } else {
-              console.log("No valid session time updates to process");
-            }
-          }
-  
-          // Handle new session creation
-          if (newSessions.length > 0) {
-            console.log("New sessions to create:", JSON.stringify(newSessions, null, 2));
-            // TODO: Add API call to create new sessions with shiftId
-            // await createNewSessions(newSessions);
-            console.log("New sessions creation not yet implemented");
-          }
-        }
+        });
 
+        const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
+          const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
+
+          return {
+            ...userSchedule,
+            weeklyHours: parseFloat(weeklyHours.toFixed(2))
+          };
+        });
+
+        console.log("=== PUBLISHING ALL SCHEDULE DATA ===");
+        console.log("Complete Schedule Input:", JSON.stringify(scheduleInput, null, 2));
+        console.log("Total Users:", scheduleInput.length);
+        
+        // Uncomment the API call
+        // await bulkUpsertScheduleSessions(scheduleInput);
+        
+        console.log("=== EXACT SCHEDULE API PAYLOAD THAT WOULD BE SENT ===");
+        console.log("Mutation:", "BulkUpsertScheduleSession");
+        console.log("Variables:", JSON.stringify({ input: scheduleInput }, null, 2));
+        console.log("===================================================");
       }
 
-      toast.success("Schedule and session times published successfully!");
+      // Process ALL session data (not just changes)
+      if (sessionData.length > 0) {
+        console.log("=== UPDATING ALL SESSION TIMES ===");
+        
+        // Collect ALL session times from session data
+        const allSessionTimes: UpdateOneSessionTimesInput[] = [];
+        
+        sessionData.forEach(sessionItem => {
+          sessionItem.shifts.forEach((shift: any) => {
+            if (shift.scheduleSessionId && 
+                shift.startTime !== "N/A" && 
+                shift.endTime !== "N/A") {
+              allSessionTimes.push({
+                sessionId: shift.scheduleSessionId,
+                clockIn: shift.startTime,
+                clockOut: shift.endTime
+              });
+            }
+          });
+        });
+        
+        console.log("All session time updates:", JSON.stringify(allSessionTimes, null, 2));
+        
+        // Validate session times before sending to API
+        const validation = validateSessionTimes(allSessionTimes);
+        
+        if (validation.valid.length > 0) {
+          console.log("Valid session time updates:", JSON.stringify(validation.valid, null, 2));
+          
+          // Uncomment the API call
+          await updateManySessionTimes(validation.valid);
+          
+          console.log("=== EXACT SESSION TIMES API PAYLOAD THAT WOULD BE SENT ===");
+          console.log("Mutation:", "UpdateManySessionTimes");
+          console.log("Variables:", JSON.stringify({ items: validation.valid }, null, 2));
+          console.log("=========================================================");
+        }
+      }
+
+      toast.success("All data published successfully!");
       
       // Exit edit mode only on successful publish
       setIsEditMode(false);
 
     } catch (error) {
-      console.error("Error publishing schedule:", error);
-      toast.error("Failed to publish schedule. Please try again.");
+      console.error("Error publishing data:", error);
+      toast.error("Failed to publish data. Please try again.");
       // Don't exit edit mode on error - stay in edit mode
     } finally {
       setIsPublishing(false);
@@ -1324,7 +1260,9 @@ export const ViewSchedule = () => {
   };
 
   const toggleEditMode = () => {
-    setIsEditMode(!isEditMode);
+    const newEditMode = !isEditMode;
+    console.log('Toggle edit mode:', { current: isEditMode, new: newEditMode });
+    setIsEditMode(newEditMode);
   };
 
   return (
@@ -1421,7 +1359,7 @@ export const ViewSchedule = () => {
                 onDragEnd={handleDragEnd}
               />
 
-              {/* Session Table - Using the same ScheduleTable component */}
+              {/* Actual Time Table - Using the new ActualTimeTable component */}
               {sessionData.length > 0 && (
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-4">
@@ -1449,25 +1387,10 @@ export const ViewSchedule = () => {
                   )}
 
                   {!sessionLoading && !sessionError && (
-                    <ScheduleTable
+                    <ActualTimeTable
                       scheduleData={sessionData}
-                      setScheduleData={setSessionData}
                       dateColumns={dateColumns}
-                      isEditMode={isEditMode} // Use same edit mode as schedule table
-                      readOnly={false} // Add this line to enable drag and drop
-                      draggedShift={draggedShift}
-                      setDraggedShift={setDraggedShift}
-                      dragOverCell={dragOverCell}
-                      setDragOverCell={setDragOverCell}
-                      onEditShift={handleSessionEditShift} // Session-specific edit functionality
-                      onDeleteShift={handleSessionDeleteShift} // Session-specific delete functionality
-                      onDeleteUser={handleSessionDeleteUser} // Session-specific delete user functionality
-                      onUserAutoToggle={handleSessionUserAutoToggle} // Session-specific toggle functionality
-                      onDragStart={handleSessionDragStart} // Session-specific drag functionality
-                      onDragOver={handleSessionDragOver} // Session-specific drag over functionality
-                      onDragLeave={handleSessionDragLeave} // Session-specific drag leave functionality
-                      onDrop={handleSessionDrop} // Session-specific drop functionality
-                      onDragEnd={handleSessionDragEnd} // Session-specific drag end functionality
+                      isEditMode={isEditMode}
                     />
                   )}
                 </div>
