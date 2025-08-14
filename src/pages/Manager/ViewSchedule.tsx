@@ -138,14 +138,6 @@ export const ViewSchedule = () => {
   };
 
 
-
-
-
-
-
-
-
-
   const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string | null, reason: string }> } => {
     const valid: UpdateOneSessionTimesInput[] = [];
     const invalid: Array<{ sessionId: number, clockIn: string, clockOut: string | null, reason: string }> = [];
@@ -994,7 +986,7 @@ export const ViewSchedule = () => {
         console.log("Total Users:", scheduleInput.length);
         
         // Uncomment the API call
-        // await bulkUpsertScheduleSessions(scheduleInput);
+         await bulkUpsertScheduleSessions(scheduleInput);
         
         console.log("=== EXACT SCHEDULE API PAYLOAD THAT WOULD BE SENT ===");
         console.log("Mutation:", "BulkUpsertScheduleSession");
