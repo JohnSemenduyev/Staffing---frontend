@@ -7,6 +7,7 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
+import { ErrorMessage } from "../../components/ui/error-message";
 
  export  const inputClasses = `
     w-full
@@ -210,7 +211,7 @@ export const GeoLocationSetup = () => {
       render: (value: any) => `${value} Mins`
     }
   ];
-
+y
   const tableActions: TableAction[] = [
     {
       label: "Edit",
@@ -268,6 +269,7 @@ export const GeoLocationSetup = () => {
                   {errors.clientId}
                 </div>
               )}
+
 
   {showClientDropdown && clientSearch.length >= 2 && (
     <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
@@ -361,12 +363,7 @@ export const GeoLocationSetup = () => {
                 className={getFieldClasses('distance')}
               />
               {showErrors && errors.distance && (
-                <div className="mt-1 flex items-center text-sm text-red-600">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  {errors.distance}
-                </div>
+                <ErrorMessage message={errors.distance} />
               )}
             </div>
             
@@ -380,12 +377,7 @@ export const GeoLocationSetup = () => {
                 className={getFieldClasses('time')}
               />
               {showErrors && errors.time && (
-                <div className="mt-1 flex items-center text-sm text-red-600">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.time}
-                </div>
+                <ErrorMessage message={errors.time} />
               )}
             </div>
             

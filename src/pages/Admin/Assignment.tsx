@@ -8,6 +8,7 @@ import { useSearchClient } from "../../hooks/usesearchClient";
 import { useSearchGuards } from "../../hooks/useSearchGuard";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import SubmitButton from "../../components/ui/ButtonUi";
+import { ErrorMessage } from "../../components/ui/error-message";
 
 const notificationOptions = [
   "Geolocation",
@@ -179,7 +180,7 @@ export default function AssignmentForm() {
                   className={fieldInputClasses}
                 />
                 {errors.clientId && (
-                  <span className="text-xs text-red-500">{errors.clientId}</span>
+                  <ErrorMessage message={errors.clientId} />
                 )}
                 {showClientDropdown && clientSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -221,7 +222,7 @@ export default function AssignmentForm() {
     <span className="text-xs text-blue-500 ml-2">Loading...</span>
   )}
   {errors.addressId && (
-    <span className="text-xs text-red-500">{errors.addressId}</span>
+    <ErrorMessage message={errors.addressId} />
   )}
 </div>
 
@@ -241,7 +242,7 @@ export default function AssignmentForm() {
                   className={fieldInputClasses}
                 />
                 {errors.userId && (
-                  <span className="text-xs text-red-500">{errors.userId}</span>
+                  <ErrorMessage message={errors.userId} />
                 )}
                 {showUserDropdown && userSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -279,7 +280,7 @@ export default function AssignmentForm() {
                   className={fieldInputClasses}
                 />
                 {errors.userId && (
-                  <span className="text-xs text-red-500">{errors.userId}</span>
+                  <ErrorMessage message={errors.userId} />
                 )}
                 {showUserDropdown && guardSearch.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -315,7 +316,7 @@ export default function AssignmentForm() {
     <option value="Client">Client</option>
   </select>
   {errors.role && (
-    <span className="text-xs text-red-500">{errors.role}</span>
+    <ErrorMessage message={errors.role} />
   )}
 </div>
 
@@ -331,7 +332,7 @@ export default function AssignmentForm() {
     <option value="Edit">Edit</option>
   </select>
   {errors.access && (
-    <span className="text-xs text-red-500">{errors.access}</span>
+    <ErrorMessage message={errors.access} />
   )}
 </div>
 
@@ -391,9 +392,7 @@ export default function AssignmentForm() {
                 )}
                 
                 {errors.notification && (
-                  <span className="text-xs text-red-500 block mt-1">
-                    {errors.notification}
-                  </span>
+                  <ErrorMessage message={errors.notification} />
                 )}
               </div>
               {/* Submit Button */}

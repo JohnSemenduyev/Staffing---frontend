@@ -13,6 +13,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import {  toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { ErrorMessage } from "../../components/ui/error-message";
 
 interface FormData {
   clientId: string;
@@ -1037,7 +1038,7 @@ const generateDateColumns = () => {
     className={inputClasses}
   />
   {errors.clientId && (
-    <span className="text-xs text-red-500">{errors.clientId}</span>
+    <ErrorMessage message={errors.clientId} />
   )}
 
   {showClientDropdown && clientSearch.length >= 2 && (
@@ -1104,7 +1105,7 @@ const generateDateColumns = () => {
                 className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
               />
               {errors.addressId && (
-                <span className="text-xs text-red-500 block">{errors.addressId}</span>
+                <ErrorMessage message={errors.addressId} />
               )}
 
             </div>
@@ -1124,7 +1125,7 @@ const generateDateColumns = () => {
                 className={inputClasses}
               />
               {errors.userId && (
-                <span className="text-xs text-red-500">{errors.userId}</span>
+                <ErrorMessage message={errors.userId} />
               )}
               {showUserDropdown && userSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
@@ -1146,7 +1147,8 @@ const generateDateColumns = () => {
                 </div>
               )}
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center flex-col">
+            <div className="flex items-center flex-row w-full ">
             <CustomDatePicker
                 value={form.date}
                 onChange={handleChange}
@@ -1155,9 +1157,7 @@ const generateDateColumns = () => {
                 minDate={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
                 maxDate={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
               />
-              {errors.date && (
-                <span className="text-xs text-red-500">{errors.date}</span>
-              )}
+              
               <div className="flex items-center m-2 space-x-2">
                 <input
                   id="applyAllWeek"
@@ -1181,6 +1181,10 @@ const generateDateColumns = () => {
                 </label>
               </div>
             </div>
+              {errors.date && (
+                <ErrorMessage message={errors.date} />
+              )}
+            </div>
 
             <div>
               <input
@@ -1201,7 +1205,7 @@ const generateDateColumns = () => {
                 className={`${inputClasses} ${form.starttime ? "text-black" : "text-gray-500"}`}
               />
               {errors.starttime && (
-                <span className="text-xs text-red-500">{errors.starttime}</span>
+                <ErrorMessage message={errors.starttime} />
               )}
             </div>
             <div>
@@ -1222,10 +1226,10 @@ const generateDateColumns = () => {
                 className={`${inputClasses} ${form.endtime ? "text-black" : "text-gray-500"}`}
               />
               {errors.endtime && (
-                <span className="text-xs text-red-500">{errors.endtime}</span>
+                <ErrorMessage message={errors.endtime} />
               )}
               {errors.overlap && (
-                <span className="text-xs text-red-500">{errors.overlap}</span>
+                <ErrorMessage message={errors.overlap} />
               )}
             </div>
             <div className="flex items-center">

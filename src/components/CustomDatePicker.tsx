@@ -110,8 +110,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         disabled={disabled}
         
       />
-      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white px-1">
-        <Calendar
+        <div className="absolute right-3 top-1/3 transform -translate-y-1/2 bg-white px-1">        <Calendar
           className={`w-4 h-4 pointer-events-none ${
             disabled ? 'text-gray-300' : 'text-gray-400'
           }`}
@@ -130,7 +129,6 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
             scrollableYearDropdown
             yearDropdownItemNumber={15}
             onCalendarClose={() => setIsOpen(false)}
-
           />
         </div>
       )}

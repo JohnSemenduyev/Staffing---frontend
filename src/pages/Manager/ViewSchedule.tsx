@@ -25,11 +25,14 @@ import {
   calculateDayTotal,
   calculateGrandTotal,
   getUniqueShiftTimes,
-  getShiftForUserDateAndTime
+  getShiftForUserDateAndTime,
+  getMaxShiftsPerDay,
+  sortShiftsByTime
 } from "./ViewSchedule/utils";
 
 // Import types
 import { ScheduleItem, DateColumn } from "./ViewSchedule/types";
+import { ErrorMessage } from "../../components/ui/error-message";
 
 export const ViewSchedule = () => {
   const {
@@ -133,14 +136,6 @@ export const ViewSchedule = () => {
   const confirmDeleteUser = () => {
     originalConfirmDeleteUser();
   };
-
-
-
-
-
-
-
-
 
 
   const validateSessionTimes = (sessionTimeUpdates: UpdateOneSessionTimesInput[]): { valid: UpdateOneSessionTimesInput[], invalid: Array<{ sessionId: number, clockIn: string, clockOut: string | null, reason: string }> } => {
@@ -715,35 +710,54 @@ export const ViewSchedule = () => {
   };
   // Excel Download functionality
   const generateExcelFile = (dataToUse = scheduleData) => {
-    const formattedData = [];
+    const workbook = XLSX.utils.book_new();
+    
+    // Generate Schedule Time sheet
+    const scheduleFormattedData = [];
     const uniqueUsers = getUniqueUsers(dataToUse);
 
     uniqueUsers.forEach(user => {
-      const userShiftTimes = getUniqueShiftTimes(user.id, dataToUse);
+      // Use getMaxShiftsPerDay instead of getUniqueShiftTimes to match Web UI
+      const maxShiftsPerDay = getMaxShiftsPerDay(user.id, dataToUse);
 
-      const userMainRow = {
-        "Employee Name": `${user.name}\n${user.phone || ""}`,
-      };
+      // Create rows for each shift position (0, 1, 2, etc.)
+      for (let rowIdx = 0; rowIdx < maxShiftsPerDay; rowIdx++) {
+        const userRow = {
+          "Employee Name": rowIdx === 0 ? `${user.name}\n${user.phone || ""}` : "", // Only show name in first row
+        };
 
-      dateColumns.forEach(dateCol => {
-        const userSchedulesForDate = dataToUse.filter(item =>
-          item.userId === user.id && item.startDate === dateCol.date
-        );
+        dateColumns.forEach(dateCol => {
+          const daySchedules = dataToUse.filter(item =>
+            item.userId === user.id && item.startDate === dateCol.date
+          );
+          
+          if (daySchedules.length > 0) {
+            const shifts = sortShiftsByTime(daySchedules.flatMap(schedule => schedule.shifts));
+            const shift = shifts[rowIdx]; // Get the nth shift for this day
+            
+            if (shift) {
+              userRow[dateCol.display] = `${shift.startTime} - ${shift.endTime}`;
+            } else {
+              userRow[dateCol.display] = "-";
+            }
+          } else {
+            userRow[dateCol.display] = "-";
+          }
+        });
 
-        if (userSchedulesForDate.length > 0) {
-          const shifts = userSchedulesForDate.flatMap(schedule => schedule.shifts);
-          const shiftTimes = shifts.map(shift => `${shift.startTime} - ${shift.endTime}`);
-          userMainRow[dateCol.display] = shiftTimes.join('\n') || "-";
+        // Only show totals in first row
+        if (rowIdx === 0) {
+          userRow["Total"] = calculateUserTotal(user.id, dataToUse);
+          userRow["Auto"] = dataToUse.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
         } else {
-          userMainRow[dateCol.display] = "-";
+          userRow["Total"] = "";
+          userRow["Auto"] = "";
         }
-      });
 
-      userMainRow["Total"] = calculateUserTotal(user.id, dataToUse);
-      userMainRow["Auto"] = dataToUse.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
+        scheduleFormattedData.push(userRow);
+      }
 
-      formattedData.push(userMainRow);
-
+      // Add total row for this user
       const totalRow = {
         "Employee Name": "Total",
       };
@@ -758,31 +772,116 @@ export const ViewSchedule = () => {
       });
       totalRow["Total"] = calculateUserTotal(user.id, dataToUse);
       totalRow["Auto"] = "";
-      formattedData.push(totalRow);
+      scheduleFormattedData.push(totalRow);
     });
 
-    const grandTotalRow = {
+    const scheduleGrandTotalRow = {
       "Employee Name": "Grand Total",
     };
     dateColumns.forEach(dateCol => {
-      grandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date, dataToUse) || "-";
+      scheduleGrandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date, dataToUse) || "-";
     });
-    grandTotalRow["Total"] = calculateGrandTotal(dataToUse);
-    grandTotalRow["Auto"] = "";
-    formattedData.push(grandTotalRow);
+    scheduleGrandTotalRow["Total"] = calculateGrandTotal(dataToUse);
+    scheduleGrandTotalRow["Auto"] = "";
+    scheduleFormattedData.push(scheduleGrandTotalRow);
 
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
-
-    const colWidths = [
+    const scheduleWorksheet = XLSX.utils.json_to_sheet(scheduleFormattedData);
+    const scheduleColWidths = [
       { wch: 20 },
       ...dateColumns.map(() => ({ wch: 15 })),
       { wch: 10 },
       { wch: 8 }
     ];
-    worksheet['!cols'] = colWidths;
+    scheduleWorksheet['!cols'] = scheduleColWidths;
+    XLSX.utils.book_append_sheet(workbook, scheduleWorksheet, "Schedule Time");
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Schedule");
+    // Generate Actual Time sheet if session data exists
+    if (sessionData && sessionData.length > 0) {
+      const actualTimeFormattedData = [];
+      const actualTimeUniqueUsers = getUniqueUsers(sessionData);
+
+      actualTimeUniqueUsers.forEach(user => {
+        // Use getMaxShiftsPerDay instead of getUniqueShiftTimes to match Web UI
+        const maxShiftsPerDay = getMaxShiftsPerDay(user.id, sessionData);
+
+        // Create rows for each shift position (0, 1, 2, etc.)
+        for (let rowIdx = 0; rowIdx < maxShiftsPerDay; rowIdx++) {
+          const userRow = {
+            "Employee Name": rowIdx === 0 ? `${user.name}\n${user.phone || ""}` : "", // Only show name in first row
+          };
+
+          dateColumns.forEach(dateCol => {
+            const daySchedules = sessionData.filter(item =>
+              item.userId === user.id && item.startDate === dateCol.date
+            );
+            
+            if (daySchedules.length > 0) {
+              const shifts = sortShiftsByTime(daySchedules.flatMap(schedule => schedule.shifts));
+              const shift = shifts[rowIdx]; // Get the nth shift for this day
+              
+              if (shift) {
+                // For actual time, use clockIn/clockOut if available, otherwise startTime/endTime
+                const startTime = shift.clockIn !== undefined ? shift.clockIn : shift.startTime;
+                const endTime = shift.clockOut !== undefined ? shift.clockOut : shift.endTime;
+                userRow[dateCol.display] = `${startTime} - ${endTime}`;
+              } else {
+                userRow[dateCol.display] = "-";
+              }
+            } else {
+              userRow[dateCol.display] = "-";
+            }
+          });
+
+          // Only show totals in first row
+          if (rowIdx === 0) {
+            userRow["Total"] = calculateUserTotal(user.id, sessionData);
+            userRow["Auto"] = sessionData.find(item => item.userId === user.id)?.auto ? "ON" : "OFF";
+          } else {
+            userRow["Total"] = "";
+            userRow["Auto"] = "";
+          }
+
+          actualTimeFormattedData.push(userRow);
+        }
+
+        // Add total row for this user
+        const totalRow = {
+          "Employee Name": "Total",
+        };
+        dateColumns.forEach(dateCol => {
+          const daySchedules = sessionData.filter(item =>
+            item.userId === user.id && item.startDate === dateCol.date
+          );
+          const dayTotal = daySchedules.reduce((total, schedule) =>
+            total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
+          );
+          totalRow[dateCol.display] = dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-";
+        });
+        totalRow["Total"] = calculateUserTotal(user.id, sessionData);
+        totalRow["Auto"] = "";
+        actualTimeFormattedData.push(totalRow);
+      });
+
+      const actualTimeGrandTotalRow = {
+        "Employee Name": "Grand Total",
+      };
+      dateColumns.forEach(dateCol => {
+        actualTimeGrandTotalRow[dateCol.display] = calculateDayTotal(dateCol.date, sessionData) || "-";
+      });
+      actualTimeGrandTotalRow["Total"] = calculateGrandTotal(sessionData);
+      actualTimeGrandTotalRow["Auto"] = "";
+      actualTimeFormattedData.push(actualTimeGrandTotalRow);
+
+      const actualTimeWorksheet = XLSX.utils.json_to_sheet(actualTimeFormattedData);
+      const actualTimeColWidths = [
+        { wch: 20 },
+        ...dateColumns.map(() => ({ wch: 15 })),
+        { wch: 10 },
+        { wch: 8 }
+      ];
+      actualTimeWorksheet['!cols'] = actualTimeColWidths;
+      XLSX.utils.book_append_sheet(workbook, actualTimeWorksheet, "Actual Time");
+    }
 
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], {
@@ -887,7 +986,7 @@ export const ViewSchedule = () => {
         console.log("Total Users:", scheduleInput.length);
         
         // Uncomment the API call
-        // await bulkUpsertScheduleSessions(scheduleInput);
+         await bulkUpsertScheduleSessions(scheduleInput);
         
         console.log("=== EXACT SCHEDULE API PAYLOAD THAT WOULD BE SENT ===");
         console.log("Mutation:", "BulkUpsertScheduleSession");
@@ -1217,55 +1316,71 @@ export const ViewSchedule = () => {
       `<th style="background-color: #004175; color: white; font-weight: bold; padding: 8px 4px; text-align: center; border: 1px solid #004175; font-size: 10px;">${header}</th>`
     ).join('');
 
-    let dataRows = '';
-    let rowIndex = 0;
-    const uniqueUsers = getUniqueUsers(dataToUse);
+    // Generate Schedule Time table
+    let scheduleDataRows = '';
+    let scheduleRowIndex = 0;
+    const scheduleUniqueUsers = getUniqueUsers(dataToUse);
 
-    uniqueUsers.forEach(user => {
-      const userShiftTimes = getUniqueShiftTimes(user.id, dataToUse);
+    scheduleUniqueUsers.forEach(user => {
+      // Use getMaxShiftsPerDay instead of getUniqueShiftTimes to match Web UI
+      const maxShiftsPerDay = getMaxShiftsPerDay(user.id, dataToUse);
 
-      userShiftTimes.forEach((shiftTime, shiftIndex) => {
-        const rowStyle = rowIndex % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
+      // Create rows for each shift position (0, 1, 2, etc.)
+      for (let rowIdx = 0; rowIdx < maxShiftsPerDay; rowIdx++) {
+        const rowStyle = scheduleRowIndex % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
 
         let row = `<tr style="${rowStyle}">`;
 
-        if (shiftIndex === 0) {
-          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px; font-weight: bold;" rowspan="${userShiftTimes.length}">
+        // Only show employee name in first row with rowspan
+        if (rowIdx === 0) {
+          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px; font-weight: bold;" rowspan="${maxShiftsPerDay}">
             ${user.name}
           </td>`;
         }
+
         dateColumns.forEach(dateCol => {
-          const shift = getShiftForUserDateAndTime(
-            user.id,
-            dateCol.date,
-            shiftTime.startTime,
-            shiftTime.endTime,
-            dataToUse
+          const daySchedules = dataToUse.filter(item =>
+            item.userId === user.id && item.startDate === dateCol.date
           );
-          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
-            ${shift ? `${shift.startTime} - ${shift.endTime}` : '-'}
-          </td>`;
+          
+          if (daySchedules.length > 0) {
+            const shifts = sortShiftsByTime(daySchedules.flatMap(schedule => schedule.shifts));
+            const shift = shifts[rowIdx]; // Get the nth shift for this day
+            
+            if (shift) {
+              row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+                ${shift.startTime} - ${shift.endTime}
+              </td>`;
+            } else {
+              row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+                -
+              </td>`;
+            }
+          } else {
+            row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+              -
+            </td>`;
+          }
         });
 
-        if (shiftIndex === 0) {
-          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${userShiftTimes.length}">
+        // Only show totals in first row with rowspan
+        if (rowIdx === 0) {
+          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${maxShiftsPerDay}">
             ${calculateUserTotal(user.id, dataToUse)}
           </td>`;
-        }
-
-        if (shiftIndex === 0) {
+          
           const autoValue = dataToUse.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
-          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;" rowspan="${userShiftTimes.length}">
+          row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;" rowspan="${maxShiftsPerDay}">
             ${autoValue}
           </td>`;
         }
 
         row += '</tr>';
-        dataRows += row;
-        rowIndex++;
-      });
+        scheduleDataRows += row;
+        scheduleRowIndex++;
+      }
 
-      const totalRowStyle = rowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
+      const totalRowStyle = scheduleRowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
       let totalRow = `<tr style="${totalRowStyle}">`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
       dateColumns.forEach(dateCol => {
@@ -1284,41 +1399,172 @@ export const ViewSchedule = () => {
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id, dataToUse)}</td>`;
       totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
       totalRow += '</tr>';
-      dataRows += totalRow;
-      rowIndex++;
+      scheduleDataRows += totalRow;
+      scheduleRowIndex++;
     });
 
-    let grandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
-    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
+    let scheduleGrandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
+    scheduleGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
     dateColumns.forEach(dateCol => {
-      grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
+      scheduleGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
         ${calculateDayTotal(dateCol.date, dataToUse) || '-'}
       </td>`;
     });
 
-    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal(dataToUse)}</td>`;
-    grandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
-    grandTotalRow += '</tr>';
-    dataRows += grandTotalRow;
+    scheduleGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal(dataToUse)}</td>`;
+    scheduleGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
+    scheduleGrandTotalRow += '</tr>';
+    scheduleDataRows += scheduleGrandTotalRow;
 
-    const totalRecords = uniqueUsers.length;
-    const totalHours = calculateGrandTotal(dataToUse);
+    const scheduleTotalRecords = scheduleUniqueUsers.length;
+    const scheduleTotalHours = calculateGrandTotal(dataToUse);
+
+    // Generate Actual Time table if session data exists
+    let actualTimeTable = '';
+    if (sessionData && sessionData.length > 0) {
+      let actualTimeDataRows = '';
+      let actualTimeRowIndex = 0;
+      const actualTimeUniqueUsers = getUniqueUsers(sessionData);
+
+      actualTimeUniqueUsers.forEach(user => {
+        // Use getMaxShiftsPerDay instead of getUniqueShiftTimes to match Web UI
+        const maxShiftsPerDay = getMaxShiftsPerDay(user.id, sessionData);
+
+        // Create rows for each shift position (0, 1, 2, etc.)
+        for (let rowIdx = 0; rowIdx < maxShiftsPerDay; rowIdx++) {
+          const rowStyle = actualTimeRowIndex % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
+
+          let row = `<tr style="${rowStyle}">`;
+
+          // Only show employee name in first row with rowspan
+          if (rowIdx === 0) {
+            row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px; font-weight: bold;" rowspan="${maxShiftsPerDay}">
+              ${user.name}
+            </td>`;
+          }
+
+          dateColumns.forEach(dateCol => {
+            const daySchedules = sessionData.filter(item =>
+              item.userId === user.id && item.startDate === dateCol.date
+            );
+            
+            if (daySchedules.length > 0) {
+              const shifts = sortShiftsByTime(daySchedules.flatMap(schedule => schedule.shifts));
+              const shift = shifts[rowIdx]; // Get the nth shift for this day
+              
+              if (shift) {
+                // For actual time, use clockIn/clockOut if available, otherwise startTime/endTime
+                const startTime = shift.clockIn !== undefined ? shift.clockIn : shift.startTime;
+                const endTime = shift.clockOut !== undefined ? shift.clockOut : shift.endTime;
+                row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+                  ${startTime} - ${endTime}
+                </td>`;
+              } else {
+                row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+                  -
+                </td>`;
+              }
+            } else {
+              row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+                -
+              </td>`;
+            }
+          });
+
+          // Only show totals in first row with rowspan
+          if (rowIdx === 0) {
+            row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;" rowspan="${maxShiftsPerDay}">
+              ${calculateUserTotal(user.id, sessionData)}
+            </td>`;
+            
+            const autoValue = sessionData.find(item => item.userId === user.id)?.auto ? "Yes" : "No";
+            row += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-size: 10px;" rowspan="${maxShiftsPerDay}">
+              ${autoValue}
+            </td>`;
+          }
+
+          row += '</tr>';
+          actualTimeDataRows += row;
+          actualTimeRowIndex++;
+        }
+
+        const totalRowStyle = actualTimeRowIndex % 2 === 0 ? 'background-color: #f0f0f0;' : 'background-color: #e0e0e0;';
+        let totalRow = `<tr style="${totalRowStyle}">`;
+        totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Total</td>`;
+        dateColumns.forEach(dateCol => {
+          const daySchedules = sessionData.filter(item =>
+            item.userId === user.id && item.startDate === dateCol.date
+          );
+          const dayTotal = daySchedules.reduce((total, schedule) =>
+            total + schedule.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0
+          );
+          const roundedDayTotal = parseFloat(dayTotal.toFixed(2));
+          totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
+            ${roundedDayTotal > 0 ? roundedDayTotal : '-'}
+          </td>`;
+        });
+
+        totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateUserTotal(user.id, sessionData)}</td>`;
+        totalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
+        totalRow += '</tr>';
+        actualTimeDataRows += totalRow;
+        actualTimeRowIndex++;
+      });
+
+      let actualTimeGrandTotalRow = `<tr style="background-color: #d0d0d0; font-weight: bold;">`;
+      actualTimeGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-weight: bold; font-size: 10px;">Grand Total</td>`;
+      dateColumns.forEach(dateCol => {
+        actualTimeGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">
+          ${calculateDayTotal(dateCol.date, sessionData) || '-'}
+        </td>`;
+      });
+
+      actualTimeGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; font-size: 10px;">${calculateGrandTotal(sessionData)}</td>`;
+      actualTimeGrandTotalRow += `<td style="padding: 6px 4px; border: 1px solid #dee2e6; font-size: 10px;"></td>`;
+      actualTimeGrandTotalRow += '</tr>';
+      actualTimeDataRows += actualTimeGrandTotalRow;
+
+      const actualTimeTotalRecords = actualTimeUniqueUsers.length;
+      const actualTimeTotalHours = calculateGrandTotal(sessionData);
+
+      actualTimeTable = `
+        <div style="margin-top: 40px; page-break-before: always;">
+          <h2 style="color: #004175; font-size: 18px; margin-bottom: 20px; text-align: center;">Actual Time Report</h2>
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Client:</strong> ${sessionData[0]?.clientName || 'N/A'}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Address:</strong> ${sessionData[0]?.address || 'N/A'}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Employees:</strong> ${actualTimeTotalRecords}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>Total Hours:</strong> ${actualTimeTotalHours}</p>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px;">
+            <thead>
+              <tr>${headerRow}</tr>
+            </thead>
+            <tbody>
+              ${actualTimeDataRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
 
     return `
       <div style="margin-bottom: 20px;">
+        <h2 style="color: #004175; font-size: 18px; margin-bottom: 20px; text-align: center;">Schedule Time Report</h2>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Client:</strong> ${dataToUse[0]?.clientName || 'N/A'}</p>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Address:</strong> ${dataToUse[0]?.address || 'N/A'}</p>
-        <p style="margin: 5px 0; font-size: 14px;"><strong>Total Employees:</strong> ${totalRecords}</p>
-        <p style="margin: 5px 0; font-size: 14px;"><strong>Total Hours:</strong> ${totalHours}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Total Employees:</strong> ${scheduleTotalRecords}</p>
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Total Hours:</strong> ${scheduleTotalHours}</p>
       </div>
       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px;">
         <thead>
           <tr>${headerRow}</tr>
         </thead>
         <tbody>
-          ${dataRows}
+          ${scheduleDataRows}
         </tbody>
       </table>
+      ${actualTimeTable}
     `;
   };
 
@@ -1534,7 +1780,7 @@ export const ViewSchedule = () => {
       {!showScheduleTable ? (
         <>
           {error ? (
-            <p className="text-red-500">Error loading data: {error}</p>
+            <ErrorMessage message={`Error loading data: ${error}`} />
           ) : (
             <GenericTable
               data={tableData}
