@@ -196,14 +196,14 @@ export const generateDateColumns = (currentWeekRange: WeekRange | null): DateCol
   for (let i = 0; i < 7; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    
-    // Convert to Eastern timezone for display
-    const easternDate = toZonedTime(date, 'America/New_York');
-    const dateStr = easternDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
+
+    // Use local timezone for display and API
+    const localDate = toZonedTime(date, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const dateStr = localDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
     dates.push({
-      date: dateStr, // Use Eastern timezone date to match API
-      display: `${String(easternDate.getMonth() + 1).padStart(2, '0')}-${String(easternDate.getDate()).padStart(2, '0')}-${easternDate.getFullYear()}` // Eastern display
+      date: dateStr, // Use local timezone date to match API
+      display: `${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}-${localDate.getFullYear()}` // Local display
     });
   }
   return dates;

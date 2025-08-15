@@ -13,16 +13,17 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
   };
 
   const handleCurrentWeek = () => {
-    const today = new Date(Date.now());
+    const today = new Date();
     const day = today.getDay();
-    console.log("day  "+day);
     const daysSinceThursday = (day + 3) % 7; 
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - daysSinceThursday);
     startOfWeek.setHours(0, 0, 0, 0);
-    console.log("startOfWeek "+startOfWeek);
 
-    const formatted = startOfWeek.toISOString().slice(0, 10);
+    const year = startOfWeek.getFullYear();
+    const month = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+    const dayOfMonth = String(startOfWeek.getDate()).padStart(2, '0');
+    const formatted = `${year}-${month}-${dayOfMonth}`;
     setSelectedDate(formatted);
   };
 
