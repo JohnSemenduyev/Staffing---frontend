@@ -344,7 +344,8 @@ export default function AssignmentNew() {
     {
       key: "notification",
       label: "Notification",
-      sortable: false,
+      sortable: true,
+      searchable: true,
       width: "400px",
 
       render: (value: NotificationOption[] | null | undefined) =>
