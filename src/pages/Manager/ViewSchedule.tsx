@@ -567,9 +567,10 @@ export const ViewSchedule = () => {
 
     // Fix: Properly parse MM-DD-YYYY format
     const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0);
-    const easternDate = toZonedTime(selectedDateObj, 'America/New_York');
+    // Use local timezone instead of hardcoded Eastern
+    const localDate = toZonedTime(selectedDateObj, Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-    const weekRange = getWeekRangeFromDate(easternDate);
+    const weekRange = getWeekRangeFromDate(localDate);
     setCurrentWeekRange(weekRange);
 
     clearScheduleData();

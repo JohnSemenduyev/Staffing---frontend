@@ -18,13 +18,13 @@ export const inputClasses = `
 `;
 
 export const getWeekRangeFromDate = (baseDate: Date): WeekRange => {
-  // Convert the base date to Eastern timezone
-  const easternDate = toZonedTime(baseDate, 'America/New_York');
-  const day = easternDate.getDay();
+  // Use local timezone instead of hardcoded Eastern
+  const localDate = toZonedTime(baseDate, Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const day = localDate.getDay();
   const daysSinceThursday = (day + 3) % 7;
   
-  const startOfWeek = new Date(easternDate);
-  startOfWeek.setDate(easternDate.getDate() - daysSinceThursday);
+  const startOfWeek = new Date(localDate);
+  startOfWeek.setDate(localDate.getDate() - daysSinceThursday);
   startOfWeek.setHours(0, 0, 0, 0);
   
   const endOfWeek = new Date(startOfWeek);
