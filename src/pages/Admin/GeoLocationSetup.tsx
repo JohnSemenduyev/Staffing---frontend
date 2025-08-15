@@ -211,7 +211,7 @@ export const GeoLocationSetup = () => {
       render: (value: any) => `${value} Mins`
     }
   ];
-y
+
   const tableActions: TableAction[] = [
     {
       label: "Edit",

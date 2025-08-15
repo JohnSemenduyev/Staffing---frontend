@@ -85,6 +85,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
     w-full
     px-3
     py-1
+    pr-10
     border
     border-[#D2D5DAFF]
     rounded-md
@@ -108,14 +109,25 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         className={`${defaultClasses} ${className} text-gray-500`}
         readOnly
         disabled={disabled}
-        
       />
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-white px-1">        <Calendar
-          className={`w-4 h-4 pointer-events-none ${
-            disabled ? 'text-gray-300' : 'text-gray-400'
-          }`}
+      
+      <div className="absolute inset-y-0 inset-x-100 right-0 flex items-center justify-center w-10 h-[35px] pointer-events-none">
+        <Calendar
+          className={`w-4 h-4 ${
+            disabled 
+              ? 'text-gray-300' 
+              : 'text-gray-400 hover:text-gray-600'
+          } transition-colors duration-200`}
+          style={{
+            fill: 'none',
+            stroke: 'currentColor',
+            strokeWidth: '2',
+            strokeLinecap: 'round',
+            strokeLinejoin: 'round'
+          }}
         />
       </div>
+      
       {isOpen && !disabled && (
         <div className="absolute z-50 mt-1">
           <DatePicker
