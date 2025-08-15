@@ -6,7 +6,6 @@ import { graphQLClient } from "../../GraphqlClient";
 import { Eye, RotateCcw, Printer, Upload, Send, Edit } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { toZonedTime } from 'date-fns-tz';
 
 // Import our refactored components
 import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
@@ -507,7 +506,7 @@ export const ViewSchedule = () => {
     setModalOpen(true);
   };
 
-  const handleDateSubmit = async (date: string) => {
+const handleDateSubmit = async (date: string) => {
     setSelectedDate(date);
     setShowScheduleTable(true);
 
@@ -559,10 +558,9 @@ export const ViewSchedule = () => {
 
     // Fix: Properly parse MM-DD-YYYY format
     const selectedDateObj = new Date(year, month - 1, day, 0, 0, 0);
-    // Use local timezone instead of hardcoded Eastern
-    const localDate = toZonedTime(selectedDateObj, Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-    const weekRange = getWeekRangeFromDate(localDate);
+    // No timezone conversion, use local date object directly
+    const weekRange = getWeekRangeFromDate(selectedDateObj);
     setCurrentWeekRange(weekRange);
 
     clearScheduleData();

@@ -1,4 +1,3 @@
-import { toZonedTime } from 'date-fns-tz';
 import { ScheduleItem, Shift, WeekRange, DateColumn, FormData } from './types';
 
 export const inputClasses = `
@@ -18,20 +17,18 @@ export const inputClasses = `
 `;
 
 export const getWeekRangeFromDate = (baseDate: Date): WeekRange => {
-  // Use local timezone instead of hardcoded Eastern
-  const localDate = toZonedTime(baseDate, Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const day = localDate.getDay();
+  const day = baseDate.getDay();
   const daysSinceThursday = (day + 3) % 7;
-  
-  const startOfWeek = new Date(localDate);
-  startOfWeek.setDate(localDate.getDate() - daysSinceThursday);
+
+  const startOfWeek = new Date(baseDate);
+  startOfWeek.setDate(baseDate.getDate() - daysSinceThursday);
   startOfWeek.setHours(0, 0, 0, 0);
-  
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
-  
-  return { 
+
+  return {
     startOfWeek,
     endOfWeek
   };
@@ -197,13 +194,12 @@ export const generateDateColumns = (currentWeekRange: WeekRange | null): DateCol
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
 
-    // Use local timezone for display and API
-    const localDate = toZonedTime(date, Intl.DateTimeFormat().resolvedOptions().timeZone);
-    const dateStr = localDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // No timezone conversion, use local date parts
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
     dates.push({
-      date: dateStr, // Use local timezone date to match API
-      display: `${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}-${localDate.getFullYear()}` // Local display
+      date: dateStr,
+      display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
     });
   }
   return dates;

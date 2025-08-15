@@ -12,7 +12,6 @@ import { toast as toasted } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
-import {  toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { ErrorMessage } from "../../components/ui/error-message";
 
 interface FormData {
@@ -81,24 +80,24 @@ const inputClasses = `
 `;
 
 
-const getWeekRangeFromDate = (baseDate, timezone = 'UTC') => {
-  const zonedDate = toZonedTime(baseDate, timezone);
-  const day = zonedDate.getDay();
+const getWeekRangeFromDate = (baseDate) => {
+  const day = baseDate.getDay();
   const daysSinceThursday = (day + 3) % 7;
-  
-  const startOfWeek = new Date(zonedDate);
-  startOfWeek.setDate(zonedDate.getDate() - daysSinceThursday);
+
+  const startOfWeek = new Date(baseDate);
+  startOfWeek.setDate(baseDate.getDate() - daysSinceThursday);
   startOfWeek.setHours(0, 0, 0, 0);
-  
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
-  
-  return { 
+
+  return {
     startOfWeek,
     endOfWeek
   };
 };
+
 const timeToMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
