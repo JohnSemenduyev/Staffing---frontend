@@ -300,6 +300,9 @@ export default function AssignmentNew() {
 
  // Add this helper function at the top of your component (before the component declaration)
 const formatNotificationText = (notification: string): string => {
+  if(notification=="geo_location"){
+    return "GeoLocation"
+  }
   return notification
     .replace(/_/g, ' ') // Replace underscores with spaces
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word

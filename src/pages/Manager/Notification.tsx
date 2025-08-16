@@ -272,10 +272,14 @@ export const Notification = () => {
 // Updated table columns with dynamic width expansion
 // Helper function to format notification text (add this at the top of your component)
 const formatNotificationText = (notification: string): string => {
+  if(notification=="geo_location"){
+    return "GeoLocation"
+  }
   return notification
     .replace(/_/g, ' ') // Replace underscores with spaces
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
 };
+
 
 // Updated table columns with formatted notification type
 
