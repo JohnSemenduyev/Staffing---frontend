@@ -545,3 +545,22 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
     }
   }
 `;
+export const GET_ALL_CLIENTS_WITH_ADDRESSES = gql`
+  query GetAllClientsWithAddresses {
+    getAllClientsWithAddresses {
+      id
+      name
+      lastName
+      phone
+      company
+      email
+      addresses {
+        id
+        address
+        city
+        state
+        pincode
+      }
+    }
+  }
+`;

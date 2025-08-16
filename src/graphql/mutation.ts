@@ -474,3 +474,10 @@ export const CREATE_CLIENT_REGISTRATION = gql`
     }
   }
 `;
+export const CREATE_CLIENT_WITH_ADDRESSES = gql`
+  mutation CreateClientWithAddresses($input: CreateClientWithAddressesInput!) {
+    createClientWithAddresses(input: $input) {
+      id
+    }
+  }
+`;
