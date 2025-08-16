@@ -200,6 +200,7 @@ export const GeoLocationSetup = () => {
       key: "distance",
       label: "Distance",
       sortable: true,
+      searchable:true,
       className: "whitespace-nowrap max-w-[200px]",
       render: (value: any) => `${value} Mile`
     },
@@ -207,6 +208,7 @@ export const GeoLocationSetup = () => {
       key: "time",
       label: "Time",
       sortable: true,
+      searchable:true,
       className: "whitespace-nowrap max-w-[200px]",
       render: (value: any) => `${value} Mins`
     }

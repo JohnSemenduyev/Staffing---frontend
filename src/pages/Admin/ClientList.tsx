@@ -762,6 +762,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { ChevronDown, Plus, Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
+  import { toast } from 'sonner';
 
 interface NewClientData {
   clientName: string;
@@ -885,63 +886,63 @@ function ClientList() {
   };
 
   // Handle save new client
-  const handleSaveNewClient = async () => {
-    // Validate input
-    const validationErrors = validateNewClientData();
-    if (validationErrors.length > 0) {
-      alert("Please fill in all required fields:\n" + validationErrors.join("\n"));
-      return;
-    }
 
-    setIsCreating(true);
+const handleSaveNewClient = async () => {
+  // Validate input
+  const validationErrors = validateNewClientData();
+  if (validationErrors.length > 0) {
+    toast.error(`Please fill in all required fields:\n${validationErrors.join("\n")}`);
+    return;
+  }
+
+  setIsCreating(true);
+  
+  try {
+    // Prepare input for the mutation
+    const input = {
+      name: newClientData.clientName,
+      addresses: [{
+        address: newClientData.address,
+        city: newClientData.city,
+        state: newClientData.state,
+        pincode: newClientData.pincode,
+        contractHours: parseInt(newClientData.contractHour) || 0,
+        industry: newClientData.industry,
+      }]
+    };
+
+    console.log("Creating new client with input:", input);
     
-    try {
-      // Prepare input for the mutation
-      const input = {
-        name: newClientData.clientName,
-        
-        addresses: [{
-          address: newClientData.address,
-          city: newClientData.city,
-          state: newClientData.state,
-          pincode: newClientData.pincode,
-          contractHours: parseInt(newClientData.contractHour) || 0,
-          industry: newClientData.industry,
-        }]
-      };
+    // Call the createClient mutation
+    const createdClient = await createClient(input);
+    
+    console.log("Client created successfully:", createdClient);
+    
+    // Reset form and hide add row
+    setShowAddRow(false);
+    setNewClientData({
+      clientName: "",
+      industry: "",
+      contractHour: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: ""
+    });
 
-      console.log("Creating new client with input:", input);
-      
-      // Call the createClient mutation
-      const createdClient = await createClient(input);
-      
-      console.log("Client created successfully:", createdClient);
-      
-      // Reset form and hide add row
-      setShowAddRow(false);
-      setNewClientData({
-        clientName: "",
-        industry: "",
-        contractHour: "",
-        address: "",
-        city: "",
-        state: "",
-        pincode: ""
-      });
-
-      // Refresh the schedule sessions to show the new client
-      await refreshScheduleSessions();
-      
-      // Optional: Show success message
-      alert("Client created successfully!");
-      
-    } catch (error: any) {
-      console.error("Failed to create client:", error);
-      alert("Failed to create client: " + (error.message || "Unknown error"));
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    // Refresh the schedule sessions to show the new client
+    await refreshScheduleSessions();
+    
+    // Show success message
+    toast.success("Client created successfully!");
+    
+  } catch (error: any) {
+    console.error("Failed to create client:", error);
+    toast.error(`Failed to create client: ${error.message || "Unknown error"}`);
+  } finally {
+    setIsCreating(false);
+  }
+};
 
   // Handle input change for new client
   const handleNewClientInputChange = (field: keyof NewClientData, value: string) => {
