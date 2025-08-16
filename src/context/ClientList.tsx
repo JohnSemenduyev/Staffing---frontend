@@ -1,39 +1,20 @@
-// // context/ScheduleSessionContext.tsx
 // import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 // import { graphQLClient } from '../GraphqlClient';
 
 // // GraphQL Query
 // const GET_SCHEDULE_SESSIONS = `
-//   query GetScheduleSessions($page: Int, $startDate: String) {
-//     scheduleSessions(page: $page, startDate: $startDate) {
+//   query GetScheduleSessions($page: Int) {
+//     allAddresses(page: $page) {
 //       data {
-//         id
-//         clientId
-//         addressId
-//         userId
-//         startDate
-//         endDate
-//         auto
-//         createdAt
-//         weeklyHours
+//         contractHour
 //         client {
 //           name
-//           lastName
-//           email
 //         }
-//         address {
-//           industry
 //         address
-//           city
-//           state
-//           pincode
-//         }
-//         user {
-//           id
-//           name
-//           email
-//         }
-       
+//         industry
+//         city
+//         state
+//         pincode
 //       }
 //       lastPage
 //     }
@@ -42,43 +23,15 @@
 
 // // Types
 // export interface ScheduleSession {
-//   id: number;
-//   clientId: number;
-//   addressId: number;
-//   userId: number;
-//   startDate: string;
-//   endDate?: string;
-//   auto: boolean;
-//   createdAt?: string;
-//   weeklyHours?: number;
+//   contractHour: number;
 //   client: {
 //     name: string;
-//     email: string;
-//     lastName: string;
 //   };
-//   address: {
-//     industry: string;
-//     address: string;
-//     city: string;
-//     state: string;
-//     pincode: string;
-//   };
-//   user: {
-//     id: number;
-//     name: string;
-//     email: string;
-//   };
-//   shifts: Array<{
-//     id: number;
-//     scheduleSessionId: number;
-//     date: string;
-//     confirm: boolean;
-//     reject: boolean;
-//     startTime: string;
-//     endTime: string;
-//     hours: number;
-//     actualHours?: number;
-//   }>;
+//   address: string;
+//   industry: string;
+//   city: string;
+//   state: string;
+//   pincode: string;
 // }
 
 // interface ScheduleSessionState {
@@ -93,7 +46,8 @@
 //   | { type: 'SET_LOADING'; payload: boolean }
 //   | { type: 'SET_ERROR'; payload: string | null }
 //   | { type: 'SET_SCHEDULE_SESSIONS'; payload: { data: ScheduleSession[]; lastPage: number } }
-//   | { type: 'SET_CURRENT_PAGE'; payload: number };
+//   | { type: 'SET_CURRENT_PAGE'; payload: number }
+//   | { type: 'APPEND_SCHEDULE_SESSIONS'; payload: { data: ScheduleSession[]; lastPage: number } };
 
 // // Initial state
 // const initialState: ScheduleSessionState = {
@@ -122,6 +76,14 @@
 //         loading: false,
 //         error: null,
 //       };
+//     case 'APPEND_SCHEDULE_SESSIONS':
+//       return {
+//         ...state,
+//         scheduleSessions: [...state.scheduleSessions, ...action.payload.data],
+//         lastPage: action.payload.lastPage,
+//         loading: false,
+//         error: null,
+//       };
 //     case 'SET_CURRENT_PAGE':
 //       return { ...state, currentPage: action.payload };
 //     default:
@@ -132,8 +94,10 @@
 // // Context
 // interface ScheduleSessionContextType {
 //   state: ScheduleSessionState;
-//   fetchScheduleSessions: (page?: number, startDate?: string) => Promise<void>;
+//   fetchScheduleSessions: (page?: number, append?: boolean) => Promise<void>;
 //   setCurrentPage: (page: number) => void;
+//   loadNextPage: () => Promise<void>;
+//   refreshScheduleSessions: () => Promise<void>;
 // }
 
 // const ScheduleSessionContext = createContext<ScheduleSessionContextType | undefined>(undefined);
@@ -146,25 +110,27 @@
 // export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProps> = ({ children }) => {
 //   const [state, dispatch] = useReducer(scheduleSessionReducer, initialState);
 
-//   const fetchScheduleSessions = async (page?: number, startDate?: string): Promise<void> => {
+//   const fetchScheduleSessions = async (page: number = 1, append: boolean = false): Promise<void> => {
 //     try {
 //       dispatch({ type: 'SET_LOADING', payload: true });
 
-//       const variables: { page?: number; startDate?: string } = {};
-//       if (page) variables.page = page;
-//       if (startDate) variables.startDate = startDate;
+//       const variables: { page: number } = { page };
 
 //       const response = await graphQLClient.request<{
-//         scheduleSessions: { data: ScheduleSession[]; lastPage: number };
+//         allAddresses: { data: ScheduleSession[]; lastPage: number };
 //       }>(GET_SCHEDULE_SESSIONS, variables);
 
 //       dispatch({
-//         type: 'SET_SCHEDULE_SESSIONS',
+//         type: append ? 'APPEND_SCHEDULE_SESSIONS' : 'SET_SCHEDULE_SESSIONS',
 //         payload: {
-//           data: response.scheduleSessions.data,
-//           lastPage: response.scheduleSessions.lastPage,
+//           data: response.allAddresses.data,
+//           lastPage: response.allAddresses.lastPage,
 //         },
 //       });
+
+//       if (!append) {
+//         dispatch({ type: 'SET_CURRENT_PAGE', payload: page });
+//       }
 //     } catch (err: any) {
 //       dispatch({
 //         type: 'SET_ERROR',
@@ -178,10 +144,24 @@
 //     dispatch({ type: 'SET_CURRENT_PAGE', payload: page });
 //   };
 
+//   const loadNextPage = async (): Promise<void> => {
+//     if (state.currentPage < state.lastPage && !state.loading) {
+//       const nextPage = state.currentPage + 1;
+//       await fetchScheduleSessions(nextPage, true);
+//       dispatch({ type: 'SET_CURRENT_PAGE', payload: nextPage });
+//     }
+//   };
+
+//   const refreshScheduleSessions = async (): Promise<void> => {
+//     await fetchScheduleSessions(1, false);
+//   };
+
 //   const contextValue: ScheduleSessionContextType = {
 //     state,
 //     fetchScheduleSessions,
 //     setCurrentPage,
+//     loadNextPage,
+//     refreshScheduleSessions,
 //   };
 
 //   return (
@@ -199,12 +179,11 @@
 //   }
 //   return context;
 // };
-
-// context/ScheduleSessionContext.tsx
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import { gql } from "graphql-request";
 import { graphQLClient } from '../GraphqlClient';
-
-// GraphQL Query
+import {CREATE_CLIENT_WITH_ADDRESSES} from '../graphql/mutation'
+// ---------------- GraphQL ----------------
 const GET_SCHEDULE_SESSIONS = `
   query GetScheduleSessions($page: Int) {
     allAddresses(page: $page) {
@@ -224,7 +203,15 @@ const GET_SCHEDULE_SESSIONS = `
   }
 `;
 
-// Types
+
+interface CreateClientWithAddressesResponse {
+  createClientWithAddresses: {
+    id: string;
+    name: string;
+  };
+}
+
+// ---------------- Types ----------------
 export interface ScheduleSession {
   contractHour: number;
   client: {
@@ -252,7 +239,7 @@ type ScheduleSessionAction =
   | { type: 'SET_CURRENT_PAGE'; payload: number }
   | { type: 'APPEND_SCHEDULE_SESSIONS'; payload: { data: ScheduleSession[]; lastPage: number } };
 
-// Initial state
+// ---------------- Initial State ----------------
 const initialState: ScheduleSessionState = {
   scheduleSessions: [],
   loading: false,
@@ -261,7 +248,7 @@ const initialState: ScheduleSessionState = {
   currentPage: 1,
 };
 
-// Reducer
+// ---------------- Reducer ----------------
 const scheduleSessionReducer = (
   state: ScheduleSessionState,
   action: ScheduleSessionAction
@@ -294,18 +281,19 @@ const scheduleSessionReducer = (
   }
 };
 
-// Context
+// ---------------- Context ----------------
 interface ScheduleSessionContextType {
   state: ScheduleSessionState;
   fetchScheduleSessions: (page?: number, append?: boolean) => Promise<void>;
   setCurrentPage: (page: number) => void;
   loadNextPage: () => Promise<void>;
   refreshScheduleSessions: () => Promise<void>;
+  createClient: (input: any) => Promise<any>;   // <-- new mutation
 }
 
 const ScheduleSessionContext = createContext<ScheduleSessionContextType | undefined>(undefined);
 
-// Provider
+// ---------------- Provider ----------------
 interface ScheduleSessionProviderProps {
   children: ReactNode;
 }
@@ -317,11 +305,9 @@ export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProp
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      const variables: { page: number } = { page };
-
       const response = await graphQLClient.request<{
         allAddresses: { data: ScheduleSession[]; lastPage: number };
-      }>(GET_SCHEDULE_SESSIONS, variables);
+      }>(GET_SCHEDULE_SESSIONS, { page });
 
       dispatch({
         type: append ? 'APPEND_SCHEDULE_SESSIONS' : 'SET_SCHEDULE_SESSIONS',
@@ -359,12 +345,35 @@ export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProp
     await fetchScheduleSessions(1, false);
   };
 
+  // 🔥 New Mutation function
+  const createClient = async (input: any): Promise<CreateClientWithAddressesResponse["createClientWithAddresses"]> => {
+  try {
+    dispatch({ type: 'SET_LOADING', payload: true });
+
+    const response = await graphQLClient.request<CreateClientWithAddressesResponse>(
+      CREATE_CLIENT_WITH_ADDRESSES,
+      { input }
+    );
+
+    dispatch({ type: 'SET_LOADING', payload: false });
+
+    return response.createClientWithAddresses;
+  } catch (err: any) {
+    dispatch({
+      type: 'SET_ERROR',
+      payload: err.message || 'Failed to create client',
+    });
+    throw err;
+  }
+};
+
   const contextValue: ScheduleSessionContextType = {
     state,
     fetchScheduleSessions,
     setCurrentPage,
     loadNextPage,
     refreshScheduleSessions,
+    createClient, // expose mutation in context
   };
 
   return (
@@ -374,7 +383,7 @@ export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProp
   );
 };
 
-// Custom hook
+// ---------------- Custom Hook ----------------
 export const useScheduleSessionContext = () => {
   const context = useContext(ScheduleSessionContext);
   if (context === undefined) {
