@@ -1061,11 +1061,9 @@ function ClientList() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-semibold text-gray-800">
-            Client Address List
+            Client  List
           </h2>
-          <p className="text-gray-600 mt-1">
-            Manage client locations and contract details
-          </p>
+          
         </div>
         
         {/* Add Button */}
