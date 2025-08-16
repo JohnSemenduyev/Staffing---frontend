@@ -7,7 +7,6 @@ export const inputClasses = `
   border
   border-[#d0d4d9]
   rounded-md
-  placeholder:text-gray-500
   font-normal
   focus:outline-none
   focus:ring-2

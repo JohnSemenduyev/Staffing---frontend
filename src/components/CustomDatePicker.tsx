@@ -89,7 +89,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
     border
     border-[#D2D5DAFF]
     rounded-md
-    placeholder:text-gray-500
+    
     font-normal
     focus:outline-none
     focus:ring-2
