@@ -191,15 +191,103 @@ export const Notification = () => {
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
 
-  // Updated table columns with better error handling
+//   const tableColumns: TableColumn[] = [
+//   {
+//     key: "client.name",
+//     label: "Client Name",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//     height: "40px",
+//     allowWrap: true, // Enable text wrapping for this column
+//     render: (value: string) => value || "-"
+//   },
+//   {
+//     key: "address.address",
+//     label: "Address",
+//     sortable: true,
+//     searchable: true,
+//     className: "max-w-[200px]", // Remove break-words class, it's handled by allowWrap
+//     allowWrap: true, // Enable text wrapping
+//     render: (value: string) => (
+//       <div title={value || ""}>
+//         {value || "-"}
+//       </div>
+//     )
+//   },
+//   {
+//     key: "guardFirst.name",
+//     label: "User Name",
+//     sortable: true,
+//     searchable: true,
+//     className: "max-w-[200px]",
+//     allowWrap: true, // Enable text wrapping
+//   },
+//   {
+//     key: "date",
+//     label: "Date",
+//     sortable: true,
+//     searchable: true,
+//     className: "max-w-[200px]",
+//     allowWrap: false, // Keep dates on single line
+//     render: (value: string) => {
+//       if (!value) return "-";
+//       try {
+//         const date = new Date(value);
+//         return isNaN(date.getTime()) ? value : date.toLocaleDateString();
+//       } catch {
+//         return value || "-";
+//       }
+//     }
+//   },
+//   {
+//     key: "notificationType",
+//     label: "Type",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//     className: "max-w-[150px]",
+//     allowWrap: false, // Keep type badges on single line
+//     render: (value: string) => (
+//       <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+//         {value || "Unknown"}
+//       </span>
+//     )
+//   },
+//   {
+//     key: "message",
+//     label: "Message",
+//     sortable: false,
+//     searchable: true,
+//     className: "max-w-[300px]",
+//     allowWrap: true, // Enable text wrapping for messages
+//     render: (value: string) => (
+//       <div className="leading-relaxed" title={value || ""}>
+//         {value || "-"}
+//       </div>
+//     )
+//   }
+// ];
+ 
+// Updated table columns with dynamic width expansion
+// Helper function to format notification text (add this at the top of your component)
+const formatNotificationText = (notification: string): string => {
+  return notification
+    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+};
+
+// Updated table columns with formatted notification type
+
 const tableColumns: TableColumn[] = [
   {
     key: "client.name",
     label: "Client Name",
     sortable: true,
     searchable: true,
-    width: "200px",
+    width: "250px",
     height: "40px",
+    className: "min-w-[150px]",
     render: (value: string) => value || "-"
   },
   {
@@ -207,9 +295,10 @@ const tableColumns: TableColumn[] = [
     label: "Address",
     sortable: true,
     searchable: true,
-    className: "whitespace-nowrap max-w-[200px]",
+    width: "250px",
+    className: "min-w-[200px]",
     render: (value: string) => (
-      <div className="truncate" title={value || ""}>
+      <div title={value || ""}>
         {value || "-"}
       </div>
     )
@@ -219,19 +308,19 @@ const tableColumns: TableColumn[] = [
     label: "User Name",
     sortable: true,
     searchable: true,
-    className: "whitespace-nowrap max-w-[200px]",
-    
+    width: "250px",
+    className: "min-w-[150px]",
   },
   {
     key: "date",
     label: "Date",
     sortable: true,
+    width: "250px",
     searchable: true,
-    className: "whitespace-nowrap max-w-[200px]",
+    className: "min-w-[120px]",
     render: (value: string) => {
       if (!value) return "-";
       try {
-        // Format the date nicely if it's a valid date
         const date = new Date(value);
         return isNaN(date.getTime()) ? value : date.toLocaleDateString();
       } catch {
@@ -244,29 +333,34 @@ const tableColumns: TableColumn[] = [
     label: "Type",
     sortable: true,
     searchable: true,
-    width:"200px",
-    className: "whitespace-nowrap max-w-[150px]",
-    render: (value: string) => (
-      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-        {value || "Unknown"}
-      </span>
-    )
+    width: "250px",
+    className: "min-w-[120px]",
+    render: (value: string) => {
+      // Format the notification type using the same helper function
+      const formattedType = value ? formatNotificationText(value) : "Unknown";
+      
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full whitespace-nowrap">
+          {formattedType}
+        </span>
+      );
+    }
   },
   {
     key: "message",
     label: "Message",
     sortable: false,
     searchable: true,
-    className: "max-w-[300px]",
+    className: "min-w-[350px]",
+    width:"200px",
     render: (value: string) => (
-      <div className="truncate" title={value || ""}>
+      <div className="leading-relaxed" title={value || ""}>
         {value || "-"}
       </div>
     )
   }
 ];
-
-  return (
+return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
         <h2 className="text-xl font-semibold mb-2">

@@ -298,61 +298,77 @@ export default function AssignmentNew() {
     setDeleteLoader(false);
   };
 
-  const tableColumns: TableColumn[] = [
-    {
-      key: "client.name",
-      label: "Client Name",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-    },
-    {
-      key: "address.address",
-      label: "Location",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-    },
-    {
-      key: "guard.name",
-      label: "User Name",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-    },
-    {
-      key: "role",
-      label: " User Role",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-    },
-    {
-      key: "access",
-      label: "Schedule  Access",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-    },
-    {
-      key: "user.name",
-      label: "User Notified",
-      sortable: true,
-      searchable: true,
-      width: "200px",
-    },
-    {
-      key: "notification",
-      label: "Notification",
-      sortable: true,
-      searchable: true,
-      width: "400px",
+ // Add this helper function at the top of your component (before the component declaration)
+const formatNotificationText = (notification: string): string => {
+  return notification
+    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+};
 
-      render: (value: NotificationOption[] | null | undefined) =>
-        Array.isArray(value) && value.length > 0 ? value.join(", ") : "-",
+// Then update your tableColumns array - replace the notification column with this:
+const tableColumns: TableColumn[] = [
+  {
+    key: "client.name",
+    label: "Client Name",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+  },
+  {
+    key: "address.address",
+    label: "Location",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+  },
+  {
+    key: "guard.name",
+    label: "User Name",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+  },
+  {
+    key: "role",
+    label: " User Role",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+  },
+  {
+    key: "access",
+    label: "Schedule  Access",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+  },
+  {
+    key: "user.name",
+    label: "User Notified",
+    sortable: true,
+    searchable: true,
+    width: "200px",
+  },
+  {
+    key: "notification",
+    label: "Notification",
+    sortable: true,
+    searchable: true,
+    width: "400px",
+    render: (value: NotificationOption[] | string[] | null | undefined) => {
+      if (!value || !Array.isArray(value) || value.length === 0) {
+        return "-";
+      }
+      
+      // Transform backend format to display format
+      const formattedNotifications = value.map((notification: string) => 
+        formatNotificationText(notification)
+      );
+      
+      return formattedNotifications.join(", ");
     },
-  ];
-
+  },
+];
   const tableActions: TableAction[] = [
     {
       label: "Edit",
@@ -502,25 +518,23 @@ export default function AssignmentNew() {
                 </div>
               )}
             </div>
-
-  
-            
-
-            {/* User Search */}
-            <div className="relative">
+{/* Guard Search */}
+   <div className="relative">
               <input
                 type="text"
-                value={userSearch}
-                onFocus={() => setShowUserDropdown(true)}
-                onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
+                value={guardSearch}
+                onFocus={() => setShowGuardDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowGuardDropdown(false), 200)
+                }
                 onChange={(e) => {
-                  setUserSearch(e.target.value);
-                  setForm((f) => ({ ...f, userId: "" }));
+                  setGuardSearch(e.target.value);
+                  setForm((f) => ({ ...f, guardId: "" }));
                 }}
                 placeholder="Select User"
-                className={getFieldClasses("userId")}
+                className={getFieldClasses("guardId")}
               />
-              {showErrors && errors.userId && (
+              {showErrors && errors.guardId && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
                   <svg
                     className="w-4 h-4 mr-1"
@@ -533,33 +547,36 @@ export default function AssignmentNew() {
                       clipRule="evenodd"
                     />
                   </svg>
-                  {errors.userId}
+                  {errors.guardId}
                 </div>
               )}
-              {showUserDropdown && userSearch.length >= 2 && (
+              {showGuardDropdown && guardSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                  {loadingUsers ? (
+                  {loadingGuards ? (
                     <div className="p-2 text-sm text-gray-500">
-                      Searching users...
+                      Searching guards...
                     </div>
-                  ) : searchedUsers.length === 0 ? (
+                  ) : searchedGuards.length === 0 ? (
                     <div className="p-2 text-gray-500 text-sm">
-                      No users found
+                      No guards found
                     </div>
                   ) : (
-                    searchedUsers.map((user) => (
+                    searchedGuards.map((guard) => (
                       <div
-                        key={user.id}
+                        key={guard.id}
                         className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                        onMouseDown={() => handleUserSelect(user)}
+                        onMouseDown={() => handleGuardSelect(guard)}
                       >
-                        {user.name}
+                        {guard.name}
                       </div>
                     ))
                   )}
                 </div>
               )}
             </div>
+            
+
+           
 
             {/* Role Select */}
             <div>
@@ -632,23 +649,22 @@ export default function AssignmentNew() {
                 </div>
               )}
             </div>
-            {/* Guard Search */}
+            
+            {/* User Search */}
             <div className="relative">
               <input
                 type="text"
-                value={guardSearch}
-                onFocus={() => setShowGuardDropdown(true)}
-                onBlur={() =>
-                  setTimeout(() => setShowGuardDropdown(false), 200)
-                }
+                value={userSearch}
+                onFocus={() => setShowUserDropdown(true)}
+                onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
                 onChange={(e) => {
-                  setGuardSearch(e.target.value);
-                  setForm((f) => ({ ...f, guardId: "" }));
+                  setUserSearch(e.target.value);
+                  setForm((f) => ({ ...f, userId: "" }));
                 }}
                 placeholder="Select User Notified"
-                className={getFieldClasses("guardId")}
+                className={getFieldClasses("userId")}
               />
-              {showErrors && errors.guardId && (
+              {showErrors && errors.userId && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
                   <svg
                     className="w-4 h-4 mr-1"
@@ -661,27 +677,27 @@ export default function AssignmentNew() {
                       clipRule="evenodd"
                     />
                   </svg>
-                  {errors.guardId}
+                  {errors.userId}
                 </div>
               )}
-              {showGuardDropdown && guardSearch.length >= 2 && (
+              {showUserDropdown && userSearch.length >= 2 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                  {loadingGuards ? (
+                  {loadingUsers ? (
                     <div className="p-2 text-sm text-gray-500">
-                      Searching guards...
+                      Searching users...
                     </div>
-                  ) : searchedGuards.length === 0 ? (
+                  ) : searchedUsers.length === 0 ? (
                     <div className="p-2 text-gray-500 text-sm">
-                      No guards found
+                      No users found
                     </div>
                   ) : (
-                    searchedGuards.map((guard) => (
+                    searchedUsers.map((user) => (
                       <div
-                        key={guard.id}
+                        key={user.id}
                         className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                        onMouseDown={() => handleGuardSelect(guard)}
+                        onMouseDown={() => handleUserSelect(user)}
                       >
-                        {guard.name}
+                        {user.name}
                       </div>
                     ))
                   )}
