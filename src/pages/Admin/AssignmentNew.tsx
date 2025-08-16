@@ -275,12 +275,12 @@
 //   const handleEdit = (record: any) => {
 //   setIsEditing(true);
 //   setEditId(record.id);
-  
+
 //   // Map backend notification values to display values
 //   const mappedNotifications = Array.isArray(record.notification)
 //     ? record.notification.map(notif => notificationMapping[notif] || notif)
 //     : [];
-  
+
 //   setForm({
 //     clientId: String(record.client?.id || ""),
 //     addressId: String(record.address?.id || ""),
@@ -411,12 +411,12 @@
 //       if (!value || !Array.isArray(value) || value.length === 0) {
 //         return "-";
 //       }
-      
+
 //       // Transform backend format to display format
 //       const formattedNotifications = value.map((notification: string) => 
 //         formatNotificationText(notification)
 //       );
-      
+
 //       return formattedNotifications.join(", ");
 //     },
 //   },
@@ -626,9 +626,9 @@
 //                 </div>
 //               )}
 //             </div>
-            
 
-           
+
+
 
 //             {/* Role Select */}
 //             <div>
@@ -701,7 +701,7 @@
 //                 </div>
 //               )}
 //             </div>
-            
+
 //             {/* User Search */}
 //             <div className="relative">
 //               <input
@@ -996,13 +996,13 @@ type NotificationOption = (typeof notificationOptions)[number];
 const notificationMapping = {
   // Backend value -> Display value
   'geo_location': 'Geolocation',
-  'time_clock': 'Time Clock', 
+  'time_clock': 'Time Clock',
   'weekly_Hours': 'Weekly Hours',
   'schedule': 'Scheduling',
   // Add reverse mapping for when values come in display format already
   'Geolocation': 'Geolocation',
   'Time Clock': 'Time Clock',
-  'Weekly Hours': 'Weekly Hours', 
+  'Weekly Hours': 'Weekly Hours',
   'Scheduling': 'Scheduling'
 };
 
@@ -1011,7 +1011,7 @@ const reverseNotificationMapping = {
   // Display value -> Backend value
   'Geolocation': 'geo_location',
   'Time Clock': 'time_clock',
-  'Weekly Hours': 'weekly_Hours', 
+  'Weekly Hours': 'weekly_Hours',
   'Scheduling': 'schedule'
 };
 
@@ -1163,13 +1163,13 @@ export default function AssignmentNew() {
     try {
       console.log('Search data for Assignment page:', searchData);
       console.log('Route:', 'Assignment');
-      
+
       // Here you would call your API with search parameters
       // Example: await fetchAssignments(1, searchData);
       // You can modify your fetchAssignments function to accept search parameters
-      
+
       toast.success('Search applied successfully!');
-      
+
     } catch (error) {
       console.error('Search failed:', error);
       toast.error('Search failed. Please try again.');
@@ -1247,9 +1247,8 @@ export default function AssignmentNew() {
   // Helper function to get field styling based on error state
   const getFieldClasses = (fieldName: string) => {
     const hasError = showErrors && errors[fieldName];
-    return `${inputClasses} ${
-      hasError ? "border-red-500 focus:ring-red-500" : ""
-    }`;
+    return `${inputClasses} ${hasError ? "border-red-500 focus:ring-red-500" : ""
+      }`;
   };
 
   const validate = () => {
@@ -1335,12 +1334,12 @@ export default function AssignmentNew() {
   const handleEdit = (record: any) => {
     setIsEditing(true);
     setEditId(record.id);
-    
+
     // Map backend notification values to display values
     const mappedNotifications = Array.isArray(record.notification)
       ? record.notification.map(notif => notificationMapping[notif] || notif)
       : [];
-    
+
     setForm({
       clientId: String(record.client?.id || ""),
       addressId: String(record.address?.id || ""),
@@ -1386,7 +1385,7 @@ export default function AssignmentNew() {
 
   // Add this helper function at the top of your component (before the component declaration)
   const formatNotificationText = (notification: string): string => {
-    if(notification=="geo_location"){
+    if (notification == "geo_location") {
       return "GeoLocation"
     }
     return notification
@@ -1470,12 +1469,12 @@ export default function AssignmentNew() {
         if (!value || !Array.isArray(value) || value.length === 0) {
           return "-";
         }
-        
+
         // Transform backend format to display format
-        const formattedNotifications = value.map((notification: string) => 
+        const formattedNotifications = value.map((notification: string) =>
           formatNotificationText(notification)
         );
-        
+
         return formattedNotifications.join(", ");
       },
     },
@@ -1559,8 +1558,8 @@ export default function AssignmentNew() {
                         const initials = `${client.name
                           .charAt(0)
                           .toUpperCase()}${client.lastName
-                          .charAt(0)
-                          .toUpperCase()}`;
+                            ? client.lastName.charAt(0).toUpperCase()
+                            : ''}`;
 
                         return (
                           <div
@@ -1575,9 +1574,8 @@ export default function AssignmentNew() {
                                 address.id
                               )
                             }
-                            className={`p-3 cursor-pointer flex items-center space-x-3 ${
-                              isEven ? "bg-white" : "bg-gray-50"
-                            } hover:bg-gray-100 transition-colors duration-150`}
+                            className={`p-3 cursor-pointer flex items-center space-x-3 ${isEven ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100 transition-colors duration-150`}
                           >
                             {/* Circular Avatar with Initials */}
                             <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
@@ -1695,9 +1693,8 @@ export default function AssignmentNew() {
                 onChange={(e) => handleChange("role", e.target.value)}
                 className={`${getFieldClasses(
                   "role"
-                )} appearance-none bg-transparent ${
-                  form.role === "" ? "text-gray-400" : "text-gray-900"
-                }`}
+                )} appearance-none bg-transparent ${form.role === "" ? "text-gray-400" : "text-gray-900"
+                  }`}
               >
                 <option value="" disabled hidden>
                   Select Role
@@ -1732,9 +1729,8 @@ export default function AssignmentNew() {
                 onChange={(e) => handleChange("access", e.target.value)}
                 className={`${getFieldClasses(
                   "access"
-                )} appearance-none bg-transparent ${
-                  form.access === "" ? "text-gray-400" : "text-gray-900"
-                }`}
+                )} appearance-none bg-transparent ${form.access === "" ? "text-gray-400" : "text-gray-900"
+                  }`}
               >
                 <option value="" disabled hidden>
                   Select Access
@@ -1759,7 +1755,7 @@ export default function AssignmentNew() {
                 </div>
               )}
             </div>
-            
+
             {/* User Search */}
             <div className="relative">
               <input
@@ -1885,11 +1881,10 @@ export default function AssignmentNew() {
                         className="mr-3 text-[#004175] focus:ring-[#004175] focus:ring-2"
                       />
                       <span
-                        className={`${
-                          form.notification.includes(option)
+                        className={`${form.notification.includes(option)
                             ? "text-blue-800"
                             : "text-gray-700"
-                        }`}
+                          }`}
                       >
                         {option}
                       </span>
