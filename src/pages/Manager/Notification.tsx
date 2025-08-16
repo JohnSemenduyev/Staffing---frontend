@@ -333,23 +333,30 @@ const tableColumns: TableColumn[] = [
     }
   },
   {
-    key: "notificationType",
-    label: "Type",
-    sortable: true,
-    searchable: true,
-    width: "250px",
-    className: "min-w-[120px]",
-    render: (value: string) => {
-      // Format the notification type using the same helper function
-      const formattedType = value ? formatNotificationText(value) : "Unknown";
-      
-      return (
-        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full whitespace-nowrap">
-          {formattedType}
-        </span>
-      );
-    }
-  },
+  key: "notificationType",
+  label: "Notification",
+  sortable: true,
+  searchable: true,
+  searchType: 'dropdown', // Add this
+  searchOptions: [ // Add this
+    { label: 'Geolocation', value: 'geo_location' },
+    { label: 'Time Clock', value: 'time_clock' },
+    { label: 'Weekly Hours', value: 'weekly_hours' },
+    { label: 'Schedule', value: 'schedule' }
+  ],
+  width: "250px",
+  className: "min-w-[120px]",
+  render: (value: string) => {
+    // Format the notification type using the same helper function
+    const formattedType = value ? formatNotificationText(value) : "Unknown";
+    
+    return (
+      <div>
+        {formattedType}
+      </div>
+    );
+  }
+},
   {
     key: "message",
     label: "Message",

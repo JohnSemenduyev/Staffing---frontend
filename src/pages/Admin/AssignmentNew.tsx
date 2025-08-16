@@ -7,6 +7,7 @@ import {
   GenericTable,
   TableAction,
   TableColumn,
+  SearchOption
 } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
@@ -309,12 +310,76 @@ const formatNotificationText = (notification: string): string => {
 };
 
 // Then update your tableColumns array - replace the notification column with this:
+// const tableColumns: TableColumn[] = [
+//   {
+//     key: "client.name",
+//     label: "Client Name",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//   },
+//   {
+//     key: "address.address",
+//     label: "Location",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//   },
+//   {
+//     key: "guard.name",
+//     label: "User Name",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//   },
+//   {
+//     key: "role",
+//     label: " User Role",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//   },
+//   {
+//     key: "access",
+//     label: "Schedule  Access",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//   },
+//   {
+//     key: "user.name",
+//     label: "User Notified",
+//     sortable: true,
+//     searchable: true,
+//     width: "200px",
+//   },
+//   {
+//     key: "notification",
+//     label: "Notification",
+//     sortable: true,
+//     searchable: true,
+//     width: "400px",
+//     render: (value: NotificationOption[] | string[] | null | undefined) => {
+//       if (!value || !Array.isArray(value) || value.length === 0) {
+//         return "-";
+//       }
+      
+//       // Transform backend format to display format
+//       const formattedNotifications = value.map((notification: string) => 
+//         formatNotificationText(notification)
+//       );
+      
+//       return formattedNotifications.join(", ");
+//     },
+//   },
+// ];
 const tableColumns: TableColumn[] = [
   {
     key: "client.name",
     label: "Client Name",
     sortable: true,
     searchable: true,
+    searchType: 'text', // Keep as text search
     width: "200px",
   },
   {
@@ -322,6 +387,7 @@ const tableColumns: TableColumn[] = [
     label: "Location",
     sortable: true,
     searchable: true,
+    searchType: 'text', // Keep as text search
     width: "200px",
   },
   {
@@ -329,27 +395,41 @@ const tableColumns: TableColumn[] = [
     label: "User Name",
     sortable: true,
     searchable: true,
+    searchType: 'text', // Keep as text search
     width: "200px",
   },
   {
     key: "role",
-    label: " User Role",
+    label: "User Role",
     sortable: true,
     searchable: true,
+    searchType: 'dropdown', // Change to dropdown
+    searchOptions: [
+      { label: 'Admin', value: 'Admin' },
+      { label: 'Manager', value: 'Manager' },
+      { label: 'Guard', value: 'Guard' },
+      { label: 'Client', value: 'Client' }
+    ],
     width: "200px",
   },
   {
     key: "access",
-    label: "Schedule  Access",
+    label: "Schedule Access",
     sortable: true,
     searchable: true,
-    width: "200px",
+    searchType: 'dropdown', // Change to dropdown
+    searchOptions: [
+      { label: 'View', value: 'View' },
+      { label: 'Edit', value: 'Edit' }
+    ],
+    width: "250px",
   },
   {
     key: "user.name",
     label: "User Notified",
     sortable: true,
     searchable: true,
+    searchType: 'text', // Keep as text search
     width: "200px",
   },
   {
@@ -357,6 +437,7 @@ const tableColumns: TableColumn[] = [
     label: "Notification",
     sortable: true,
     searchable: true,
+    searchType: 'dropdown', // Change to dropdown - auto-generates from data
     width: "400px",
     render: (value: NotificationOption[] | string[] | null | undefined) => {
       if (!value || !Array.isArray(value) || value.length === 0) {
