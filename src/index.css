@@ -116,3 +116,61 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom scrollbar styles - mobile-like appearance */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* Hide scrollbar when not needed */
+.custom-scrollbar::-webkit-scrollbar-thumb:vertical {
+  min-height: 20px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:horizontal {
+  min-width: 20px;
+}
+
+/* Ensure the scrollbar doesn't break rounded corners */
+.custom-scrollbar {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+/* Additional styling to ensure proper corner rounding */
+.custom-scrollbar::-webkit-scrollbar-track-piece {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+/* Ensure the scrollbar thumb respects the rounded corners */
+.custom-scrollbar::-webkit-scrollbar-thumb:vertical {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
