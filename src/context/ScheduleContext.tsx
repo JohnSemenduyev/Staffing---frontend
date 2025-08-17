@@ -193,7 +193,6 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
     addressId: number
   ): Promise<WeekScheduleCheckResponse | null> => {
     try {
-      const token = localStorage.getItem("token");
       const response = await graphQLClient.request<{ checkClientWeekSchedule: WeekScheduleCheckResponse }>(
         CHECK_CLIENT_WEEK_SCHEDULE,
         { clientId, startDate, addressId },
