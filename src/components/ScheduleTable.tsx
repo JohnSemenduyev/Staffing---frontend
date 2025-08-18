@@ -1,0 +1,826 @@
+import React, { useState } from "react";
+import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
+import ToggleSwitch from "./ui/toggle";
+import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+
+interface Shift {
+  id: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  scheduleSessionId?: number;
+  clockIn?: string;
+  clockOut?: string;
+}
+
+interface ScheduleItem {
+  id: number;
+  clientId: number;
+  addressId: number;
+  userId: number;
+  startDate: string;
+  auto: boolean;
+  shifts: Shift[];
+  clientName: string;
+  address: string;
+  userName: string;
+  userPhone: string;
+}
+
+interface User {
+  id: string | number;
+  name: string;
+  phone?: string;
+}
+
+interface ScheduleTableProps {
+  scheduleData: ScheduleItem[];
+  selectedDate: string;
+  currentWeekRange: any;
+  isEditMode: boolean;
+  onScheduleDataChange: (newData: ScheduleItem[]) => void;
+  onPublish: () => void;
+  onPrint: () => void;
+  onDownloadExcel: () => void;
+  onToggleEditMode: () => void;
+  isPublishing: boolean;
+  isPrinting: boolean;
+  readOnly?: boolean;
+}
+
+// Utility functions
+const timeToMinutes = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
+  const timeToMinutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toRanges = (s: string, e: string): Array<[number, number]> => {
+    const ss = timeToMinutes(s), ee = timeToMinutes(e);
+    if (ss === ee) return [[0, 1440]];
+    if (ee > ss) return [[ss, ee]];
+    return [[ss, 1440], [0, ee]];
+  };
+  const r1 = toRanges(start1, end1), r2 = toRanges(start2, end2);
+  for (const a of r1) for (const b of r2) {
+    const hasGap = (a[1] + 1 <= b[0]) || (b[1] + 1 <= a[0]);
+    if (!hasGap) return true;
+  }
+  return false;
+};
+
+const sortShiftsByTime = (shifts: Shift[]) => {
+  return [...shifts].sort((a, b) => {
+    const timeToMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+  });
+};
+
+const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
+  const userDays = scheduleData.filter(i => i.userId === userId);
+  let max = 1;
+  for (const d of userDays) max = Math.max(max, d.shifts.length);
+  return max;
+};
+
+const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
+  const total = scheduleData
+    .filter(item => item.startDate === date)
+    .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  return parseFloat(total.toFixed(2));
+};
+
+const calculateUserTotal = (userId: number, scheduleData: ScheduleItem[]) => {
+  const total = scheduleData
+    .filter(item => item.userId === userId)
+    .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  return parseFloat(total.toFixed(2));
+};
+
+const calculateGrandTotal = (scheduleData: ScheduleItem[]) => {
+  const total = scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  return parseFloat(total.toFixed(2));
+};
+
+export const ScheduleTable: React.FC<ScheduleTableProps> = ({
+  scheduleData,
+  selectedDate,
+  currentWeekRange,
+  isEditMode,
+  onScheduleDataChange,
+  onPublish,
+  onPrint,
+  onDownloadExcel,
+  onToggleEditMode,
+  isPublishing,
+  isPrinting,
+  readOnly = false
+}) => {
+  const { toast: hookToast } = useToast();
+
+  // Modal states for edit/delete functionality
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
+  const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
+  const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
+  const [editForm, setEditForm] = useState({ starttime: "", endtime: "" });
+
+  // Drag and drop states
+  const [draggedShift, setDraggedShift] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null);
+
+  // Generate date columns for the schedule table
+  const generateDateColumns = () => {
+    if (!currentWeekRange) return [];
+
+    const dates = [];
+    const startDate = new Date(currentWeekRange.startOfWeek);
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      dates.push({
+        date: date.toISOString().split('T')[0],
+        display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
+      });
+    }
+    return dates;
+  };
+
+  const dateColumns = generateDateColumns();
+
+  // Get unique users from schedule data
+  const getUniqueUsers = () => {
+    const userMap = new Map();
+    scheduleData.forEach(item => {
+      if (!userMap.has(item.userId)) {
+        userMap.set(item.userId, {
+          id: item.userId,
+          name: item.userName,
+          phone: item.userPhone
+        });
+      }
+    });
+    return Array.from(userMap.values());
+  };
+
+  const uniqueUsers = getUniqueUsers();
+
+  // Delete individual shift
+  const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
+    setDeleteModal({ isOpen: true, shiftId, userId, date });
+  };
+
+  const confirmDeleteShift = () => {
+    const { userId, date, shiftId } = deleteModal;
+    const updatedData = scheduleData.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.filter(shift => shift.id !== shiftId)
+        };
+      }
+      return item;
+    }).filter(item => item.shifts.length > 0);
+
+    onScheduleDataChange(updatedData);
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+    hookToast({
+      title: "Shift Deleted",
+      description: "Shift has been deleted successfully.",
+    });
+  };
+
+  const cancelDeleteShift = () => {
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+  };
+
+  // Edit individual shift
+  const handleEditShift = (userId: number, date: string, shift: Shift) => {
+    setEditModal({ isOpen: true, shift, userId, date });
+    setEditForm({
+      starttime: shift.startTime,
+      endtime: shift.endTime
+    });
+  };
+
+  const confirmEditShift = () => {
+    const { userId, date, shift } = editModal;
+
+    // Validate the edit form
+    if (!editForm.starttime || !editForm.endtime) {
+      hookToast({
+        title: "Validation Error",
+        description: "Start time and end time are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for overlapping shifts
+    const existingShifts = scheduleData
+      .filter(item => item.userId === userId && item.startDate === date)
+      .flatMap(item => item.shifts);
+
+    for (const existingShift of existingShifts) {
+      if (existingShift.id === shift.id) continue; // Skip current shift when editing
+
+      if (doTimesOverlap(editForm.starttime, editForm.endtime, existingShift.startTime, existingShift.endTime)) {
+        hookToast({
+          title: "Overlapping Shift",
+          description: "Shift time overlaps with existing shift for this user and date",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const calculateHours = (start: string, end: string) => {
+      const [startH, startM] = start.split(":").map(Number);
+      const [endH, endM] = end.split(":").map(Number);
+      let hours = endH - startH + (endM - startM) / 60;
+      if (hours < 0) hours += 24;
+      return parseFloat(hours.toFixed(2));
+    };
+
+    const updatedData = scheduleData.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.map(s =>
+            s.id === shift.id
+              ? { ...s, startTime: editForm.starttime, endTime: editForm.endtime, hours: calculateHours(editForm.starttime, editForm.endtime) }
+              : s
+          )
+        };
+      }
+      return item;
+    });
+
+    onScheduleDataChange(updatedData);
+    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
+    setEditForm({ starttime: "", endtime: "" });
+    hookToast({
+      title: "Shift Updated",
+      description: "Shift has been updated successfully.",
+    });
+  };
+
+  const cancelEditShift = () => {
+    setEditModal({ isOpen: false, shift: null, userId: null, date: null });
+    setEditForm({ starttime: "", endtime: "" });
+  };
+
+  // Delete all data for a user
+  const handleDeleteUser = (userId: number) => {
+    setDeleteUserModal({ isOpen: true, userId });
+  };
+
+  const confirmDeleteUser = () => {
+    const { userId } = deleteUserModal;
+    const updatedData = scheduleData.filter(item => item.userId !== userId);
+    onScheduleDataChange(updatedData);
+    setDeleteUserModal({ isOpen: false, userId: null });
+    hookToast({
+      title: "User Data Deleted",
+      description: "All data for this user has been deleted successfully.",
+    });
+  };
+
+  const cancelDeleteUser = () => {
+    setDeleteUserModal({ isOpen: false, userId: null });
+  };
+
+  // Auto toggle handler
+  const handleUserAutoToggle = (userId: number, enabled: boolean) => {
+    const updatedData = scheduleData.map(item =>
+      item.userId === userId ? { ...item, auto: enabled } : item
+    );
+    onScheduleDataChange(updatedData);
+
+    hookToast({
+      title: "Auto Setting Updated",
+      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+    });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
+    setDraggedShift({
+      shift,
+      sourceUserId,
+      sourceDate,
+      sourceRowIdx
+    });
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setDragOverCell({ userId: targetUserId, date: targetDate, rowIdx: targetRowIdx });
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    setDragOverCell(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+    e.preventDefault();
+
+    if (!draggedShift) return;
+
+    const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
+
+    // Don't allow dropping on the same cell
+    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
+      setDraggedShift(null);
+      setDragOverCell(null);
+      return;
+    }
+
+    const existingSchedule = scheduleData.find(
+      item => item.userId === targetUserId && item.startDate === targetDate
+    );
+
+    if (existingSchedule) {
+      const hasOverlap = existingSchedule.shifts.some(existingShift => {
+        return doTimesOverlap(
+          shift.startTime,
+          shift.endTime,
+          existingShift.startTime,
+          existingShift.endTime
+        );
+      });
+
+      if (hasOverlap) {
+        hookToast({
+          title: "Overlapping Shift",
+          description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
+          variant: "destructive",
+        });
+        setDraggedShift(null);
+        setDragOverCell(null);
+        return;
+      }
+
+      // Handle the specific row position
+      const updatedData = scheduleData.map(item => {
+        if (item.userId === targetUserId && item.startDate === targetDate) {
+          const currentShifts = [...item.shifts];
+
+          // If dropping to a specific row position, insert at that position
+          if (targetRowIdx < currentShifts.length) {
+            // Replace the shift at the target row position
+            currentShifts[targetRowIdx] = { ...shift, id: Date.now(), date: targetDate };
+          } else {
+            // Add to the end if target row is beyond current shifts
+            currentShifts.push({ ...shift, id: Date.now(), date: targetDate });
+          }
+
+          return {
+            ...item,
+            shifts: sortShiftsByTime(currentShifts)
+          };
+        }
+        return item;
+      });
+
+      onScheduleDataChange(updatedData);
+    } else {
+      // Create new schedule for target user/date
+      const sourceSchedule = scheduleData.find(
+        item => item.userId === sourceUserId && item.startDate === sourceDate
+      );
+
+      if (sourceSchedule) {
+        const targetUser = uniqueUsers.find(u => u.id === targetUserId);
+        const newSchedule = {
+          id: Date.now(),
+          clientId: sourceSchedule.clientId,
+          addressId: sourceSchedule.addressId,
+          userId: targetUserId,
+          startDate: targetDate,
+          auto: sourceSchedule.auto,
+          shifts: [{ ...shift, id: Date.now(), date: targetDate }],
+          clientName: sourceSchedule.clientName,
+          address: sourceSchedule.address,
+          userName: targetUser?.name || sourceSchedule.userName,
+          userPhone: targetUser?.phone || sourceSchedule.userPhone,
+        };
+
+        onScheduleDataChange([...scheduleData, newSchedule]);
+      }
+    }
+    setDraggedShift(null);
+    setDragOverCell(null);
+
+    hookToast({
+      title: "Shift Copied",
+      description: "Shift has been copied successfully.",
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedShift(null);
+    setDragOverCell(null);
+  };
+
+  return (
+    <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
+      <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
+        {/* Table */}
+        <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
+          <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
+            <tr>
+              <th className="px-4 py-3 text-left border border-gray-300 whitespace-nowrap">
+                Employee Name
+              </th>
+              {dateColumns.map(dateCol => (
+                <th key={dateCol.date} className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
+                  {dateCol.display}
+                </th>
+              ))}
+              <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap">
+                Total
+              </th>
+              <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap w-16">
+                Auto
+              </th>
+            </tr>
+          </thead>
+          <tbody className="relative">
+            {uniqueUsers.map((user, userIndex) => {
+              const rowCount = getMaxShiftsPerDay(user.id, scheduleData);
+
+              return (
+                <React.Fragment key={user.id}>
+                  {[...Array(rowCount)].map((_, rowIdx) => (
+                    <tr
+                      key={`${user.id}-row-${rowIdx}`}
+                      className={`hover:bg-blue-50 transition-colors ${(userIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                        }`}
+                    >
+                      {rowIdx === 0 && (
+                        <td
+                          className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                          rowSpan={rowCount}
+                        >
+                          <div className="font-medium text-gray-800">{user.name}</div>
+                          <div className="text-xs text-gray-500">{user.phone}</div>
+                        </td>
+                      )}
+
+                      {dateColumns.map(dateCol => {
+                        const daySchedules = scheduleData.filter(
+                          i => i.userId === user.id && i.startDate === dateCol.date
+                        );
+                        const sortedShifts = sortShiftsByTime(
+                          daySchedules.flatMap(s => s.shifts)
+                        );
+                        const shift = sortedShifts[rowIdx]; // take nth shift of the day
+
+                        return (
+                          <td
+                            key={dateCol.date + '-' + rowIdx}
+                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${!readOnly && dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
+                                ? 'bg-blue-50 border-blue-300'
+                                : ''
+                              }`}
+                            onDragOver={!readOnly ? (e => handleDragOver(e, user.id, dateCol.date, rowIdx)) : undefined}
+                            onDragLeave={!readOnly ? handleDragLeave : undefined}
+                            onDrop={!readOnly ? (e => handleDrop(e, user.id, dateCol.date, rowIdx)) : undefined}
+                          >
+                            {shift ? (
+                              <div className="relative group">
+                                {isEditMode && !readOnly && (
+                                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
+                                    <div
+                                      className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                      draggable
+                                      onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date, rowIdx)}
+                                      onDragEnd={handleDragEnd}
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        console.log('Edit button clicked for shift:', shift);
+                                        handleEditShift(user.id, dateCol.date, shift);
+                                      }}
+                                      className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
+                                      title="Edit shift"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                      className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
+                                      title="Delete shift"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
+                                <span className="text-sm">
+                                  {`${shift.startTime} - ${shift.endTime}`}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+
+                      {rowIdx === 0 && (
+                        <>
+                          <td
+                            className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
+                            rowSpan={rowCount}
+                          >
+                            {calculateUserTotal(user.id, scheduleData)}
+                          </td>
+                          <td
+                            className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
+                            rowSpan={rowCount}
+                          >
+                            <div className="flex items-center justify-center">
+                              <ToggleSwitch
+                                enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
+                                onToggle={readOnly ? undefined : (enabled => handleUserAutoToggle(user.id, enabled))}
+                              />
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+
+                  <tr className={`transition-colors ${userIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
+                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+                      Total
+                    </td>
+                    {dateColumns.map(dateCol => {
+                      const daySchedules = scheduleData.filter(
+                        i => i.userId === user.id && i.startDate === dateCol.date
+                      );
+                      const dayTotal = daySchedules.reduce(
+                        (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
+                        0
+                      );
+                      const rounded = parseFloat(dayTotal.toFixed(2));
+                      return (
+                        <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
+                          {rounded > 0 ? rounded : '-'}
+                        </td>
+                      );
+                    })}
+                    <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                      {calculateUserTotal(user.id, scheduleData)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
+                      {isEditMode && (
+                        <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                </React.Fragment>
+              );
+            })}
+            {/* Grand Total Row */}
+            <tr className="bg-gray-50 font-medium">
+              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
+              {dateColumns.map(dateCol => (
+                <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                  {calculateDayTotal(dateCol.date, scheduleData) || '-'}
+                </td>
+              ))}
+              <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                {calculateGrandTotal(scheduleData)}
+              </td>
+              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Action buttons - Bottom Corner */}
+      <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
+        {/* Publish/Cancel button - Leftmost */}
+        {isEditMode ? (
+          <div className="flex gap-2">
+            <button
+              onClick={onPublish}
+              disabled={isPublishing}
+              className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
+              title="Publish Schedule"
+            >
+              {isPublishing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  <span>Publishing...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Publish
+                </>
+              )}
+            </button>
+            <button
+              onClick={onToggleEditMode}
+              className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
+              title="Cancel Edit Mode"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onPublish}
+            disabled={isPublishing}
+            className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
+            title="Publish Schedule"
+          >
+            {isPublishing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                <span>Publishing...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Publish
+              </>
+            )}
+          </button>
+        )}
+
+        {/* Print, Download and Edit buttons - Right side */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onPrint}
+            disabled={isPrinting}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Print Report"
+          >
+            {isPrinting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                <span className="text-sm">Preparing...</span>
+              </>
+            ) : (
+              <Printer className="w-5 h-5" />
+            )}
+          </button>
+
+          <button
+            onClick={onDownloadExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Download Excel"
+          >
+            <Upload className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={onToggleEditMode}
+            className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              isEditMode 
+                ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+            }`}
+            title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Shift Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Shift</h3>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete this shift?
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDeleteShift}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteShift}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Shift Modal */}
+      {editModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={editForm.starttime}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, starttime: e.target.value }))}
+                  className="w-full px-3 py-1 border border-[#d0d4d9] rounded-md placeholder:text-gray-500 font-normal focus:outline-none focus:ring-2 focus:ring-[#004175] transition appearance-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={editForm.endtime}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, endtime: e.target.value }))}
+                  className="w-full px-3 py-1 border border-[#d0d4d9] rounded-md placeholder:text-gray-500 font-normal focus:outline-none focus:ring-2 focus:ring-[#004175] transition appearance-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 justify-end mt-6">
+              <button
+                type="button"
+                onClick={cancelEditShift}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmEditShift}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {deleteUserModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete User Data</h3>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete all data for this user?
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}; 

@@ -38,13 +38,36 @@ export const timeToMinutes = (timeStr: string): number => {
   return hours * 60 + minutes;
 };
 
-export const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
-  const start1Minutes = timeToMinutes(start1);
-  const end1Minutes = timeToMinutes(end1);
-  const start2Minutes = timeToMinutes(start2);
-  const end2Minutes = timeToMinutes(end2);
+export const minutesDiffWithWrap = (start: string, end: string): number => {
+  const startM = timeToMinutes(start);
+  const endM = timeToMinutes(end);
+  let diff = endM - startM;
+  if (diff <= 0) diff += 24 * 60;
+  return diff;
+};
 
-  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+export const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
+  const toRanges = (s: string, e: string): Array<[number, number]> => {
+    const ss = timeToMinutes(s);
+    const ee = timeToMinutes(e);
+    if (ss === ee) return [[0, 24 * 60]]; // full day
+    if (ee > ss) return [[ss, ee]];
+    return [[ss, 24 * 60], [0, ee]]; // overnight
+  };
+
+  const ranges1 = toRanges(start1, end1);
+  const ranges2 = toRanges(start2, end2);
+
+  // Overlap if there's not at least a 1-minute gap between any pair
+  for (const a of ranges1) {
+    for (const b of ranges2) {
+      const aStart = a[0], aEnd = a[1];
+      const bStart = b[0], bEnd = b[1];
+      const hasRequiredGap = (aEnd + 1 <= bStart) || (bEnd + 1 <= aStart);
+      if (!hasRequiredGap) return true;
+    }
+  }
+  return false;
 };
 
 export const sortShiftsByTime = (shifts: Shift[]): Shift[] => {
@@ -156,6 +179,14 @@ export const validateForm = (formData: FormData, scheduleData: ScheduleItem[], e
   if (!formData.starttime) e.starttime = "Required";
   if (!formData.endtime) e.endtime = "Required";
 
+  // Minimum duration: end must be at least 1 minute after start
+  if (formData.starttime && formData.endtime) {
+    const minutes = minutesDiffWithWrap(formData.starttime, formData.endtime);
+    if (minutes < 1) {
+      e.endtime = "End time must be at least 1 minute after start time";
+    }
+  }
+
   // Check for overlapping shifts
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
     const existingShifts = scheduleData
@@ -179,7 +210,7 @@ export const calculateHours = (start: string, end: string): number => {
   const [startH, startM] = start.split(":").map(Number);
   const [endH, endM] = end.split(":").map(Number);
   let hours = endH - startH + (endM - startM) / 60;
-  if (hours < 0) hours += 24;
+  if (hours <= 0) hours += 24; // equal times => 24h, overnight => +24
   return parseFloat(hours.toFixed(2));
 };
 
