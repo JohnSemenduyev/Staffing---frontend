@@ -143,7 +143,6 @@ function ClientList() {
   // Handle save new client
 
 const handleSaveNewClient = async () => {
-  // Validate input
   const validationErrors = validateNewClientData();
   if (validationErrors.length > 0) {
     toast.error(`Please fill in all required fields:\n${validationErrors.join("\n")}`);
@@ -151,9 +150,7 @@ const handleSaveNewClient = async () => {
   }
 
   setIsCreating(true);
-  
   try {
-    // Prepare input for the mutation
     const input = {
       name: newClientData.clientName,
       addresses: [{
@@ -163,55 +160,28 @@ const handleSaveNewClient = async () => {
         pincode: newClientData.pincode,
         contractHours: parseInt(newClientData.contractHour) || 0,
         industry: newClientData.industry,
+        latitude: newClientData.latitude ? parseFloat(newClientData.latitude) : null,
+        longitude: newClientData.longitude ? parseFloat(newClientData.longitude) : null,
       }]
     };
 
-    console.log("Creating new client with input:", input);
+    const createdClient = await createClient(input);
 
-    try {
-      // Prepare input for the mutation
-      const input = {
-        name: newClientData.clientName,
-        
-        addresses: [{
-          address: newClientData.address,
-          city: newClientData.city,
-          state: newClientData.state,
-          pincode: newClientData.pincode,
-          contractHours: parseInt(newClientData.contractHour) || 0,
-          industry: newClientData.industry,
-          latitude: newClientData.latitude ? parseFloat(newClientData.latitude) : null,  // Add latitude
-          longitude: newClientData.longitude ? parseFloat(newClientData.longitude) : null, // Add longitude
-        }]
-      };
+    setShowAddRow(false);
+    setNewClientData({
+      clientName: "",
+      industry: "",
+      contractHour: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      latitude: "",
+      longitude: ""
+    });
 
-      console.log("Creating new client with input:", input);
-      
-      // Call the createClient mutation
-      const createdClient = await createClient(input);
-      
-      console.log("Client created successfully:", createdClient);
-      
-      // Reset form and hide add row
-      setShowAddRow(false);
-      setNewClientData({
-        clientName: "",
-        industry: "",
-        contractHour: "",
-        address: "",
-        city: "",
-        state: "",
-        pincode: "",
-        latitude: "",   // Reset latitude
-        longitude: ""   // Reset longitude
-      });
-
-    // Refresh the schedule sessions to show the new client
     await refreshScheduleSessions();
-    
-    // Show success message
     toast.success("Client created successfully!");
-    
   } catch (error: any) {
     console.error("Failed to create client:", error);
     toast.error(`Failed to create client: ${error.message || "Unknown error"}`);
