@@ -194,6 +194,7 @@ useEffect(() => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap"
+      ,height:"40px"
     },
     {
       key: "address.address",
