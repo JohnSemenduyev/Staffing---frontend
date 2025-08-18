@@ -141,7 +141,7 @@ type ClientSessionContextType = {
     shiftId: number;
     scheduleSessionId: number;
     clockIn: string;
-    clockOut: string;
+    clockOut?: string | null;
   }>) => Promise<SessionItem[]>;
 };
 
@@ -271,7 +271,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     shiftId: number;
     scheduleSessionId: number;
     clockIn: string;
-    clockOut: string;
+    clockOut?: string | null;
   }>) => {
     try {
       const token = localStorage.getItem("token");
