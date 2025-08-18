@@ -163,6 +163,14 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
   const [sessionLoading, setSessionLoading] = useState<boolean>(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
+  const genericError = (op: 'fetchClientSessions'|'fetchSchedule'|'bulkUpsert'|'fetchSessions'|'updateTimes', err: any) => {
+    const msg = String(err?.response?.errors?.[0]?.message || err?.message || '');
+    if (/unauthorized|forbidden/i.test(msg)) return 'Your session has expired. Please sign in again.';
+    if (/invalid\s+(date|time)/i.test(msg)) return 'Invalid input. Please check your entries and try again.';
+    if (op === 'updateTimes' && /non-empty array/i.test(msg)) return 'No valid sessions to publish.';
+    return 'Something went wrong. Please try again.';
+  };
+
   const fetchClientSessions = async () => {
     setLoading(true);
     setError(null);
@@ -177,8 +185,8 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       );
       setClientSessions(response.ScheduleSessionsByClientWeekForManager);
     } catch (err) {
-      console.error("Failed to fetch client sessions:", err);
-      setError("Error fetching client sessions.");
+      console.error('fetchClientSessions:', err);
+      setError(genericError('fetchClientSessions', err));
     } finally {
       setLoading(false);
     }
@@ -198,8 +206,8 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       );
       setScheduleData(response.ScheduleSessionsByClientWeek);
     } catch (err) {
-      console.error("Failed to fetch schedule data:", err);
-      setScheduleError("Error fetching schedule data.");
+      console.error('fetchScheduleData:', err);
+      setScheduleError(genericError('fetchSchedule', err));
       setScheduleData(null);
     } finally {
       setScheduleLoading(false);
@@ -223,8 +231,8 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       toasted.success("Schedule saved successfully!");
       console.log("Bulk upsert response:", response);
     } catch (err) {
-      console.error("Failed to save schedule sessions:", err);
-      toasted.error("Failed to save schedule.");
+      console.error('bulkUpsertScheduleSessions:', err);
+      toasted.error(genericError('bulkUpsert', err));
     } finally {
       setMutationLoading(false);
     }
@@ -252,8 +260,8 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
 
       setSessionData(filteredSessions);
     } catch (err) {
-      console.error("Failed to fetch session data:", err);
-      setSessionError("Error fetching session data.");
+      console.error('fetchSessionData:', err);
+      setSessionError(genericError('fetchSessions', err));
       setSessionData(null);
     } finally {
       setSessionLoading(false);
@@ -306,8 +314,8 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       
       return response.updateManySessionTimes;
     } catch (error) {
-      console.error("Error updating session times:", error);
-      toasted.error("Failed to update session times");
+      console.error('updateSessionTimes:', error);
+      toasted.error(genericError('updateTimes', error));
       throw error;
     }
   };
