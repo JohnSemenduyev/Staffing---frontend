@@ -83,6 +83,7 @@ export type ScheduleUser = {
 };
 
 export type ScheduleDataItem = {
+  auto: boolean;
   shifts: Shift[];
   user: ScheduleUser;
   clientId: number;

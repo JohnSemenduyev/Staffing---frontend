@@ -985,24 +985,29 @@ export const ViewSchedule = () => {
     try {
       setIsActualTimePublishing(true);
 
-      // Convert session data to the format expected by updateSessionTimes
-      const sessionUpdates = sessionData.map(session => {
-        // Determine if this is a new session (created via + Add Session)
-        const isNewSession = session.id > 1700000000000; // Temporary timestamp ID
+      // Only send complete sessions (both clockIn and clockOut present)
+      const complete = sessionData.filter(s => s.clockIn && s.clockOut);
 
-        return {
-          sessionId: isNewSession ? null : session.id, // null for new sessions, original ID for existing/updated
-          shiftId: session.shiftId, // This should be the same as the shift selected in dialog
-          scheduleSessionId: session.scheduleSessionId, // This should be the same as the shift's scheduleSessionId
-          clockIn: session.clockIn,
-          clockOut: session.clockOut
-        };
-      });
+      const items = sessionData
+        .filter(s => s.clockIn) // require clockIn; allow no clockOut
+        .map(s => {
+          const isNew = s.id > 1700000000000;
+          return {
+            sessionId: isNew ? null : s.id,
+            shiftId: s.shiftId,
+            scheduleSessionId: s.scheduleSessionId,
+            clockIn: s.clockIn!,
+            ...(s.clockOut ? { clockOut: s.clockOut } : {}), // include only if not null/empty
+          };
+        });
 
-      console.log("Publishing actual time data:", sessionUpdates);
+      if (items.length === 0) {
+        toast.error("No sessions to publish.");
+        setIsActualTimePublishing(false);
+        return;
+      }
 
-      // Call the updateSessionTimes function from context
-      await updateSessionTimes(sessionUpdates);
+      await updateSessionTimes(items);
 
       toast.success("Actual time data published successfully!");
 
