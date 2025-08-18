@@ -201,7 +201,8 @@ const handleClientSelect = (
   key: "overlap",
   label: "Overlap", 
   sortable: false,
-  searchable: false,
+  searchable: true,
+  width:"250px",
   className: "whitespace-nowrap",
   render: (value: boolean) => (
     <label className="inline-flex items-center cursor-pointer">
@@ -218,7 +219,7 @@ const handleClientSelect = (
   )
 },
     {
-      key: "unscheduledTime", label: "Unscheduled Time", sortable: false, render: (v) => (
+      key: "unscheduledTime", label: "Unscheduled Time",width:"250px", sortable: false,searchable:true, render: (v) => (
         <label className="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
