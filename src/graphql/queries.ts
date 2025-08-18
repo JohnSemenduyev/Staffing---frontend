@@ -447,6 +447,7 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
       user {
         name
         lastName
+        phone
       }
       shifts {
         date
@@ -528,7 +529,55 @@ export const GET_NOTIFICATIONS = gql`
     }
   }
 `;
-
+export const GET_ALL_SESSIONS = gql`
+  query GetAllSessions {
+    sessions {
+      id
+      shiftId
+      scheduleSessionId
+      clockIn
+      clockOut
+      workedTime
+      clockInLat
+      clockInLong
+      clockOutLat
+      clockOutLong
+      shift {
+        id
+        date
+        startTime
+        endTime
+        hours
+        actualHours
+      }
+      scheduleSession {
+        id
+        clientId
+        addressId
+        userId
+        startDate
+        endDate
+        client {
+          id
+          name
+        }
+        address {
+          id
+          address
+          city
+          state
+          pincode
+        }
+        user {
+          id
+          name
+          lastName
+          phone
+        }
+      }
+    }
+  }
+`;
 export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
   query SessionsByScheduleSession($scheduleSessionId: Int!) {
     sessionsByScheduleSession(scheduleSessionId: $scheduleSessionId) {
