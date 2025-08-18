@@ -447,6 +447,7 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
       user {
         name
         lastName
+        phone
       }
       shifts {
         date

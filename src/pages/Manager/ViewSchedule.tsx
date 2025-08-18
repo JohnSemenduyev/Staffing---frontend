@@ -166,12 +166,19 @@ const timeToMinutes = (timeStr) => {
 };
 
 const doTimesOverlap = (start1, end1, start2, end2) => {
-  const start1Minutes = timeToMinutes(start1);
-  const end1Minutes = timeToMinutes(end1);
-  const start2Minutes = timeToMinutes(start2);
-  const end2Minutes = timeToMinutes(end2);
-
-  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+  const timeToMinutes = (t) => t.split(':').map(Number).reduce((a, b, i) => i === 0 ? a + b * 60 : a + b, 0);
+  const toRanges = (s, e) => {
+    const ss = timeToMinutes(s), ee = timeToMinutes(e);
+    if (ss === ee) return [[0, 1440]];
+    if (ee > ss) return [[ss, ee]];
+    return [[ss, 1440], [0, ee]];
+  };
+  const r1 = toRanges(start1, end1), r2 = toRanges(start2, end2);
+  for (const a of r1) for (const b of r2) {
+    const hasGap = (a[1] + 1 <= b[0]) || (b[1] + 1 <= a[0]);
+    if (!hasGap) return true;
+  }
+  return false;
 };
 
 const sortShiftsByTime = (shifts) => {
@@ -285,10 +292,10 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
 };
 
 // Date Navigation Component
-const DateNavigation = ({ 
-  selectedDate, 
-  onDateChange, 
-  currentWeekRange 
+const DateNavigation = ({
+  selectedDate,
+  onDateChange,
+  currentWeekRange
 }: {
   selectedDate: string;
   onDateChange: (date: string) => void;
@@ -305,12 +312,12 @@ const DateNavigation = ({
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     if (!currentWeekRange) return;
-    
+
     const currentDate = new Date(selectedDate);
     const daysToAdd = direction === 'next' ? 7 : -7;
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + daysToAdd);
-    
+
     const newDateStr = newDate.toISOString().split('T')[0];
     onDateChange(newDateStr);
   };
@@ -324,13 +331,13 @@ const DateNavigation = ({
       >
         <ChevronLeft className="w-5 h-5" />
       </button>
-      
+
       <div className="px-4 py-1 border border-blue-300 rounded-md bg-blue-50">
         <span className="text-blue-700 font-medium text-sm">
           {formatDateForDisplay(selectedDate)}
         </span>
       </div>
-      
+
       <button
         onClick={() => navigateWeek('next')}
         className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
@@ -376,7 +383,7 @@ export const ViewSchedule = () => {
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
-  
+
   // Session data state for actual time tracking (local state for UI)
   const [sessionData, setSessionData] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -484,112 +491,120 @@ export const ViewSchedule = () => {
   }, [clientSessions]);
 
   // Transform API data when it arrives - UPDATED
-// ... existing code ...
+  // ... existing code ...
 
   // Transform API data when it arrives - FIXED VERSION
-useEffect(() => {
-  if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
-    console.log("Raw API data:", apiScheduleData);
+  useEffect(() => {
+    if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
+      const keyedByUserDate = new Map<string, {
+        id: number;
+        clientId: number;
+        addressId: number;
+        userId: number;
+        startDate: string;
+        auto: boolean;
+        shifts: {
+          id: number;
+          date: string;
+          startTime: string;
+          endTime: string;
+          hours: number;
+          scheduleSessionId: number;
+        }[];
+        clientName: string;
+        address: string;
+        userName: string;
+        userPhone: string;
+      }>();
 
-    // Transform API data to match your component's expected format
-    const transformedData: ScheduleItem[] = [];
+      apiScheduleData.forEach(group => {
+        const userId = group.user?.id;
+        group.shifts?.forEach(shift => {
+          if (!shift?.date || userId == null) return;
 
-    // Process each schedule group in the array
-    apiScheduleData.forEach(scheduleGroup => {
-      if (scheduleGroup.shifts && scheduleGroup.user) {
-        // Group shifts by date for this user
-        const shiftsByDate = new Map();
+          const date = new Date(shift.date).toISOString().split('T')[0];
+          const key = `${userId}-${date}`;
 
-        scheduleGroup.shifts.forEach(shift => {
-          // Convert ISO date string to YYYY-MM-DD format
-          let readableDate;
-          try {
-            if (shift.date) {
-              // Handle ISO date string like "2025-08-08T00:00:00.000Z"
-              const dateObj = new Date(shift.date);
-              readableDate = dateObj.toISOString().split('T')[0];
-            } else {
-              console.warn('Missing date for shift:', shift);
-              return; // Skip this shift
-            }
-          } catch (error) {
-            console.error('Error converting date:', shift.date, error);
-            return; // Skip this shift
+          let item = keyedByUserDate.get(key);
+          if (!item) {
+            item = {
+              id: keyedByUserDate.size + 1,
+              clientId: group.clientId,
+              addressId: group.addressId,
+              userId,
+              startDate: date,
+              auto: group.auto ?? false,
+              shifts: [],
+              clientName: selectedClient?.name || "Unknown Client",
+              address: selectedClient?.address || "Unknown Address",
+              userName: group.user?.name ?? "",
+              userPhone: ""
+            };
+            keyedByUserDate.set(key, item);
           }
 
-          if (!shiftsByDate.has(readableDate)) {
-            shiftsByDate.set(readableDate, []);
+          // Deduplicate by id OR by start/end time
+          const exists = item.shifts.some(s =>
+            s.id === shift.id ||
+            (s.startTime === shift.startTime && s.endTime === shift.endTime)
+          );
+          if (!exists) {
+            item.shifts.push({
+              id: shift.id,
+              date,
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+              hours: shift.hours,
+              scheduleSessionId: shift.scheduleSessionId
+            });
           }
-
-          shiftsByDate.get(readableDate).push({
-            id: shift.id,
-            date: readableDate,
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            hours: shift.hours,
-            scheduleSessionId: shift.scheduleSessionId
-          });
         });
-
-        // Create a ScheduleItem for each date
-        shiftsByDate.forEach((dateShifts, date) => {
-          transformedData.push({
-            id: transformedData.length + 1,
-            clientId: scheduleGroup.clientId,
-            addressId: scheduleGroup.addressId,
-            userId: scheduleGroup.user.id,
-            startDate: date,
-            auto: false, // You might need to get this from another source
-            shifts: dateShifts,
-            clientName: selectedClient?.name || "Unknown Client",
-            address: selectedClient?.address || "Unknown Address",
-            userName: scheduleGroup.user.name,
-            userPhone: "" // You might need to fetch user phone separately
-          });
-        });
-      }
-    });
-
-    console.log("Transformed schedule data:", transformedData);
-    setScheduleData(transformedData);
-    
-    // Fetch session data for actual time tracking
-    // Get unique scheduleSessionIds from all shifts
-    const scheduleSessionIds = new Set<number>();
-    transformedData.forEach(item => {
-      item.shifts.forEach(shift => {
-        if (shift.scheduleSessionId) {
-          scheduleSessionIds.add(shift.scheduleSessionId);
-        }
       });
-    });
-    fetchSessionData(Array.from(scheduleSessionIds));
-  } else {
-    console.log("No API schedule data or empty array:", apiScheduleData);
-    setScheduleData([]);
-    setSessionData([]); // Clear session data when no schedule data
-  }
-}, [apiScheduleData, selectedClient]);
 
-// Update local session data when API session data changes
-useEffect(() => {
-  if (apiSessionData) {
-    setSessionData(apiSessionData);
-  } else {
-    setSessionData([]);
-  }
-}, [apiSessionData]);
+      // Sort shifts for each day by start time
+      keyedByUserDate.forEach(v => {
+        v.shifts.sort((a, b) => {
+          const toMin = (t: string) => {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+          };
+          return toMin(a.startTime) - toMin(b.startTime);
+        });
+      });
 
-// Update loading states from context
-useEffect(() => {
-  setSessionLoading(apiSessionLoading);
-}, [apiSessionLoading]);
+      const transformedData = Array.from(keyedByUserDate.values());
+      setScheduleData(transformedData);
 
-useEffect(() => {
-  setSessionError(apiSessionError);
-}, [apiSessionError]);
+      // Fetch session data after transform
+      const scheduleSessionIds = new Set<number>();
+      transformedData.forEach(item => {
+        item.shifts.forEach(s => s.scheduleSessionId && scheduleSessionIds.add(s.scheduleSessionId));
+      });
+      fetchSessionData(Array.from(scheduleSessionIds));
+    } else {
+      setScheduleData([]);
+      setSessionData([]);
+    }
+  }, [apiScheduleData, selectedClient]);
+  // Update local session data when API session data changes
+  useEffect(() => {
+    if (apiSessionData) {
+      setSessionData(apiSessionData);
+    } else {
+      setSessionData([]);
+    }
+  }, [apiSessionData]);
 
-// ... existing code ...
+  // Update loading states from context
+  useEffect(() => {
+    setSessionLoading(apiSessionLoading);
+  }, [apiSessionLoading]);
+
+  useEffect(() => {
+    setSessionError(apiSessionError);
+  }, [apiSessionError]);
+
+  // ... existing code ...
 
   const tableColumns: TableColumn[] = [
     { key: "clientName", label: "Client Name", sortable: true, searchable: true, width: "225px" },
@@ -682,15 +697,15 @@ useEffect(() => {
     e.preventDefault();
     const formErrors = validateForm(form, scheduleData);
     setErrors(formErrors);
-  
+
     if (Object.keys(formErrors).length > 0) return;
-  
+
     setSubmitLoader(true);
-  
+
     try {
       // Get user details from the hook data
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
-  
+
       if (!selectedUser) {
         hookToast({
           title: "Error",
@@ -699,7 +714,7 @@ useEffect(() => {
         });
         return;
       }
-  
+
       // Create a copy of current schedule data to work with
       const updatedScheduleData = [...scheduleData];
       const newShift = {
@@ -708,21 +723,21 @@ useEffect(() => {
         endTime: form.endtime,
         hours: calculateHours(form.starttime, form.endtime),
       };
-  
+
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
-        
+
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = dateObj.toISOString().split('T')[0];
-          
+
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
             item => item.userId === Number(form.userId) && item.startDate === dateStr
           );
-  
+
           if (existingScheduleIndex !== -1) {
             // Add new shift to existing schedule
             const newShifts = [
@@ -733,7 +748,7 @@ useEffect(() => {
                 date: dateStr,
               }
             ];
-  
+
             // Sort shifts by time when adding
             updatedScheduleData[existingScheduleIndex] = {
               ...updatedScheduleData[existingScheduleIndex],
@@ -767,7 +782,7 @@ useEffect(() => {
         const existingScheduleIndex = updatedScheduleData.findIndex(
           item => item.userId === Number(form.userId) && item.startDate === form.date
         );
-  
+
         if (existingScheduleIndex !== -1) {
           // Add new shift to existing schedule
           const newShifts = [
@@ -777,7 +792,7 @@ useEffect(() => {
               date: form.date,
             }
           ];
-  
+
           // Sort shifts by time when adding
           updatedScheduleData[existingScheduleIndex] = {
             ...updatedScheduleData[existingScheduleIndex],
@@ -805,12 +820,12 @@ useEffect(() => {
           });
         }
       }
-  
+
       // Update schedule data and re-render table
       setScheduleData(updatedScheduleData);
-  
+
       resetAddGuardForm();
-  
+
       hookToast({
         title: "Success",
         description: "New guard shift added successfully!",
@@ -826,7 +841,7 @@ useEffect(() => {
       setSubmitLoader(false);
     }
   };
-  
+
 
 
 
@@ -922,7 +937,7 @@ useEffect(() => {
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
       toast.success("Schedule published successfully!");
-      
+
       // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
 
@@ -974,7 +989,7 @@ useEffect(() => {
       const sessionUpdates = sessionData.map(session => {
         // Determine if this is a new session (created via + Add Session)
         const isNewSession = session.id > 1700000000000; // Temporary timestamp ID
-        
+
         return {
           sessionId: isNewSession ? null : session.id, // null for new sessions, original ID for existing/updated
           shiftId: session.shiftId, // This should be the same as the shift selected in dialog
@@ -990,7 +1005,7 @@ useEffect(() => {
       await updateSessionTimes(sessionUpdates);
 
       toast.success("Actual time data published successfully!");
-      
+
       // Switch to view mode after successful publish
       setIsActualTimeEditMode(false);
 
@@ -1002,7 +1017,7 @@ useEffect(() => {
     }
   };
 
-    // Create immutable copy of schedule data for actual time table
+  // Create immutable copy of schedule data for actual time table
   const createImmutableScheduleCopy = (scheduleData: ScheduleItem[]) => {
     return scheduleData.map(item => ({
       ...item,
@@ -1035,7 +1050,7 @@ useEffect(() => {
 
       // Use the context function to fetch session data
       await fetchSessionData(scheduleSessionIds);
-      
+
     } catch (error) {
       console.error("Error fetching session data:", error);
       setSessionError("Failed to load session data");
@@ -1047,7 +1062,7 @@ useEffect(() => {
   // Add a new function to handle date navigation
   const handleDateNavigation = async (newDate: string) => {
     setSelectedDate(newDate);
-    
+
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
 
@@ -1107,11 +1122,7 @@ useEffect(() => {
             <h2 className="text-xl font-semibold">Schedule View</h2>
             <div className="flex items-center space-x-4">
               {/* Date Navigation Component */}
-              <DateNavigation
-                selectedDate={selectedDate}
-                onDateChange={handleDateNavigation}
-                currentWeekRange={currentWeekRange}
-              />
+
               <button
                 onClick={resetScheduleView}
                 className="inline-flex items-center px-4 py-2 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200"
@@ -1189,15 +1200,15 @@ useEffect(() => {
                         disabled={!form.date}
                         onChange={e => setApplyAllWeek(e.target.checked)}
                         className={`w-4 h-4 rounded ${form.date
-                            ? "text-blue-600 focus:ring-blue-500 border-gray-300"
-                            : "text-gray-400 border-gray-200 cursor-not-allowed"
+                          ? "accent-blue-600 focus:ring-blue-500 border-gray-300"
+                          : "accent-gray-400 border-gray-200 cursor-not-allowed"
                           }`}
                       />
                       <label
                         htmlFor="applyAllWeek"
                         className={`text-xs whitespace-nowrap ${form.date
-                            ? "text-gray-600 cursor-pointer"
-                            : "text-gray-400 cursor-not-allowed"
+                          ? "text-gray-600 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed"
                           }`}
                       >
                         All Week
@@ -1312,6 +1323,13 @@ useEffect(() => {
               </div>
             </div>
           )}
+          <div className="flex w-full justify-end items-end">
+            <DateNavigation
+              selectedDate={selectedDate}
+              onDateChange={handleDateNavigation}
+              currentWeekRange={currentWeekRange}
+            />
+          </div>
 
           {/* Show table even if no data and not loading */}
           {!scheduleLoading && !scheduleError && (
@@ -1322,8 +1340,8 @@ useEffect(() => {
               isEditMode={isScheduleEditMode}
               onScheduleDataChange={setScheduleData}
               onPublish={handlePublish}
-              onPrint={() => {}}
-              onDownloadExcel={() => {}}
+              onPrint={() => { }}
+              onDownloadExcel={() => { }}
               onToggleEditMode={toggleScheduleEditMode}
               isPublishing={isPublishing}
               isPrinting={isPrinting}
@@ -1334,7 +1352,7 @@ useEffect(() => {
           {!scheduleLoading && !scheduleError && (
             <div className="mt-8">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time Tracking</h3>
-              
+
               {sessionLoading && (
                 <div className="flex justify-center items-center p-8">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>

@@ -116,13 +116,23 @@ const timeToMinutes = (timeStr: string) => {
   return hours * 60 + minutes;
 };
 
+const minutesDiffWithWrap = (start: string, end: string) => {
+  const startM = timeToMinutes(start);
+  const endM = timeToMinutes(end);
+  let diff = endM - startM;
+  if (diff <= 0) diff += 24 * 60;
+  return diff;
+};
+
 const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
   const start1Minutes = timeToMinutes(start1);
   const end1Minutes = timeToMinutes(end1);
   const start2Minutes = timeToMinutes(start2);
   const end2Minutes = timeToMinutes(end2);
 
-  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+  // Require at least 1-minute gap between sessions
+  const hasRequiredGap = (end1Minutes + 1 <= start2Minutes) || (end2Minutes + 1 <= start1Minutes);
+  return !hasRequiredGap;
 };
 
 const sortSessionsByTime = (sessions: SessionItem[]) => {
@@ -344,6 +354,17 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       return;
     }
 
+    // Enforce minimum session duration of 1 minute
+    const durationMinutes = minutesDiffWithWrap(editForm.starttime, editForm.endtime);
+    if (durationMinutes < 1) {
+      hookToast({
+        title: "Invalid Duration",
+        description: "Check Out must be at least 1 minute after Check In.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const calculateHours = (start: string, end: string) => {
       const [startH, startM] = start.split(":").map(Number);
       const [endH, endM] = end.split(":").map(Number);
@@ -419,6 +440,17 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       hookToast({
         title: "Validation Error",
         description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Enforce minimum session duration of 1 minute
+    const durationMinutes = minutesDiffWithWrap(addSessionForm.starttime, addSessionForm.endtime);
+    if (durationMinutes < 1) {
+      hookToast({
+        title: "Invalid Duration",
+        description: "Check Out must be at least 1 minute after Check In.",
         variant: "destructive",
       });
       return;

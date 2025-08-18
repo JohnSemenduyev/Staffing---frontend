@@ -215,6 +215,20 @@ export const useScheduleActions = (
     );
   
     if (existingItem) {
+      // Check time conflicts with a required 1-minute gap against other shifts (excluding the target slot)
+      const willConflict = existingItem.shifts.some((s, idx) => {
+        if (idx === targetRowIdx) return false;
+        return doTimesOverlap(shift.startTime, shift.endTime, s.startTime, s.endTime);
+      });
+
+      if (willConflict) {
+        hookToast({
+          title: "Overlapping Shift",
+          description: "Cannot place this shift here due to time conflict. A 1-minute gap is required between shifts.",
+          variant: "destructive",
+        });
+        return;
+      }
       // Replace existing shifts at target position (copy operation)
       setScheduleData(prev => 
         prev.map(item => {

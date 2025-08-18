@@ -58,12 +58,22 @@ const timeToMinutes = (timeStr: string) => {
 };
 
 const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
-  const start1Minutes = timeToMinutes(start1);
-  const end1Minutes = timeToMinutes(end1);
-  const start2Minutes = timeToMinutes(start2);
-  const end2Minutes = timeToMinutes(end2);
-
-  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+  const timeToMinutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toRanges = (s: string, e: string): Array<[number, number]> => {
+    const ss = timeToMinutes(s), ee = timeToMinutes(e);
+    if (ss === ee) return [[0, 1440]];
+    if (ee > ss) return [[ss, ee]];
+    return [[ss, 1440], [0, ee]];
+  };
+  const r1 = toRanges(start1, end1), r2 = toRanges(start2, end2);
+  for (const a of r1) for (const b of r2) {
+    const hasGap = (a[1] + 1 <= b[0]) || (b[1] + 1 <= a[0]);
+    if (!hasGap) return true;
+  }
+  return false;
 };
 
 const sortShiftsByTime = (shifts: Shift[]) => {
@@ -522,14 +532,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </div>
                                 )}
                                 <span className="text-sm">
-                                  {/* Session data has clockIn/clockOut, Shift data has startTime/endTime */}
-                                  {shift.clockIn !== undefined || shift.clockOut !== undefined ? (
-                                    // Session data - use clockIn/clockOut
-                                    `${shift.clockIn || 'N/A'} - ${shift.clockOut || 'N/A'}`
-                                  ) : (
-                                    // Shift data - use startTime/endTime
-                                    `${shift.startTime} - ${shift.endTime}`
-                                  )}
+                                  {`${shift.startTime} - ${shift.endTime}`}
                                 </span>
                               </div>
                             ) : (

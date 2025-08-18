@@ -306,8 +306,8 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
                 disabled={!form.date}
                 onChange={e => setApplyAllWeek(e.target.checked)}
                 className={`w-4 h-4 rounded ${form.date
-                    ? "text-blue-600 focus:ring-blue-500 border-gray-300"
-                    : "text-gray-400 border-gray-200 cursor-not-allowed"
+                    ? "accent-blue-600 focus:ring-blue-500 border-gray-300"
+                    : "accent-gray-400 border-gray-200 cursor-not-allowed"
                   }`}
               />
               <label
