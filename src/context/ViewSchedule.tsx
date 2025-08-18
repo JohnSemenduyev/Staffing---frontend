@@ -144,7 +144,7 @@ type ClientSessionContextType = {
     clockOut?: string | null;
   }>) => Promise<SessionItem[]>;
 };
-
+ 
 const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
 
 export const ClientSessionProvider = ({ children }: { children: ReactNode }) => {
