@@ -96,7 +96,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/LoginContext';
-import { useToast } from '../hooks/use-toast';
+import {toast} from 'sonner'
 import img from "../assets/images/Logo.webp";
 
 const Login = () => {
@@ -104,7 +104,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { token, role, login, logout } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,18 +121,12 @@ const Login = () => {
         redirectPath = '/prepare-schedule';
       }
 
-      toast({
-        title: "Login successful",
-        description: "Welcome to the portal",
-      });
+      toast.success("login Successfull")
 
       navigate(redirectPath);
     } else {
-      toast({
-        title: "Login failed",
-        description: result.error || "Invalid credentials or user not authorized",
-        variant: "destructive",
-      });
+      
+      toast.error("Failed To login");
     }
 
     setIsLoading(false);
