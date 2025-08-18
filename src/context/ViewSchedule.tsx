@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
 import { 
   GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
-  SCHEDULE_SESSIONS_BY_CLIENT_WEEK 
+  SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
+  GET_ALL_SESSIONS,
 } from "../graphql/queries";
 import { BULK_UPSERT_SCHEDULE_SESSION, UPDATE_MANY_SESSION_TIMES } from "../graphql/mutation";
 import { toast as toasted } from "sonner";
@@ -15,13 +16,15 @@ export type Address = {
   state: string;
   pincode: string;
 };
-export type UpdateOneSessionTimesInput = {
-  sessionId: number;
-  clockIn: string;
-  clockOut: string | null;
-};
+
 export type Client = {
   name: string;
+};
+
+export type User = {
+  id: number;
+  name: string;
+  phone?: string;
 };
 
 export type ClientSession = {
@@ -43,12 +46,44 @@ export type Shift = {
   date: string;
 };
 
+export type SessionItem = {
+  id: number;
+  shiftId?: number;
+  scheduleSessionId: number;
+  clockIn: string;
+  clockOut: string;
+  workedTime: number;
+  clockInLat?: number;
+  clockInLong?: number;
+  clockOutLat?: number;
+  clockOutLong?: number;
+  shift?: Shift;
+  scheduleSession?: ScheduleSession;
+};
+
+export type ScheduleSession = {
+  id: number;
+  clientId: number;
+  addressId: number;
+  userId: number;
+  startDate: string;
+  endDate?: string;
+  auto: boolean;
+  createdAt?: string;
+  client?: Client;
+  address?: Address;
+  weeklyHours?: number;
+  user?: User;
+  shifts?: Shift[];
+};
+
 export type ScheduleUser = {
   id: number;
   name: string;
 };
 
 export type ScheduleDataItem = {
+  auto: boolean;
   shifts: Shift[];
   user: ScheduleUser;
   clientId: number;
@@ -66,12 +101,7 @@ export type ShiftInput = {
   hours: number;
   shiftId?: number;
 };
-export type SessionTimeInput = {
-  sessionId?: number | null;  
-  shiftId?: number;           
-  clockIn: string;
-  clockOut: string;
-};
+
 export type ScheduleSessionInputExtended = {
   scheduleSessionId?: number | null;
   clientId: number | null;
@@ -98,13 +128,21 @@ type ClientSessionContextType = {
   clearScheduleData: () => void;
 
   bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<void>;
-  updateManySessionTimes: (items: UpdateOneSessionTimesInput[]) => Promise<{
-    id: number;
+  mutationLoading: boolean;
+
+  // Session data for actual time tracking
+  sessionData: SessionItem[] | null;
+  sessionLoading: boolean;
+  sessionError: string | null;
+  fetchSessionData: (scheduleSessionIds: number[]) => Promise<void>;
+  clearSessionData: () => void;
+  updateSessionTimes: (sessionUpdates: Array<{
+    sessionId?: number | null;
+    shiftId: number;
+    scheduleSessionId: number;
     clockIn: string;
     clockOut: string;
-    workedTime: number;
-  }[]>;  
-  mutationLoading: boolean;
+  }>) => Promise<SessionItem[]>;
 };
 
 const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
@@ -119,6 +157,11 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const [mutationLoading, setMutationLoading] = useState<boolean>(false);
+
+  // Session data state
+  const [sessionData, setSessionData] = useState<SessionItem[] | null>(null);
+  const [sessionLoading, setSessionLoading] = useState<boolean>(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const fetchClientSessions = async () => {
     setLoading(true);
@@ -146,11 +189,6 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setScheduleError(null);
     try {
       const token = localStorage.getItem("token");
-      
-      console.log("=== FETCH SCHEDULE DATA DEBUG ===");
-      console.log("Parameters:", { clientId, addressId, date });
-      console.log("Token exists:", !!token);
-      
       const response = await graphQLClient.request<{
         ScheduleSessionsByClientWeek: ScheduleData;
       }>(
@@ -158,11 +196,6 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         { clientId, addressId, date },
         { Authorization: `Bearer ${token}` }
       );
-      
-      console.log("Raw API response:", response);
-      console.log("ScheduleSessionsByClientWeek:", response.ScheduleSessionsByClientWeek);
-      console.log("=================================");
-      
       setScheduleData(response.ScheduleSessionsByClientWeek);
     } catch (err) {
       console.error("Failed to fetch schedule data:", err);
@@ -196,33 +229,89 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       setMutationLoading(false);
     }
   };
-  const updateManySessionTimes = async (items: UpdateOneSessionTimesInput[]) => {
-    setMutationLoading(true);
+
+  const fetchSessionData = async (scheduleSessionIds: number[]) => {
+    setSessionLoading(true);
+    setSessionError(null);
     try {
       const token = localStorage.getItem("token");
+      
+      // Use GET_ALL_SESSIONS to fetch all sessions at once
       const response = await graphQLClient.request<{
-        updateManySessionTimes: Array<{
-          id: number;
-          clockIn: string;
-          clockOut: string;
-          workedTime: number;
-        }>;
+        sessions: SessionItem[];
       }>(
-        UPDATE_MANY_SESSION_TIMES,
-        { items },
+        GET_ALL_SESSIONS,
+        {},
         { Authorization: `Bearer ${token}` }
       );
-      toasted.success("Session times updated successfully!");
-      console.log("Update session times response:", response);
-      return response.updateManySessionTimes;
+
+      // Filter sessions to only include those with matching scheduleSessionIds
+      const filteredSessions = response.sessions.filter(session => 
+        scheduleSessionIds.includes(session.scheduleSessionId)
+      );
+
+      setSessionData(filteredSessions);
     } catch (err) {
-      console.error("Failed to update session times:", err);
-      toasted.error("Failed to update session times.");
-      throw err;
+      console.error("Failed to fetch session data:", err);
+      setSessionError("Error fetching session data.");
+      setSessionData(null);
     } finally {
-      setMutationLoading(false);
+      setSessionLoading(false);
     }
   };
+
+  const clearSessionData = () => {
+    setSessionData(null);
+    setSessionError(null);
+  };
+
+  // Update or create session times
+  const updateSessionTimes = async (sessionUpdates: Array<{
+    sessionId?: number | null;
+    shiftId: number;
+    scheduleSessionId: number;
+    clockIn: string;
+    clockOut: string;
+  }>) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await graphQLClient.request<{
+        updateManySessionTimes: SessionItem[];
+      }>(
+        UPDATE_MANY_SESSION_TIMES,
+        { items: sessionUpdates },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      console.log("Session times updated:", response.updateManySessionTimes);
+      toasted.success("Session times updated successfully!");
+      
+      // Refresh session data after update
+      if (scheduleData) {
+        // Collect unique scheduleSessionIds from shifts within scheduleData
+        const scheduleSessionIds = new Set<number>();
+        scheduleData.forEach(item => {
+          item.shifts.forEach(shift => {
+            if (shift.scheduleSessionId) {
+              scheduleSessionIds.add(shift.scheduleSessionId);
+            }
+          });
+        });
+        await fetchSessionData(Array.from(scheduleSessionIds));
+      }
+      
+      return response.updateManySessionTimes;
+    } catch (error) {
+      console.error("Error updating session times:", error);
+      toasted.error("Failed to update session times");
+      throw error;
+    }
+  };
+
   return (
     <ClientSessionContext.Provider
       value={{
@@ -236,8 +325,13 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         fetchScheduleData,
         clearScheduleData,
         bulkUpsertScheduleSessions,
-        updateManySessionTimes,
-        mutationLoading
+        mutationLoading,
+        sessionData,
+        sessionLoading,
+        sessionError,
+        fetchSessionData,
+        clearSessionData,
+        updateSessionTimes
       }}
     >
       {children}

@@ -103,16 +103,25 @@ const timeToMinutes = (timeStr) => {
   return hours * 60 + minutes;
 };
 
-// Helper function to check if two time ranges overlap
+const minutesDiffWithWrap = (start, end) => {
+  const startM = timeToMinutes(start);
+  const endM = timeToMinutes(end);
+  let diff = endM - startM;
+  if (diff <= 0) diff += 24 * 60;
+  return diff;
+};
+
+// Helper function to check if two time ranges conflict with a required 1-minute gap
+// Non-conflict condition: one ends at least 1 minute before the other starts
+// i.e., end1 + 1 <= start2 OR end2 + 1 <= start1
 const doTimesOverlap = (start1, end1, start2, end2) => {
   const start1Minutes = timeToMinutes(start1);
   const end1Minutes = timeToMinutes(end1);
   const start2Minutes = timeToMinutes(start2);
   const end2Minutes = timeToMinutes(end2);
 
-  // Two shifts overlap if:
-  // - First shift starts before second ends AND first shift ends after second starts
-  return start1Minutes < end2Minutes && end1Minutes > start2Minutes;
+  const hasRequiredGap = (end1Minutes + 1 <= start2Minutes) || (end2Minutes + 1 <= start1Minutes);
+  return !hasRequiredGap;
 };
 // Utility function to convert date from YYYY-MM-DD to MM-DD-YYYY
 const convertDateFormat = (dateStr: string) => {
@@ -241,6 +250,14 @@ export const PrepareSchedule = () => {
     if (!form.starttime) e.starttime = "Required";
     if (!form.endtime) e.endtime = "Required";
 
+    // Validate minimum duration of 1 minute
+    if (form.starttime && form.endtime) {
+      const minutes = minutesDiffWithWrap(form.starttime, form.endtime);
+      if (minutes < 1) {
+        e.endtime = "End time must be at least 1 minute after start time";
+      }
+    }
+
     // Check for overlapping shifts
     if (form.userId && form.date && form.starttime && form.endtime) {
       const existingShifts = scheduleData
@@ -256,7 +273,7 @@ export const PrepareSchedule = () => {
         const existingStart = shift.startTime;
         const existingEnd = shift.endTime;
 
-        // Check if new shift overlaps with existing shift
+        // Check if new shift overlaps or touches existing shift (requires 1-minute gap)
         if (doTimesOverlap(newStartTime, newEndTime, shift.startTime, shift.endTime)) {
           e.overlap = "Shift time overlaps with existing shift for this user and date";
           break;
@@ -824,6 +841,28 @@ const generateDateColumns = () => {
 
   const confirmEditShift = () => {
     const { userId, date, shift } = editModal;
+    // Time-only validation for edits: min duration and overlap with other shifts
+    if (!form.starttime || !form.endtime) return;
+    const minutes = minutesDiffWithWrap(form.starttime, form.endtime);
+    if (minutes < 1) {
+      toast({
+        title: "Invalid Time",
+        description: "End time must be at least 1 minute after start time",
+        variant: "destructive",
+      });
+      return;
+    }
+    const existingShifts = scheduleData
+      .find(item => item.userId === userId && item.startDate === date)?.shifts || [];
+    const hasConflict = existingShifts.some(s => s.id !== shift.id && doTimesOverlap(form.starttime, form.endtime, s.startTime, s.endTime));
+    if (hasConflict) {
+      toast({
+        title: "Overlapping Shift",
+        description: "Shift time conflicts with an existing shift for this user and date.",
+        variant: "destructive",
+      });
+      return;
+    }
     setScheduleData(prev => prev.map(item => {
       if (item.userId === userId && item.startDate === date) {
         return {
@@ -929,7 +968,6 @@ const generateDateColumns = () => {
 
     if (existingSchedule) {
       // Check for overlapping shifts
-      // Check for overlapping shifts using the improved function
       const hasOverlap = existingSchedule.shifts.some(existingShift => {
         return doTimesOverlap(
           shift.startTime,
@@ -1165,8 +1203,8 @@ const generateDateColumns = () => {
                   disabled={!form.date}
                   onChange={e => setApplyAllWeek(e.target.checked)}
                   className={`w-4 h-4 rounded ${form.date
-                      ? "text-blue-600 focus:ring-blue-500 border-gray-300"
-                      : "text-gray-400 border-gray-200 cursor-not-allowed"
+                      ? "accent-blue-600 focus:ring-blue-500 border-gray-300"
+                      : "accent-gray-400 border-gray-200 cursor-not-allowed"
                     }`}
                 />
                 <label

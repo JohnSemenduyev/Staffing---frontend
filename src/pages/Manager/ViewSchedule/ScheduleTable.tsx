@@ -165,14 +165,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </div>
                                 )}
                                 <span className="text-sm">
-                                  {/* Session data has clockIn/clockOut, Shift data has startTime/endTime */}
-                                  {shift.clockIn !== undefined || shift.clockOut !== undefined ? (
-                                    // Session data - use clockIn/clockOut
-                                    `${shift.clockIn || 'N/A'} - ${shift.clockOut || 'N/A'}`
-                                  ) : (
-                                    // Shift data - use startTime/endTime
                                     `${shift.startTime} - ${shift.endTime}`
-                                  )}
                                 </span>
                               </div>
                             ) : (
