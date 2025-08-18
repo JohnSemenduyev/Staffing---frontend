@@ -3,7 +3,7 @@ import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { ActualTimeTable } from "../../components/ActualTimeTable";
-import { Eye, Plus, RotateCcw, Calendar } from "lucide-react";
+import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import { toast } from "sonner";
@@ -280,6 +280,64 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Date Navigation Component
+const DateNavigation = ({ 
+  selectedDate, 
+  onDateChange, 
+  currentWeekRange 
+}: {
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+  currentWeekRange: any;
+}) => {
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    if (!currentWeekRange) return;
+    
+    const currentDate = new Date(selectedDate);
+    const daysToAdd = direction === 'next' ? 7 : -7;
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + daysToAdd);
+    
+    const newDateStr = newDate.toISOString().split('T')[0];
+    onDateChange(newDateStr);
+  };
+
+  return (
+    <div className="flex items-center space-x-2 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-sm">
+      <button
+        onClick={() => navigateWeek('prev')}
+        className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+        title="Previous Week"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      
+      <div className="px-4 py-1 border border-blue-300 rounded-md bg-blue-50">
+        <span className="text-blue-700 font-medium text-sm">
+          {formatDateForDisplay(selectedDate)}
+        </span>
+      </div>
+      
+      <button
+        onClick={() => navigateWeek('next')}
+        className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+        title="Next Week"
+      >
+        <ChevronRight className="w-5 h-5" />
+      </button>
     </div>
   );
 };
@@ -986,6 +1044,37 @@ useEffect(() => {
     }
   };
 
+  // Add a new function to handle date navigation
+  const handleDateNavigation = async (newDate: string) => {
+    setSelectedDate(newDate);
+    
+    const clientId = selectedClient?.clientId;
+    const addressId = selectedClient?.addressId;
+
+    if (!clientId || !addressId) {
+      toast.error("Missing client or address information!");
+      return;
+    }
+
+    // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
+    const formattedDate = convertDateFormat(newDate);
+
+    // Generate week range for the new date
+    const selectedDateObj = new Date(newDate);
+    const weekRange = getWeekRangeFromDate(selectedDateObj);
+    setCurrentWeekRange(weekRange);
+
+    // Clear any existing schedule data
+    clearScheduleData();
+
+    // Fetch actual schedule data from API using formatted date
+    try {
+      await fetchScheduleData(clientId, addressId, formattedDate);
+    } catch (error) {
+      console.error("Error fetching schedule data:", error);
+      toast.error("Failed to load schedule data!");
+    }
+  };
 
 
   return (
@@ -1013,16 +1102,24 @@ useEffect(() => {
         </>
       ) : (
         <div className="w-full">
-          {/* Header with reset button */}
+          {/* Header with reset button and date navigation */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Schedule View</h2>
-            <button
-              onClick={resetScheduleView}
-              className="inline-flex items-center px-4 py-2 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200"
-            >
-              <RotateCcw className="w-4 h-4 mr-1" />
-              Back to Clients
-            </button>
+            <div className="flex items-center space-x-4">
+              {/* Date Navigation Component */}
+              <DateNavigation
+                selectedDate={selectedDate}
+                onDateChange={handleDateNavigation}
+                currentWeekRange={currentWeekRange}
+              />
+              <button
+                onClick={resetScheduleView}
+                className="inline-flex items-center px-4 py-2 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Back to Clients
+              </button>
+            </div>
           </div>
 
           {/* Add New Guard Form */}
@@ -1179,7 +1276,6 @@ useEffect(() => {
                         </>
                       )}
                     </button>
-
                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
 
                       <button
