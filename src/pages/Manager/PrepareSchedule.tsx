@@ -192,6 +192,13 @@ const calculateShiftTimeTotal = (userId: number, startTime: string, endTime: str
   return parseFloat(total.toFixed(2));
 };
 
+function formatLocalYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatLocalMDY(d: Date): string {
+  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
 export const PrepareSchedule = () => {
   const [form, setForm] = useState<FormData>({
     clientId: "",
@@ -446,11 +453,11 @@ const generateDateColumns = () => {
     date.setDate(startDate.getDate() + i);
     
     // Use the exact date from the week range (no timezone conversion)
-    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const dateStr = formatLocalYMD(date); // YYYY-MM-DD format
     
     dates.push({
       date: dateStr, // Use exact date to match API
-      display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}` // Same date for display
+      display: formatLocalMDY(date) // Same date for display
     });
   }
   return dates;
@@ -546,8 +553,8 @@ const generateDateColumns = () => {
           clientId: firstSchedule?.clientId,
           addressId: firstSchedule?.addressId,
           userId: user.id,
-          startDate: currentWeekRange?.startOfWeek.toISOString().split('T')[0].split('-').slice(1).concat(currentWeekRange?.startOfWeek.toISOString().split('T')[0].split('-')[0]).join('-'), // Convert to MM-DD-YYYY
-          endDate: currentWeekRange?.endOfWeek.toISOString().split('T')[0].split('-').slice(1).concat(currentWeekRange?.endOfWeek.toISOString().split('T')[0].split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+          startDate: formatLocalMDY(currentWeekRange.startOfWeek),
+          endDate: formatLocalMDY(currentWeekRange.endOfWeek),
           weeklyHours: weeklyHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false
@@ -655,7 +662,7 @@ const generateDateColumns = () => {
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
-          const dateStr = dateObj.toISOString().split('T')[0];
+          const dateStr = formatLocalYMD(dateObj);
           
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -1037,6 +1044,9 @@ const generateDateColumns = () => {
     setDragOverCell(null);
   };
 
+  const toYMD = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
   return (
     <div className="min-h-screen font-sans w-full p-6">
       <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
@@ -1191,8 +1201,8 @@ const generateDateColumns = () => {
                 onChange={handleChange}
                 placeholder="Select Date"
                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
-                minDate={currentWeekRange ? currentWeekRange.startOfWeek.toISOString().split('T')[0] : undefined}
-                maxDate={currentWeekRange ? currentWeekRange.endOfWeek.toISOString().split('T')[0] : undefined}
+                minDate={currentWeekRange ? formatLocalYMD(currentWeekRange.startOfWeek) : undefined}
+                maxDate={currentWeekRange ? formatLocalYMD(currentWeekRange.endOfWeek) : undefined}
               />
               
               <div className="flex items-center m-2 space-x-2">
