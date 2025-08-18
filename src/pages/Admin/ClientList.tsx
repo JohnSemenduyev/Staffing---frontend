@@ -143,6 +143,10 @@ function ClientList() {
   // Handle save new client
 
 const handleSaveNewClient = async () => {
+  // Split clientName into first and last (multiple spaces safe)
+  const parts = newClientData.clientName.trim().split(/\s+/);
+  const firstName = parts[0] ?? "";
+  const lastName = parts.length > 1 ? parts[parts.length - 1] : undefined;
   const validationErrors = validateNewClientData();
   if (validationErrors.length > 0) {
     toast.error(`Please fill in all required fields:\n${validationErrors.join("\n")}`);
@@ -152,7 +156,8 @@ const handleSaveNewClient = async () => {
   setIsCreating(true);
   try {
     const input = {
-      name: newClientData.clientName,
+      name: firstName,
+      lastName: lastName || null,
       addresses: [{
         address: newClientData.address,
         city: newClientData.city,
