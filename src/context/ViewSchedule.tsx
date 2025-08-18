@@ -141,7 +141,7 @@ type ClientSessionContextType = {
     shiftId: number;
     scheduleSessionId: number;
     clockIn: string;
-    clockOut: string;
+    clockOut?: string | null;
   }>) => Promise<SessionItem[]>;
 };
 
