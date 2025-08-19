@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Plus, RotateCcw } from "lucide-react";
+import { Plus, RotateCcw, Edit, Trash2, GripVertical, Calendar } from "lucide-react";
 import { CustomDatePicker } from "../../../components/CustomDatePicker";
 import ToggleSwitch from "../../../components/ui/toggle";
 import { useSearchUsers } from "../../../hooks/useSearchUser";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { useToast } from "../../../hooks/use-toast";
+import { formatDateLocal } from "../../../lib/utils";
 import { FormData, User, ScheduleItem, WeekRange } from "./types";
 import { 
     inputClasses, 
@@ -52,8 +53,8 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
       const selectedDate = new Date(value);
       const weekRange = getWeekRangeFromDate(selectedDate);
   
-      const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
-      const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
+      const existingWeekStart = formatDateLocal(currentWeekRange.startOfWeek);
+      const newWeekStart = formatDateLocal(weekRange.startOfWeek);
   
       if (existingWeekStart !== newWeekStart) {
         hookToast({
@@ -129,7 +130,7 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
-          const dateStr = dateObj.toISOString().split('T')[0];
+          const dateStr = formatDateLocal(dateObj);
           
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -294,8 +295,8 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
               value={form.date}
               onChange={handleFormChange}
               placeholder="Select Date"
-              minDate={currentWeekRange?.startOfWeek.toISOString().split('T')[0]}
-              maxDate={currentWeekRange?.endOfWeek.toISOString().split('T')[0]}
+              minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
+              maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
             />
             
             <div className="flex items-center m-2 space-x-2">

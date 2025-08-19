@@ -1,4 +1,5 @@
 import { ScheduleItem, Shift, WeekRange, DateColumn, FormData } from './types';
+import { formatDateLocal } from "../../../lib/utils";
 
 export const inputClasses = `
   w-full
@@ -168,7 +169,7 @@ export const convertDateFormat = (dateStr: string): string => {
 // Utility function to convert timestamp to YYYY-MM-DD format
 export const convertTimestampToDate = (timestamp: string): string => {
   const date = new Date(parseInt(timestamp));
-  return date.toISOString().split('T')[0];
+  return formatDateLocal(date);
 };
 
 // Form validation function
@@ -266,4 +267,8 @@ export const calculateUserTotal = (userId: number, scheduleData: ScheduleItem[])
 export const calculateGrandTotal = (scheduleData: ScheduleItem[]): number => {
   const total = scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   return parseFloat(total.toFixed(2));
+};
+
+export const formatDateForAPI = (date: Date): string => {
+  return formatDateLocal(date);
 };

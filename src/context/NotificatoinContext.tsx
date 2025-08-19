@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
 import { GET_NOTIFICATIONS } from "../graphql/queries"; // <-- New query import
+import { formatDateLocal } from "../lib/utils";
 
 // Backend types
 type NotificationShift = {
@@ -87,7 +88,7 @@ const parseDate = (dateValue: any): string => {
       return "";
     }
     
-    return date.toISOString().split("T")[0];
+    return formatDateLocal(date);
   } catch (error) {
     console.error('Error parsing date:', dateValue, error);
     return "";

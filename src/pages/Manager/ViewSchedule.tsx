@@ -12,6 +12,7 @@ import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
 
 // Custom Date Picker Component
 const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
@@ -39,8 +40,8 @@ const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, ma
   // Handle date selection
   const handleDateChange = (date) => {
     if (date) {
-      // Convert to YYYY-MM-DD format for form state
-      const formattedDate = date.toISOString().split('T')[0];
+      // Convert to YYYY-MM-DD format for form state using local timezone
+      const formattedDate = formatDateLocal(date);
       onChange("date", formattedDate);
     } else {
       onChange("date", '');
@@ -201,7 +202,7 @@ const convertDateFormat = (dateStr: string) => {
 // Utility function to convert timestamp to YYYY-MM-DD format
 const convertTimestampToDate = (timestamp: string) => {
   const date = new Date(parseInt(timestamp));
-  return date.toISOString().split('T')[0];
+  return formatDateLocal(date);
 };
 
 // Form validation function
@@ -249,7 +250,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
     startOfWeek.setUTCDate(today.getUTCDate() - daysSinceThursday);
     startOfWeek.setUTCHours(0, 0, 0, 0);
 
-    const formatted = startOfWeek.toISOString().slice(0, 10);
+    const formatted = formatDateLocal(startOfWeek);
     setSelectedDate(formatted);
   };
 
@@ -318,7 +319,7 @@ const DateNavigation = ({
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + daysToAdd);
 
-    const newDateStr = newDate.toISOString().split('T')[0];
+    const newDateStr = formatDateLocal(newDate);
     onDateChange(newDateStr);
   };
 
@@ -389,6 +390,9 @@ export const ViewSchedule = () => {
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState(null);
 
+  // Add local loading state for table navigation
+  const [tableLoading, setTableLoading] = useState(false);
+
   // Form states for adding new guards
   const [form, setForm] = useState<FormData>({
     userId: "",
@@ -405,6 +409,8 @@ export const ViewSchedule = () => {
   const [auto, setAuto] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
 
+  // Add a state to track if we have data from API
+  const [hasApiData, setHasApiData] = useState(false);
 
 
   const handleView = (rowData: any) => {
@@ -427,6 +433,7 @@ export const ViewSchedule = () => {
   const handleDateSubmit = async (date: string) => {
     setSelectedDate(date);
     setShowScheduleTable(true);
+    setTableLoading(true); // Set local loading state
 
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
@@ -443,6 +450,7 @@ export const ViewSchedule = () => {
 
     if (!clientId || !addressId) {
       toast.error("Missing client or address information!");
+      setTableLoading(false);
       return;
     }
 
@@ -460,6 +468,8 @@ export const ViewSchedule = () => {
     } catch (error) {
       console.error("Error fetching schedule data:", error);
       toast.error("Failed to load schedule data!");
+    } finally {
+      setTableLoading(false); // Clear local loading state
     }
   };
 
@@ -495,7 +505,26 @@ export const ViewSchedule = () => {
 
   // Transform API data when it arrives - FIXED VERSION
   useEffect(() => {
-    if (apiScheduleData && Array.isArray(apiScheduleData) && apiScheduleData.length > 0) {
+    if (apiScheduleData && Array.isArray(apiScheduleData)) {
+      if (apiScheduleData.length === 0) {
+        // No schedule data exists for this week
+        const clientName = selectedClient?.name || "this client";
+        const formattedDate = selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }) : "the selected date";
+        
+        toast.error(`No schedule exists for ${clientName} on ${formattedDate}. Please prepare a schedule first.`);
+        setHasApiData(false);
+        // Revert to the previous date or stay on current date
+        return;
+      }
+
+      // We have data from API
+      setHasApiData(true);
+
       const keyedByUserDate = new Map<string, {
         id: number;
         clientId: number;
@@ -522,7 +551,8 @@ export const ViewSchedule = () => {
         group.shifts?.forEach(shift => {
           if (!shift?.date || userId == null) return;
 
-          const date = new Date(shift.date).toISOString().split('T')[0];
+          // Use local timezone formatting instead of toISOString
+          const date = formatDateLocal(new Date(shift.date));
           const key = `${userId}-${date}`;
 
           let item = keyedByUserDate.get(key);
@@ -575,6 +605,14 @@ export const ViewSchedule = () => {
       const transformedData = Array.from(keyedByUserDate.values());
       setScheduleData(transformedData);
 
+      // Only update the date and week range if we have valid data
+      if (transformedData.length > 0) {
+        setSelectedDate(selectedDate); // Keep the new date
+        const selectedDateObj = new Date(selectedDate);
+        const weekRange = getWeekRangeFromDate(selectedDateObj);
+        setCurrentWeekRange(weekRange);
+      }
+
       // Fetch session data after transform
       const scheduleSessionIds = new Set<number>();
       transformedData.forEach(item => {
@@ -584,8 +622,9 @@ export const ViewSchedule = () => {
     } else {
       setScheduleData([]);
       setSessionData([]);
+      setHasApiData(false);
     }
-  }, [apiScheduleData, selectedClient]);
+  }, [apiScheduleData, selectedClient, selectedDate]);
   // Update local session data when API session data changes
   useEffect(() => {
     if (apiSessionData) {
@@ -603,6 +642,11 @@ export const ViewSchedule = () => {
   useEffect(() => {
     setSessionError(apiSessionError);
   }, [apiSessionError]);
+
+  // Debug loading states
+  useEffect(() => {
+    console.log('Loading states:', { scheduleLoading, tableLoading, sessionLoading });
+  }, [scheduleLoading, tableLoading, sessionLoading]);
 
   // ... existing code ...
 
@@ -645,8 +689,9 @@ export const ViewSchedule = () => {
       const selectedDate = new Date(value);
       const weekRange = getWeekRangeFromDate(selectedDate);
 
-      const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
-      const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
+      // Use local timezone formatting
+      const existingWeekStart = formatDateLocal(currentWeekRange.startOfWeek);
+      const newWeekStart = formatDateLocal(weekRange.startOfWeek);
 
       if (existingWeekStart !== newWeekStart) {
         hookToast({
@@ -731,7 +776,8 @@ export const ViewSchedule = () => {
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
-          const dateStr = dateObj.toISOString().split('T')[0];
+          // Use local timezone formatting
+          const dateStr = formatDateLocal(dateObj);
 
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -758,8 +804,8 @@ export const ViewSchedule = () => {
             // Create new schedule for this day
             updatedScheduleData.push({
               id: Date.now() + i,
-              clientId: scheduleData[0]?.clientId || 0,
-              addressId: scheduleData[0]?.addressId || 0,
+              clientId: selectedClient?.clientId || 0,
+              addressId: selectedClient?.addressId || 0,
               userId: Number(form.userId),
               startDate: dateStr,
               auto,
@@ -770,8 +816,8 @@ export const ViewSchedule = () => {
                   date: dateStr,
                 },
               ],
-              clientName: scheduleData[0]?.clientName || "Unknown Client",
-              address: scheduleData[0]?.address || "Unknown Address",
+              clientName: selectedClient?.name || "Unknown Client",
+              address: selectedClient?.address || "Unknown Address",
               userName: selectedUser.name,
               userPhone: selectedUser.phone || '',
             });
@@ -802,8 +848,8 @@ export const ViewSchedule = () => {
           // Create new schedule
           updatedScheduleData.push({
             id: Date.now(),
-            clientId: scheduleData[0]?.clientId || 0,
-            addressId: scheduleData[0]?.addressId || 0,
+            clientId: selectedClient?.clientId || 0,
+            addressId: selectedClient?.addressId || 0,
             userId: Number(form.userId),
             startDate: form.date,
             auto,
@@ -813,8 +859,8 @@ export const ViewSchedule = () => {
                 date: form.date,
               },
             ],
-            clientName: scheduleData[0]?.clientName || "Unknown Client",
-            address: scheduleData[0]?.address || "Unknown Address",
+            clientName: selectedClient?.name || "Unknown Client",
+            address: selectedClient?.address || "Unknown Address",
             userName: selectedUser.name,
             userPhone: selectedUser.phone || '',
           });
@@ -860,8 +906,9 @@ export const ViewSchedule = () => {
       // Calculate week start and end dates from the selected date
       const selectedDateObj = new Date(selectedDate);
       const weekRange = getWeekRangeFromDate(selectedDateObj);
-      const startDate = weekRange.startOfWeek.toISOString().split('T')[0];
-      const endDate = weekRange.endOfWeek.toISOString().split('T')[0];
+      // Use local timezone formatting
+      const startDate = formatDateLocal(weekRange.startOfWeek);
+      const endDate = formatDateLocal(weekRange.endOfWeek);
 
       // Group schedule data by user to create the required format
       const userScheduleMap = new Map();
@@ -949,22 +996,17 @@ export const ViewSchedule = () => {
     }
   };
 
-
-
-
-
-
-
   const resetScheduleView = () => {
     setShowScheduleTable(false);
+    setSelectedClient(null);
+    setModalOpen(false);
     setScheduleData([]);
     setSessionData([]);
     setCurrentWeekRange(null);
     setSelectedDate("");
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
-    clearScheduleData(); // Clear API data
-    clearSessionData(); // Clear session data from context
+    setTableLoading(false); // Reset local loading state
   };
 
   const toggleScheduleEditMode = () => {
@@ -1066,8 +1108,6 @@ export const ViewSchedule = () => {
 
   // Add a new function to handle date navigation
   const handleDateNavigation = async (newDate: string) => {
-    setSelectedDate(newDate);
-
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
 
@@ -1076,13 +1116,14 @@ export const ViewSchedule = () => {
       return;
     }
 
+    setTableLoading(true); // Set local loading state
+
     // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
     const formattedDate = convertDateFormat(newDate);
 
     // Generate week range for the new date
     const selectedDateObj = new Date(newDate);
     const weekRange = getWeekRangeFromDate(selectedDateObj);
-    setCurrentWeekRange(weekRange);
 
     // Clear any existing schedule data
     clearScheduleData();
@@ -1090,9 +1131,14 @@ export const ViewSchedule = () => {
     // Fetch actual schedule data from API using formatted date
     try {
       await fetchScheduleData(clientId, addressId, formattedDate);
+      
+      // The useEffect will handle checking if data exists and updating the UI accordingly
+      
     } catch (error) {
       console.error("Error fetching schedule data:", error);
       toast.error("Failed to load schedule data!");
+    } finally {
+      setTableLoading(false); // Clear local loading state
     }
   };
 
@@ -1139,9 +1185,11 @@ export const ViewSchedule = () => {
           </div>
 
           {/* Add New Guard Form */}
-          {!scheduleLoading && !scheduleError && scheduleData.length > 0 && isScheduleEditMode && (
+          {!scheduleLoading && !scheduleError && isScheduleEditMode && (
             <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">Edit Schedule</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-800">
+                {scheduleData.length > 0 ? "Edit Schedule" : "Add New Schedule"}
+              </h3>
 
               <form onSubmit={onSubmitAddGuard} autoComplete="off">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
@@ -1191,8 +1239,8 @@ export const ViewSchedule = () => {
                       onChange={handleFormChange}
                       placeholder="Select Date"
                       className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-                      minDate={currentWeekRange?.startOfWeek.toISOString().split('T')[0]}
-                      maxDate={currentWeekRange?.endOfWeek.toISOString().split('T')[0]}
+                      minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
+                      maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
                     />
                     {errors.date && (
                       <span className="text-xs text-red-500">{errors.date}</span>
@@ -1308,26 +1356,9 @@ export const ViewSchedule = () => {
               </form>
             </div>
           )}
-          {scheduleLoading && (
-            <div className="flex justify-center items-center p-8">
-              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="ml-2 text-gray-600">Loading schedule data...</span>
-            </div>
-          )}
 
-          {/* Add error state */}
-          {scheduleError && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-              <div className="flex">
-                <div className="text-red-800">
-                  <h3 className="text-sm font-medium">Error loading schedule data</h3>
-                  <div className="mt-2 text-sm">
-                    <p>{scheduleError}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+
+          {/* Removed page-level schedule loader */}
           <div className="flex w-full justify-end items-end">
             <DateNavigation
               selectedDate={selectedDate}
@@ -1336,8 +1367,21 @@ export const ViewSchedule = () => {
             />
           </div>
 
-          {/* Show table even if no data and not loading */}
-          {!scheduleLoading && !scheduleError && (
+          {/* Show no data message when no schedule exists */}
+          {!scheduleLoading && !scheduleError && !tableLoading && scheduleData.length === 0 && !hasApiData && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+              <div className="text-gray-500">
+                <h3 className="text-lg font-medium mb-2">No Schedule Found</h3>
+                <p className="text-sm">
+                  No schedule exists for the selected week ({selectedDate}). 
+                  Click the "Edit" button to add guards and create a new schedule.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Always render table; show inline loader via prop */}
+          {!scheduleError && (
             <ScheduleTable
               scheduleData={scheduleData}
               selectedDate={selectedDate}
@@ -1350,21 +1394,17 @@ export const ViewSchedule = () => {
               onToggleEditMode={toggleScheduleEditMode}
               isPublishing={isPublishing}
               isPrinting={isPrinting}
+              loading={scheduleLoading || tableLoading}
             />
           )}
 
           {/* Actual Time Table Section */}
-          {!scheduleLoading && !scheduleError && (
+                  {/* Actual Time Table Section */}
+                  {!scheduleError && (
             <div className="mt-8">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time Tracking</h3>
 
-              {sessionLoading && (
-                <div className="flex justify-center items-center p-8">
-                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="ml-2 text-gray-600">Loading actual time data...</span>
-                </div>
-              )}
-
+              {/* Removed page-level session loader; error remains */}
               {sessionError && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
                   <div className="flex">
@@ -1378,7 +1418,8 @@ export const ViewSchedule = () => {
                 </div>
               )}
 
-              {!sessionLoading && !sessionError && (
+              {/* Always render; show inline loader via prop */}
+              {!sessionError && (
                 <ActualTimeTable
                   scheduleData={createImmutableScheduleCopy(scheduleData)}
                   sessionData={sessionData}
@@ -1390,18 +1431,17 @@ export const ViewSchedule = () => {
                   }}
                   onPublish={handleActualTimePublish}
                   onPrint={() => {
-                    // TODO: Implement actual time print functionality
                     console.log("Printing actual time data");
                     toast.success("Printing actual time data...");
                   }}
                   onDownloadExcel={() => {
-                    // TODO: Implement actual time Excel download functionality
                     console.log("Downloading actual time Excel");
                     toast.success("Downloading actual time Excel...");
                   }}
                   onToggleEditMode={toggleActualTimeEditMode}
                   isPublishing={isActualTimePublishing}
                   isPrinting={false}
+                  loading={sessionLoading}
                 />
               )}
             </div>

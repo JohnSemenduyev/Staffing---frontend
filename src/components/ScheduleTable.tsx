@@ -4,6 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { formatDateLocal } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -49,6 +50,7 @@ interface ScheduleTableProps {
   isPublishing: boolean;
   isPrinting: boolean;
   readOnly?: boolean;
+  loading?: boolean;
 }
 
 // Utility functions
@@ -124,7 +126,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onToggleEditMode,
   isPublishing,
   isPrinting,
-  readOnly = false
+  readOnly = false,
+  loading = false
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -149,7 +152,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       dates.push({
-        date: date.toISOString().split('T')[0],
+        date: formatDateLocal(date),
         display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
       });
     }
@@ -437,6 +440,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   return (
     <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
+      {loading && (
+        <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
       <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">

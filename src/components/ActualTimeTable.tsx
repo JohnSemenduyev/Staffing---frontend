@@ -4,6 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { formatDateLocal, formatDateStringLocal } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -108,6 +109,7 @@ interface ActualTimeTableProps {
   onToggleEditMode: () => void;
   isPublishing: boolean;
   isPrinting: boolean;
+  loading?: boolean;
 }
 
 // Utility functions
@@ -158,7 +160,7 @@ const calculateDayTotal = (date: string, sessionData: SessionItem[]) => {
     .filter(item => {
       // Check if the session's date matches the given date
       const sessionDate = item.shift?.date || item.scheduleSession?.startDate;
-      const formattedSessionDate = sessionDate ? new Date(sessionDate).toISOString().split('T')[0] : "";
+      const formattedSessionDate = sessionDate ? formatDateStringLocal(sessionDate) : "";
       return formattedSessionDate === date;
     })
     .reduce((total, item) => total + (item.workedTime || 0), 0);
@@ -210,7 +212,7 @@ const handleGeneratePrintableTable = () => {
 };
 
 const logEditableCells = (sd: ScheduleItem[]) => {
-  const fmt = (d: string) => (d ? new Date(d).toISOString().split('T')[0] : '');
+  const fmt = (d: string) => (d ? formatDateStringLocal(d) : '');
   const cells = sd.flatMap(item =>
     (item.shifts || []).map(shift => ({
       table: 'Actual',
@@ -240,7 +242,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   onDownloadExcel,
   onToggleEditMode,
   isPublishing,
-  isPrinting
+  isPrinting,
+  loading = false
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -260,7 +263,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   const hasTimeOverlap = (userId: number, date: string, start: string, end: string) => {
     return sessionData.some(s => {
       const d = s.shift?.date || s.scheduleSession?.startDate;
-      const sDate = d ? new Date(d).toISOString().split('T')[0] : '';
+      const sDate = d ? formatDateStringLocal(d) : '';
       if (sDate !== date) return false;
       if (!s.clockIn || !s.clockOut) return false;
       return doTimesOverlap(start, end, s.clockIn, s.clockOut);
@@ -277,7 +280,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       dates.push({
-        date: date.toISOString().split('T')[0],
+        date: formatDateLocal(date),
         display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
       });
     }
@@ -694,14 +697,14 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       item.shifts.forEach(shift => {
         if (!shift?.id || !shift?.scheduleSessionId) return;
 
-        const date = shift.date ? new Date(shift.date).toISOString().split('T')[0] : item.startDate;
+        const date = shift.date ? formatDateStringLocal(shift.date) : item.startDate;
         // 1) try exact shiftId
         let match = sessionData.filter(s => s.shiftId === shift.id);
         // 2) fallback: same scheduleSessionId + same date (older data)
         if (match.length === 0) {
           match = sessionData.filter(s => {
             const sd = s.shift?.date || s.scheduleSession?.startDate;
-            const sDate = sd ? new Date(sd).toISOString().split('T')[0] : '';
+            const sDate = sd ? formatDateStringLocal(sd) : '';
             return s.scheduleSessionId === shift.scheduleSessionId && sDate === date;
           });
         }
@@ -714,7 +717,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
           scheduleSessionId: shift.scheduleSessionId!,
           clockIn: first?.clockIn || null,
           clockOut: first?.clockOut || null,
-          
+
         });
       });
     });
@@ -735,7 +738,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     const bySched = scheduleSessionId
       ? sessionData.find(s => {
         const d = s.shift?.date || s.scheduleSession?.startDate;
-        const sDate = d ? new Date(d).toISOString().split('T')[0] : '';
+        const sDate = d ? formatDateStringLocal(d) : '';
         return s.scheduleSessionId === scheduleSessionId && sDate === date;
       })
       : null;
@@ -768,6 +771,11 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
   return (
     <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
+      {loading && (
+        <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
       <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
