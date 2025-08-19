@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { useAssignments } from "../hooks/useAssignment";
-
+import { GenericSearchForm, FieldConfig } from "./GenericFormSearch";
 type RoleOption = "Admin" | "Manager" | "Guard" | "Client";
 type NotificationOption = "Geolocation" | "Time Clock" | "Weekly Hours" | "Scheduling";
 
@@ -19,6 +19,22 @@ interface AssignmentRecord {
   notifications: NotificationOption[];
   createdAt: string;
 }
+const searchFields: FieldConfig[] = [
+  { name: "clientName", type: "text", label: "Client Name" },
+  { name: "clientLocation", type: "text", label: "Client Location" },
+  { name: "invoiceName", type: "text", label: "User Name" },
+  { name: "status", type: "text", label: "Role" },
+  { name: "access", type: "text", label: "Access" },
+];
+const handleSearch = (formData: any) => {
+  // TODO:- implement Post Assignment search
+  console.log("Post Assignment search:", formData);
+};
+
+const handleReset = () => {
+  // TODO:- reset Post Assignment search
+  console.log("Post Assignment reset");
+};
 
 function getLocationString(location: any) {
   if (!location) return "";

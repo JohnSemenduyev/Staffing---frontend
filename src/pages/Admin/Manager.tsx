@@ -1,10 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUsers } from "../../context/UserContext";
 import { GenericTable, TableColumn } from "../../components/GenericTable";
+import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
+import { Search } from "lucide-react";
 
 
 export const Manager = () => {
       const { users, loading, error, fetchUsersByRole } = useUsers();
+      const [showSearchForm, setShowSearchForm] = useState(false);
+      const [searchLoading, setSearchLoading] = useState(false);
 
       useEffect(()=>{
         fetchUsersByRole("manager");
@@ -72,6 +76,29 @@ export const Manager = () => {
           
         ];
 
+        const searchFields: FieldConfig[] = [
+          { name: "name", type: "text", placeholder: "First Name" },
+          { name: "lastName", type: "text", placeholder: "Last Name" },
+          { name: "email", type: "text", placeholder: "Email" },
+          { name: "phone", type: "text", placeholder: "Phone" },
+          { name: "address", type: "text", placeholder: "Street Address" },
+          { name: "city", type: "text", placeholder: "City" },
+          { name: "state", type: "text", placeholder: "State" },
+          { name: "zipcode", type: "text", placeholder: "Zipcode" }
+        ];
+
+        const handleSearch = (formData: any) => {
+          // TODO:- implement Manager search
+          console.log('Manager search:', formData);
+          setSearchLoading(false);
+        };
+
+        const handleReset = () => {
+          // TODO:- reset Manager search
+          console.log('Manager reset');
+          setShowSearchForm(false);
+        };
+
     return (
          <div className="min-h-screen p-6 font-sans">
       <div>
@@ -79,6 +106,27 @@ export const Manager = () => {
           Manager List
         </h2>
         </div>
+        {/* Search Button */}
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => setShowSearchForm(!showSearchForm)}
+            className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <Search className="w-4 h-4 mr-2" />
+            {showSearchForm ? 'Hide Search' : 'Search'}
+          </button>
+        </div>
+
+        {/* Generic Search Form */}
+        <GenericSearchForm
+          fields={searchFields}
+          route="Manager"
+          onSearch={handleSearch}
+          onReset={handleReset}
+          isVisible={showSearchForm}
+          loading={searchLoading || loading}
+        />
+
         <GenericTable
                   data={users || []}
                   columns={tableColumns}

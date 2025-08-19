@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, AlertTriangle, RotateCcw } from "lucide-react";
+import { Plus, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -11,6 +11,7 @@ import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { inputClasses } from "./GeoLocationSetup";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -34,14 +35,39 @@ export const TimeSetup = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
-  const { timeSetups,createTimeSetup, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage , loading } = useTimeSetupContext();
+  const { timeSetups, createTimeSetup, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
+
+  const [showSearchForm, setShowSearchForm] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const searchFields: FieldConfig[] = [
+    { name: "clientName", type: "text", placeholder: "Client Name" },
+    { name: "clientLocation", type: "text", placeholder: "Client Location" },
+    { name: "distance", type: "text", placeholder: "Distance (Miles)" },
+    { name: "time", type: "text", placeholder: "Scheduled Time (Hr)" },
+    { name: "hours", type: "text", placeholder: "Weekly Hours" },
+    { name: "reminder", type: "text", placeholder: "Reminder Time (Min)" },
+    { name: "overlap", type: "toggle", label: "Overlap" },
+  ];
+
+  const handleSearch = (formData: { [key: string]: any }) => {
+    // TODO:- implement Time Setup search
+    console.log("Time Setup search:", formData);
+    setSearchLoading(false);
+  };
+
+  const handleReset = () => {
+    // TODO:- reset Time Setup search
+    console.log("Time Setup reset");
+    setShowSearchForm(false);
+  };
 
   const getFieldClasses = (fieldName: string) => {
     const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
     const errorClasses = "border-red-500 focus:ring-red-500 focus:border-red-500";
     const normalClasses = "border-gray-300";
-    
+
     return `${baseClasses} ${showErrors && errors[fieldName] ? errorClasses : normalClasses}`;
   };
 
@@ -59,8 +85,8 @@ export const TimeSetup = () => {
   };
 
   useEffect(() => {
-  fetchTimeSetups(currentPage);
-}, [currentPage]);
+    fetchTimeSetups(currentPage);
+  }, [currentPage]);
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -68,8 +94,8 @@ export const TimeSetup = () => {
     setShowErrors(false);
   };
 
-const handleClientSelect = (
-    client: { id: string | number; name: string; lastName:string },
+  const handleClientSelect = (
+    client: { id: string | number; name: string; lastName: string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -91,41 +117,41 @@ const handleClientSelect = (
   };
 
   const onSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!validate()) return;
-  setSubmitLoader(true);
-  try {
-    const payload = {
-      clientId: Number(form.clientId),
-      addressId: Number(form.addressId),
-      distance: form.distance !== "" ? Number(form.distance) : 0,
-      actualScheduledTime: form.time !== "" ? Number(form.time) : 0,
-      weeklyHours: form.hours !== "" ? Number(form.hours) : 0,
-      reminderTime: form.reminder !== "" ? Number(form.reminder) : 0,
-      overlap: overlap,
-      unscheduledTime: unscheduledTime,
-    };
+    e.preventDefault();
+    if (!validate()) return;
+    setSubmitLoader(true);
+    try {
+      const payload = {
+        clientId: Number(form.clientId),
+        addressId: Number(form.addressId),
+        distance: form.distance !== "" ? Number(form.distance) : 0,
+        actualScheduledTime: form.time !== "" ? Number(form.time) : 0,
+        weeklyHours: form.hours !== "" ? Number(form.hours) : 0,
+        reminderTime: form.reminder !== "" ? Number(form.reminder) : 0,
+        overlap: overlap,
+        unscheduledTime: unscheduledTime,
+      };
 
-    if (editId) {
-      await updateTimeSetup(editId, payload);
-      toast.success("Time setup updated successfully!");
-    } else {
-      await createTimeSetup(payload);
-      toast.success("Time setup created successfully!");
+      if (editId) {
+        await updateTimeSetup(editId, payload);
+        toast.success("Time setup updated successfully!");
+      } else {
+        await createTimeSetup(payload);
+        toast.success("Time setup created successfully!");
+      }
+
+      resetForm();
+      fetchTimeSetups(currentPage);
+
+    } catch (error) {
+      console.error("Error creating time setup:", error);
+      toast.error("Failed to save time setup.");
+    } finally {
+      setSubmitLoader(false);
     }
-    
-    resetForm();
-    fetchTimeSetups(currentPage);
-  
-}catch (error) {
-    console.error("Error creating time setup:", error);
-    toast.error("Failed to save time setup.");
-  } finally {
-    setSubmitLoader(false);
-  }
-};
-   
- const resetForm = () => {
+  };
+
+  const resetForm = () => {
     setForm({
       clientId: "",
       addressId: "",
@@ -191,35 +217,35 @@ const handleClientSelect = (
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const tableColumns: TableColumn[] = [
-    { key: "client.name", label: "Client Name", sortable: true, searchable: true,width:"250px",height:"40px" },
-    { key: "address.address", label: "Client Location", sortable: true, searchable: true,width:"250px",height:"40px" },
-    { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile`, searchable: true,width:"250px",height:"40px" },
-    { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Hr`, searchable: true,width:"250px",height:"40px" },
-    { key: "weeklyHours", label: "Weekly Hours", sortable: true, render: (v) => `${v} Hr`, searchable: true,width:"250px",height:"40px" },
-    { key: "reminderTime", label: "Reminder Time", sortable: true, render: (v) => `${v} Min`, searchable: true,width:"250px",height:"40px" },
-     {
-  key: "overlap",
-  label: "Overlap", 
-  sortable: false,
-  searchable: true,
-  width:"250px",
-  className: "whitespace-nowrap",
-  render: (value: boolean) => (
-    <label className="inline-flex items-center cursor-pointer">
-      <input
-        type="checkbox"
-        checked={value}
-        readOnly
-        className="sr-only peer"
-      />
-      <div className="w-10 h-5 bg-gray-300 peer-checked:bg-[#004175] rounded-full relative transition-colors duration-300">
-        <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform duration-300" />
-      </div>
-    </label>
-  )
-},
+    { key: "client.name", label: "Client Name", sortable: true, searchable: true, width: "250px", height: "40px" },
+    { key: "address.address", label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px" },
+    { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile`, searchable: true, width: "250px", height: "40px" },
+    { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Hr`, searchable: true, width: "250px", height: "40px" },
+    { key: "weeklyHours", label: "Weekly Hours", sortable: true, render: (v) => `${v} Hr`, searchable: true, width: "250px", height: "40px" },
+    { key: "reminderTime", label: "Reminder Time", sortable: true, render: (v) => `${v} Min`, searchable: true, width: "250px", height: "40px" },
     {
-      key: "unscheduledTime", label: "Unscheduled Time",width:"250px", sortable: false,searchable:true, render: (v) => (
+      key: "overlap",
+      label: "Overlap",
+      sortable: false,
+      searchable: true,
+      width: "250px",
+      className: "whitespace-nowrap",
+      render: (value: boolean) => (
+        <label className="inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value}
+            readOnly
+            className="sr-only peer"
+          />
+          <div className="w-10 h-5 bg-gray-300 peer-checked:bg-[#004175] rounded-full relative transition-colors duration-300">
+            <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform duration-300" />
+          </div>
+        </label>
+      )
+    },
+    {
+      key: "unscheduledTime", label: "Unscheduled Time", width: "250px", sortable: false, searchable: true, render: (v) => (
         <label className="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -242,92 +268,92 @@ const handleClientSelect = (
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-1">
+
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-1">
         <h2 className="text-xl font-semibold mb-2">
           {editId ? "Edit Time Setup" : "Add Time Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                    <div className="relative">
-  <input
-    type="text"
-    value={clientSearch}
-    onFocus={() => setShowClientDropdown(true)}
-    onBlur={() =>
-      setTimeout(() => setShowClientDropdown(false), 200)
-    }
-    onChange={(e) => {
-      setClientSearch(e.target.value);
-      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-      setSelectedAddressText("");
-    }}
-    placeholder="Client Name"
-    className={inputClasses}
-  />
-  {errors.clientId && (
-    <ErrorMessage message={errors.clientId} />
-  )}
+            <div className="relative">
+              <input
+                type="text"
+                value={clientSearch}
+                onFocus={() => setShowClientDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowClientDropdown(false), 200)
+                }
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                  setSelectedAddressText("");
+                }}
+                placeholder="Client Name"
+                className={inputClasses}
+              />
+              {errors.clientId && (
+                <ErrorMessage message={errors.clientId} />
+              )}
 
-  {showClientDropdown && clientSearch.length >= 2 && (
-    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-      {loadingClients ? (
-        <div className="p-2 text-sm text-gray-500">
-          Searching clients...
-        </div>
-      ) : searchedClients.length === 0 ? (
-        <div className="p-2 text-gray-500 text-sm">
-          No clients found
-        </div>
-      ) : (
-        searchedClients.flatMap((client, clientIndex) =>
-          client.addresses.map((address, addressIndex) => {
-            const isEven = (clientIndex + addressIndex) % 2 === 0;
-            
-            // Generate initials from first letter of name and lastName
-            const initials = `${client.name
+              {showClientDropdown && clientSearch.length >= 2 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+                  {loadingClients ? (
+                    <div className="p-2 text-sm text-gray-500">
+                      Searching clients...
+                    </div>
+                  ) : searchedClients.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">
+                      No clients found
+                    </div>
+                  ) : (
+                    searchedClients.flatMap((client, clientIndex) =>
+                      client.addresses.map((address, addressIndex) => {
+                        const isEven = (clientIndex + addressIndex) % 2 === 0;
+
+                        // Generate initials from first letter of name and lastName
+                        const initials = `${client.name
                           .charAt(0)
                           .toUpperCase()}${client.lastName
                             ? client.lastName.charAt(0).toUpperCase()
                             : ''}`;
-            
-            return (
-              <div
-                key={`${client.id}-${address.id}`}
-                onMouseDown={() =>
-                  handleClientSelect(
-                    { id: client.id, name: client.name, lastName: client.lastName },
-                    address.id
-                  )
-                }
-                className={`p-3 cursor-pointer flex items-center space-x-3 ${
-                  isEven ? "bg-white" : "bg-gray-50"
-                } hover:bg-gray-100 transition-colors duration-150`}
-              >
-                {/* Circular Avatar with Initials */}
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm font-medium">
-                    {initials}
-                  </span>
+
+                        return (
+                          <div
+                            key={`${client.id}-${address.id}`}
+                            onMouseDown={() =>
+                              handleClientSelect(
+                                { id: client.id, name: client.name, lastName: client.lastName },
+                                address.id
+                              )
+                            }
+                            className={`p-3 cursor-pointer flex items-center space-x-3 ${isEven ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100 transition-colors duration-150`}
+                          >
+                            {/* Circular Avatar with Initials */}
+                            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-sm font-medium">
+                                {initials}
+                              </span>
+                            </div>
+
+                            {/* Client Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-blue-800 text-sm truncate">
+                                {[client.name, client.lastName].filter(Boolean).join(' ')}
+
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {address.label || address.address}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
                 </div>
-                
-                {/* Client Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-800 text-sm truncate">
-                  {[client.name, client.lastName].filter(Boolean).join(' ')}
-                  
-                  </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {address.label || address.address}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )
-      )}
-    </div>
-  )}
-</div>
+              )}
+            </div>
             <div>
               <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${getFieldClasses('addressId')} bg-gray-50`} />
               {showErrors && errors.addressId && (
@@ -360,7 +386,7 @@ const handleClientSelect = (
             </div>
             <ToggleSwitch enabled={overlap} onToggle={setOverlap} label="Overlap" />
             <ToggleSwitch enabled={unscheduledTime} onToggle={setUnscheduledTime} label="Unscheduled Time" />
-            
+
             {/* Submit and Reset Buttons */}
             <div className="flex items-center gap-2 col-span-1 md:col-span-2">
               <SubmitButton
@@ -385,30 +411,49 @@ const handleClientSelect = (
           </div>
         </form>
       </div>
+      {/* Search Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowSearchForm(!showSearchForm)}
+          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <Search className="w-4 h-4 mr-2" />
+          {showSearchForm ? 'Hide Search' : 'Search'}
+        </button>
+      </div>
 
+      {/* Generic Search Form */}
+      <GenericSearchForm
+        fields={searchFields}
+        route="Time Setup"
+        onSearch={handleSearch}
+        onReset={handleReset}
+        isVisible={showSearchForm}
+        loading={searchLoading || loading}
+      />
       {/* Table Section */}
-        <GenericTable
-          data={timeSetups || []}
-          columns={tableColumns}
-          actions={tableActions}
-          loading={loading}
-          emptyMessage="No time setup records found."
-          searchable={true}
-        />
+      <GenericTable
+        data={timeSetups || []}
+        columns={tableColumns}
+        actions={tableActions}
+        loading={loading}
+        emptyMessage="No time setup records found."
+        searchable={true}
+      />
 
-        {lastPage > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={currentPage}
-              lastPage={lastPage}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-                fetchTimeSetups(page);
-              }}
-               loading={loading}
-            />
-          </div>
-        )}
+      {lastPage > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              fetchTimeSetups(page);
+            }}
+            loading={loading}
+          />
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
@@ -418,9 +463,9 @@ const handleClientSelect = (
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete this time setup?
               </p>
-              
+
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"

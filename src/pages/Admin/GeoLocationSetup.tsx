@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Edit, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Edit, Plus, RotateCcw, Trash2, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
@@ -8,6 +8,7 @@ import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 
 export const inputClasses = `
     w-full
@@ -28,6 +29,8 @@ export const GeoLocationSetup = () => {
   const [form, setForm] = useState({ clientId: "", addressId: "", distance: "", time: "" });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showErrors, setShowErrors] = useState(false);
+  const [showSearchForm, setShowSearchForm] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
@@ -51,6 +54,26 @@ export const GeoLocationSetup = () => {
     submitLoader,
     submitError
   } = useGeoLocation();
+
+  // Search form fields (mirror table columns/interface)
+  const searchFields: FieldConfig[] = [
+    { name: "clientName", type: "text", placeholder: "Client Name" },
+    { name: "clientLocation", type: "text", placeholder: "Client Location" },
+    { name: "distance", type: "text", placeholder: "Distance (Miles)" },
+    { name: "time", type: "text", placeholder: "Time (Mins)" },
+  ];
+
+  const handleSearch = (formData: { [key: string]: any }) => {
+    // TODO:- implement Geolocation search
+    console.log("Geolocation search:", formData);
+    setSearchLoading(false);
+  };
+
+  const handleReset = () => {
+    // TODO:- reset Geolocation search
+    console.log("Geolocation reset");
+    setShowSearchForm(false);
+  };
 
 
   useEffect(() => {
@@ -231,7 +254,8 @@ export const GeoLocationSetup = () => {
     }
   ];
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">     
+
       {/* Form Section */}
       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
         <h2 className="text-xl font-semibold  mb-2 ">
@@ -409,6 +433,25 @@ export const GeoLocationSetup = () => {
           </div>
         </form>
       </div>
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowSearchForm(!showSearchForm)}
+          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <Search className="w-4 h-4 mr-2" />
+          {showSearchForm ? 'Hide Search' : 'Search'}
+        </button>
+      </div>
+
+      {/* Generic Search Form */}
+      <GenericSearchForm
+        fields={searchFields}
+        route="Geolocation"
+        onSearch={handleSearch}
+        onReset={handleReset}
+        isVisible={showSearchForm}
+        loading={searchLoading || loading}
+      />
       <GenericTable
         data={geoLocations || []}
         columns={tableColumns}

@@ -1,7 +1,7 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Check, X, AlertTriangle, RotateCcw } from "lucide-react";
+import { Plus, Edit, Trash2, Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
@@ -9,6 +9,7 @@ import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { inputClasses } from "./GeoLocationSetup";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 
 export const PostAssignment = () => {
   const [form, setForm] = useState({
@@ -25,30 +26,50 @@ export const PostAssignment = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  
+
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
 
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const {postAssigns,
-  createPostAssign,
-  currentPage,
-  lastPage,
-  fetchPostAssigns,
-  setCurrentPage,
-  loading,
-  deletePostAssign,
-  updatePostAssign,
-  error
-} = usePostAssignContext();
+  const [showSearchForm, setShowSearchForm] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
-useEffect(() => {
-  fetchPostAssigns(currentPage);
-}, [currentPage]);
+  const searchFields: FieldConfig[] = [
+    { name: "clientName", type: "text", placeholder: "Client Name" },
+    { name: "clientLocation", type: "text", placeholder: "Client Location" },
+    { name: "post", type: "text", placeholder: "Post Name" },
+  ];
+
+  const handleSearch = (formData: { [key: string]: any }) => {
+    // TODO:- implement Post Assignment search
+    console.log("Post Assignment search:", formData);
+    setSearchLoading(false);
+  };
+
+  const handleReset = () => {
+    // TODO:- reset Post Assignment search
+    console.log("Post Assignment reset");
+    setShowSearchForm(false);
+  };
+  const { postAssigns,
+    createPostAssign,
+    currentPage,
+    lastPage,
+    fetchPostAssigns,
+    setCurrentPage,
+    loading,
+    deletePostAssign,
+    updatePostAssign,
+    error
+  } = usePostAssignContext();
+
+  useEffect(() => {
+    fetchPostAssigns(currentPage);
+  }, [currentPage]);
 
   const handleClientSelect = (
-    client: { id: string | number; name: string; lastName:string },
+    client: { id: string | number; name: string; lastName: string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -73,7 +94,7 @@ useEffect(() => {
     const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
     const errorClasses = "border-red-500 focus:ring-red-500 focus:border-red-500";
     const normalClasses = "border-gray-300";
-    
+
     return `${baseClasses} ${showErrors && errors[fieldName] ? errorClasses : normalClasses}`;
   };
 
@@ -117,7 +138,7 @@ useEffect(() => {
         await createPostAssign(payload);
         toast.success("Post assignment created successfully!");
       }
-    fetchPostAssigns(currentPage);
+      fetchPostAssigns(currentPage);
       resetForm();
     } catch (error) {
       console.error("Error submitting post assignment:", error);
@@ -130,28 +151,28 @@ useEffect(() => {
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const handleEdit = (record: any) => {
-  console.log("Editing record:", record);
-  setIsEditMode(true);
-  setEditId(record.id);
-  
-  // Set form data
-  setForm({
-    clientId: String(record.client.id),
-    addressId: String(record.address.id),
-    postname: record.post,
-  });
+    console.log("Editing record:", record);
+    setIsEditMode(true);
+    setEditId(record.id);
 
-  // Set client search and address text directly from the record
-  setClientSearch(record.client.name || "");
-  setSelectedAddressText(record.address.address || "");
+    // Set form data
+    setForm({
+      clientId: String(record.client.id),
+      addressId: String(record.address.id),
+      postname: record.post,
+    });
 
-  // Clear errors
-  setErrors({});
-  setShowErrors(false);
-  
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: "smooth" });
-};
+    // Set client search and address text directly from the record
+    setClientSearch(record.client.name || "");
+    setSelectedAddressText(record.address.address || "");
+
+    // Clear errors
+    setErrors({});
+    setShowErrors(false);
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleDelete = (record: any) => {
     setDeleteModal({ isOpen: true, record });
@@ -194,7 +215,7 @@ useEffect(() => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap"
-      ,height:"40px"
+      , height: "40px"
     },
     {
       key: "address.address",
@@ -237,30 +258,31 @@ useEffect(() => {
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-        <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
         <h2 className="text-xl font-semibold mb-2">
           {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {/* Client Search */}
-                                   <div className="relative">
-  <input
-    type="text"
-    value={clientSearch}
-    onFocus={() => setShowClientDropdown(true)}
-    onBlur={() =>
-      setTimeout(() => setShowClientDropdown(false), 200)
-    }
-    onChange={(e) => {
-      setClientSearch(e.target.value);
-      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-      setSelectedAddressText("");
-    }}
-    placeholder="Client Name"
-    className={inputClasses}
-  />
-  {showErrors && errors.clientId && (
+            <div className="relative">
+              <input
+                type="text"
+                value={clientSearch}
+                onFocus={() => setShowClientDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowClientDropdown(false), 200)
+                }
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                  setSelectedAddressText("");
+                }}
+                placeholder="Client Name"
+                className={inputClasses}
+              />
+              {showErrors && errors.clientId && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
                   <svg
                     className="w-4 h-4 mr-1"
@@ -278,64 +300,63 @@ useEffect(() => {
               )}
 
 
-  {showClientDropdown && clientSearch.length >= 2 && (
-    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-      {loadingClients ? (
-        <div className="p-2 text-sm text-gray-500">
-          Searching clients...
-        </div>
-      ) : searchedClients.length === 0 ? (
-        <div className="p-2 text-gray-500 text-sm">
-          No clients found
-        </div>
-      ) : (
-        searchedClients.flatMap((client, clientIndex) =>
-          client.addresses.map((address, addressIndex) => {
-            const isEven = (clientIndex + addressIndex) % 2 === 0;
-            
-            // Generate initials from first letter of name and lastName
-            const initials = `${client.name
+              {showClientDropdown && clientSearch.length >= 2 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+                  {loadingClients ? (
+                    <div className="p-2 text-sm text-gray-500">
+                      Searching clients...
+                    </div>
+                  ) : searchedClients.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">
+                      No clients found
+                    </div>
+                  ) : (
+                    searchedClients.flatMap((client, clientIndex) =>
+                      client.addresses.map((address, addressIndex) => {
+                        const isEven = (clientIndex + addressIndex) % 2 === 0;
+
+                        // Generate initials from first letter of name and lastName
+                        const initials = `${client.name
                           .charAt(0)
                           .toUpperCase()}${client.lastName
                             ? client.lastName.charAt(0).toUpperCase()
                             : ''}`;
-            
-            return (
-              <div
-                key={`${client.id}-${address.id}`}
-                onMouseDown={() =>
-                  handleClientSelect(
-                    { id: client.id, name: client.name, lastName: client.lastName },
-                    address.id
-                  )
-                }
-                className={`p-3 cursor-pointer flex items-center space-x-3 ${
-                  isEven ? "bg-white" : "bg-gray-50"
-                } hover:bg-gray-100 transition-colors duration-150`}
-              >
-                {/* Circular Avatar with Initials */}
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm font-medium">
-                    {initials}
-                  </span>
+
+                        return (
+                          <div
+                            key={`${client.id}-${address.id}`}
+                            onMouseDown={() =>
+                              handleClientSelect(
+                                { id: client.id, name: client.name, lastName: client.lastName },
+                                address.id
+                              )
+                            }
+                            className={`p-3 cursor-pointer flex items-center space-x-3 ${isEven ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100 transition-colors duration-150`}
+                          >
+                            {/* Circular Avatar with Initials */}
+                            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-sm font-medium">
+                                {initials}
+                              </span>
+                            </div>
+
+                            {/* Client Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-blue-800 text-sm truncate">
+                                {[client.name, client.lastName].filter(Boolean).join(' ')}                  </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {address.label || address.address}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
                 </div>
-                
-                {/* Client Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-800 text-sm truncate">
-                  {[client.name, client.lastName].filter(Boolean).join(' ')}                  </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {address.label || address.address}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )
-      )}
-    </div>
-  )}
-</div>
+              )}
+            </div>
 
             {/* Address (read-only) */}
             <div>
@@ -349,8 +370,8 @@ useEffect(() => {
               {showErrors && errors.addressId && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
                   <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
                   <span>{errors.addressId}</span>
                 </div>
               )}
@@ -379,44 +400,63 @@ useEffect(() => {
               >
                 {isEditMode ? "Update" : "Add"}
               </SubmitButton>
-               {hasInput &&<button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={submitLoader}
-      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </button>}
-              
+              {hasInput && <button
+                type="button"
+                onClick={resetForm}
+                disabled={submitLoader}
+                className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Reset
+              </button>}
+
             </div>
           </div>
         </form>
       </div>
+      {/* Search Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowSearchForm(!showSearchForm)}
+          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <Search className="w-4 h-4 mr-2" />
+          {showSearchForm ? 'Hide Search' : 'Search'}
+        </button>
+      </div>
 
+      {/* Generic Search Form */}
+      <GenericSearchForm
+        fields={searchFields}
+        route="Post Assignment"
+        onSearch={handleSearch}
+        onReset={handleReset}
+        isVisible={showSearchForm}
+        loading={searchLoading || loading}
+      />
       {/* Table Section */}
-        <GenericTable
-          data={postAssigns || []}
-          columns={tableColumns}
-          actions={tableActions}
-          loading={loading}
-          emptyMessage="No post assignment records found."
-          searchable={true}
-        />
+      <GenericTable
+        data={postAssigns || []}
+        columns={tableColumns}
+        actions={tableActions}
+        loading={loading}
+        emptyMessage="No post assignment records found."
+        searchable={true}
+      />
 
-        {lastPage > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={currentPage}
-              lastPage={lastPage}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-                fetchPostAssigns(page);
-              }}
-               loading={loading}
-            />
-          </div>
-        )}
+      {lastPage > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              fetchPostAssigns(page);
+            }}
+            loading={loading}
+          />
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
@@ -427,7 +467,7 @@ useEffect(() => {
                 Are you sure you want to delete this post assignment?
               </p>
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
