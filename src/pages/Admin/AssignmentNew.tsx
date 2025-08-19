@@ -1400,7 +1400,8 @@ export default function AssignmentNew() {
       sortable: true,
       searchable: true,
       searchType: 'text', // Keep as text search
-      width: "200px",
+      width: "250px",
+      height:"40px"
     },
     {
       key: "address.address",
@@ -1408,7 +1409,7 @@ export default function AssignmentNew() {
       sortable: true,
       searchable: true,
       searchType: 'text', // Keep as text search
-      width: "200px",
+      width: "250px",
     },
     {
       key: "guard.name",
@@ -1416,7 +1417,7 @@ export default function AssignmentNew() {
       sortable: true,
       searchable: true,
       searchType: 'text', // Keep as text search
-      width: "200px",
+      width: "250px",
     },
     {
       key: "role",
@@ -1430,7 +1431,7 @@ export default function AssignmentNew() {
         { label: 'Guard', value: 'Guard' },
         { label: 'Client', value: 'Client' }
       ],
-      width: "200px",
+      width: "250px",
     },
     {
       key: "access",
@@ -1450,7 +1451,7 @@ export default function AssignmentNew() {
       sortable: true,
       searchable: true,
       searchType: 'text', // Keep as text search
-      width: "200px",
+      width: "250px",
     },
     {
       key: "notification",
