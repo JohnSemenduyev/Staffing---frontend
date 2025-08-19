@@ -4,7 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { formatDateLocal, formatDateStringLocal } from "../lib/utils";
+import { formatDateLocal, formatDateStringLocal, formatTimeDisplay } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -894,7 +894,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                               </div>
                             )}
                             <span className="text-sm">
-                              {hasSession ? `${session!.clockIn || 'N/A'} - ${session!.clockOut || 'N/A'}` : <span className="text-gray-400">-</span>}
+                              {hasSession ? `${session!.clockIn || 'N/A'} - ${formatTimeDisplay(session!.clockOut || 'N/A')}` : <span className="text-gray-400">-</span>}
                             </span>
                           </td>
                         );

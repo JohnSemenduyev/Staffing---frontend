@@ -18,3 +18,16 @@ export const formatDateStringLocal = (dateString: string): string => {
   if (!dateString) return '';
   return formatDateLocal(new Date(dateString));
 };
+
+// Utility function to format time display for UI
+// Shows 24:00 instead of 00:00 for better UX
+export const formatTimeDisplay = (timeString: string): string => {
+  if (!timeString) return '';
+  
+  // If time is 00:00, display as 24:00 for better UX
+  if (timeString === '00:00') {
+    return '24:00';
+  }
+  
+  return timeString;
+};

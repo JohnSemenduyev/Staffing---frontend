@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
+import { formatTimeDisplay } from "../../../lib/utils";
 import { 
   DeleteModalState, 
   EditModalState, 
@@ -195,7 +196,7 @@ export const Modals: React.FC<ModalsProps> = ({
                     className="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-blue-300 transition-colors"
                   >
                     <div className="font-medium text-gray-900">
-                      {shift.startTime} - {shift.endTime}
+                      {shift.startTime} - {formatTimeDisplay(shift.endTime)}
                     </div>
                     <div className="text-sm text-gray-500">
                       Hours: {shift.hours}

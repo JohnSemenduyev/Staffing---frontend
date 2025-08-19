@@ -13,7 +13,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
-import { formatDateLocal } from "../../lib/utils";
+import { formatDateLocal, formatTimeDisplay } from "../../lib/utils";
 
 interface FormData {
   clientId: string;
@@ -1422,7 +1422,7 @@ const generateDateColumns = () => {
                                           <Trash2 className="w-3 h-3" />
                                         </button>
                                       </div>
-                                      <span className="text-sm">{shift.startTime} - {shift.endTime}</span>
+                                      <span className="text-sm">{shift.startTime} - {formatTimeDisplay(shift.endTime)}</span>
                                     </div>
                                   ) : (
                                     <span className="text-gray-400">-</span>

@@ -9,6 +9,7 @@ import {
   calculateDayTotal, 
   calculateGrandTotal 
 } from "./utils";
+import { formatTimeDisplay } from "../../../lib/utils";
 
 interface ScheduleTableProps {
   scheduleData: ScheduleItem[];
@@ -165,7 +166,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </div>
                                 )}
                                 <span className="text-sm">
-                                    `${shift.startTime} - ${shift.endTime}`
+                                    `${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`
                                 </span>
                               </div>
                             ) : (

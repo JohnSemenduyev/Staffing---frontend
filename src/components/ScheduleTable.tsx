@@ -4,7 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { formatDateLocal } from "../lib/utils";
+import { formatDateLocal, formatTimeDisplay } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -540,7 +540,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </div>
                                 )}
                                 <span className="text-sm">
-                                  {`${shift.startTime} - ${shift.endTime}`}
+                                  {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
                                 </span>
                               </div>
                             ) : (
