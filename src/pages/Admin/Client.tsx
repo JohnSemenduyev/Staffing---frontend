@@ -131,9 +131,11 @@
 //   );
 // };
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { GenericTable, TableColumn } from "../../components/GenericTable";
 import { useAddresses } from "../../context/AddressContext";
+import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
+import { Search } from "lucide-react";
 
 export const Client = () => {
   const {
@@ -142,6 +144,34 @@ export const Client = () => {
     error,
     fetchClientAddresses, // ✅ new API
   } = useAddresses();
+
+  const [showSearchForm, setShowSearchForm] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Fields mirror the table/interface
+  const searchFields: FieldConfig[] = [
+    { name: "clientFirstName", type: "text", placeholder: "First Name" },
+    { name: "clientLastName", type: "text", placeholder: "Last Name" },
+    { name: "clientEmail", type: "text", placeholder: "Email" },
+    { name: "clientPhone", type: "text", placeholder: "Phone" },
+    { name: "clientCompany", type: "text", placeholder: "Company" },
+    { name: "address", type: "text", placeholder: "Street Address" },
+    { name: "city", type: "text", placeholder: "City" },
+    { name: "state", type: "text", placeholder: "State" },
+    { name: "pincode", type: "text", placeholder: "Zip Code" },
+  ];
+
+  const handleSearch = (formData: { [key: string]: any }) => {
+    // TODO:- implement Client search
+    console.log("Client search:", formData);
+    setSearchLoading(false);
+  };
+
+  const handleReset = () => {
+    // TODO:- reset Client search
+    console.log("Client search reset");
+    setShowSearchForm(false);
+  };
 
   useEffect(() => {
     fetchClientAddresses();
@@ -234,6 +264,27 @@ export const Client = () => {
       <div>
         <h2 className="text-xl font-semibold text-gray-800">Client List</h2>
       </div>
+
+      {/* Search Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowSearchForm(!showSearchForm)}
+          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <Search className="w-4 h-4 mr-2" />
+          {showSearchForm ? 'Hide Search' : 'Search'}
+        </button>
+      </div>
+
+      {/* Generic Search Form */}
+      <GenericSearchForm
+        fields={searchFields}
+        route="Client"
+        onSearch={handleSearch}
+        onReset={handleReset}
+        isVisible={showSearchForm}
+        loading={searchLoading || loading}
+      />
 
       <GenericTable
         data={addresses || []}
