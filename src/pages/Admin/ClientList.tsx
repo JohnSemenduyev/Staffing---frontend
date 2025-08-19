@@ -2,8 +2,9 @@ import React, { useEffect, useState, useMemo } from "react";
 import { ChevronDown, Plus, Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
-  import { toast } from 'sonner';
+import { toast } from 'sonner';
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
+import { GenericTable, TableColumn } from "../../components/GenericTable";
 import { Search } from "lucide-react";
 
 interface NewClientData {
@@ -19,12 +20,12 @@ interface NewClientData {
 }
 
 function ClientList() {
-  const { 
-    state, 
-    fetchScheduleSessions, 
-    setCurrentPage, 
-    createClient, 
-    refreshScheduleSessions 
+  const {
+    state,
+    fetchScheduleSessions,
+    setCurrentPage,
+    createClient,
+    refreshScheduleSessions
   } = useScheduleSessionContext();
   const { scheduleSessions, loading, error, lastPage, currentPage } = state;
 
@@ -69,6 +70,31 @@ function ClientList() {
     console.log('Client List reset');
     setShowSearchForm(false);
   };
+
+  // Columns for GenericTable
+  const tableColumns: TableColumn[] = [
+    { key: "client.name", label: "Client Name", sortable: true, searchable: true, className: "whitespace-nowrap", width: "200px" },
+    { key: "industry", label: "Industry", sortable: true, searchable: true, className: "whitespace-nowrap", width: "200px" },
+    { key: "contractHour", label: "Contract Hours", sortable: true, searchable: true, className: "whitespace-nowrap", width: "200px" },
+    {
+      key: "address",
+      label: "Street Address",
+      sortable: true,
+      searchable: true,
+      width: "250px",
+      className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
+      render: (value: string) => (
+        <div className="truncate" title={value}>
+          {value || "-"}
+        </div>
+      )
+    },
+    { key: "city", label: "City", sortable: true, searchable: true, className: "whitespace-nowrap", width: "150px" },
+    { key: "state", label: "State", sortable: true, searchable: true, className: "whitespace-nowrap", width: "100px" },
+    { key: "pincode", label: "Zip Code", sortable: true, searchable: true, className: "whitespace-nowrap", width: "120px" },
+    { key: "latitude", label: "Latitude", sortable: true, searchable: true, className: "whitespace-nowrap", width: "120px", render: (v: any) => (v ?? "-") },
+    { key: "longitude", label: "Longitude", sortable: true, searchable: true, className: "whitespace-nowrap", width: "120px", render: (v: any) => (v ?? "-") },
+  ];
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
     direction: "asc" | "desc";
@@ -133,7 +159,7 @@ function ClientList() {
   // Validation function
   const validateNewClientData = () => {
     const errors: string[] = [];
-    
+
     if (!newClientData.clientName.trim()) {
       errors.push("Client name is required");
     }
@@ -168,58 +194,58 @@ function ClientList() {
 
   // Handle save new client
 
-const handleSaveNewClient = async () => {
-  // Split clientName into first and last (multiple spaces safe)
-  const parts = newClientData.clientName.trim().split(/\s+/);
-  const firstName = parts[0] ?? "";
-  const lastName = parts.length > 1 ? parts[parts.length - 1] : undefined;
-  const validationErrors = validateNewClientData();
-  if (validationErrors.length > 0) {
-    toast.error(`Please fill in all required fields:\n${validationErrors.join("\n")}`);
-    return;
-  }
+  const handleSaveNewClient = async () => {
+    // Split clientName into first and last (multiple spaces safe)
+    const parts = newClientData.clientName.trim().split(/\s+/);
+    const firstName = parts[0] ?? "";
+    const lastName = parts.length > 1 ? parts[parts.length - 1] : undefined;
+    const validationErrors = validateNewClientData();
+    if (validationErrors.length > 0) {
+      toast.error(`Please fill in all required fields:\n${validationErrors.join("\n")}`);
+      return;
+    }
 
-  setIsCreating(true);
-  try {
-    const input = {
-      name: firstName,
-      lastName: lastName || null,
-      addresses: [{
-        address: newClientData.address,
-        city: newClientData.city,
-        state: newClientData.state,
-        pincode: newClientData.pincode,
-        contractHours: parseInt(newClientData.contractHour) || 0,
-        industry: newClientData.industry,
-        latitude: newClientData.latitude ? parseFloat(newClientData.latitude) : null,
-        longitude: newClientData.longitude ? parseFloat(newClientData.longitude) : null,
-      }]
-    };
+    setIsCreating(true);
+    try {
+      const input = {
+        name: firstName,
+        lastName: lastName || null,
+        addresses: [{
+          address: newClientData.address,
+          city: newClientData.city,
+          state: newClientData.state,
+          pincode: newClientData.pincode,
+          contractHours: parseInt(newClientData.contractHour) || 0,
+          industry: newClientData.industry,
+          latitude: newClientData.latitude ? parseFloat(newClientData.latitude) : null,
+          longitude: newClientData.longitude ? parseFloat(newClientData.longitude) : null,
+        }]
+      };
 
-    const createdClient = await createClient(input);
+      const createdClient = await createClient(input);
 
-    setShowAddRow(false);
-    setNewClientData({
-      clientName: "",
-      industry: "",
-      contractHour: "",
-      address: "",
-      city: "",
-      state: "",
-      pincode: "",
-      latitude: "",
-      longitude: ""
-    });
+      setShowAddRow(false);
+      setNewClientData({
+        clientName: "",
+        industry: "",
+        contractHour: "",
+        address: "",
+        city: "",
+        state: "",
+        pincode: "",
+        latitude: "",
+        longitude: ""
+      });
 
-    await refreshScheduleSessions();
-    toast.success("Client created successfully!");
-  } catch (error: any) {
-    console.error("Failed to create client:", error);
-    toast.error(`Failed to create client: ${error.message || "Unknown error"}`);
-  } finally {
-    setIsCreating(false);
-  }
-};
+      await refreshScheduleSessions();
+      toast.success("Client created successfully!");
+    } catch (error: any) {
+      console.error("Failed to create client:", error);
+      toast.error(`Failed to create client: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   // Handle input change for new client
   const handleNewClientInputChange = (field: keyof NewClientData, value: string) => {
@@ -339,6 +365,26 @@ const handleSaveNewClient = async () => {
 
   return (
     <div className="min-h-screen p-6 font-sans">
+
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Client  List
+          </h2>
+
+        </div>
+
+        {/* Add Button */}
+        <button
+          type="button"
+          onClick={handleAddClick}
+          disabled={showAddRow || isCreating}
+          className="inline-flex items-center px-2 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Add Client
+        </button>
+      </div>
       {/* Search Button */}
       <div className="mb-4 flex justify-end">
         <button
@@ -359,36 +405,27 @@ const handleSaveNewClient = async () => {
         isVisible={showSearchForm}
         loading={searchLoading || loading}
       />
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-800">
-            Client  List
-          </h2>
-          
-        </div>
-        
-        {/* Add Button */}
-        <button
-          type="button"
-          onClick={handleAddClick}
-          disabled={showAddRow || isCreating}
-          className="inline-flex items-center px-2 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Add Client
-        </button>
-      </div>
-
+      {/* Generic Table (default view) */}
+      {!showAddRow && (
+        <GenericTable
+          data={filteredAndSortedData}
+          columns={tableColumns}
+          actions={[]}
+          loading={loading}
+          emptyMessage="No client addresses found."
+          searchable={true}
+        />
+      )}
       {/* Table */}
-      <div className="w-full mt-6">
-        <div 
+      {/*
+<div className="w-full mt-6">
+        <div
           className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
           style={{ height: "400px", minHeight: "400px" }}
         >
           <div className="w-full h-full overflow-auto bg-white rounded-2xl">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-                {/* Header Row */}
                 <tr>
                   <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "200px" }}>
                     <div className="flex items-center">
@@ -509,7 +546,6 @@ const handleSaveNewClient = async () => {
                       </div>
                     </div>
                   </th>
-                  {/* Add Latitude header */}
                   <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
                     <div className="flex items-center">
                       Latitude
@@ -527,7 +563,6 @@ const handleSaveNewClient = async () => {
                       </div>
                     </div>
                   </th>
-                  {/* Add Longitude header */}
                   <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
                     <div className="flex items-center">
                       Longitude
@@ -547,7 +582,6 @@ const handleSaveNewClient = async () => {
                   </th>
                 </tr>
 
-                {/* Search Row */}
                 <tr className="bg-white text-gray-700 font-sans w-full">
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
@@ -619,7 +653,6 @@ const handleSaveNewClient = async () => {
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>
-                  {/* Add Latitude search input */}
                   <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
                     <input
                       placeholder="Search latitude"
@@ -630,7 +663,6 @@ const handleSaveNewClient = async () => {
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>
-                  {/* Add Longitude search input */}
                   <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
                     <input
                       placeholder="Search longitude"
@@ -648,7 +680,7 @@ const handleSaveNewClient = async () => {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={9}  
+                      colSpan={9}
                       className="relative p-0"
                       style={{ height: "calc(400px - 150px)" }}
                     >
@@ -662,7 +694,6 @@ const handleSaveNewClient = async () => {
                   </tr>
                 ) : (
                   <>
-                    {/* Add New Row - appears when showAddRow is true */}
                     {showAddRow && (
                       <tr className="bg-gray-100 border-2 ">
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "200px" }}>
@@ -735,7 +766,6 @@ const handleSaveNewClient = async () => {
                             disabled={isCreating}
                           />
                         </td>
-                        {/* Add Latitude form field */}
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
                           <input
                             placeholder="Enter latitude"
@@ -747,7 +777,6 @@ const handleSaveNewClient = async () => {
                             disabled={isCreating}
                           />
                         </td>
-                        {/* Add Longitude form field with buttons */}
                         <td className="px-4 py-3 border-b border-gray-100 relative" style={{ width: "120px" }}>
                           <div className="flex items-center gap-2">
                             <input
@@ -787,13 +816,11 @@ const handleSaveNewClient = async () => {
                       </tr>
                     )}
 
-                    {/* Data Rows */}
                     {filteredAndSortedData.map((record, index) => (
                       <tr
                         key={`client-row-${index}`}
-                        className={`hover:bg-blue-50 transition-colors ${
-                          index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                        }`}
+                        className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                          }`}
                       >
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                           {getNestedValue(record, "client.name") || "-"}
@@ -816,18 +843,15 @@ const handleSaveNewClient = async () => {
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                           {getNestedValue(record, "pincode") || "-"}
                         </td>
-                        {/* Add Latitude data cell - will show "-" for existing records since backend doesn't have this field yet */}
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                           {"-"}
                         </td>
-                        {/* Add Longitude data cell - will show "-" for existing records since backend doesn't have this field yet */}
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                           {"-"}
                         </td>
                       </tr>
                     ))}
 
-                    {/* Empty State */}
                     {filteredAndSortedData.length === 0 && !showAddRow && (
                       <tr>
                         <td
@@ -850,7 +874,8 @@ const handleSaveNewClient = async () => {
           </div>
         </div>
       </div>
-
+      */}
+    
       {/* Pagination */}
       {lastPage > 1 && (
         <div className="mt-6">
