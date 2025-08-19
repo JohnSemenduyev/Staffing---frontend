@@ -227,7 +227,29 @@ const logEditableCells = (sd: ScheduleItem[]) => {
 const calculateHours = (start: string, end: string) =>
   parseFloat((minutesDiffWithWrap(start, end) / 60).toFixed(2));
 
-
+// Utility function to check for time violations
+const hasTimeViolation = (session: SessionItem, shift: Shift): boolean => {
+  if (!session.clockIn || !shift.startTime) return false;
+  
+  // Convert times to minutes for comparison
+  const clockInMinutes = timeToMinutes(session.clockIn);
+  const shiftStartMinutes = timeToMinutes(shift.startTime);
+  
+  // Check if clock-in is after shift start time
+  if (clockInMinutes > shiftStartMinutes) {
+    return true;
+  }
+  
+  // Check if clock-out is before shift start time (if clock-out exists)
+  if (session.clockOut) {
+    const clockOutMinutes = timeToMinutes(session.clockOut);
+    if (clockOutMinutes < shiftStartMinutes) {
+      return true;
+    }
+  }
+  
+  return false;
+};
 
 
 export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
@@ -822,14 +844,21 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                         const shift = buildUserDateShifts.get(user.id)?.get(dateCol.date)?.[rowIdx] || null;
                         const session = shift ? (sessionData.find(s => s.shiftId === shift.id) || null) : null;
                         const hasSession = Boolean(session);
+                        
+                        // Check for time violations
+                        const hasViolation = hasSession && shift ? hasTimeViolation(session!, shift) : false;
 
                         return (
                           <td
                             key={`${dateCol.date}-${rowIdx}-${colIdx}`}
-                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date && dragOverCell?.rowIdx === rowIdx
+                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
+                              dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date && dragOverCell?.rowIdx === rowIdx
                                 ? 'bg-blue-50 border-blue-300'
+                                : hasViolation
+                                ? 'bg-red-100' // Dull red background for time violations
                                 : ''
-                              }`}
+                            }`}
+                            title={hasViolation ? 'Time violation: Clock-in after shift start or clock-out before shift start' : ''}
                             onDragOver={e => handleDragOver(e, user.id, dateCol.date, rowIdx)}
                             onDragLeave={handleDragLeave}
                             onDrop={e => handleDrop(e, user.id, dateCol.date, rowIdx)}
