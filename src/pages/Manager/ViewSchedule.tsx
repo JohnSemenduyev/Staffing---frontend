@@ -464,6 +464,12 @@ export const ViewSchedule = () => {
 
 
   const handleView = (rowData: any) => {
+    // Reset any stale schedule state to avoid spurious toasts
+    clearScheduleData();
+    setHasApiData(false);
+    setIsNavigationAttempt(false);
+    setTargetDate("");
+
     // Extract the full client data from the row
     const clientData = {
       clientId: rowData.clientId,
@@ -636,16 +642,25 @@ export const ViewSchedule = () => {
           variant: "destructive",
         });
         
-        setHasApiData(false);
+                // Only show the "No Schedule" toast when a navigation attempt triggered this state
+                if (isNavigationAttempt) {
+                  hookToast({
+                    title: "No Schedule Found",
+                    description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
+                    variant: "destructive",
+                  });
+                }
         
-        if (isNavigationAttempt && targetDate) {
-          if (navigationSource === "week") {
-            // Allow navigation to empty view
-            setSelectedDate(targetDate);
-            if (!showScheduleTable) setShowScheduleTable(true);
-          }
-          // If source is modal: do NOT change selectedDate or view; keep modal open
-        }
+                setHasApiData(false);
+        
+                if (isNavigationAttempt && targetDate) {
+                  if (navigationSource === "week") {
+                    // Allow navigation to empty view
+                    setSelectedDate(targetDate);
+                    if (!showScheduleTable) setShowScheduleTable(true);
+                  }
+                  // If source is modal: do NOT change selectedDate or view; keep modal open
+                }
         
         setIsNavigationAttempt(false);
         setTargetDate("");
@@ -1271,7 +1286,7 @@ export const ViewSchedule = () => {
             <p className="text-red-500">Error loading data: {error}</p>
           ) : (
             <GenericTable
-              key={viewKey} // Add key to force remount
+              key={viewKey} 
               data={tableData}
               columns={tableColumns}
               actions={tableActions}
