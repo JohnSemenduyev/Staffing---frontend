@@ -9,6 +9,7 @@ export const GET_CLIENTS = gql`
       data {
         id
         name
+        lastName
         email
         phone
         createdAt

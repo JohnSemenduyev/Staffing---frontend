@@ -558,8 +558,7 @@ export const ViewSchedule = () => {
       
       // Check if we have any data
       if (apiScheduleData.length === 0) {
-        const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
-        const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
+        const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";        const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
           month: '2-digit',
           day: '2-digit',
           year: 'numeric'
@@ -632,8 +631,7 @@ export const ViewSchedule = () => {
               startDate: date,
               auto: group.auto ?? false,
               shifts: [],
-              clientName: selectedClient?.name || "Unknown Client",
-              address: selectedClient?.address || "Unknown Address",
+              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",              address: selectedClient?.address || "Unknown Address",
               userName: group.user?.name ?? "",
               userPhone: group.user?.phone ?? ""
             };
@@ -864,8 +862,7 @@ export const ViewSchedule = () => {
                   date: dateStr,
                 },
               ],
-              clientName: selectedClient?.name || "Unknown Client",
-              address: selectedClient?.address || "Unknown Address",
+              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",              address: selectedClient?.address || "Unknown Address",
               userName: selectedUser.name,
               userPhone: selectedUser.phone || '',
             });
@@ -907,8 +904,7 @@ export const ViewSchedule = () => {
                 date: form.date,
               },
             ],
-            clientName: selectedClient?.name || "Unknown Client",
-            address: selectedClient?.address || "Unknown Address",
+            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",            address: selectedClient?.address || "Unknown Address",
             userName: selectedUser.name,
             userPhone: selectedUser.phone || '',
           });
