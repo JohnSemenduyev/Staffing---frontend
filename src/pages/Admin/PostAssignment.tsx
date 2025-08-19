@@ -294,7 +294,11 @@ useEffect(() => {
             const isEven = (clientIndex + addressIndex) % 2 === 0;
             
             // Generate initials from first letter of name and lastName
-            const initials = `${client.name.charAt(0).toUpperCase()}${client.lastName.charAt(0).toUpperCase()}`;
+            const initials = `${client.name
+                          .charAt(0)
+                          .toUpperCase()}${client.lastName
+                            ? client.lastName.charAt(0).toUpperCase()
+                            : ''}`;
             
             return (
               <div
