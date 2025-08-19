@@ -10,91 +10,10 @@ import { toast } from "sonner";
 
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
 import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
-
-// Custom Date Picker Component
-// Custom Date Picker Component
-const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
-  value: string;
-  onChange: (field: string, value: string) => void;
-  placeholder?: string;
-  className?: string;
-  minDate?: string;
-  maxDate?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Convert YYYY-MM-DD to Date object
-  const selectedDate = value ? new Date(value) : null;
-
-  // Format date for display as MM-DD-YYYY
-  const formatDateForDisplay = (date) => {
-    if (!date) return '';
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}-${day}-${year}`;
-  };
-
-  // Handle date selection
-  const handleDateChange = (date) => {
-    if (date) {
-      // Convert to YYYY-MM-DD format for form state using local timezone
-      const formattedDate = formatDateLocal(date);
-      onChange("date", formattedDate);
-    } else {
-      onChange("date", '');
-    }
-    setIsOpen(false);
-  };
-
-  // Close on outside click
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (isOpen && containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [isOpen]);
-
-  return (
-    <div className="relative w-full" ref={containerRef}>
-      <input
-        type="text"
-        value={formatDateForDisplay(selectedDate)}
-        onChange={() => { }} // Read-only input
-        placeholder={placeholder || "MM-DD-YYYY"}
-        className={className}
-        onClick={() => setIsOpen(true)}
-        readOnly
-      />
-      <Calendar
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-      />
-      {isOpen && (
-        <div className="absolute z-50 mt-1">
-          <DatePicker
-            selected={selectedDate}
-            onChange={handleDateChange}
-            inline
-            dateFormat="MM/dd/yyyy"
-            showYearDropdown
-            scrollableYearDropdown
-            yearDropdownItemNumber={15}
-            onCalendarClose={() => setIsOpen(false)}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
@@ -702,7 +621,6 @@ export const ViewSchedule = () => {
         group.shifts?.forEach(shift => {
           if (!shift?.date || userId == null) return;
 
-          // Use local timezone formatting instead of toISOString
           const date = formatDateLocal(new Date(shift.date));
           const key = `${userId}-${date}`;
 
