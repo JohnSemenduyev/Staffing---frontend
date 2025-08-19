@@ -4,8 +4,8 @@ import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
 import { toast } from 'sonner';
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
-import { GenericTable, TableColumn } from "../../components/GenericTable";
 import { Search } from "lucide-react";
+import { GenericTable } from "@/components/GenericTable";
 
 interface NewClientData {
   clientName: string;
@@ -70,31 +70,6 @@ function ClientList() {
     console.log('Client List reset');
     setShowSearchForm(false);
   };
-
-  // Columns for GenericTable
-  const tableColumns: TableColumn[] = [
-    { key: "client.name", label: "Client Name", sortable: true, searchable: true, className: "whitespace-nowrap", width: "200px" },
-    { key: "industry", label: "Industry", sortable: true, searchable: true, className: "whitespace-nowrap", width: "200px" },
-    { key: "contractHour", label: "Contract Hours", sortable: true, searchable: true, className: "whitespace-nowrap", width: "200px" },
-    {
-      key: "address",
-      label: "Street Address",
-      sortable: true,
-      searchable: true,
-      width: "250px",
-      className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-      render: (value: string) => (
-        <div className="truncate" title={value}>
-          {value || "-"}
-        </div>
-      )
-    },
-    { key: "city", label: "City", sortable: true, searchable: true, className: "whitespace-nowrap", width: "150px" },
-    { key: "state", label: "State", sortable: true, searchable: true, className: "whitespace-nowrap", width: "100px" },
-    { key: "pincode", label: "Zip Code", sortable: true, searchable: true, className: "whitespace-nowrap", width: "120px" },
-    { key: "latitude", label: "Latitude", sortable: true, searchable: true, className: "whitespace-nowrap", width: "120px", render: (v: any) => (v ?? "-") },
-    { key: "longitude", label: "Longitude", sortable: true, searchable: true, className: "whitespace-nowrap", width: "120px", render: (v: any) => (v ?? "-") },
-  ];
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
     direction: "asc" | "desc";
@@ -405,20 +380,8 @@ function ClientList() {
         isVisible={showSearchForm}
         loading={searchLoading || loading}
       />
-      {/* Generic Table (default view) */}
-      {!showAddRow && (
-        <GenericTable
-          data={filteredAndSortedData}
-          columns={tableColumns}
-          actions={[]}
-          loading={loading}
-          emptyMessage="No client addresses found."
-          searchable={true}
-        />
-      )}
       {/* Table */}
-      {/*
-<div className="w-full mt-6">
+      <div className="w-full mt-6">
         <div
           className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
           style={{ height: "400px", minHeight: "400px" }}
@@ -874,8 +837,8 @@ function ClientList() {
           </div>
         </div>
       </div>
-      */}
-    
+
+
       {/* Pagination */}
       {lastPage > 1 && (
         <div className="mt-6">
