@@ -3,6 +3,8 @@ import { ChevronDown, Plus, Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
   import { toast } from 'sonner';
+import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
+import { Search } from "lucide-react";
 
 interface NewClientData {
   clientName: string;
@@ -43,6 +45,30 @@ function ClientList() {
 
   // State for search and sort
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
+  const [showSearchForm, setShowSearchForm] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const searchFields: FieldConfig[] = [
+    { name: "clientName", type: "text", placeholder: "Client Name" },
+    { name: "industry", type: "text", placeholder: "Industry" },
+    { name: "contractHour", type: "text", placeholder: "Contract Hour" },
+    { name: "address", type: "text", placeholder: "Street Address" },
+    { name: "city", type: "text", placeholder: "City" },
+    { name: "state", type: "text", placeholder: "State" },
+    { name: "pincode", type: "text", placeholder: "Zip Code" },
+  ];
+
+  const handleSearch = (formData: any) => {
+    // TODO:- implement Client List search (could map fields to existing searchTerms if desired)
+    console.log('Client List search:', formData);
+    setSearchLoading(false);
+  };
+
+  const handleReset = () => {
+    // TODO:- reset Client List search
+    console.log('Client List reset');
+    setShowSearchForm(false);
+  };
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
     direction: "asc" | "desc";
@@ -313,6 +339,26 @@ const handleSaveNewClient = async () => {
 
   return (
     <div className="min-h-screen p-6 font-sans">
+      {/* Search Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowSearchForm(!showSearchForm)}
+          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <Search className="w-4 h-4 mr-2" />
+          {showSearchForm ? 'Hide Search' : 'Search'}
+        </button>
+      </div>
+
+      {/* Generic Search Form */}
+      <GenericSearchForm
+        fields={searchFields}
+        route="Client List"
+        onSearch={handleSearch}
+        onReset={handleReset}
+        isVisible={showSearchForm}
+        loading={searchLoading || loading}
+      />
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-semibold text-gray-800">
