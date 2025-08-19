@@ -191,17 +191,18 @@ const handleClientSelect = (
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const tableColumns: TableColumn[] = [
-    { key: "client.name", label: "Client Name", sortable: true, searchable: true },
-    { key: "address.address", label: "Client Location", sortable: true, searchable: true },
-    { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile` },
-    { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Hr` },
-    { key: "weeklyHours", label: "Weekly Hours", sortable: true, render: (v) => `${v} Hr` },
-    { key: "reminderTime", label: "Reminder Time", sortable: true, render: (v) => `${v} Min` },
+    { key: "client.name", label: "Client Name", sortable: true, searchable: true,width:"250px",height:"40px" },
+    { key: "address.address", label: "Client Location", sortable: true, searchable: true,width:"250px",height:"40px" },
+    { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile`, searchable: true,width:"250px",height:"40px" },
+    { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Hr`, searchable: true,width:"250px",height:"40px" },
+    { key: "weeklyHours", label: "Weekly Hours", sortable: true, render: (v) => `${v} Hr`, searchable: true,width:"250px",height:"40px" },
+    { key: "reminderTime", label: "Reminder Time", sortable: true, render: (v) => `${v} Min`, searchable: true,width:"250px",height:"40px" },
      {
   key: "overlap",
   label: "Overlap", 
   sortable: false,
-  searchable: false,
+  searchable: true,
+  width:"250px",
   className: "whitespace-nowrap",
   render: (value: boolean) => (
     <label className="inline-flex items-center cursor-pointer">
@@ -218,7 +219,7 @@ const handleClientSelect = (
   )
 },
     {
-      key: "unscheduledTime", label: "Unscheduled Time", sortable: false, render: (v) => (
+      key: "unscheduledTime", label: "Unscheduled Time",width:"250px", sortable: false,searchable:true, render: (v) => (
         <label className="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"

@@ -89,30 +89,50 @@ const handleReset = () => {
   };
 const onSubmit = async (e) => {
   e.preventDefault();
-  if (!validate()) return;
+  if (!validate()) {
+    toast.error("Please fill in all required fields");
+    return;
+  }
 
   setSubmitLoader(true);
+  
   try {
-    console.log("Submitting form with data:", form); // Debug log
+    console.log("Submitting form with data:", form);
 
     const clientId = Number(form.clientId);
     const rawDate = form.date;
 
+    // Call API with or without date
     if (rawDate) {
-      const formattedDate = formatDateToYYYYMMDD(rawDate);  // Format only if date exists
+      const formattedDate = formatDateToYYYYMMDD(rawDate);  
       console.log("Formatted Date for API:", formattedDate);
-      await fetchSummary(clientId, formattedDate); // ✅ Call with date
-      handleReset();
-    } 
+      
+      // Add minimum loading time to ensure user sees the loading state
+      await Promise.all([
+        fetchSummary(clientId, formattedDate),
+        new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
+      ]);
+    } else {
+      console.log("Calling API without date");
+      
+      // Add minimum loading time to ensure user sees the loading state  
+      await Promise.all([
+        fetchSummary(clientId), // Call without date parameter
+        new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
+      ]);
+    }
+    
+    
+    toast.success("Time summary loaded successfully!");
 
-    console.log("Time summary fetched:", data);  // Optional debug log
+    console.log("Time summary fetched:", data);  
   } catch (err) {
     console.error("Failed to fetch time summary:", err);
+    toast.error("Failed to fetch time summary");
   } finally {
     setSubmitLoader(false);
   }
 };
-
 
 
   const generateExcelFile = () => {
@@ -217,6 +237,7 @@ const onSubmit = async (e) => {
       
       const tableContent = generatePrintableTable();
       const currentDate = new Date().toLocaleDateString();
+      const currentDatemm=formatDateToYYYYMMDD(currentDate);
       const currentTime = new Date().toLocaleTimeString();
       
       const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
@@ -358,7 +379,7 @@ const onSubmit = async (e) => {
           <body>
             <div class="header">
               <h1>Time Summary Report</h1>
-              <p class="subtitle">Generated on ${currentDate} at ${currentTime}</p>
+              <p class="subtitle">Generated on ${currentDatemm} at ${currentTime}</p>
             </div>
             
             <div class="print-info">

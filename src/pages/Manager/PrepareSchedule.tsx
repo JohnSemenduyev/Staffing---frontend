@@ -193,6 +193,13 @@ const calculateShiftTimeTotal = (userId: number, startTime: string, endTime: str
   return parseFloat(total.toFixed(2));
 };
 
+function formatLocalYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatLocalMDY(d: Date): string {
+  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
 export const PrepareSchedule = () => {
   const [form, setForm] = useState<FormData>({
     clientId: "",
@@ -448,10 +455,11 @@ const generateDateColumns = () => {
     
     // Use the exact date from the week range (no timezone conversion)
     const dateStr = formatDateLocal(date); // YYYY-MM-DD format
+
     
     dates.push({
       date: dateStr, // Use exact date to match API
-      display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}` // Same date for display
+      display: formatLocalMDY(date) // Same date for display
     });
   }
   return dates;
@@ -549,6 +557,7 @@ const generateDateColumns = () => {
           userId: user.id,
           startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
           endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
+
           weeklyHours: weeklyHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false
@@ -657,6 +666,7 @@ const generateDateColumns = () => {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);
+
           
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -1038,6 +1048,9 @@ const generateDateColumns = () => {
     setDragOverCell(null);
   };
 
+  const toYMD = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
   return (
     <div className="min-h-screen font-sans w-full p-6">
       <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
@@ -1194,6 +1207,7 @@ const generateDateColumns = () => {
                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
                 minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
                 maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
+
               />
               
               <div className="flex items-center m-2 space-x-2">
