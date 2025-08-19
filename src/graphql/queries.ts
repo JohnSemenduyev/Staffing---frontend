@@ -471,6 +471,7 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
         user {
       id
       name
+      phone
     }
       clientId
       addressId

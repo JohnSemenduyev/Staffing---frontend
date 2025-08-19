@@ -80,6 +80,7 @@ export type ScheduleSession = {
 export type ScheduleUser = {
   id: number;
   name: string;
+  phone?: string;
 };
 
 export type ScheduleDataItem = {
@@ -112,6 +113,7 @@ export type ScheduleSessionInputExtended = {
   auto: boolean | null;
   weeklyHours: number | null;
   shifts: ShiftInput[];
+  change?: boolean | null;
 };
 
 // Context type

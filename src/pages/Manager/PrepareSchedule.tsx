@@ -8,7 +8,6 @@ import { useScheduleSession } from "../../context/ScheduleContext";
 import { useToast } from "../../hooks/use-toast";
 import { graphQLClient } from "../../GraphqlClient";
 import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
-import { toast as toasted } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
@@ -619,13 +618,13 @@ const generateDateColumns = () => {
       const result = await checkClientWeekSchedule(Number(clientId), startDate, Number(addressId));
 
       if (result?.overlap === true) {
-        toasted.success(result.message); // ✅ Show toast if no overlap
+        toast({ title: "Success", description: result.message }); // ✅ Show toast if no overlap
         return true;
       }
 
       return false; // ✅ Overlap exists or result is null
     } catch (error) {
-      toasted.error("Error checking schedule overlap.");
+      toast({ title: "Error", description: "Error checking schedule overlap.", variant: "destructive" });
       return false;
     }
   };

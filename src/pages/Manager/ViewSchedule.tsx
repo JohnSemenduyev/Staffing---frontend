@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
@@ -13,6 +13,8 @@ import { useDebounce } from "../../hooks/useDebounce";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
+import { graphQLClient } from "../../GraphqlClient";
+import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
 
 // Custom Date Picker Component
 const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
@@ -192,6 +194,12 @@ const sortShiftsByTime = (shifts) => {
   });
 };
 
+// Normalize a shift key for comparison (YYYY-MM-DD|start|end)
+const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
+  const normalizedDate = formatDateLocal(new Date(shift.date));
+  return `${normalizedDate}|${shift.startTime}|${shift.endTime}`;
+};
+
 
 // Utility function to convert date from YYYY-MM-DD to MM-DD-YYYY
 const convertDateFormat = (dateStr: string) => {
@@ -238,8 +246,13 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
   const handleSubmit = () => {
     if (selectedDate) {
       onSubmit(selectedDate);
-      onClose();
+      // Don't close automatically - let the parent component handle closing
     }
+  };
+
+  const handleClose = () => {
+    setSelectedDate(""); // Reset the date
+    onClose();
   };
 
   const handleCurrentWeek = () => {
@@ -281,7 +294,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
             Current Week
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-[48%] py-2 rounded text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
           >
             Return
@@ -299,7 +312,7 @@ const DateNavigation = ({
   currentWeekRange
 }: {
   selectedDate: string;
-  onDateChange: (date: string) => void;
+  onDateChange: (date: string) => Promise<void>;
   currentWeekRange: any;
 }) => {
   const formatDateForDisplay = (dateStr: string) => {
@@ -311,7 +324,7 @@ const DateNavigation = ({
     return `${month}/${day}/${year}`;
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
+  const navigateWeek = async (direction: 'prev' | 'next') => {
     if (!currentWeekRange) return;
 
     const currentDate = new Date(selectedDate);
@@ -319,8 +332,10 @@ const DateNavigation = ({
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + daysToAdd);
 
-    const newDateStr = formatDateLocal(newDate);
-    onDateChange(newDateStr);
+    // Always normalize to start of the week
+    const { startOfWeek } = getWeekRangeFromDate(newDate);
+    const newDateStr = formatDateLocal(startOfWeek);
+    await onDateChange(newDateStr);
   };
 
   return (
@@ -385,6 +400,9 @@ export const ViewSchedule = () => {
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
 
+  // Keep original shifts snapshot per user to detect changes on publish
+  const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
+
   // Session data state for actual time tracking (local state for UI)
   const [sessionData, setSessionData] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -392,6 +410,11 @@ export const ViewSchedule = () => {
 
   // Add local loading state for table navigation
   const [tableLoading, setTableLoading] = useState(false);
+
+  // Add state to track previous date for navigation validation
+  const [previousDate, setPreviousDate] = useState("");
+  const [isNavigationAttempt, setIsNavigationAttempt] = useState(false);
+  const [targetDate, setTargetDate] = useState("");
 
   // Form states for adding new guards
   const [form, setForm] = useState<FormData>({
@@ -412,6 +435,33 @@ export const ViewSchedule = () => {
   // Add a state to track if we have data from API
   const [hasApiData, setHasApiData] = useState(false);
 
+  // Track where navigation originated: 'week' | 'modal'
+  const [navigationSource, setNavigationSource] = useState<"week" | "modal" | null>(null);
+  // Bump key to remount tables and reset any internal component state
+  const [viewKey, setViewKey] = useState(0);
+
+  const resetUIForWeekNavigation = () => {
+    // Close modals
+    setModalOpen(false);
+    // Exit edit modes
+    setIsScheduleEditMode(false);
+    setIsActualTimeEditMode(false);
+    // Reset form-related state
+    setForm({ userId: "", date: "", starttime: "", endtime: "" });
+    setErrors({});
+    setUserSearch("");
+    setShowUserDropdown(false);
+    setSubmitLoader(false);
+    setAuto(false);
+    setApplyAllWeek(false);
+    // Reset actions state
+    setIsPrinting(false);
+    setIsPublishing(false);
+    setIsActualTimePublishing(false);
+    // Force remount tables
+    setViewKey((k) => k + 1);
+  };
+
 
   const handleView = (rowData: any) => {
     // Extract the full client data from the row
@@ -430,46 +480,103 @@ export const ViewSchedule = () => {
     setModalOpen(true);
   };
 
-  const handleDateSubmit = async (date: string) => {
-    setSelectedDate(date);
-    setShowScheduleTable(true);
-    setTableLoading(true); // Set local loading state
+  const validateAndNavigate = async (newDate: string) => {
+    console.log("validateAndNavigate called with:", newDate);
+    setNavigationSource("week");
 
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
 
-    // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
-    const formattedDate = convertDateFormat(date);
-
-    console.log("Submitting with:", {
-      clientId,
-      addressId,
-      date: formattedDate,
-      originalDate: date
-    });
-
     if (!clientId || !addressId) {
-      toast.error("Missing client or address information!");
-      setTableLoading(false);
+      hookToast({
+        title: "Missing Information",
+        description: "Missing client or address information!",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Generate week range (use original date format for frontend calculations)
-    const selectedDateObj = new Date(date);
-    const weekRange = getWeekRangeFromDate(selectedDateObj);
-    setCurrentWeekRange(weekRange);
+    // Normalize to start of week
+    const week = getWeekRangeFromDate(new Date(newDate));
+    const weekStartStr = formatDateLocal(week.startOfWeek);
+
+    // Store the current date as previous date before attempting navigation
+    setPreviousDate(selectedDate);
+    setTargetDate(weekStartStr); // Store the target date (week start)
+    setIsNavigationAttempt(true);
+
+    // Reset UI for week navigation attempt
+    resetUIForWeekNavigation();
+
+    setTableLoading(true); // Set local loading state
+
+    // Convert date format for backend
+    const formattedDate = convertDateFormat(weekStartStr);
 
     // Clear any existing schedule data
     clearScheduleData();
 
-    // Fetch actual schedule data from API using formatted date
     try {
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
-      toast.error("Failed to load schedule data!");
+      hookToast({
+        title: "Error",
+        description: "Failed to load schedule data!",
+        variant: "destructive",
+      });
     } finally {
-      setTableLoading(false); // Clear local loading state
+      setTableLoading(false);
+    }
+  };
+
+  const handleDateSubmit = async (date: string) => {
+    setNavigationSource("modal");
+    // Normalize to start of week
+    const week = getWeekRangeFromDate(new Date(date));
+    const weekStartStr = formatDateLocal(week.startOfWeek);
+
+    // Store the current date as previous date before attempting navigation
+    setPreviousDate(selectedDate);
+    setTargetDate(weekStartStr); // week start
+    setIsNavigationAttempt(true);
+
+    setTableLoading(true);
+
+    const clientId = selectedClient?.clientId;
+    const addressId = selectedClient?.addressId;
+
+    const formattedDate = convertDateFormat(weekStartStr);
+
+    if (!clientId || !addressId) {
+      hookToast({
+        title: "Missing Information",
+        description: "Missing client or address information!",
+        variant: "destructive",
+      });
+      setTableLoading(false);
+      setIsNavigationAttempt(false);
+      setTargetDate("");
+      return;
+    }
+
+    // Update week range using week start
+    const weekRange = getWeekRangeFromDate(new Date(weekStartStr));
+    setCurrentWeekRange(weekRange);
+
+    clearScheduleData();
+
+    try {
+      await fetchScheduleData(clientId, addressId, formattedDate);
+    } catch (error) {
+      console.error("Error fetching schedule data:", error);
+      hookToast({
+        title: "Error",
+        description: "Failed to load schedule data!",
+        variant: "destructive",
+      });
+    } finally {
+      setTableLoading(false);
     }
   };
 
@@ -500,53 +607,71 @@ export const ViewSchedule = () => {
     }
   }, [clientSessions]);
 
-  // Transform API data when it arrives - UPDATED
-  // ... existing code ...
-
   // Transform API data when it arrives - FIXED VERSION
   useEffect(() => {
+    console.log("useEffect triggered with:", {
+      apiScheduleData: apiScheduleData?.length,
+      isNavigationAttempt,
+      targetDate,
+      selectedDate,
+      hasApiData
+    });
+
     if (apiScheduleData && Array.isArray(apiScheduleData)) {
+      console.log("API Schedule Data received:", apiScheduleData.length, "items");
+      
+      // Check if we have any data
       if (apiScheduleData.length === 0) {
-        // No schedule data exists for this week
+        console.log("No schedule data found - handling by source:", navigationSource);
         const clientName = selectedClient?.name || "this client";
-        const formattedDate = selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }) : "the selected date";
+        const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        }) : "";
         
-        toast.error(`No schedule exists for ${clientName} on ${formattedDate}. Please prepare a schedule first.`);
+        hookToast({
+          title: "No Schedule Found",
+          description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
+          variant: "destructive",
+        });
+        
         setHasApiData(false);
-        // Revert to the previous date or stay on current date
+        
+        if (isNavigationAttempt && targetDate) {
+          if (navigationSource === "week") {
+            // Allow navigation to empty view
+            setSelectedDate(targetDate);
+            if (!showScheduleTable) setShowScheduleTable(true);
+          }
+          // If source is modal: do NOT change selectedDate or view; keep modal open
+        }
+        
+        setIsNavigationAttempt(false);
+        setTargetDate("");
         return;
       }
 
-      // We have data from API
+      // We have data
       setHasApiData(true);
+      if (isNavigationAttempt && targetDate) {
+        setSelectedDate(targetDate);
+        if (!showScheduleTable) setShowScheduleTable(true);
+        if (navigationSource === "modal") {
+          setModalOpen(false); // close only when data exists
+        }
+        // Reset UI when week change is applied
+        if (navigationSource === "week") {
+          resetUIForWeekNavigation();
+        }
+      }
+      setIsNavigationAttempt(false);
+      setTargetDate("");
 
-      const keyedByUserDate = new Map<string, {
-        id: number;
-        clientId: number;
-        addressId: number;
-        userId: number;
-        startDate: string;
-        auto: boolean;
-        shifts: {
-          id: number;
-          date: string;
-          startTime: string;
-          endTime: string;
-          hours: number;
-          scheduleSessionId: number;
-        }[];
-        clientName: string;
-        address: string;
-        userName: string;
-        userPhone: string;
-      }>();
+      // Transform the API data
+      const keyedByUserDate = new Map();
 
-      apiScheduleData.forEach(group => {
+      apiScheduleData.forEach((group: any) => {
         const userId = group.user?.id;
         group.shifts?.forEach(shift => {
           if (!shift?.date || userId == null) return;
@@ -568,63 +693,44 @@ export const ViewSchedule = () => {
               clientName: selectedClient?.name || "Unknown Client",
               address: selectedClient?.address || "Unknown Address",
               userName: group.user?.name ?? "",
-              userPhone: ""
+              userPhone: group.user?.phone ?? ""
             };
             keyedByUserDate.set(key, item);
           }
 
-          // Deduplicate by id OR by start/end time
-          const exists = item.shifts.some(s =>
-            s.id === shift.id ||
-            (s.startTime === shift.startTime && s.endTime === shift.endTime)
-          );
-          if (!exists) {
-            item.shifts.push({
-              id: shift.id,
-              date,
-              startTime: shift.startTime,
-              endTime: shift.endTime,
-              hours: shift.hours,
-              scheduleSessionId: shift.scheduleSessionId
-            });
-          }
-        });
-      });
-
-      // Sort shifts for each day by start time
-      keyedByUserDate.forEach(v => {
-        v.shifts.sort((a, b) => {
-          const toMin = (t: string) => {
-            const [h, m] = t.split(":").map(Number);
-            return h * 60 + m;
-          };
-          return toMin(a.startTime) - toMin(b.startTime);
+          item.shifts.push({
+            id: shift.id,
+            date: shift.date,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            hours: shift.hours,
+            scheduleSessionId: shift.scheduleSessionId
+          });
         });
       });
 
       const transformedData = Array.from(keyedByUserDate.values());
       setScheduleData(transformedData);
 
-      // Only update the date and week range if we have valid data
+      // Capture original snapshot of shifts per user to detect changes on publish
+      const baseMap = new Map<number, Set<string>>();
+      transformedData.forEach(item => {
+        const set = baseMap.get(item.userId) || new Set<string>();
+        item.shifts.forEach(s => set.add(makeShiftKey(s)));
+        baseMap.set(item.userId, set);
+      });
+      originalShiftsRef.current = baseMap;
+
+      // Fetch session data for the schedule sessions
       if (transformedData.length > 0) {
-        setSelectedDate(selectedDate); // Keep the new date
-        const selectedDateObj = new Date(selectedDate);
-        const weekRange = getWeekRangeFromDate(selectedDateObj);
-        setCurrentWeekRange(weekRange);
+        const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
+        fetchSessionData(scheduleSessionIds);
       }
 
-      // Fetch session data after transform
-      const scheduleSessionIds = new Set<number>();
-      transformedData.forEach(item => {
-        item.shifts.forEach(s => s.scheduleSessionId && scheduleSessionIds.add(s.scheduleSessionId));
-      });
-      fetchSessionData(Array.from(scheduleSessionIds));
-    } else {
-      setScheduleData([]);
-      setSessionData([]);
+    } else if (apiScheduleData === null) {
       setHasApiData(false);
     }
-  }, [apiScheduleData, selectedClient, selectedDate]);
+  }, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
   // Update local session data when API session data changes
   useEffect(() => {
     if (apiSessionData) {
@@ -966,9 +1072,25 @@ export const ViewSchedule = () => {
         // Calculate total weekly hours
         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
 
+        // Determine if this user's schedule changed compared to the original snapshot
+        const originalSet = originalShiftsRef.current.get(userSchedule.userId) || new Set<string>();
+        const currentSet = new Set<string>();
+        scheduleData
+          .filter(i => i.userId === userSchedule.userId)
+          .forEach(i => i.shifts.forEach(s => currentSet.add(makeShiftKey(s))));
+        let changed = false;
+        if (originalSet.size !== currentSet.size) {
+          changed = true;
+        } else {
+          for (const k of currentSet) {
+            if (!originalSet.has(k)) { changed = true; break; }
+          }
+        }
+
         return {
           ...userSchedule,
-          weeklyHours: parseFloat(weeklyHours.toFixed(2))
+          weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+          change: changed
         };
       });
 
@@ -993,6 +1115,34 @@ export const ViewSchedule = () => {
       toast.error("Failed to publish schedule. Please try again.");
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
+    try {
+      // Find the schedule session for this user
+      const userSchedule = scheduleData.find(item => item.userId === userId);
+      if (!userSchedule) {
+        toast.error("Schedule session not found for this user");
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      await graphQLClient.request(
+        UPDATE_SCHEDULE_SESSION_AUTO,
+        { id: userSchedule.id, auto: enabled },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      // Update local state
+      setScheduleData(prev => prev.map(item =>
+        item.userId === userId ? { ...item, auto: enabled } : item
+      ));
+
+      toast.success(`Auto setting ${enabled ? 'enabled' : 'disabled'} for user`);
+    } catch (error) {
+      console.error("Error updating auto setting:", error);
+      toast.error("Failed to update auto setting");
     }
   };
 
@@ -1108,38 +1258,8 @@ export const ViewSchedule = () => {
 
   // Add a new function to handle date navigation
   const handleDateNavigation = async (newDate: string) => {
-    const clientId = selectedClient?.clientId;
-    const addressId = selectedClient?.addressId;
-
-    if (!clientId || !addressId) {
-      toast.error("Missing client or address information!");
-      return;
-    }
-
-    setTableLoading(true); // Set local loading state
-
-    // Convert date format from YYYY-MM-DD to MM-DD-YYYY for backend
-    const formattedDate = convertDateFormat(newDate);
-
-    // Generate week range for the new date
-    const selectedDateObj = new Date(newDate);
-    const weekRange = getWeekRangeFromDate(selectedDateObj);
-
-    // Clear any existing schedule data
-    clearScheduleData();
-
-    // Fetch actual schedule data from API using formatted date
-    try {
-      await fetchScheduleData(clientId, addressId, formattedDate);
-      
-      // The useEffect will handle checking if data exists and updating the UI accordingly
-      
-    } catch (error) {
-      console.error("Error fetching schedule data:", error);
-      toast.error("Failed to load schedule data!");
-    } finally {
-      setTableLoading(false); // Clear local loading state
-    }
+    // This function is now deprecated, use validateAndNavigate instead
+    await validateAndNavigate(newDate);
   };
 
 
@@ -1151,6 +1271,7 @@ export const ViewSchedule = () => {
             <p className="text-red-500">Error loading data: {error}</p>
           ) : (
             <GenericTable
+              key={viewKey} // Add key to force remount
               data={tableData}
               columns={tableColumns}
               actions={tableActions}
@@ -1359,30 +1480,40 @@ export const ViewSchedule = () => {
 
 
           {/* Removed page-level schedule loader */}
-          <div className="flex w-full justify-end items-end">
+          <div className="flex w-full justify-between items-center  my-0 py-2 px-4 rounded-t-lg bg-gray-50">
+            {selectedClient && (
+              <div className="text-left">
+                <div className="text-lg font-medium text-gray-800">{selectedClient.name}</div>
+                <div className="text-sm text-gray-500">{selectedClient.address}</div>
+              </div>
+            )}
             <DateNavigation
               selectedDate={selectedDate}
-              onDateChange={handleDateNavigation}
+              onDateChange={validateAndNavigate}
               currentWeekRange={currentWeekRange}
             />
           </div>
 
-          {/* Show no data message when no schedule exists */}
-          {!scheduleLoading && !scheduleError && !tableLoading && scheduleData.length === 0 && !hasApiData && (
+          {/* Show no data message when no schedule exists or when we navigated to an empty week */}
+          {!scheduleError && !scheduleLoading && !tableLoading && (scheduleData.length === 0 || !hasApiData) && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
               <div className="text-gray-500">
                 <h3 className="text-lg font-medium mb-2">No Schedule Found</h3>
                 <p className="text-sm">
-                  No schedule exists for the selected week ({selectedDate}). 
-                  Click the "Edit" button to add guards and create a new schedule.
+                  No schedule found for {selectedClient?.name || "this client"} for week {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    year: 'numeric'
+                  }) : ""}.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Always render table; show inline loader via prop */}
-          {!scheduleError && (
+          {/* Only render ScheduleTable when we have data */}
+          {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <ScheduleTable
+              key={`schedule-${viewKey}`}
               scheduleData={scheduleData}
               selectedDate={selectedDate}
               currentWeekRange={currentWeekRange}
@@ -1395,30 +1526,14 @@ export const ViewSchedule = () => {
               isPublishing={isPublishing}
               isPrinting={isPrinting}
               loading={scheduleLoading || tableLoading}
+              onUserAutoToggle={handleUserAutoToggle}
             />
           )}
 
-          {/* Actual Time Table Section */}
-                  {/* Actual Time Table Section */}
-                  {!scheduleError && (
-            <div className="mt-8">
+          {/* Actual Time Table Section - only when we have schedule data */}
+          {!scheduleError && hasApiData && scheduleData.length > 0 && (
+            <div key={`actual-${viewKey}`} className="mt-8">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time Tracking</h3>
-
-              {/* Removed page-level session loader; error remains */}
-              {sessionError && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-                  <div className="flex">
-                    <div className="text-red-800">
-                      <h3 className="text-sm font-medium">Error loading actual time data</h3>
-                      <div className="mt-2 text-sm">
-                        <p>{sessionError}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Always render; show inline loader via prop */}
               {!sessionError && (
                 <ActualTimeTable
                   scheduleData={createImmutableScheduleCopy(scheduleData)}
@@ -1432,15 +1547,13 @@ export const ViewSchedule = () => {
                   onPublish={handleActualTimePublish}
                   onPrint={() => {
                     console.log("Printing actual time data");
-                    toast.success("Printing actual time data...");
                   }}
                   onDownloadExcel={() => {
-                    console.log("Downloading actual time Excel");
-                    toast.success("Downloading actual time Excel...");
+                    console.log("Downloading actual time Excel...");
                   }}
                   onToggleEditMode={toggleActualTimeEditMode}
                   isPublishing={isActualTimePublishing}
-                  isPrinting={false}
+                  isPrinting={isPrinting}
                   loading={sessionLoading}
                 />
               )}
