@@ -9,6 +9,7 @@ import { useUniformCompliance } from "../../context/unifromCompliace";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { formatDateLocal } from "../../lib/utils";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -65,21 +66,14 @@ const { uniformCompliances,  error, fetchUniformCompliances } = useUniformCompli
 
   // Format date to YYYY-MM-DD for input fields
   const formatDateForInput = (date) => {
-    return date.toISOString().split('T')[0];
+    return formatDateLocal(date);
   };
 
 
 
 
-const formatDate = (dateString: string | number) => {
-  if (!dateString) return '-';
-  
-  // Handle both ISO strings and timestamps
-  const date = typeof dateString === 'string' 
-    ? new Date(dateString)  // For ISO strings like "2025-08-12T00:00:00.000Z"
-    : new Date(Number(dateString)); // For timestamps
-    
-  return date.toLocaleDateString(); // e.g., "8/12/2025"
+const formatDate = (date: Date) => {
+  return formatDateLocal(date);
 };
 
 const transformComplianceData = (uniformCompliances: any[]) => {

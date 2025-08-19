@@ -13,6 +13,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { formatDateLocal } from "../../lib/utils";
 
 interface FormData {
   clientId: string;
@@ -360,8 +361,8 @@ export const PrepareSchedule = () => {
 
       // If there's existing data and it's not published, check if the week is different
       if (scheduleData.length > 0 && !isPublished && currentWeekRange) {
-        const existingWeekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
-        const newWeekStart = weekRange.startOfWeek.toISOString().split('T')[0];
+        const existingWeekStart = formatDateLocal(currentWeekRange.startOfWeek);
+        const newWeekStart = formatDateLocal(weekRange.startOfWeek);
 
         if (existingWeekStart !== newWeekStart) {
           toast({
@@ -453,7 +454,8 @@ const generateDateColumns = () => {
     date.setDate(startDate.getDate() + i);
     
     // Use the exact date from the week range (no timezone conversion)
-    const dateStr = formatLocalYMD(date); // YYYY-MM-DD format
+    const dateStr = formatDateLocal(date); // YYYY-MM-DD format
+
     
     dates.push({
       date: dateStr, // Use exact date to match API
@@ -553,8 +555,9 @@ const generateDateColumns = () => {
           clientId: firstSchedule?.clientId,
           addressId: firstSchedule?.addressId,
           userId: user.id,
-          startDate: formatLocalMDY(currentWeekRange.startOfWeek),
-          endDate: formatLocalMDY(currentWeekRange.endOfWeek),
+          startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
+          endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
+
           weeklyHours: weeklyHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false
@@ -662,7 +665,8 @@ const generateDateColumns = () => {
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
-          const dateStr = formatLocalYMD(dateObj);
+          const dateStr = formatDateLocal(dateObj);
+
           
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -1201,8 +1205,9 @@ const generateDateColumns = () => {
                 onChange={handleChange}
                 placeholder="Select Date"
                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
-                minDate={currentWeekRange ? formatLocalYMD(currentWeekRange.startOfWeek) : undefined}
-                maxDate={currentWeekRange ? formatLocalYMD(currentWeekRange.endOfWeek) : undefined}
+                minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
+                maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
+
               />
               
               <div className="flex items-center m-2 space-x-2">

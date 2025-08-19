@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
 import { GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../graphql/queries";
+import { formatDateLocal } from "../lib/utils";
 
 // Types from backend
 type Shift = {
@@ -57,7 +58,7 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
       // ✅ Transform backend data into frontend format
       const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
   session.shifts.map((shift) => {
-    const formattedDate = new Date(shift.date).toISOString().split("T")[0];
+    const formattedDate = formatDateLocal(shift.date);
     return {
       guardFirst: { name: session.user.name },
       guardLast: { name: session.user.lastName },
