@@ -250,7 +250,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
           <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
             <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
               {/* Header Row */}
-              <tr>
+              <tr className="h-[40px]">
                 {columns.map((column) => (
                   <th
                     key={column.key}

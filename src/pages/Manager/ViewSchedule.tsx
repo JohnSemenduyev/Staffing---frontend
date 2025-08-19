@@ -399,19 +399,18 @@ export const ViewSchedule = () => {
     setHasApiData(false);
     setIsNavigationAttempt(false);
     setTargetDate("");
-
-    // Extract the full client data from the row
+  
     const clientData = {
       clientId: rowData.clientId,
       addressId: rowData.addressId,
       name: rowData.clientName,
+      lastName: rowData.clientLastName,
       address: rowData.address,
       city: rowData.city,
       pincode: rowData.pincode,
       addresses: rowData.client?.addresses || []
     };
-
-    console.log("Selected client data:", clientData);
+  
     setSelectedClient(clientData);
     setModalOpen(true);
   };
@@ -529,7 +528,8 @@ export const ViewSchedule = () => {
   useEffect(() => {
     if (clientSessions && Array.isArray(clientSessions)) {
       const flatData = clientSessions.map(session => ({
-        clientName: session.client.name,
+        clientName: [session.client.name, session.client.lastName].filter(Boolean).join(' '),
+        clientLastName: session.client.lastName,
         address: session.address.address,
         city: session.address.city,
         state: session.address.state,
@@ -539,7 +539,7 @@ export const ViewSchedule = () => {
       }));
       setTableData(flatData);
     } else {
-      setTableData([]); // fallback if clientSessions is null or not an array
+      setTableData([]);
     }
   }, [clientSessions]);
 
@@ -558,14 +558,12 @@ export const ViewSchedule = () => {
       
       // Check if we have any data
       if (apiScheduleData.length === 0) {
-        console.log("No schedule data found - handling by source:", navigationSource);
-        const clientName = selectedClient?.name || "this client";
+        const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
         const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
           month: '2-digit',
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        
         hookToast({
           title: "No Schedule Found",
           description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
@@ -1444,7 +1442,7 @@ export const ViewSchedule = () => {
               <div className="text-gray-500">
                 <h3 className="text-lg font-medium mb-2">No Schedule Found</h3>
                 <p className="text-sm">
-                  No schedule found for {selectedClient?.name || "this client"} for week {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
+                No schedule found for {[selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client"} for week {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
                     month: '2-digit',
                     day: '2-digit',
                     year: 'numeric'

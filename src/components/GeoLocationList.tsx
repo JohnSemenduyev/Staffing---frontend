@@ -33,7 +33,7 @@ const GeoLocationList: React.FC = () => {
     return data.map((a: any) => ({
       id: String(a.id),
       clientId: a.clientId,
-      clientName: a.client?.name || "",
+      clientName: [a.client?.name, a.client?.lastName].filter(Boolean).join(' '),
       location: getLocationString(a.address),
       userId: a.userId,
       userName: a.user?.name || "",

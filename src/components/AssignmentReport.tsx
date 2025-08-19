@@ -18,7 +18,7 @@ const AssignmentHistory: React.FC = () => {
     if (!data) return [];
     return data.map((a: any) => ({
       id: String(a.id),
-      clientName: a.client?.name || "",
+      clientName: [a.client?.name, a.client?.lastName].filter(Boolean).join(' '),
       location: getLocationString(a.address),
       userName: a.user?.name || "",
       role: a.role,

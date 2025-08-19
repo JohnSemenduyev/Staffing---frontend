@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {  Edit, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Edit, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
@@ -9,7 +9,7 @@ import SubmitButton from "../../components/ui/ButtonUi";
 import { toast } from "sonner";
 import { ErrorMessage } from "../../components/ui/error-message";
 
- export  const inputClasses = `
+export const inputClasses = `
     w-full
   px-3
   py-1
@@ -37,19 +37,19 @@ export const GeoLocationSetup = () => {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const { 
-    fetchGeoLocations, 
-    createGeoLocation, 
-    updateGeoLocation, 
-    setCurrentPage, 
-    loading, 
-    error, 
-    lastPage, 
-    deleteGeoLocation, 
-    currentPage, 
-    geoLocations, 
-    submitLoader, 
-    submitError 
+  const {
+    fetchGeoLocations,
+    createGeoLocation,
+    updateGeoLocation,
+    setCurrentPage,
+    loading,
+    error,
+    lastPage,
+    deleteGeoLocation,
+    currentPage,
+    geoLocations,
+    submitLoader,
+    submitError
   } = useGeoLocation();
 
 
@@ -66,7 +66,7 @@ export const GeoLocationSetup = () => {
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const handleClientSelect = (
-    client: { id: string | number; name: string; lastName:string },
+    client: { id: string | number; name: string; lastName: string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -90,7 +90,7 @@ export const GeoLocationSetup = () => {
   const validate = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Client is required";
-     if (!form.addressId) e.addressId = "Address is required";
+    if (!form.addressId) e.addressId = "Address is required";
     if (!form.distance) e.distance = "Distance is required";
     if (!form.time) e.time = "Time is required";
     setErrors(e);
@@ -179,7 +179,7 @@ export const GeoLocationSetup = () => {
     setDeleteModal({ isOpen: false, record: null });
     setDeleteLoader(false);
   };
- 
+
   const tableColumns: TableColumn[] = [
     {
       key: "client.name",
@@ -200,7 +200,7 @@ export const GeoLocationSetup = () => {
       key: "distance",
       label: "Distance",
       sortable: true,
-      searchable:true,
+      searchable: true,
       className: "whitespace-nowrap max-w-[200px]",
       render: (value: any) => `${value} Mile`
     },
@@ -208,7 +208,7 @@ export const GeoLocationSetup = () => {
       key: "time",
       label: "Time",
       sortable: true,
-      searchable:true,
+      searchable: true,
       className: "whitespace-nowrap max-w-[200px]",
       render: (value: any) => `${value} Mins`
     }
@@ -239,23 +239,23 @@ export const GeoLocationSetup = () => {
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                  <div className="relative">
-  <input
-    type="text"
-    value={clientSearch}
-    onFocus={() => setShowClientDropdown(true)}
-    onBlur={() =>
-      setTimeout(() => setShowClientDropdown(false), 200)
-    }
-    onChange={(e) => {
-      setClientSearch(e.target.value);
-      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-      setSelectedAddressText("");
-    }}
-    placeholder="Client Name"
-    className={inputClasses}
-  />
- {showErrors && errors.clientId && (
+            <div className="relative">
+              <input
+                type="text"
+                value={clientSearch}
+                onFocus={() => setShowClientDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowClientDropdown(false), 200)
+                }
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                  setSelectedAddressText("");
+                }}
+                placeholder="Client Name"
+                className={inputClasses}
+              />
+              {showErrors && errors.clientId && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
                   <svg
                     className="w-4 h-4 mr-1"
@@ -273,66 +273,65 @@ export const GeoLocationSetup = () => {
               )}
 
 
-  {showClientDropdown && clientSearch.length >= 2 && (
-    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-      {loadingClients ? (
-        <div className="p-2 text-sm text-gray-500">
-          Searching clients...
-        </div>
-      ) : searchedClients.length === 0 ? (
-        <div className="p-2 text-gray-500 text-sm">
-          No clients found
-        </div>
-      ) : (
-        searchedClients.flatMap((client, clientIndex) =>
-          client.addresses.map((address, addressIndex) => {
-            const isEven = (clientIndex + addressIndex) % 2 === 0;
-            
-            // Generate initials from first letter of name and lastName
-            const initials = `${client.name
+              {showClientDropdown && clientSearch.length >= 2 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+                  {loadingClients ? (
+                    <div className="p-2 text-sm text-gray-500">
+                      Searching clients...
+                    </div>
+                  ) : searchedClients.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">
+                      No clients found
+                    </div>
+                  ) : (
+                    searchedClients.flatMap((client, clientIndex) =>
+                      client.addresses.map((address, addressIndex) => {
+                        const isEven = (clientIndex + addressIndex) % 2 === 0;
+
+                        // Generate initials from first letter of name and lastName
+                        const initials = `${client.name
                           .charAt(0)
                           .toUpperCase()}${client.lastName
                             ? client.lastName.charAt(0).toUpperCase()
                             : ''}`;
-            
-            return (
-              <div
-                key={`${client.id}-${address.id}`}
-                onMouseDown={() =>
-                  handleClientSelect(
-                    { id: client.id, name: client.name, lastName: client.lastName },
-                    address.id
-                  )
-                }
-                className={`p-3 cursor-pointer flex items-center space-x-3 ${
-                  isEven ? "bg-white" : "bg-gray-50"
-                } hover:bg-gray-100 transition-colors duration-150`}
-              >
-                {/* Circular Avatar with Initials */}
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm font-medium">
-                    {initials}
-                  </span>
+
+                        return (
+                          <div
+                            key={`${client.id}-${address.id}`}
+                            onMouseDown={() =>
+                              handleClientSelect(
+                                { id: client.id, name: client.name, lastName: client.lastName },
+                                address.id
+                              )
+                            }
+                            className={`p-3 cursor-pointer flex items-center space-x-3 ${isEven ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100 transition-colors duration-150`}
+                          >
+                            {/* Circular Avatar with Initials */}
+                            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-sm font-medium">
+                                {initials}
+                              </span>
+                            </div>
+
+                            {/* Client Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-blue-800 text-sm truncate">
+                                {[client.name, client.lastName].filter(Boolean).join(' ')}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {address.label || address.address}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
                 </div>
-                
-                {/* Client Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-800 text-sm truncate">
-                    {`${client.name} ${client.lastName}`}
-                  </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {address.label || address.address}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )
-      )}
-    </div>
-  )}
-</div>
-            
+              )}
+            </div>
+
             <div>
               <input
                 type="text"
@@ -358,7 +357,7 @@ export const GeoLocationSetup = () => {
                 </div>
               )}
             </div>
-            
+
             <div>
               <input
                 type="number"
@@ -372,7 +371,7 @@ export const GeoLocationSetup = () => {
                 <ErrorMessage message={errors.distance} />
               )}
             </div>
-            
+
             <div>
               <input
                 type="number"
@@ -386,7 +385,7 @@ export const GeoLocationSetup = () => {
                 <ErrorMessage message={errors.time} />
               )}
             </div>
-            
+
             <div className="flex justify-start gap-2">
               <SubmitButton
                 loading={submitLoader}
@@ -400,7 +399,7 @@ export const GeoLocationSetup = () => {
                   type="button"
                   onClick={resetForm}
                   disabled={submitLoader}
-      className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                  className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reset
@@ -410,28 +409,28 @@ export const GeoLocationSetup = () => {
           </div>
         </form>
       </div>
-        <GenericTable
-          data={geoLocations || []}
-          columns={tableColumns}
-          actions={tableActions}
-          loading={loading}
-          emptyMessage="No records found matching your search criteria."
-          searchable={true}
-        />
-        
-        {lastPage > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={currentPage}
-              lastPage={lastPage}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-                fetchGeoLocations(page);
-              }}
-               loading={loading}
-            />
-          </div>
-        )}
+      <GenericTable
+        data={geoLocations || []}
+        columns={tableColumns}
+        actions={tableActions}
+        loading={loading}
+        emptyMessage="No records found matching your search criteria."
+        searchable={true}
+      />
+
+      {lastPage > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              fetchGeoLocations(page);
+            }}
+            loading={loading}
+          />
+        </div>
+      )}
 
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -441,7 +440,7 @@ export const GeoLocationSetup = () => {
                 Are you sure you want to delete this geolocation setup?
               </p>
             </div>
-            
+
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
