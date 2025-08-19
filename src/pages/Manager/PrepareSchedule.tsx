@@ -708,7 +708,9 @@ const generateDateColumns = () => {
                   hours: calculateHours(form.starttime, form.endtime),
                 },
               ],
-              clientName: scheduleData[0]?.clientName || selectedClient?.name || "Unknown Client",
+              clientName: scheduleData[0]?.clientName ||
+                [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') ||
+                "Unknown Client",
               address: scheduleData[0]?.address || selectedAddress?.address || "Unknown Address",
               userName: selectedUser.name,
               userPhone: selectedUser.phone || '',
@@ -762,7 +764,7 @@ const generateDateColumns = () => {
                 hours: calculateHours(form.starttime, form.endtime),
               },
             ],
-            clientName: selectedClient?.name || "Unknown Client",
+            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
             address: selectedAddress?.address || "Unknown Address",
             userName: selectedUser?.name,
             userPhone: selectedUser?.phone || '',
@@ -1135,9 +1137,9 @@ const generateDateColumns = () => {
                 
                 {/* Client Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-800 text-sm truncate">
-                    {`${client.name} ${client.lastName}`}
-                  </div>
+                <div className="font-medium text-blue-800 text-sm truncate">
+  {[client.name, client.lastName].filter(Boolean).join(' ')}
+</div>
                   <div className="text-xs text-gray-500 truncate">
                     {address.label || address.address}
                   </div>

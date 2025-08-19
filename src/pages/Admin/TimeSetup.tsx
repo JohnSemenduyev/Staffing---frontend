@@ -313,7 +313,8 @@ const handleClientSelect = (
                 {/* Client Info */}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-blue-800 text-sm truncate">
-                    {`${client.name} ${client.lastName}`}
+                  {[client.name, client.lastName].filter(Boolean).join(' ')}
+                  
                   </div>
                   <div className="text-xs text-gray-500 truncate">
                     {address.label || address.address}

@@ -19,6 +19,7 @@ export type Address = {
 
 export type Client = {
   name: string;
+  lastName?: string;
 };
 
 export type User = {

@@ -10,7 +10,9 @@ type Shift = {
 };
 
 type RawScheduleSession = {
-  client: { name: string };
+  client: {
+    lastName: any; name: string 
+};
   address: { address: string };
   user: { name: string; lastName: string };
   shifts: Shift[];
@@ -63,8 +65,7 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
       guardFirst: { name: session.user.name },
       guardLast: { name: session.user.lastName },
       date: formattedDate,
-      Client: { name: session.client.name },
-      address: { address: session.address.address },
+      Client: { name: [session.client.name, session.client.lastName].filter(Boolean).join(' ') },      address: { address: session.address.address },
       time: shift.hours,
     };
   })
