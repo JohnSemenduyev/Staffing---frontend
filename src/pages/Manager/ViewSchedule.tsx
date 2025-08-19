@@ -17,6 +17,7 @@ import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
 
 // Custom Date Picker Component
+// Custom Date Picker Component
 const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, maxDate }: {
   value: string;
   onChange: (field: string, value: string) => void;
@@ -26,6 +27,7 @@ const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, ma
   maxDate?: string;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Convert YYYY-MM-DD to Date object
   const selectedDate = value ? new Date(value) : null;
@@ -51,8 +53,19 @@ const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, ma
     setIsOpen(false);
   };
 
+  // Close on outside click
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (isOpen && containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [isOpen]);
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={containerRef}>
       <input
         type="text"
         value={formatDateForDisplay(selectedDate)}
@@ -71,8 +84,6 @@ const CustomDatePicker = ({ value, onChange, placeholder, className, minDate, ma
             selected={selectedDate}
             onChange={handleDateChange}
             inline
-            // minDate={minDate ? new Date(minDate) : undefined}
-            // maxDate={maxDate ? new Date(maxDate) : undefined}
             dateFormat="MM/dd/yyyy"
             showYearDropdown
             scrollableYearDropdown
