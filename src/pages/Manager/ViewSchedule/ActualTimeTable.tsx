@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Edit, Trash2, GripVertical, Plus } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
 import ToggleSwitch from "../../../components/ui/toggle";
 import { ScheduleItem, Shift, DateColumn, DraggedShift, DragOverCell } from "./types";
 import { 
@@ -11,6 +11,7 @@ import {
   calculateHours // Add this import
 } from "./utils";
 import { toast } from "sonner";
+import { formatTimeDisplay } from "../../../lib/utils";
 
 interface ActualTimeTableProps {
   scheduleData: ScheduleItem[];
@@ -655,10 +656,10 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                     {/* Session data has clockIn/clockOut, Shift data has startTime/endTime */}
                                     {shift.clockIn !== undefined || shift.clockOut !== undefined ? (
                                       // Session data - use clockIn/clockOut
-                                      `${shift.clockIn || 'N/A'} - ${shift.clockOut || 'N/A'}`
+                                      `${shift.clockIn || 'N/A'} - ${formatTimeDisplay(shift.clockOut || 'N/A')}`
                                     ) : (
                                       // Shift data - use startTime/endTime
-                                      `${shift.startTime} - ${shift.endTime}`
+                                      `${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`
                                     )}
                                   </span>
                                 </div>
@@ -851,9 +852,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                    >
                      <div className="font-medium text-gray-900">
                        {shift.clockIn !== undefined || shift.clockOut !== undefined ? (
-                         `${shift.clockIn || 'N/A'} - ${shift.clockOut || 'N/A'}`
+                         `${shift.clockIn || 'N/A'} - ${formatTimeDisplay(shift.clockOut || 'N/A')}`
                        ) : (
-                         `${shift.startTime} - ${shift.endTime}`
+                         `${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`
                        )}
                      </div>
                      {shift.hours && (

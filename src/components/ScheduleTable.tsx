@@ -4,7 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { formatDateLocal } from "../lib/utils";
+import { formatDateLocal, formatTimeDisplay } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -51,6 +51,7 @@ interface ScheduleTableProps {
   isPrinting: boolean;
   readOnly?: boolean;
   loading?: boolean;
+  onUserAutoToggle?: (userId: number, enabled: boolean) => void;
 }
 
 // Utility functions
@@ -127,7 +128,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   isPublishing,
   isPrinting,
   readOnly = false,
-  loading = false
+  loading = false,
+  onUserAutoToggle
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -305,15 +307,21 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   // Auto toggle handler
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-    const updatedData = scheduleData.map(item =>
-      item.userId === userId ? { ...item, auto: enabled } : item
-    );
-    onScheduleDataChange(updatedData);
+    if (onUserAutoToggle) {
+      // Use the prop function for API updates
+      onUserAutoToggle(userId, enabled);
+    } else {
+      // Fall back to local state update
+      const updatedData = scheduleData.map(item =>
+        item.userId === userId ? { ...item, auto: enabled } : item
+      );
+      onScheduleDataChange(updatedData);
 
-    hookToast({
-      title: "Auto Setting Updated",
-      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
-    });
+      hookToast({
+        title: "Auto Setting Updated",
+        description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+      });
+    }
   };
 
   // Drag and drop handlers
@@ -439,13 +447,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   };
 
   return (
-    <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
+    <div className="relative w-full  border border-gray-200 shadow-xl">
       {loading && (
         <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
-      <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
+      <div className="w-full overflow-auto " style={{ maxHeight: "600px" }}>
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
@@ -540,7 +548,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </div>
                                 )}
                                 <span className="text-sm">
-                                  {`${shift.startTime} - ${shift.endTime}`}
+                                  {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
                                 </span>
                               </div>
                             ) : (

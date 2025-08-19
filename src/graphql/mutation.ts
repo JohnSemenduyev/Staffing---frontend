@@ -405,7 +405,16 @@ export const BULK_UPSERT_SCHEDULE_SESSION = gql`
   mutation BulkUpsertScheduleSession($input: [ScheduleSessionInputExtended!]!) {
     bulkUpsertScheduleSession(input: $input) {
       id
-      createdAt
+    }
+  }
+`;
+
+export const UPDATE_SCHEDULE_SESSION_AUTO = gql`
+  mutation UpdateScheduleSessionAuto($id: Int!, $auto: Boolean!) {
+    updateScheduleSessionAuto(id: $id, auto: $auto) {
+      id
+      auto
+      updatedAt
     }
   }
 `;
