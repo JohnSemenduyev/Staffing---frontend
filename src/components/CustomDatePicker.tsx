@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import { Calendar } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
+import { parseLocalYMD, toLocalYMD } from "../lib/utils";
 
 interface CustomDatePickerProps {
   value: string;
@@ -26,36 +27,20 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Convert YYYY-MM-DD to Date object
-  const parseLocalDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day); // Local time, midnight
-  };
+  // selected date from value (YYYY-MM-DD)
+  const selectedDate = value ? parseLocalYMD(value) : null;
   
-  const selectedDate = value ? parseLocalDate(value) : null;
-  
-  // Format date for display as MM-DD-YYYY
+  // display as MM-DD-YYYY
   const formatDateForDisplay = (date: Date | null) => {
-    if (!date) return '';
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}-${day}-${year}`;
+    if (!date) return "";
+    const ymd = toLocalYMD(date); // YYYY-MM-DD
+    const [y, m, d] = ymd.split("-");
+    return `${m}-${d}-${y}`;
   };
 
-  // Handle date selection
+  // on pick → emit YYYY-MM-DD
   const handleDateChange = (date: Date | null) => {
-    if (date) {
-      // Format the date manually to avoid timezone conversion issues
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
-      onChange(fieldName, formattedDate);
-    } else {
-      onChange(fieldName, '');
-    }
-    // Close the calendar after date selection
+    onChange(fieldName, date ? toLocalYMD(date) : "");
     setTimeout(() => setIsOpen(false), 100);
   };
 
@@ -134,8 +119,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
             selected={selectedDate}
             onChange={handleDateChange}
             inline
-            // minDate={minDate ? new Date(minDate) : undefined}
-            // maxDate={maxDate ? new Date(maxDate) : undefined}
+            minDate={minDate ? parseLocalYMD(minDate) : undefined}
+            maxDate={maxDate ? parseLocalYMD(maxDate) : undefined}
             dateFormat="MM/dd/yyyy"
             showYearDropdown
             scrollableYearDropdown
