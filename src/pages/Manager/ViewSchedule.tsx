@@ -223,32 +223,25 @@ const DateNavigation = ({
   onDateChange: (date: string) => Promise<void>;
   currentWeekRange: any;
 }) => {
-  const formatDateForDisplay = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
+  const formatDateForDisplay = (ymd: string) => {
+    if (!ymd) return "";
+    const [y,m,d] = ymd.split("-");
+    return `${m}/${d}/${y}`;
   };
 
   const navigateWeek = async (direction: 'prev' | 'next') => {
-    if (!currentWeekRange) return;
-
-    const currentDate = new Date(selectedDate);
-    const daysToAdd = direction === 'next' ? 7 : -7;
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + daysToAdd);
-
-    // Always normalize to start of the week
-    const { startOfWeek } = getWeekRangeFromDateLocal(newDate);
-    const newDateStr = toLocalYMD(startOfWeek);
-    await onDateChange(newDateStr);
+    const base = parseLocalYMD(selectedDate);
+    const delta = direction === 'next' ? 7 : -7;
+    const next = new Date(base);
+    next.setDate(base.getDate() + delta);
+    const { startOfWeek } = getWeekRangeFromDateLocal(next);
+    await onDateChange(toLocalYMD(startOfWeek));
   };
 
   return (
     <div className="flex items-center space-x-2 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-sm">
       <button
+        type="button"
         onClick={() => navigateWeek('prev')}
         className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
         title="Previous Week"
@@ -263,6 +256,7 @@ const DateNavigation = ({
       </div>
 
       <button
+        type="button"
         onClick={() => navigateWeek('next')}
         className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
         title="Next Week"
@@ -410,7 +404,7 @@ export const ViewSchedule = () => {
     }
 
     // Normalize to start of week
-    const week = getWeekRangeFromDateLocal(new Date(newDate));
+    const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
     const weekStartStr = toLocalYMD(week.startOfWeek);
 
     // Store the current date as previous date before attempting navigation
