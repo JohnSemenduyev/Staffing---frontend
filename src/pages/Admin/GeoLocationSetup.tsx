@@ -453,6 +453,7 @@ export const GeoLocationSetup = () => {
         onReset={handleReset}
         isVisible={showSearchForm}
         loading={searchLoading || loading}
+        resetKey={"Geolocation"}
       />
       <GenericTable
         data={geoLocations || []}

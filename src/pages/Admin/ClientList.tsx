@@ -379,6 +379,7 @@ function ClientList() {
         onReset={handleReset}
         isVisible={showSearchForm}
         loading={searchLoading || loading}
+        resetKey={"Client List"}
       />
       {/* Table */}
       <div className="w-full mt-6">

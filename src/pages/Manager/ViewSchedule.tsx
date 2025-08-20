@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
-import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
+import { formatDateLocal, formatDateStringLocal, formatDateUTC, getWeekRangeFromDateUTC } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
 
@@ -79,19 +79,7 @@ const inputClasses = `
   appearance-none
 `;
 
-const getWeekRangeFromDate = (baseDate) => {
-  const day = baseDate.getUTCDay();
-  const daysSinceThursday = (day + 3) % 7;
-  const startOfWeek = new Date(baseDate);
-  startOfWeek.setUTCDate(baseDate.getUTCDate() - daysSinceThursday);
-  startOfWeek.setUTCHours(0, 0, 0, 0);
 
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
-  endOfWeek.setUTCHours(23, 59, 59, 999);
-
-  return { startOfWeek, endOfWeek };
-};
 
 const timeToMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -186,14 +174,8 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
   };
 
   const handleCurrentWeek = () => {
-    const today = new Date();
-    const day = today.getUTCDay();
-    const daysSinceThursday = (day + 3) % 7; // Thursday = 4, so we subtract to get back to it
-    const startOfWeek = new Date(today);
-    startOfWeek.setUTCDate(today.getUTCDate() - daysSinceThursday);
-    startOfWeek.setUTCHours(0, 0, 0, 0);
-
-    const formatted = formatDateLocal(startOfWeek);
+    const { startOfWeek } = getWeekRangeFromDateUTC(new Date());
+    const formatted = formatDateUTC(startOfWeek); // or formatDateLocal(startOfWeek) if UI-only
     setSelectedDate(formatted);
   };
 
@@ -263,7 +245,7 @@ const DateNavigation = ({
     newDate.setDate(currentDate.getDate() + daysToAdd);
 
     // Always normalize to start of the week
-    const { startOfWeek } = getWeekRangeFromDate(newDate);
+    const { startOfWeek } = getWeekRangeFromDateUTC(newDate);
     const newDateStr = formatDateLocal(startOfWeek);
     await onDateChange(newDateStr);
   };
@@ -432,7 +414,7 @@ export const ViewSchedule = () => {
     }
 
     // Normalize to start of week
-    const week = getWeekRangeFromDate(new Date(newDate));
+    const week = getWeekRangeFromDateUTC(new Date(newDate));
     const weekStartStr = formatDateLocal(week.startOfWeek);
 
     // Store the current date as previous date before attempting navigation
@@ -468,7 +450,7 @@ export const ViewSchedule = () => {
   const handleDateSubmit = async (date: string) => {
     setNavigationSource("modal");
     // Normalize to start of week
-    const week = getWeekRangeFromDate(new Date(date));
+    const week = getWeekRangeFromDateUTC(new Date(date));
     const weekStartStr = formatDateLocal(week.startOfWeek);
 
     // Store the current date as previous date before attempting navigation
@@ -496,7 +478,7 @@ export const ViewSchedule = () => {
     }
 
     // Update week range using week start
-    const weekRange = getWeekRangeFromDate(new Date(weekStartStr));
+    const weekRange = getWeekRangeFromDateUTC(new Date(weekStartStr));
     setCurrentWeekRange(weekRange);
 
     clearScheduleData();
@@ -733,7 +715,7 @@ export const ViewSchedule = () => {
     // Check week range when date changes
     if (field === 'date' && value && currentWeekRange) {
       const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDate(selectedDate);
+      const weekRange = getWeekRangeFromDateUTC(selectedDate);
 
       // Use local timezone formatting
       const existingWeekStart = formatDateLocal(currentWeekRange.startOfWeek);
@@ -949,7 +931,7 @@ export const ViewSchedule = () => {
 
       // Calculate week start and end dates from the selected date
       const selectedDateObj = new Date(selectedDate);
-      const weekRange = getWeekRangeFromDate(selectedDateObj);
+      const weekRange = getWeekRangeFromDateUTC(selectedDateObj);
       // Use local timezone formatting
       const startDate = formatDateLocal(weekRange.startOfWeek);
       const endDate = formatDateLocal(weekRange.endOfWeek);

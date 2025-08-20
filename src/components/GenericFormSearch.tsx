@@ -21,6 +21,7 @@ export interface GenericSearchFormProps {
   onReset: () => void;
   isVisible: boolean;
   loading?: boolean;
+  resetKey?: string | number | boolean; // add
 }
 
 export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
@@ -29,7 +30,8 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
   onSearch,
   onReset,
   isVisible,
-  loading = false
+  loading = false,
+  resetKey
 }) => {
   // Initialize form state based on fields
   const initializeForm = () => {
@@ -55,8 +57,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
     setForm(initializeForm());
     setErrors({});
     setShowErrors(false);
-  }, [fields]);
-
+  }, [fields, resetKey]); 
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 

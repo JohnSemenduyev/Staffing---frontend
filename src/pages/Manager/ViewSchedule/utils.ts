@@ -16,7 +16,7 @@ export const inputClasses = `
   appearance-none
 `;
 
-export const getWeekRangeFromDate = (baseDate: Date): WeekRange => {
+export const getWeekRangeFromDateUTC = (baseDate: Date): WeekRange => {
   const day = baseDate.getDay();
   const daysSinceThursday = (day + 3) % 7;
 

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useToast } from "../../../hooks/use-toast";
 import { ScheduleItem, WeekRange, DeleteModalState, EditModalState, DeleteUserModalState, DraggedShift, DragOverCell, Shift } from "./types";
 import { 
-  getWeekRangeFromDate, 
+  getWeekRangeFromDateUTC, 
   convertDateFormat, 
   doTimesOverlap, 
   sortShiftsByTime, 

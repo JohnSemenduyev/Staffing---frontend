@@ -1,10 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { CREATE_SCHEDULE_SESSION } from "../graphql/mutation";
-import {
-  GET_SCHEDULE_SESSIONS,
-  CHECK_CLIENT_WEEK_SCHEDULE, // ✅ Import the query
-} from "../graphql/queries";
+import { CREATE_SCHEDULE_SESSION, CHECK_SCHEDULE_SESSION} from "../graphql/mutation";
+import { GET_SCHEDULE_SESSIONS } from "../graphql/queries";
 
 // Types
 type ShiftInput = {
@@ -38,8 +35,8 @@ type ScheduleSession = {
 };
 
 type WeekScheduleCheckResponse = {
-  overlap: boolean;
-  message: string;
+  message: string | null;
+  id: number | null;
 };
 
 type ScheduleSessionContextType = {
@@ -49,7 +46,8 @@ type ScheduleSessionContextType = {
   checkClientWeekSchedule: (
     clientId: number,
     startDate: string,
-    addressId: number
+    addressId: number,
+    userId: number
   ) => Promise<WeekScheduleCheckResponse | null>;
 };
 
@@ -105,17 +103,18 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
   const checkClientWeekSchedule = async (
     clientId: number,
     startDate: string,
-    addressId: number
+    addressId: number,
+    userId: number
   ): Promise<WeekScheduleCheckResponse | null> => {
     try {
-      const response = await graphQLClient.request<{ checkClientWeekSchedule: WeekScheduleCheckResponse }>(
-        CHECK_CLIENT_WEEK_SCHEDULE,
-        { clientId, startDate, addressId },
+      const response = await graphQLClient.request<{ checkScheduleSession: WeekScheduleCheckResponse }>(
+        CHECK_SCHEDULE_SESSION,
+        { clientId, addressId, userId, startDate },
         { Authorization: `Bearer ${token}` }
       );
-      return response.checkClientWeekSchedule;
+      return response.checkScheduleSession;
     } catch (error: any) {
-      console.error("Failed to check client week schedule:", error.message || error);
+      console.error("Failed to check schedule:", error.message || error);
       return null;
     }
   };

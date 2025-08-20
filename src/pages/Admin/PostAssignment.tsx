@@ -435,6 +435,7 @@ export const PostAssignment = () => {
         onReset={handleReset}
         isVisible={showSearchForm}
         loading={searchLoading || loading}
+        resetKey={"Post Assignment"}
       />
       {/* Table Section */}
       <GenericTable
