@@ -25,10 +25,11 @@ interface PostAssignContextType {
   lastPage: number;
   loading: boolean;
   error: string | null;
+  currentFilter: Record<string, any> | null;
   createPostAssign: (input: PostAssignInput) => Promise<void>;
   deletePostAssign: (id: number) => Promise<void>;
   updatePostAssign: (id: number, input: Partial<PostAssignInput>) => Promise<void>;
-  fetchPostAssigns: (page?: number) => void;
+  fetchPostAssigns: (page?: number, filter?: Record<string, any>) => void;
   setCurrentPage: (page: number) => void;
 }
 
@@ -40,21 +41,28 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [lastPage, setLastPage] = useState<number>(1);
+  const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
 
-  const fetchPostAssigns = async (page: number = 1) => {
+  const fetchPostAssigns = async (page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
     setError(null);
     try {
+      const effectiveFilter = filter !== undefined ? filter : currentFilter || undefined;
+      const variables: any = { page };
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
       const data = await graphQLClient.request<{
         postAssigns: {
           data: PostAssign[];
           lastPage: number;
         };
-      }>(GET_POST_ASSIGN, { page });
+      }>(GET_POST_ASSIGN, variables);
 
       setPostAssigns(data.postAssigns.data);
       setLastPage(data.postAssigns.lastPage);
       setCurrentPage(page);
+      setCurrentFilter(effectiveFilter ?? null);
     } catch (err: any) {
       console.error("Error fetching post assigns:", err);
       setError(err.message || "Failed to fetch post assigns");
@@ -102,6 +110,7 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
         lastPage,
         loading,
         error,
+        currentFilter,
         createPostAssign,
         deletePostAssign,
         updatePostAssign,

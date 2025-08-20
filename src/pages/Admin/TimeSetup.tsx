@@ -52,15 +52,17 @@ export const TimeSetup = () => {
   ];
 
   const handleSearch = (formData: { [key: string]: any }) => {
-    // TODO:- implement Time Setup search
-    console.log("Time Setup search:", formData);
-    setSearchLoading(false);
+    setSearchLoading(true);
+    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
+    setCurrentPage(1);
+    fetchTimeSetups(1, filter).finally(() => setSearchLoading(false));
   };
 
   const handleReset = () => {
-    // TODO:- reset Time Setup search
-    console.log("Time Setup reset");
     setShowSearchForm(false);
+    setCurrentPage(1);
+    fetchTimeSetups(1, null);
   };
 
   const getFieldClasses = (fieldName: string) => {

@@ -32,7 +32,7 @@ interface ScheduleItem {
   userPhone: string;
 }
 
-// Updated Session interface to match GraphQL schema
+// Updated Session interface to match minimal GraphQL schema
 interface SessionItem {
   id: number;
   shiftId?: number;
@@ -40,12 +40,10 @@ interface SessionItem {
   clockIn: string;
   clockOut: string;
   workedTime: number;
-  clockInLat?: number;
-  clockInLong?: number;
-  clockOutLat?: number;
-  clockOutLong?: number;
-  shift?: Shift;
-  scheduleSession?: ScheduleSession;
+  shift?: {
+    id: number;
+    date: string;
+  };
 }
 
 interface ScheduleSession {
@@ -159,7 +157,7 @@ const calculateDayTotal = (date: string, sessionData: SessionItem[]) => {
   const total = sessionData
     .filter(item => {
       // Check if the session's date matches the given date
-      const sessionDate = item.shift?.date || item.scheduleSession?.startDate;
+      const sessionDate = item.shift?.date || String(item.scheduleSessionId); // Convert to string
       const formattedSessionDate = sessionDate ? formatDateStringLocal(sessionDate) : "";
       return formattedSessionDate === date;
     })
@@ -174,14 +172,11 @@ const calculateUserTotal = (
 ) => {
   const total = sessionData
     .filter(item => {
-      const sessionUserId = item.scheduleSession?.userId;
-      if (!sessionUserId && item.scheduleSessionId) {
-        const scheduleItem = scheduleData.find(si =>
-          si.shifts.some(shift => shift.scheduleSessionId === item.scheduleSessionId)
-        );
-        return scheduleItem?.userId === userId;
-      }
-      return sessionUserId === userId;
+      // Find the schedule item that contains this session's shift
+      const scheduleItem = scheduleData.find(si =>
+        si.shifts.some(shift => shift.id === item.shiftId)
+      );
+      return scheduleItem?.userId === userId;
     })
     .reduce((t, item) => t + (item.workedTime || 0), 0);
   return parseFloat(total.toFixed(2));
@@ -284,7 +279,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   const [dragOverCell, setDragOverCell] = useState(null);
   const hasTimeOverlap = (userId: number, date: string, start: string, end: string) => {
     return sessionData.some(s => {
-      const d = s.shift?.date || s.scheduleSession?.startDate;
+      const d = s.shift?.date || String(s.scheduleSessionId); // Convert to string
       const sDate = d ? formatDateStringLocal(d) : '';
       if (sDate !== date) return false;
       if (!s.clockIn || !s.clockOut) return false;
@@ -436,14 +431,13 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   const confirmDeleteUser = () => {
     const { userId } = deleteUserModal;
     const updatedData = sessionData.filter(item => {
-      const sessionUserId = item.scheduleSession?.userId;
-      if (!sessionUserId && item.scheduleSessionId) {
-        const scheduleItem = scheduleData.find(scheduleItem =>
-          scheduleItem.shifts.some(shift => shift.scheduleSessionId === item.scheduleSessionId)
-        );
-        return scheduleItem?.userId !== userId;
-      }
-      return sessionUserId !== userId;
+      const sessionUserId = item.scheduleSessionId; // Use scheduleSessionId for user lookup
+      if (!sessionUserId) return false; // No scheduleSessionId means it's not a session from a schedule
+
+      const scheduleItem = scheduleData.find(scheduleItem =>
+        scheduleItem.shifts.some(shift => shift.scheduleSessionId === sessionUserId)
+      );
+      return scheduleItem?.userId !== userId;
     });
     onSessionDataChange(updatedData);
     setDeleteUserModal({ isOpen: false, userId: null });
@@ -470,54 +464,81 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     const hasEnd = !!addSessionForm.endtime;
 
     if (hasEnd && !hasStart) {
-      toast.error('Clock-out requires clock-in.');
+      hookToast({
+        title: "Error",
+        description: "Clock-out requires clock-in.",
+        variant: "destructive",
+      });
       return;
     }
 
     if (hasStart && hasEnd) {
       if (addSessionForm.starttime >= addSessionForm.endtime) {
-        toast.error('Start time must be before end time.');
+        hookToast({
+          title: "Error",
+          description: "Start time must be before end time.",
+          variant: "destructive",
+        });
         return;
       }
       if (hasTimeOverlap(addSessionModal.userId, addSessionModal.date, addSessionForm.starttime, addSessionForm.endtime)) {
-        toast.error('Time overlap detected! This session overlaps with an existing session.');
+        hookToast({
+          title: "Error",
+          description: "Time overlap detected! This session overlaps with an existing session.",
+          variant: "destructive",
+        });
         return;
       }
     }
 
     const newHours = hasStart && hasEnd ? calculateHours(addSessionForm.starttime, addSessionForm.endtime) : undefined;
 
-    // AFTER (robust)
     const sid = Number(shiftId);
     const scheduleItem = scheduleData.find(item =>
       item.userId === userId && item.shifts?.some(s => s.id === sid)
     );
+    
     if (!scheduleItem) {
-      hookToast({ title: "Error", description: "Schedule item not found for this shift.", variant: "destructive" });
+      hookToast({ 
+        title: "Error", 
+        description: "Schedule item not found for this shift.", 
+        variant: "destructive" 
+      });
       return;
     }
 
     const shift = scheduleItem.shifts.find(s => s.id === sid);
     if (!shift) {
-      hookToast({ title: "Error", description: "Shift not found.", variant: "destructive" });
+      hookToast({ 
+        title: "Error", 
+        description: "Shift not found.", 
+        variant: "destructive" 
+      });
       return;
     }
 
     if (!shift.scheduleSessionId) {
-      hookToast({ title: "Error", description: "Shift is missing scheduleSessionId.", variant: "destructive" });
+      hookToast({ 
+        title: "Error", 
+        description: "Shift is missing scheduleSessionId.", 
+        variant: "destructive" 
+      });
       return;
     }
 
-    // STRICT: one session per shift by shiftId only
-    const existing = sessionData.some(s => s.shiftId === shift.id);
-    if (existing) {
-      hookToast({ title: "Error", description: "Session already exists for this shift.", variant: "destructive" });
+    // Check if a session already exists for this shiftId
+    const existingSession = sessionData.find(s => s.shiftId === shift.id);
+    if (existingSession) {
+      hookToast({ 
+        title: "Error", 
+        description: "A session already exists for this shift.", 
+        variant: "destructive" 
+      });
       return;
     }
 
-    // create new session with this shift.id (scheduleSessionId included in payload as-is)
     const newSession: SessionItem = {
-      id: Date.now(), // Generate temporary ID for local session
+      id: Date.now(),
       shiftId: shift.id,
       scheduleSessionId: shift.scheduleSessionId,
       clockIn: hasStart ? addSessionForm.starttime : null,
@@ -526,33 +547,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       shift: {
         id: shift.id,
         date: date,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        hours: shift.hours,
-        scheduleSessionId: shift.scheduleSessionId
-      },
-      scheduleSession: {
-        id: scheduleItem.id,
-        clientId: scheduleItem.clientId,
-        addressId: scheduleItem.addressId,
-        userId: scheduleItem.userId,
-        startDate: scheduleItem.startDate,
-        auto: scheduleItem.auto,
-        client: {
-          name: scheduleItem.clientName
-        },
-        address: {
-          address: scheduleItem.address
-        },
-        user: {
-          id: scheduleItem.userId,
-          name: scheduleItem.userName,
-          phone: scheduleItem.userPhone
-        }
       }
     };
 
-    // Add new session to local data
     const updatedData = [...sessionData, newSession];
     onSessionDataChange(updatedData);
 
@@ -625,7 +622,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     const targetShift = targetScheduleItem.shifts[targetRowIdx];
     if (!targetShift?.id) { setDraggedSession(null); setDragOverCell(null); return; }
 
-    // STRICT: find only by shiftId
+    // Check if a session already exists for this shiftId
     const existing = sessionData.find(s => s.shiftId === targetShift.id);
 
     if (existing) {
@@ -642,7 +639,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
       );
       onSessionDataChange(updatedData);
     } else {
-      // Create new session
+      // Create new session only if none exists for this shiftId
       const newSession: SessionItem = {
         id: Date.now(),
         shiftId: targetShift.id,
@@ -652,30 +649,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         workedTime: session.workedTime,
         shift: {
           id: targetShift.id,
-          date: targetDate,
-          startTime: targetShift.startTime,
-          endTime: targetShift.endTime,
-          hours: targetShift.hours,
-          scheduleSessionId: targetShift.scheduleSessionId
-        },
-        scheduleSession: {
-          id: targetScheduleItem.id,
-          clientId: targetScheduleItem.clientId,
-          addressId: targetScheduleItem.addressId,
-          userId: targetScheduleItem.userId,
-          startDate: targetScheduleItem.startDate,
-          auto: targetScheduleItem.auto,
-          client: {
-            name: targetScheduleItem.clientName
-          },
-          address: {
-            address: targetScheduleItem.address
-          },
-          user: {
-            id: targetScheduleItem.userId,
-            name: targetScheduleItem.userName,
-            phone: targetScheduleItem.userPhone
-          }
+          date: targetDate
         }
       };
 
@@ -725,8 +699,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         // 2) fallback: same scheduleSessionId + same date (older data)
         if (match.length === 0) {
           match = sessionData.filter(s => {
-            const sd = s.shift?.date || s.scheduleSession?.startDate;
-            const sDate = sd ? formatDateStringLocal(sd) : '';
+            const sd = s.shift?.date || s.scheduleSessionId; // Use scheduleSessionId for date lookup
+            const sDate = sd ? formatDateStringLocal(String(sd)) : '';
             return s.scheduleSessionId === shift.scheduleSessionId && sDate === date;
           });
         }
@@ -747,24 +721,33 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     return map;
   }, [scheduleData, sessionData]);
 
+  // Also add debugging to the findSessionForCell function
   const findSessionForCell = (
     shiftId?: number,
     scheduleSessionId?: number,
     date?: string
   ): SessionItem | null => {
     if (!shiftId && !scheduleSessionId) return null;
-    // new data: exact shiftId
-    const byShift = shiftId ? sessionData.find(s => s.shiftId === shiftId) : null;
-    if (byShift) return byShift;
-    // old data fallback: same scheduleSessionId + same date
-    const bySched = scheduleSessionId
-      ? sessionData.find(s => {
-        const d = s.shift?.date || s.scheduleSession?.startDate;
-        const sDate = d ? formatDateStringLocal(d) : '';
-        return s.scheduleSessionId === scheduleSessionId && sDate === date;
-      })
-      : null;
-    return bySched || null;
+    
+    // new data: exact shiftId - should be unique
+    if (shiftId) {
+      const session = sessionData.find(s => s.shiftId === shiftId);
+      if (session) return session;
+    }
+    
+    // old data fallback: same scheduleSessionId + same date + same shiftId
+    if (scheduleSessionId && shiftId) {
+      const session = sessionData.find(s => {
+        const d = s.shift?.date || s.scheduleSessionId;
+        const sDate = d ? formatDateStringLocal(String(d)) : '';
+        return s.scheduleSessionId === scheduleSessionId && 
+               sDate === date && 
+               s.shiftId === shiftId;
+      });
+      return session || null;
+    }
+    
+    return null;
   };
 
   const buildUserDateShifts = useMemo(() => {
@@ -842,7 +825,14 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
                       {dateColumns.map((dateCol, colIdx) => {
                         const shift = buildUserDateShifts.get(user.id)?.get(dateCol.date)?.[rowIdx] || null;
-                        const session = shift ? (sessionData.find(s => s.shiftId === shift.id) || null) : null;
+                        // Robust lookup: try by exact shiftId, then fallback to scheduleSessionId + date
+                        const session = shift
+                          ? findSessionForCell(
+                              shift.id,
+                              shift.scheduleSessionId,
+                              dateCol.date
+                            )
+                          : null;
                         const hasSession = Boolean(session);
                         
                         // Check for time violations
@@ -884,7 +874,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                   </>
                                 ) : (
                                   <button
-                                    onClick={() => handleAddSession(user.id, dateCol.date, shift!.id)}
+                                    onClick={() => {
+                                      handleAddSession(user.id, dateCol.date, shift!.id);
+                                    }}
                                     className="text-green-600 p-0.5"
                                     title="Add session"
                                   >

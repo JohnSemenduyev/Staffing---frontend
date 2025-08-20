@@ -174,6 +174,10 @@ export default function AssignmentNew() {
   const handleSearch = async (searchData: { [key: string]: any }) => {
     setSearchLoading(true);
     try {
+      const filterEntries = Object.entries(searchData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+      const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
+      setCurrentPage(1);
+      await fetchAssignments(1, filter);
       toast.success('Search applied successfully!');
     } catch (error) {
       console.error('Search failed:', error);
@@ -184,7 +188,8 @@ export default function AssignmentNew() {
   };
   const handleSearchReset = () => {
     setShowSearchForm(false);
-    fetchAssignments(currentPage);
+    setCurrentPage(1);
+    fetchAssignments(1, null);
     toast.success('Search filters cleared!');
   };
 

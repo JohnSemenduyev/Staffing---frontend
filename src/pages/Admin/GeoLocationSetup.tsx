@@ -64,15 +64,17 @@ export const GeoLocationSetup = () => {
   ];
 
   const handleSearch = (formData: { [key: string]: any }) => {
-    // TODO:- implement Geolocation search
-    console.log("Geolocation search:", formData);
-    setSearchLoading(false);
+    setSearchLoading(true);
+    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
+    setCurrentPage(1);
+    fetchGeoLocations(1, filter).finally(() => setSearchLoading(false));
   };
 
   const handleReset = () => {
-    // TODO:- reset Geolocation search
-    console.log("Geolocation reset");
     setShowSearchForm(false);
+    setCurrentPage(1);
+    fetchGeoLocations(1, null);
   };
 
 
