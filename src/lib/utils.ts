@@ -32,34 +32,44 @@ export const formatTimeDisplay = (timeString: string): string => {
   return timeString;
 };
 
-export function getWeekRangeFromDateUTC(base: Date) {
-  if (import.meta.env.DEV) {
-    console.debug("[utils] getWeekRangeFromDateUTC: input (local)", base, base.toString());
-  }
-  const utc = new Date(Date.UTC(base.getFullYear(), base.getMonth(), base.getDate()));
-  const day = utc.getUTCDay();
-  const daysSinceThursday = (day + 3) % 7;
+export function getWeekRangeFromDateLocal(base: Date) {
 
-  const startOfWeek = new Date(utc);
-  startOfWeek.setUTCDate(utc.getUTCDate() - daysSinceThursday);
-  startOfWeek.setUTCHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
-  endOfWeek.setUTCHours(23, 59, 59, 999);
-
-  if (import.meta.env.DEV) {
-    console.debug("[utils] getWeekRangeFromDateUTC: utc", utc.toISOString(), "day", day, "offset", daysSinceThursday);
-    console.debug("[utils] getWeekRangeFromDateUTC: start", startOfWeek.toISOString(), "end", endOfWeek.toISOString());
-  }
-  return { startOfWeek, endOfWeek };
+  const day = base.getDay();
+  console.log("day", day);
+  const daysSinceThursday = (day + 3) % 7; // Thu..Wed week
+  console.log("daysSinceThursday", daysSinceThursday);
+  const start = new Date(base);
+  console.log("start", start);
+  start.setHours(0, 0, 0, 0);
+  console.log("start", start);
+  start.setDate(start.getDate() - daysSinceThursday);
+  console.log("start", start);
+  const end = new Date(start);
+  console.log("end", end);
+  end.setDate(start.getDate() + 6);
+  
+  end.setHours(23, 59, 59, 999);
+  return { startOfWeek: start, endOfWeek: end };
 }
 
-export function formatDateUTC(d: Date) {
-  const out = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-  if (import.meta.env.DEV) {
-    console.debug("[utils] formatDateUTC:", d.toString(), "->", out);
-  }
-  return out;
+export const getWeekRangeFromDateUTC = getWeekRangeFromDateLocal; // alias
+
+export function toLocalYMD(d: Date) {
+
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+
 }
+
+export function parseLocalYMD(ymd: string) {
+  const [y,m,d] = ymd.split('-').map(Number);
+  return new Date(y, (m ?? 1)-1, d ?? 1, 0, 0, 0, 0);
+}
+
+export function stripTime(input: string) {
+  if (!input) return input;
+  const firstPart = input.split('T')[0];
+  return firstPart.split(' ')[0]; // handles "YYYY-MM-DD HH:mm"
+}
+
 
