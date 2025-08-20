@@ -91,7 +91,6 @@ export const generateSchedulePrintableTable = (
     }
   }
   headers.push('Total');
-  headers.push('Auto');
 
   const headerRow = headers.map(header => 
     `<th style="background-color: #004175; color: white; font-weight: bold; padding: 12px; text-align: center; border: 1px solid #004175; font-size: 12px;">${header}</th>`
@@ -225,15 +224,7 @@ export const generateSchedulePrintableTable = (
         `);
       }
       
-      // Auto column (only on first row)
-      if (rowIdx === 0) {
-        const autoEnabled = scheduleData.find(item => item.userId === user.id)?.auto || false;
-        row.push(`
-          <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;" rowspan="${rowCount}">
-            ${autoEnabled ? 'Yes' : 'No'}
-          </td>
-        `);
-      }
+
       
       dataRows.push(`
         <tr style="${rowStyle}">
@@ -281,9 +272,7 @@ export const generateSchedulePrintableTable = (
       </td>
     `);
     
-    totalRow.push(`
-      <td style="border: 1px solid #d1d5db; padding: 12px; font-size: 11px;"></td>
-    `);
+
     
     dataRows.push(`
       <tr style="background-color: ${userIndex % 2 === 0 ? '#f3f4f6' : '#e5e7eb'};">
@@ -317,9 +306,7 @@ export const generateSchedulePrintableTable = (
     </td>
   `);
   
-  grandTotalRow.push(`
-    <td style="border: 1px solid #d1d5db; padding: 12px; font-size: 11px;"></td>
-  `);
+
   
   dataRows.push(`
     <tr style="background-color: #f9fafb; font-weight: 500;">
