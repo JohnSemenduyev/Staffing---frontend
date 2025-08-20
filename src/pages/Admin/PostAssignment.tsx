@@ -1,6 +1,6 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Plus, Edit, Trash2, Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
@@ -35,11 +35,11 @@ export const PostAssignment = () => {
   const [showSearchForm, setShowSearchForm] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const searchFields: FieldConfig[] = [
+  const searchFields = useMemo<FieldConfig[]>(() => [
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
     { name: "post", type: "text", placeholder: "Post Name" },
-  ];
+  ], []);
 
   const handleSearch = (formData: { [key: string]: any }) => {
     setSearchLoading(true);

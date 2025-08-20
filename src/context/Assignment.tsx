@@ -29,7 +29,7 @@ interface AssignmentContextType {
   lastPage: number;
   loading: boolean;
   currentFilter: Record<string, any> | null;
-  fetchAssignments: (page?: number, filter?: Record<string, any>) => void;
+  fetchAssignments: (page?: number, filter?: Record<string, any>) => Promise<void>;
   createAssignment: (data: Omit<Assignment, "id" | "createdAt">) => Promise<void>;
   updateAssignment: (id: number, data: Omit<Assignment, "id" | "createdAt">) => Promise<void>;
   deleteAssignment: (id: number) => Promise<void>;

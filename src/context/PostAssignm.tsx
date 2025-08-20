@@ -29,7 +29,7 @@ interface PostAssignContextType {
   createPostAssign: (input: PostAssignInput) => Promise<void>;
   deletePostAssign: (id: number) => Promise<void>;
   updatePostAssign: (id: number, input: Partial<PostAssignInput>) => Promise<void>;
-  fetchPostAssigns: (page?: number, filter?: Record<string, any>) => void;
+  fetchPostAssigns: (page?: number, filter?: Record<string, any>) => Promise<void>;
   setCurrentPage: (page: number) => void;
 }
 

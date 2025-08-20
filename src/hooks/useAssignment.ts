@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { graphQLClient } from "../GraphqlClient";
 import { gql } from "graphql-request";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 
 // -- 1. GraphQL query (paginated with filter)
 const GET_ASSIGNMENTS = gql`

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Plus, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useSearchClient } from "../../hooks/usesearchClient";
@@ -41,7 +41,7 @@ export const TimeSetup = () => {
   const [showSearchForm, setShowSearchForm] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const searchFields: FieldConfig[] = [
+  const searchFields = useMemo<FieldConfig[]>(() => [
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
     { name: "distance", type: "text", placeholder: "Distance (Miles)" },
@@ -49,7 +49,7 @@ export const TimeSetup = () => {
     { name: "hours", type: "text", placeholder: "Weekly Hours" },
     { name: "reminder", type: "text", placeholder: "Reminder Time (Min)" },
     { name: "overlap", type: "toggle", label: "Overlap" },
-  ];
+  ], []);
 
   const handleSearch = (formData: { [key: string]: any }) => {
     setSearchLoading(true);

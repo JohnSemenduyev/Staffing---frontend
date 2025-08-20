@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Edit, Plus, RotateCcw, Trash2, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
@@ -56,12 +56,12 @@ export const GeoLocationSetup = () => {
   } = useGeoLocation();
 
   // Search form fields (mirror table columns/interface)
-  const searchFields: FieldConfig[] = [
+  const searchFields = useMemo<FieldConfig[]>(() => [
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
     { name: "distance", type: "text", placeholder: "Distance (Miles)" },
     { name: "time", type: "text", placeholder: "Time (Mins)" },
-  ];
+  ], []);
 
   const handleSearch = (formData: { [key: string]: any }) => {
     setSearchLoading(true);

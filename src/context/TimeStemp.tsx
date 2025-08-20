@@ -47,7 +47,7 @@ interface TimeSetupContextType {
   loading: boolean;
   error: string | null;
   currentFilter: Record<string, any> | null;
-  fetchTimeSetups: (page?: number, filter?: Record<string, any>) => void;
+  fetchTimeSetups: (page?: number, filter?: Record<string, any>) => Promise<void>;
   setCurrentPage: (page: number) => void;
   createTimeSetup: (input: TimeSetupInput) => Promise<TimeSetup | undefined>;
   deleteTimeSetup: (id: number) => Promise<void>;
