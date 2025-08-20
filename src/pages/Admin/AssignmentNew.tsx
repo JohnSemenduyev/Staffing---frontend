@@ -912,6 +912,7 @@ export default function AssignmentNew() {
         onReset={handleSearchReset}
         isVisible={showSearchForm}
         loading={searchLoading}
+        resetKey={"Assignment"}
       />
 
       <GenericTable

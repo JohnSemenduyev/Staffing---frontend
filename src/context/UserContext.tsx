@@ -21,13 +21,17 @@ export type User = {
   role: "admin" | "manager" | "guard";
 };
 
-
 interface UserContextType {
   users: User[];
   loading: boolean;
   error: string | null;
-  fetchUsersByRole: (role: "admin" | "manager" | "guard") => Promise<void>;
+  currentPage: number;
+  lastPage: number;
+  currentFilter: Record<string, any> | null;
+  fetchUsersByRole: (role: "admin" | "manager" | "guard", page?: number, filter?: Record<string, any>) => Promise<void>;
+  setCurrentPage: (page: number) => void;
 }
+
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
@@ -35,21 +39,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
+  const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
 
-  const fetchUsersByRole = async (role: "admin" | "manager" | "guard") => {
+  const fetchUsersByRole = async (role: "admin" | "manager" | "guard", page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
     try {
       let data;
-      if (role === "admin") {
-        data = await graphQLClient.request<{ adminUsers: User[] }>(GET_ADMIN_USERS);
-        setUsers(data.adminUsers);
-      } else if (role === "manager") {
-        data = await graphQLClient.request<{ managerUsers: User[] }>(GET_MANAGER_USERS);
-        setUsers(data.managerUsers);
-      } else if (role === "guard") {
-        data = await graphQLClient.request<{ guardUsers: User[] }>(GET_GUARD_USERS);
-        setUsers(data.guardUsers);
+      const variables: any = { page };
+      
+      // Add filter variables if provided
+      if (filter) {
+        Object.entries(filter).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            variables[key] = value;
+          }
+        });
       }
+
+      if (role === "admin") {
+        data = await graphQLClient.request<{ adminUsers: { data: User[]; lastPage: number } }>(GET_ADMIN_USERS, variables);
+        setUsers(data.adminUsers.data);
+        setLastPage(data.adminUsers.lastPage);
+      } else if (role === "manager") {
+        data = await graphQLClient.request<{ managerUsers: { data: User[]; lastPage: number } }>(GET_MANAGER_USERS, variables);
+        setUsers(data.managerUsers.data);
+        setLastPage(data.managerUsers.lastPage);
+      } else if (role === "guard") {
+        data = await graphQLClient.request<{ guardUsers: { data: User[]; lastPage: number } }>(GET_GUARD_USERS, variables);
+        setUsers(data.guardUsers.data);
+        setLastPage(data.guardUsers.lastPage);
+      }
+      
+      setCurrentFilter(filter || null);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -60,7 +83,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <UserContext.Provider value={{ users, loading, error, fetchUsersByRole }}>
+    <UserContext.Provider value={{ 
+      users, 
+      loading, 
+      error, 
+      currentPage,
+      lastPage,
+      currentFilter,
+      fetchUsersByRole,
+      setCurrentPage
+    }}>
       {children}
     </UserContext.Provider>
   );

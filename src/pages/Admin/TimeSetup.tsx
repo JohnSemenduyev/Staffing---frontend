@@ -432,6 +432,7 @@ export const TimeSetup = () => {
         onReset={handleReset}
         isVisible={showSearchForm}
         loading={searchLoading || loading}
+        resetKey={"Time Setup"}
       />
       {/* Table Section */}
       <GenericTable

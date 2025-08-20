@@ -490,3 +490,12 @@ export const CREATE_CLIENT_WITH_ADDRESSES = gql`
     }
   }
 `;
+
+export const CHECK_SCHEDULE_SESSION = gql`
+  mutation CheckScheduleSession($clientId: Int!, $addressId: Int!, $userId: Int!, $startDate: String!) {
+    checkScheduleSession(clientId: $clientId, addressId: $addressId, userId: $userId, startDate: $startDate) {
+      message
+      id
+    }
+  }
+`;

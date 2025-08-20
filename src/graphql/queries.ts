@@ -191,58 +191,63 @@ export const SEARCH_USERS = gql`
 `;
 
 export const GET_ADMIN_USERS = gql`
-  query GetAdminUsers {
-    adminUsers {
-      id
-      name
-      lastName
-      email
-      phone
-      address
-      city
-      state
-      zipcode
-      role
-      status
+  query AdminUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
+    adminUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+      data {
+        name
+        lastName
+        email
+        phone
+        status
+        address
+        city
+        state
+        zipcode
+        role
+      }
+      lastPage
     }
   }
 `;
 
 
 export const GET_MANAGER_USERS = gql`
-  query GetManagerUsers {
-    managerUsers {
-      id
-      name
-      lastName
-      email
-      phone
-      address
-      city
-      state
-      zipcode
-      role
+  query ManagerUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
+    managerUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+      data {
+        name
+        lastName
+        email
+        phone
+        address
+        city
+        state
+        zipcode
+        role
+      }
+      lastPage
     }
   }
 `;
 
 export const GET_GUARD_USERS = gql`
-  query GetGuardUsers {
-    guardUsers {
-      id
-      name
-      lastName
-      email
-      phone
-      address
-      city
-      state
-      zipcode
-      role
+  query GuardUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
+    guardUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+      data {
+        name
+        lastName
+        email
+        phone
+        address
+        city
+        state
+        zipcode
+        role
+      }
+      lastPage
     }
   }
 `;
-
 
 // ----------- GEOLOCATION QUERY -----------
 
@@ -597,22 +602,25 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
     }
   }
 `;
+
 export const GET_ALL_CLIENTS_WITH_ADDRESSES = gql`
-  query GetAllClientsWithAddresses {
-    getAllClientsWithAddresses {
-      id
-      name
-      lastName
-      phone
-      company
-      email
-      addresses {
+  query GetAllClientsWithAddresses($page: Int, $filter: ClientRegistrationFilter) {
+    getAllClientsWithAddresses(page: $page, filter: $filter) {
+      data {
         id
-        address
-        city
-        state
-        pincode
+        name
+        lastName
+        email
+        phone
+        company
+        addresses {
+          address
+          city
+          state
+          pincode
+        }
       }
+      lastPage
     }
   }
 `;

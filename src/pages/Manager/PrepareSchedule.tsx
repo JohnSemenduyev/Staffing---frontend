@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Plus, RotateCcw, Edit, Trash2, GripVertical, Calendar } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -233,6 +233,7 @@ export const PrepareSchedule = () => {
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const { toast } = useToast();
   const [hasOverlapError, setHasOverlapError] = useState(false);
+  const checkScheduleSessionIdRef = useRef<number | null>(null);
 
   // Client search hook
 
@@ -608,22 +609,39 @@ const generateDateColumns = () => {
       setPublishLoader(false);
     }
   };
+
+  // add a variable to hold id (todo marker above it)
+  // TODO: use this id later when creating/publishing sessions
+  let checkScheduleSessionId: number | null = null;
+
+  // update handleCheck signature and logic
   const handleCheck = async (
     clientId: string,
-    startDate: string,
-    addressId: string
+    addressId: string,
+    userId: string,
+    startDate: string
   ): Promise<boolean> => {
     try {
-      console.log(clientId, addressId, startDate);
-      const result = await checkClientWeekSchedule(Number(clientId), startDate, Number(addressId));
+      const result = await checkClientWeekSchedule(
+        Number(clientId),
+        startDate,
+        Number(addressId),
+        Number(userId)
+      );
 
-      if (result?.overlap === true) {
-        toast({ title: "Success", description: result.message }); // ✅ Show toast if no overlap
+      // message === null -> allowed (same as previous overlap === true)
+      if (result && result.message === null) {
+        checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
         return true;
       }
 
-      return false; // ✅ Overlap exists or result is null
-    } catch (error) {
+      // message present -> blocked; show server message
+      if (result?.message) {
+        toast({ title: "Schedule conflict", description: result.message, variant: "destructive" });
+        return false;
+      }
+      return false;
+    } catch {
       toast({ title: "Error", description: "Error checking schedule overlap.", variant: "destructive" });
       return false;
     }
@@ -640,20 +658,13 @@ const generateDateColumns = () => {
       const selectedAddress = selectedClient?.addresses.find(a => String(a.id) === form.addressId);
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
       const formatedDate = convertDateFormat(form.date);
-      const results = await handleCheck(form.clientId, formatedDate, form.addressId);
-      if (results) {
-        // ✅ If overlap exists, show toast and set error state but don't reset form
+      const results = await handleCheck(form.clientId, form.addressId, form.userId, formatedDate);
+      if (!results) { // conflict → message shown in handleCheck → stop
         setHasOverlapError(true);
-        // toast({
-        //   title: "Schedule Overlap Detected",
-        //   description: "There is an overlap with existing schedule. Please choose a different date or time.",
-        //   variant: "destructive",
-        // });
         setSubmitLoader(false);
         return;
       }
-      
-      // Clear overlap error if no overlap detected
+      // OK → proceed
       setHasOverlapError(false);
       let newScheduleItems = [];
       if (applyAllWeek && currentWeekRange) {
