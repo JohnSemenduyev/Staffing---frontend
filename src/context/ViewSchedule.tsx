@@ -5,6 +5,7 @@ import {
   GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
   SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
   GET_ALL_SESSIONS,
+  GET_SESSIONS_BY_SCHEDULE_SESSION,
 } from "../graphql/queries";
 import { BULK_UPSERT_SCHEDULE_SESSION, UPDATE_MANY_SESSION_TIMES } from "../graphql/mutation";
 import { toast as toasted } from "sonner";
@@ -54,12 +55,10 @@ export type SessionItem = {
   clockIn: string;
   clockOut: string;
   workedTime: number;
-  clockInLat?: number;
-  clockInLong?: number;
-  clockOutLat?: number;
-  clockOutLong?: number;
-  shift?: Shift;
-  scheduleSession?: ScheduleSession;
+  shift?: {
+    id: number;
+    date: string;
+  };
 };
 
 export type ScheduleSession = {
@@ -140,7 +139,7 @@ type ClientSessionContextType = {
   fetchSessionData: (scheduleSessionIds: number[]) => Promise<void>;
   clearSessionData: () => void;
   updateSessionTimes: (sessionUpdates: Array<{
-    sessionId?: number | null;
+    sessionId: number; 
     shiftId: number;
     scheduleSessionId: number;
     clockIn: string;
@@ -247,21 +246,28 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     try {
       const token = localStorage.getItem("token");
       
-      // Use GET_ALL_SESSIONS to fetch all sessions at once
-      const response = await graphQLClient.request<{
-        sessions: SessionItem[];
-      }>(
-        GET_ALL_SESSIONS,
-        {},
-        { Authorization: `Bearer ${token}` }
+      // Remove duplicates to avoid redundant API calls
+      const uniqueScheduleSessionIds = [...new Set(scheduleSessionIds)];
+      
+      // Make all API calls in parallel for better performance
+      const sessionPromises = uniqueScheduleSessionIds.map(scheduleSessionId =>
+        graphQLClient.request<{
+          sessionsByScheduleSession: SessionItem[];
+        }>(
+          GET_SESSIONS_BY_SCHEDULE_SESSION,
+          { scheduleSessionId },
+          { Authorization: `Bearer ${token}` }
+        )
+      );
+      
+      const responses = await Promise.all(sessionPromises);
+      
+      // Combine all session data
+      const allSessions: SessionItem[] = responses.flatMap(response => 
+        response.sessionsByScheduleSession
       );
 
-      // Filter sessions to only include those with matching scheduleSessionIds
-      const filteredSessions = response.sessions.filter(session => 
-        scheduleSessionIds.includes(session.scheduleSessionId)
-      );
-
-      setSessionData(filteredSessions);
+      setSessionData(allSessions);
     } catch (err) {
       console.error('fetchSessionData:', err);
       setSessionError(genericError('fetchSessions', err));
@@ -278,7 +284,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
 
   // Update or create session times
   const updateSessionTimes = async (sessionUpdates: Array<{
-    sessionId?: number | null;
+    sessionId: number; // Changed back to sessionId to match GraphQL input type
     shiftId: number;
     scheduleSessionId: number;
     clockIn: string;
@@ -290,11 +296,20 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         throw new Error("No authentication token found");
       }
 
+      // Transform the data to match the expected GraphQL input
+      const transformedUpdates = sessionUpdates.map(update => ({
+        sessionId: update.sessionId, // Use sessionId for the input
+        shiftId: update.shiftId,
+        scheduleSessionId: update.scheduleSessionId,
+        clockIn: update.clockIn,
+        clockOut: update.clockOut
+      }));
+
       const response = await graphQLClient.request<{
         updateManySessionTimes: SessionItem[];
       }>(
         UPDATE_MANY_SESSION_TIMES,
-        { items: sessionUpdates },
+        { items: transformedUpdates },
         { Authorization: `Bearer ${token}` }
       );
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Edit, Plus, Trash2, X, RotateCcw, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
@@ -97,60 +97,22 @@ export default function AssignmentNew() {
   const { data: searchedGuards = [], isLoading: loadingGuards } =
     useSearchUsers(debouncedGuardSearch);
 
-  const searchFields: FieldConfig[] = [
-    {
-      name: 'clientName',
-      type: 'text',
-      placeholder: 'Client Name',
-      required: false
-    },
-    {
-      name: 'location',
-      type: 'text',
-      placeholder: 'Location',
-      required: false
-    },
-    {
-      name: 'userName',
-      type: 'text',
-      placeholder: 'User Name',
-      required: false
-    },
-    {
-      name: 'role',
-      type: 'select',
-      placeholder: 'Select Role',
-      options: [
+    const searchFields = useMemo<FieldConfig[]>(() => [
+      { name: 'clientName', type: 'text', placeholder: 'Client Name' },
+      { name: 'location', type: 'text', placeholder: 'Location' },
+      { name: 'userName', type: 'text', placeholder: 'User Name' },
+      { name: 'role', type: 'select', placeholder: 'Select Role', options: [
         { label: 'Admin', value: 'Admin' },
         { label: 'Manager', value: 'Manager' },
         { label: 'Guard', value: 'Guard' },
         { label: 'Client', value: 'Client' }
-      ],
-      required: false
-    },
-    {
-      name: 'access',
-      type: 'select',
-      placeholder: 'Select Access',
-      options: [
+      ]},
+      { name: 'access', type: 'select', placeholder: 'Select Access', options: [
         { label: 'View', value: 'View' },
         { label: 'Edit', value: 'Edit' }
-      ],
-      required: false
-    },
-    {
-      name: 'userNotified',
-      type: 'text',
-      placeholder: 'User Notified',
-      required: false
-    },
-    {
-      name: 'createdDate',
-      type: 'date',
-      placeholder: 'Created Date',
-      required: false
-    }
-  ];
+      ]},
+      { name: 'userNotified', type: 'text', placeholder: 'User Notified' }
+    ], []);
 
   useEffect(() => {
     fetchAssignments(currentPage);
@@ -174,6 +136,10 @@ export default function AssignmentNew() {
   const handleSearch = async (searchData: { [key: string]: any }) => {
     setSearchLoading(true);
     try {
+      const filterEntries = Object.entries(searchData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+      const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
+      setCurrentPage(1);
+      await fetchAssignments(1, filter);
       toast.success('Search applied successfully!');
     } catch (error) {
       console.error('Search failed:', error);
@@ -184,7 +150,8 @@ export default function AssignmentNew() {
   };
   const handleSearchReset = () => {
     setShowSearchForm(false);
-    fetchAssignments(currentPage);
+    setCurrentPage(1);
+    fetchAssignments(1, null);
     toast.success('Search filters cleared!');
   };
 

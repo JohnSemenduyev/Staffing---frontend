@@ -1115,19 +1115,16 @@ export const ViewSchedule = () => {
     try {
       setIsActualTimePublishing(true);
 
-      // Only send complete sessions (both clockIn and clockOut present)
-      const complete = sessionData.filter(s => s.clockIn && s.clockOut);
-
       const items = sessionData
         .filter(s => s.clockIn) // require clockIn; allow no clockOut
         .map(s => {
-          const isNew = s.id > 1700000000000;
+          const isNew = s.id > 1700000000000; // Check if it's a temporary ID
           return {
-            sessionId: isNew ? null : s.id,
+            sessionId: isNew ? null : s.id, // Send null for new sessions, actual ID for existing ones
             shiftId: s.shiftId,
             scheduleSessionId: s.scheduleSessionId,
             clockIn: s.clockIn!,
-            ...(s.clockOut ? { clockOut: s.clockOut } : {}), // include only if not null/empty
+            clockOut: s.clockOut ?? null, // always include, null when not entered
           };
         });
 
@@ -1136,6 +1133,10 @@ export const ViewSchedule = () => {
         setIsActualTimePublishing(false);
         return;
       }
+
+      // Log payload before API call
+      console.log("=== PUBLISHING ACTUAL TIME ITEMS ===");
+      console.log(JSON.stringify(items, null, 2));
 
       await updateSessionTimes(items);
 

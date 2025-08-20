@@ -38,7 +38,8 @@ interface GeoLocationContextType {
   error: string | null;
   submitLoader: boolean;
   submitError: string | null;
-  fetchGeoLocations: (page?: number) => Promise<void>;
+  currentFilter: Record<string, any> | null;
+  fetchGeoLocations: (page?: number, filter?: Record<string, any> | null) => Promise<void>;
   setCurrentPage: (page: number) => void;
   createGeoLocation: (input: GeoLocationInput) => Promise<void>;
   deleteGeoLocation: (id: number) => Promise<void>;
@@ -56,20 +57,27 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [error, setError] = useState<string | null>(null);
   const [submitLoader, setSubmitLoader] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
 
-const fetchGeoLocations = async (page: number) => {
-  setLoading(true);
-  try {
-    const data = await graphQLClient.request<{
-      geoLocations: {
+  const fetchGeoLocations = async (page: number = 1, filter?: Record<string, any> | null) => {
+    setLoading(true);
+    try {
+      const effectiveFilter = filter !== undefined ? filter : currentFilter || undefined;
+      const variables: any = { page };
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
+      const data = await graphQLClient.request<{
+        geoLocations: {
         data: GeoLocation[];
         lastPage: number;
       };
-    }>(GET_GEOLOCATIONS, { page });
+    }>(GET_GEOLOCATIONS, variables);
 
     setGeoLocations(data.geoLocations.data);
     setLastPage(data.geoLocations.lastPage);
     setCurrentPage(page);
+    setCurrentFilter(effectiveFilter ?? null);
     setError(null);
   } catch (err) {
     console.error(err);
@@ -133,6 +141,7 @@ const fetchGeoLocations = async (page: number) => {
         error,
         submitLoader,
         submitError,
+        currentFilter,
         fetchGeoLocations,
         setCurrentPage,
         createGeoLocation,

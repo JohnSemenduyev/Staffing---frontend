@@ -28,7 +28,8 @@ interface AssignmentContextType {
   assignments: Assignment[];
   lastPage: number;
   loading: boolean;
-  fetchAssignments: (page?: number) => void;
+  currentFilter: Record<string, any> | null;
+  fetchAssignments: (page?: number, filter?: Record<string, any>) => Promise<void>;
   createAssignment: (data: Omit<Assignment, "id" | "createdAt">) => Promise<void>;
   updateAssignment: (id: number, data: Omit<Assignment, "id" | "createdAt">) => Promise<void>;
   deleteAssignment: (id: number) => Promise<void>;
@@ -48,8 +49,9 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [lastPage, setLastPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
+  const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
 
-  const fetchAssignments = async (page: number = 1) => {
+  const fetchAssignments = async (page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
     try {
       type GetAssignmentsResponse = {
@@ -58,10 +60,15 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           lastPage: number;
         };
       };
-
-      const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, { page });    
+      const effectiveFilter = filter !== undefined ? filter : currentFilter || undefined;
+      const variables: any = { page };
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
+      const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, variables);
       setAssignments(response.assignments.data);
       setLastPage(response.assignments.lastPage);
+      setCurrentFilter(effectiveFilter ?? null);
     } catch (error) {
       console.error("Error fetching assignments:", error);
     } finally {
@@ -103,6 +110,7 @@ await graphQLClient.request(CREATE_ASSIGNMENT, { ...data });
         assignments,
         lastPage,
         loading,
+        currentFilter,
         fetchAssignments,
         createAssignment,
         updateAssignment,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Edit, Plus, RotateCcw, Trash2, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
@@ -56,23 +56,25 @@ export const GeoLocationSetup = () => {
   } = useGeoLocation();
 
   // Search form fields (mirror table columns/interface)
-  const searchFields: FieldConfig[] = [
+  const searchFields = useMemo<FieldConfig[]>(() => [
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
     { name: "distance", type: "text", placeholder: "Distance (Miles)" },
     { name: "time", type: "text", placeholder: "Time (Mins)" },
-  ];
+  ], []);
 
   const handleSearch = (formData: { [key: string]: any }) => {
-    // TODO:- implement Geolocation search
-    console.log("Geolocation search:", formData);
-    setSearchLoading(false);
+    setSearchLoading(true);
+    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
+    setCurrentPage(1);
+    fetchGeoLocations(1, filter).finally(() => setSearchLoading(false));
   };
 
   const handleReset = () => {
-    // TODO:- reset Geolocation search
-    console.log("Geolocation reset");
     setShowSearchForm(false);
+    setCurrentPage(1);
+    fetchGeoLocations(1, null);
   };
 
 

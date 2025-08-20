@@ -46,7 +46,8 @@ interface TimeSetupContextType {
   lastPage: number;
   loading: boolean;
   error: string | null;
-  fetchTimeSetups: (page?: number) => void;
+  currentFilter: Record<string, any> | null;
+  fetchTimeSetups: (page?: number, filter?: Record<string, any>) => Promise<void>;
   setCurrentPage: (page: number) => void;
   createTimeSetup: (input: TimeSetupInput) => Promise<TimeSetup | undefined>;
   deleteTimeSetup: (id: number) => Promise<void>;
@@ -61,21 +62,28 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [lastPage, setLastPage] = useState<number>(1);
+  const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
 
-  const fetchTimeSetups = async (page: number = 1) => {
+  const fetchTimeSetups = async (page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
     setError(null);
     try {
+      const effectiveFilter = filter !== undefined ? filter : currentFilter || undefined;
+      const variables: any = { page };
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
       const data = await graphQLClient.request<{
         timeSetup: {
           data: TimeSetup[];
           lastPage: number;
         };
-      }>(GET_TIME_SETUP, { page });
+      }>(GET_TIME_SETUP, variables);
 
       setTimeSetups(data.timeSetup.data);
       setLastPage(data.timeSetup.lastPage);
       setCurrentPage(page);
+      setCurrentFilter(effectiveFilter ?? null);
     } catch (err: any) {
       console.error("Error fetching time setups:", err);
       setError(err.message || "Failed to fetch time setups");
@@ -144,6 +152,7 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
         lastPage,
         loading,
         error,
+        currentFilter,
         fetchTimeSetups,
         setCurrentPage,
         createTimeSetup,

@@ -102,8 +102,8 @@ export const GET_ALL_ADDRESSES = gql`
 // ----------- ASSIGNMENT QUERY -----------
 
 export const GET_ASSIGNMENTS = gql`
-  query GetAssignments($page: Int) {
-    assignments(page: $page) {
+  query GetAssignments($page: Int, $filter: AssignmentFilter) {
+    assignments(page: $page, filter: $filter) {
       data {
         id
         userId
@@ -125,6 +125,7 @@ export const GET_ASSIGNMENTS = gql`
         client {
           id
           name
+          lastName
         }
         address {
           id
@@ -246,8 +247,8 @@ export const GET_GUARD_USERS = gql`
 // ----------- GEOLOCATION QUERY -----------
 
 export const GET_GEOLOCATIONS = gql`
-  query GeoLocations($page: Int) {
-    geoLocations(page: $page) {
+  query GeoLocations($page: Int, $filter: GeoLocationFilter) {
+    geoLocations(page: $page, filter: $filter) {
       data {
         id
         clientId
@@ -274,8 +275,8 @@ export const GET_GEOLOCATIONS = gql`
 // ----------- TIME SETUP QUERY -----------
 
 export const GET_TIME_SETUP = gql`
-  query TimeSetup($page: Int) {
-    timeSetup(page: $page) {
+  query TimeSetup($page: Int, $filter: TimeSetupFilter) {
+    timeSetup(page: $page, filter: $filter) {
       data {
         id
         clientId
@@ -306,8 +307,8 @@ export const GET_TIME_SETUP = gql`
 // ----------- POST ASSIGN QUERY -----------
 
 export const GET_POST_ASSIGN = gql`
-  query GetPostAssigns($page: Int) {
-    postAssigns(page: $page) {
+  query GetPostAssigns($page: Int, $filter: PostAssignFilter) {
+    postAssigns(page: $page, filter: $filter) {
       data {
         id
         clientId

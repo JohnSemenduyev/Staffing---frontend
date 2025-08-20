@@ -1,6 +1,6 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Plus, Edit, Trash2, Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
@@ -35,22 +35,24 @@ export const PostAssignment = () => {
   const [showSearchForm, setShowSearchForm] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  const searchFields: FieldConfig[] = [
+  const searchFields = useMemo<FieldConfig[]>(() => [
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
     { name: "post", type: "text", placeholder: "Post Name" },
-  ];
+  ], []);
 
   const handleSearch = (formData: { [key: string]: any }) => {
-    // TODO:- implement Post Assignment search
-    console.log("Post Assignment search:", formData);
-    setSearchLoading(false);
+    setSearchLoading(true);
+    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
+    setCurrentPage(1);
+    fetchPostAssigns(1, filter).finally(() => setSearchLoading(false));
   };
 
   const handleReset = () => {
-    // TODO:- reset Post Assignment search
-    console.log("Post Assignment reset");
     setShowSearchForm(false);
+    setCurrentPage(1);
+    fetchPostAssigns(1, null);
   };
   const { postAssigns,
     createPostAssign,
