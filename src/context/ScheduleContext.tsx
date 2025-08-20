@@ -115,7 +115,7 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
       return response.checkScheduleSession;
     } catch (error: any) {
       console.error("Failed to check schedule:", error.message || error);
-      return null;
+      throw error; // Re-throw the error so it can be caught in the component
     }
   };
 

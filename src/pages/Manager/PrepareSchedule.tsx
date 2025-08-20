@@ -621,20 +621,42 @@ const generateDateColumns = () => {
 
       // message present -> blocked; show server message
       if (result?.message) {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive",
-        });
+        // Check if it's an assignment not found error
+        if (result.message.includes("Assignment not found")) {
+          toast({
+            title: "Assignment Required",
+            description: "This user is not assigned to this client and address. Please create an assignment first in the Assignment section.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          });
+        }
         return false;
       }
       return false;
-    } catch {
-              toast({
+    } catch (error: any) {
+      // Handle GraphQL error response format
+      if (error.response?.errors && error.response.errors.length > 0) {
+        const graphQLError = error.response.errors[0];
+        const errorMessage = graphQLError.message || "Unknown error occurred";
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else {
+        // Handle other types of errors
+        toast({
           title: "Error",
           description: "Error checking schedule overlap.",
           variant: "destructive",
         });
+      }
       return false;
     }
   };

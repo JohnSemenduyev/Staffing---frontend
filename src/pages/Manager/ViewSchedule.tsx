@@ -72,6 +72,7 @@ const inputClasses = `
   w-full
   px-3
   py-1
+  h-[32px]
   border
   border-[#d0d4d9]
   rounded-md
@@ -1640,8 +1641,8 @@ export const ViewSchedule = () => {
                 {scheduleData.length > 0 ? "Edit Schedule" : "Add New Schedule"}
               </h3>
 
-              <form onSubmit={onSubmitAddGuard} autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+                             <form onSubmit={onSubmitAddGuard} autoComplete="off">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
 
                   {/* User Search */}
                   <div className="relative">
@@ -1768,39 +1769,39 @@ export const ViewSchedule = () => {
                     )}
                   </div>
 
-                  {/* Auto Toggle and Buttons */}
-                  <div className="flex items-center gap-2">
-                    <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-
-                    <button
-                      type="submit"
-                      disabled={submitLoader}
-                      className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-                    >
-                      {submitLoader ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add
-                        </>
-                      )}
-                    </button>
-                    {(form.date || form.starttime || form.endtime || form.userId || auto) && (
-
+                                                        {/* Auto Toggle and Buttons */}
+                    <div className="flex items-center justify-center h-[32px] border border-none ">
+                       <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+                     </div>
+                    <div className="flex items-center gap-2">
                       <button
-                        type="button"
-                        onClick={resetAddGuardForm}
-                        className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                        type="submit"
+                        disabled={submitLoader}
+                        className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                       >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        Reset
-                      </button>
-                    )}
-                  </div>
+                       {submitLoader ? (
+                         <>
+                           <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                           Adding...
+                         </>
+                       ) : (
+                         <>
+                           <Plus className="w-4 h-4 mr-1" />
+                           Add
+                         </>
+                       )}
+                     </button>
+                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
+                                               <button
+                          type="button"
+                          onClick={resetAddGuardForm}
+                          className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                        >
+                         <RotateCcw className="w-4 h-4 mr-1" />
+                         Reset
+                       </button>
+                     )}
+                   </div>
                 </div>
               </form>
             </div>

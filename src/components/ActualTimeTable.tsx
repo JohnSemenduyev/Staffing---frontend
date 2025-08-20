@@ -877,7 +877,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                     onClick={() => {
                                       handleAddSession(user.id, dateCol.date, shift!.id);
                                     }}
-                                    className="text-green-600 p-0.5"
+                                    className="text-blue-600 hover:text-blue-700 p-0.5"
                                     title="Add session"
                                   >
                                     <Plus className="w-4 h-4" />
@@ -904,7 +904,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                             className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
                             rowSpan={rowCount}
                           >
-                            {isEditMode && (
+                            {/* {isEditMode && (
                               <button
                                 onClick={() => handleDeleteUser(user.id)}
                                 className="text-red-600 hover:text-red-800 p-1"
@@ -912,7 +912,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                            )}
+                            )} */}
                           </td>
                         </>
                       )}
