@@ -9,7 +9,7 @@ import {
   calculateDayTotal, 
   calculateGrandTotal 
 } from "./utils";
-import { formatTimeDisplay } from "../../../lib/utils";
+import { formatTimeDisplay, formatUSPhone } from "../../../lib/utils";
 
 interface ScheduleTableProps {
   scheduleData: ScheduleItem[];

@@ -67,3 +67,25 @@ export function stripTime(input: string) {
 }
 
 
+// Formats US phone numbers to (XXX) XXX-XXXX.
+// Leaves the original value if it cannot be formatted cleanly.
+export function formatUSPhone(value?: string | null): string {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  let d = digits;
+
+  // Handle leading country code
+  if (d.length === 11 && d.startsWith("1")) {
+    d = d.slice(1);
+  }
+
+  if (d.length !== 10) {
+    return value;
+  }
+
+  const area = d.slice(0, 3);
+  const prefix = d.slice(3, 6);
+  const line = d.slice(6);
+  return `(${area}) ${prefix}-${line}`;
+}
+
