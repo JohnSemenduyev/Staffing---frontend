@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
-import { formatDateLocal, formatDateStringLocal, formatDateUTC, getWeekRangeFromDateUTC } from "../../lib/utils";
+import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
 
@@ -125,11 +125,7 @@ const convertDateFormat = (dateStr: string) => {
   return `${month}-${day}-${year}`;
 };
 
-// Utility function to convert timestamp to YYYY-MM-DD format
-const convertTimestampToDate = (timestamp: string) => {
-  const date = new Date(parseInt(timestamp));
-  return formatDateLocal(date);
-};
+
 
 // Form validation function
 const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingShiftId?: number) => {
@@ -174,8 +170,8 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, 
   };
 
   const handleCurrentWeek = () => {
-    const { startOfWeek } = getWeekRangeFromDateUTC(new Date());
-    const formatted = formatDateUTC(startOfWeek); // or formatDateLocal(startOfWeek) if UI-only
+    const { startOfWeek } = getWeekRangeFromDateLocal(new Date());
+    const formatted = toLocalYMD(startOfWeek); 
     setSelectedDate(formatted);
   };
 
@@ -245,8 +241,8 @@ const DateNavigation = ({
     newDate.setDate(currentDate.getDate() + daysToAdd);
 
     // Always normalize to start of the week
-    const { startOfWeek } = getWeekRangeFromDateUTC(newDate);
-    const newDateStr = formatDateLocal(startOfWeek);
+    const { startOfWeek } = getWeekRangeFromDateLocal(newDate);
+    const newDateStr = toLocalYMD(startOfWeek);
     await onDateChange(newDateStr);
   };
 
@@ -414,8 +410,8 @@ export const ViewSchedule = () => {
     }
 
     // Normalize to start of week
-    const week = getWeekRangeFromDateUTC(new Date(newDate));
-    const weekStartStr = formatDateLocal(week.startOfWeek);
+    const week = getWeekRangeFromDateLocal(new Date(newDate));
+    const weekStartStr = toLocalYMD(week.startOfWeek);
 
     // Store the current date as previous date before attempting navigation
     setPreviousDate(selectedDate);
@@ -450,8 +446,8 @@ export const ViewSchedule = () => {
   const handleDateSubmit = async (date: string) => {
     setNavigationSource("modal");
     // Normalize to start of week
-    const week = getWeekRangeFromDateUTC(new Date(date));
-    const weekStartStr = formatDateLocal(week.startOfWeek);
+    const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
+    const weekStartStr = toLocalYMD(week.startOfWeek);
 
     // Store the current date as previous date before attempting navigation
     setPreviousDate(selectedDate);
@@ -478,7 +474,7 @@ export const ViewSchedule = () => {
     }
 
     // Update week range using week start
-    const weekRange = getWeekRangeFromDateUTC(new Date(weekStartStr));
+    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
 
     clearScheduleData();
@@ -714,12 +710,12 @@ export const ViewSchedule = () => {
 
     // Check week range when date changes
     if (field === 'date' && value && currentWeekRange) {
-      const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDateUTC(selectedDate);
+      const selectedDate = parseLocalYMD(value);
+      const weekRange = getWeekRangeFromDateLocal(selectedDate);
 
       // Use local timezone formatting
-      const existingWeekStart = formatDateLocal(currentWeekRange.startOfWeek);
-      const newWeekStart = formatDateLocal(weekRange.startOfWeek);
+      const existingWeekStart = toLocalYMD(currentWeekRange.startOfWeek);
+      const newWeekStart = toLocalYMD(weekRange.startOfWeek);
 
       if (existingWeekStart !== newWeekStart) {
         hookToast({
@@ -805,7 +801,7 @@ export const ViewSchedule = () => {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           // Use local timezone formatting
-          const dateStr = formatDateLocal(dateObj);
+          const dateStr = toLocalYMD(dateObj);
 
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -931,10 +927,10 @@ export const ViewSchedule = () => {
 
       // Calculate week start and end dates from the selected date
       const selectedDateObj = new Date(selectedDate);
-      const weekRange = getWeekRangeFromDateUTC(selectedDateObj);
+      const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       // Use local timezone formatting
-      const startDate = formatDateLocal(weekRange.startOfWeek);
-      const endDate = formatDateLocal(weekRange.endOfWeek);
+      const startDate = toLocalYMD(weekRange.startOfWeek);
+      const endDate = toLocalYMD(weekRange.endOfWeek);
 
       // Group schedule data by user to create the required format
       const userScheduleMap = new Map();
@@ -1281,8 +1277,8 @@ export const ViewSchedule = () => {
                       onChange={handleFormChange}
                       placeholder="Select Date"
                       className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"}`}
-                      minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
-                      maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
+                      minDate={currentWeekRange ? toLocalYMD(currentWeekRange.startOfWeek) : undefined}
+                      maxDate={currentWeekRange ? toLocalYMD(currentWeekRange.endOfWeek) : undefined}
                     />
                     {errors.date && (
                       <span className="text-xs text-red-500">{errors.date}</span>
