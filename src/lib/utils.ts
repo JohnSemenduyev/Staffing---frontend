@@ -52,7 +52,7 @@ export function getWeekRangeFromDateLocal(base: Date) {
   return { startOfWeek: start, endOfWeek: end };
 }
 
-export const getWeekRangeFromDateUTC = getWeekRangeFromDateLocal; // alias
+export const getWeekRangeFromDateUTC = getWeekRangeFromDateLocal; 
 
 export function toLocalYMD(d: Date) {
 
