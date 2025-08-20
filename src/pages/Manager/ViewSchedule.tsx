@@ -6,14 +6,19 @@ import { ActualTimeTable } from "../../components/ActualTimeTable";
 import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
-import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
-import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/utils";
+import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
+import { 
+  generateSchedulePrintableTable, 
+  generateActualTimePrintableTable, 
+  handlePrint 
+} from "../../utils/printUtils";
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
@@ -67,6 +72,7 @@ const inputClasses = `
   w-full
   px-3
   py-1
+  h-[32px]
   border
   border-[#d0d4d9]
   rounded-md
@@ -268,6 +274,7 @@ const DateNavigation = ({
 };
 
 export const ViewSchedule = () => {
+  const { toast } = useToast();
   const {
     clientSessions,
     loading,
@@ -295,7 +302,6 @@ export const ViewSchedule = () => {
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
-  const { toast: hookToast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
@@ -395,8 +401,8 @@ export const ViewSchedule = () => {
     const addressId = selectedClient?.addressId;
 
     if (!clientId || !addressId) {
-      hookToast({
-        title: "Missing Information",
+      toast({
+        title: "Error",
         description: "Missing client or address information!",
         variant: "destructive",
       });
@@ -420,6 +426,10 @@ export const ViewSchedule = () => {
     // Convert date format for backend
     const formattedDate = convertDateFormat(weekStartStr);
 
+    // Update week range using week start - FIX: Add this missing update
+    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+    setCurrentWeekRange(weekRange);
+
     // Clear any existing schedule data
     clearScheduleData();
 
@@ -427,7 +437,7 @@ export const ViewSchedule = () => {
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to load schedule data!",
         variant: "destructive",
@@ -456,8 +466,8 @@ export const ViewSchedule = () => {
     const formattedDate = convertDateFormat(weekStartStr);
 
     if (!clientId || !addressId) {
-      hookToast({
-        title: "Missing Information",
+      toast({
+        title: "Error",
         description: "Missing client or address information!",
         variant: "destructive",
       });
@@ -477,7 +487,7 @@ export const ViewSchedule = () => {
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to load schedule data!",
         variant: "destructive",
@@ -535,7 +545,7 @@ export const ViewSchedule = () => {
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        hookToast({
+        toast({
           title: "No Schedule Found",
           description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
           variant: "destructive",
@@ -543,7 +553,7 @@ export const ViewSchedule = () => {
         
                 // Only show the "No Schedule" toast when a navigation attempt triggered this state
                 if (isNavigationAttempt) {
-                  hookToast({
+                  toast({
                     title: "No Schedule Found",
                     description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
                     variant: "destructive",
@@ -712,7 +722,7 @@ export const ViewSchedule = () => {
       const newWeekStart = toLocalYMD(weekRange.startOfWeek);
 
       if (existingWeekStart !== newWeekStart) {
-        hookToast({
+        toast({
           title: "Invalid Date Selection",
           description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
           variant: "destructive",
@@ -742,7 +752,7 @@ export const ViewSchedule = () => {
     setErrors({});
     setApplyAllWeek(false);
 
-    hookToast({
+    toast({
       title: "Form Reset",
       description: "Add guard form has been reset successfully.",
     });
@@ -770,7 +780,7 @@ export const ViewSchedule = () => {
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
 
       if (!selectedUser) {
-        hookToast({
+        toast({
           title: "Error",
           description: "Selected user not found.",
           variant: "destructive",
@@ -888,13 +898,13 @@ export const ViewSchedule = () => {
 
       resetAddGuardForm();
 
-      hookToast({
+      toast({
         title: "Success",
         description: "New guard shift added successfully!",
       });
     } catch (err) {
       console.error("Error adding guard shift:", err);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to add guard shift.",
         variant: "destructive",
@@ -912,7 +922,11 @@ export const ViewSchedule = () => {
   // Updated Publish functionality
   const handlePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
-      toast.error("No data available to publish!");
+      toast({
+        title: "Error",
+        description: "No data available to publish!",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -1015,14 +1029,21 @@ export const ViewSchedule = () => {
       await bulkUpsertScheduleSessions(scheduleInput);
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
-      toast.success("Schedule published successfully!");
+      toast({
+          title: "Success",
+          description: "Schedule published successfully!",
+        });
 
       // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
 
     } catch (error) {
       console.error("Error publishing schedule:", error);
-      toast.error("Failed to publish schedule. Please try again.");
+      toast({
+          title: "Error",
+          description: "Failed to publish schedule. Please try again.",
+          variant: "destructive",
+        });
     } finally {
       setIsPublishing(false);
     }
@@ -1033,7 +1054,11 @@ export const ViewSchedule = () => {
       // Find the schedule session for this user
       const userSchedule = scheduleData.find(item => item.userId === userId);
       if (!userSchedule) {
-        toast.error("Schedule session not found for this user");
+        toast({
+          title: "Error",
+          description: "Schedule session not found for this user",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -1049,10 +1074,17 @@ export const ViewSchedule = () => {
         item.userId === userId ? { ...item, auto: enabled } : item
       ));
 
-      toast.success(`Auto setting ${enabled ? 'enabled' : 'disabled'} for user`);
+      toast({
+          title: "Success",
+          description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
+        });
     } catch (error) {
       console.error("Error updating auto setting:", error);
-      toast.error("Failed to update auto setting");
+      toast({
+          title: "Error",
+          description: "Failed to update auto setting",
+          variant: "destructive",
+        });
     }
   };
 
@@ -1080,7 +1112,11 @@ export const ViewSchedule = () => {
   // Handle actual time publish
   const handleActualTimePublish = async () => {
     if (!sessionData || sessionData.length === 0) {
-      toast.error("No actual time data available to publish!");
+      toast({
+          title: "Error",
+          description: "No actual time data available to publish!",
+          variant: "destructive",
+        });
       return;
     }
 
@@ -1101,7 +1137,11 @@ export const ViewSchedule = () => {
         });
 
       if (items.length === 0) {
-        toast.error("No sessions to publish.");
+        toast({
+          title: "Error",
+          description: "No sessions to publish.",
+          variant: "destructive",
+        });
         setIsActualTimePublishing(false);
         return;
       }
@@ -1112,14 +1152,21 @@ export const ViewSchedule = () => {
 
       await updateSessionTimes(items);
 
-      toast.success("Actual time data published successfully!");
+      toast({
+          title: "Success",
+          description: "Actual time data published successfully!",
+        });
 
       // Switch to view mode after successful publish
       setIsActualTimeEditMode(false);
 
     } catch (error) {
       console.error("Error publishing actual time data:", error);
-      toast.error("Failed to publish actual time data. Please try again.");
+      toast({
+          title: "Error",
+          description: "Failed to publish actual time data. Please try again.",
+          variant: "destructive",
+        });
     } finally {
       setIsActualTimePublishing(false);
     }
@@ -1173,6 +1220,377 @@ export const ViewSchedule = () => {
     await validateAndNavigate(newDate);
   };
 
+  // Export functionality for Schedule Table
+  const generateScheduleExcelData = () => {
+    const excelData = [];
+
+    // Add header row - match UI table headers exactly (no phone column)
+    const headerRow = ['Employee Name'];
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        // Format date as MM-DD-YYYY for headers
+        const formattedDate = date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        });
+        headerRow.push(formattedDate);
+      }
+    }
+    headerRow.push('Total Hours');
+    excelData.push(headerRow);
+
+    // Get unique users and sort by name to match UI
+    const uniqueUsers = new Map();
+    scheduleData.forEach(item => {
+      if (!uniqueUsers.has(item.userId)) {
+        uniqueUsers.set(item.userId, {
+          id: item.userId,
+          name: item.userName,
+          phone: item.userPhone
+        });
+      }
+    });
+
+    // Sort users by name to match UI table order
+    const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Add data rows - fill first row completely before moving to next row
+    sortedUsers.forEach(user => {
+      // Get all shifts for this user across the week
+      const userShifts = [];
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
+          
+          const daySchedules = scheduleData.filter(
+            item => item.userId === user.id && item.startDate === dateStr
+          );
+          const shifts = daySchedules.flatMap(s => s.shifts);
+          
+          shifts.forEach(shift => {
+            userShifts.push({
+              ...shift,
+              dayIndex: i,
+              dateStr: dateStr
+            });
+          });
+        }
+      }
+      
+      // Sort shifts by day and time
+      userShifts.sort((a, b) => {
+        if (a.dayIndex !== b.dayIndex) {
+          return a.dayIndex - b.dayIndex;
+        }
+        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+      });
+      
+      // Group shifts by day
+      const shiftsByDay = new Map();
+      userShifts.forEach(shift => {
+        if (!shiftsByDay.has(shift.dayIndex)) {
+          shiftsByDay.set(shift.dayIndex, []);
+        }
+        shiftsByDay.get(shift.dayIndex).push(shift);
+      });
+      
+      // Find max shifts per day for this user
+      const maxShiftsPerDay = Math.max(...Array.from(shiftsByDay.values()).map(shifts => shifts.length), 1);
+      
+      // Create rows - fill first row completely, then next row, etc.
+      for (let shiftIndex = 0; shiftIndex < maxShiftsPerDay; shiftIndex++) {
+        const row = [
+          shiftIndex === 0 ? user.name : '', // Only show name on first row
+        ];
+        
+        // Fill all days in this row
+        if (currentWeekRange) {
+          const startDate = new Date(currentWeekRange.startOfWeek);
+          for (let i = 0; i < 7; i++) {
+            const dayShifts = shiftsByDay.get(i) || [];
+            const shift = dayShifts[shiftIndex];
+            
+            if (shift) {
+              row.push(`${shift.startTime} - ${shift.endTime}`);
+            } else {
+              row.push('');
+            }
+          }
+        }
+        
+        // Add total hours only on first row
+        if (shiftIndex === 0) {
+          const userTotal = scheduleData
+            .filter(item => item.userId === user.id)
+            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+          row.push(userTotal.toFixed(2));
+        } else {
+          row.push('');
+        }
+        
+        excelData.push(row);
+      }
+    });
+
+    return excelData;
+  };
+
+  const handleSchedulePrint = async () => {
+    try {
+      setIsPrinting(true);
+      
+      // Small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange);
+      
+      await handlePrint(
+        tableContent,
+        {
+          title: "Schedule Report",
+          selectedClient,
+          currentWeekRange
+        },
+        (error) => toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        }),
+        () => toast({
+          title: "Success",
+          description: "Schedule report printed successfully!",
+        })
+      );
+      
+    } catch (error) {
+      console.error("Error printing schedule:", error);
+      toast({
+          title: "Error",
+          description: "Failed to print schedule report",
+          variant: "destructive",
+        });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleScheduleDownloadExcel = () => {
+    try {
+      const excelData = generateScheduleExcelData();
+
+      // Guard clause: check if excelData is valid
+      if (!excelData || !Array.isArray(excelData) || excelData.length === 0) {
+        throw new Error("No data available to export to Excel.");
+      }
+
+      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Schedule Report");
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Schedule_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      
+      toast({
+          title: "Success",
+          description: "Schedule Excel report exported successfully!",
+        });
+    } catch (error) {
+      console.error("Error exporting Schedule Excel:", error);
+      toast({
+          title: "Error",
+          description: "Failed to export Schedule Excel report",
+          variant: "destructive",
+        });
+    }
+  };
+
+
+
+
+  // Export functionality for Actual Time Table
+  const generateActualTimeExcelData = () => {
+    const excelData = [];
+
+    // Add header row - match UI table headers exactly (no phone column)
+    const headerRow = ['Employee Name'];
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        // Format date as MM-DD-YYYY for headers
+        const formattedDate = date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        });
+        headerRow.push(formattedDate);
+      }
+    }
+    headerRow.push('Total Hours');
+    excelData.push(headerRow);
+
+    // Get unique users from session data
+    const uniqueUsers = new Map();
+    sessionData.forEach(item => {
+      const scheduleItem = scheduleData.find(si =>
+        si.shifts.some(shift => shift.id === item.shiftId)
+      );
+      if (scheduleItem && !uniqueUsers.has(scheduleItem.userId)) {
+        uniqueUsers.set(scheduleItem.userId, {
+          id: scheduleItem.userId,
+          name: scheduleItem.userName,
+          phone: scheduleItem.userPhone
+        });
+      }
+    });
+
+    // Sort users by name to match UI table order
+    const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Add data rows
+    sortedUsers.forEach(user => {
+      const row = [user.name];
+      
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
+          
+          const daySessions = sessionData.filter(item => {
+            const scheduleItem = scheduleData.find(si =>
+              si.shifts.some(shift => shift.id === item.shiftId)
+            );
+            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
+            
+            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+            return shift && shift.date === dateStr;
+          });
+          
+          if (daySessions.length > 0) {
+            const sessionTimes = daySessions.map(session => 
+              `${session.clockIn} - ${session.clockOut}`
+            ).join(', ');
+            row.push(sessionTimes);
+          } else {
+            row.push('');
+          }
+        }
+      }
+      
+      // Add total hours
+      const userTotal = sessionData
+        .filter(item => {
+          const scheduleItem = scheduleData.find(si =>
+            si.shifts.some(shift => shift.id === item.shiftId)
+          );
+          return scheduleItem && scheduleItem.userId === user.id;
+        })
+        .reduce((total, item) => total + (item.workedTime || 0), 0);
+      row.push((userTotal / 60).toFixed(2)); // Convert minutes to hours
+      
+      excelData.push(row);
+    });
+
+    return excelData;
+  };
+
+  const handleActualTimeDownloadExcel = () => {
+    try {
+      const excelData = generateActualTimeExcelData();
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Actual Time Report");
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Actual_Time_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      
+      toast({
+          title: "Success",
+          description: "Actual Time Excel report exported successfully!",
+        });
+    } catch (error) {
+      console.error("Error exporting Actual Time Excel:", error);
+      toast({
+          title: "Error",
+          description: "Failed to export Actual Time Excel report",
+          variant: "destructive",
+        });
+    }
+  };
+
+
+
+    const handleActualTimePrint = async () => {
+    try {
+      setIsPrinting(true);
+      
+      // Small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange);
+      
+      await handlePrint(
+        tableContent,
+        {
+          title: "Actual Time Report",
+          selectedClient,
+          currentWeekRange
+        },
+        (error) => toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        }),
+        () => toast({
+          title: "Success",
+          description: "Actual Time report printed successfully!",
+        })
+      );
+      
+    } catch (error) {
+      console.error("Error printing actual time:", error);
+      toast({
+          title: "Error",
+          description: "Failed to print actual time report",
+          variant: "destructive",
+        });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
@@ -1223,8 +1641,8 @@ export const ViewSchedule = () => {
                 {scheduleData.length > 0 ? "Edit Schedule" : "Add New Schedule"}
               </h3>
 
-              <form onSubmit={onSubmitAddGuard} autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+                             <form onSubmit={onSubmitAddGuard} autoComplete="off">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
 
                   {/* User Search */}
                   <div className="relative">
@@ -1351,39 +1769,39 @@ export const ViewSchedule = () => {
                     )}
                   </div>
 
-                  {/* Auto Toggle and Buttons */}
-                  <div className="flex items-center gap-2">
-                    <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-
-                    <button
-                      type="submit"
-                      disabled={submitLoader}
-                      className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
-                    >
-                      {submitLoader ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add
-                        </>
-                      )}
-                    </button>
-                    {(form.date || form.starttime || form.endtime || form.userId || auto) && (
-
+                                                        {/* Auto Toggle and Buttons */}
+                    <div className="flex items-center justify-center h-[32px] border border-none ">
+                       <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+                     </div>
+                    <div className="flex items-center gap-2">
                       <button
-                        type="button"
-                        onClick={resetAddGuardForm}
-                        className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                        type="submit"
+                        disabled={submitLoader}
+                        className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                       >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        Reset
-                      </button>
-                    )}
-                  </div>
+                       {submitLoader ? (
+                         <>
+                           <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                           Adding...
+                         </>
+                       ) : (
+                         <>
+                           <Plus className="w-4 h-4 mr-1" />
+                           Add
+                         </>
+                       )}
+                     </button>
+                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
+                                               <button
+                          type="button"
+                          onClick={resetAddGuardForm}
+                          className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                        >
+                         <RotateCcw className="w-4 h-4 mr-1" />
+                         Reset
+                       </button>
+                     )}
+                   </div>
                 </div>
               </form>
             </div>
@@ -1421,8 +1839,8 @@ export const ViewSchedule = () => {
             </div>
           )}
 
-          {/* Only render ScheduleTable when we have data */}
-          {!scheduleError && hasApiData && scheduleData.length > 0 && (
+                    {/* Only render ScheduleTable when we have data */}
+                    {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <ScheduleTable
               key={`schedule-${viewKey}`}
               scheduleData={scheduleData}
@@ -1431,8 +1849,8 @@ export const ViewSchedule = () => {
               isEditMode={isScheduleEditMode}
               onScheduleDataChange={setScheduleData}
               onPublish={handlePublish}
-              onPrint={() => { }}
-              onDownloadExcel={() => { }}
+              onPrint={handleSchedulePrint}
+              onDownloadExcel={handleScheduleDownloadExcel}
               onToggleEditMode={toggleScheduleEditMode}
               isPublishing={isPublishing}
               isPrinting={isPrinting}
@@ -1456,12 +1874,8 @@ export const ViewSchedule = () => {
                     setSessionData(newData);
                   }}
                   onPublish={handleActualTimePublish}
-                  onPrint={() => {
-                    console.log("Printing actual time data");
-                  }}
-                  onDownloadExcel={() => {
-                    console.log("Downloading actual time Excel...");
-                  }}
+                  onPrint={handleActualTimePrint}
+                  onDownloadExcel={handleActualTimeDownloadExcel}
                   onToggleEditMode={toggleActualTimeEditMode}
                   isPublishing={isActualTimePublishing}
                   isPrinting={isPrinting}
@@ -1475,3 +1889,5 @@ export const ViewSchedule = () => {
     </div>
   );
 };
+
+export default ViewSchedule;

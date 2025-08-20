@@ -61,13 +61,13 @@ function ClientList() {
 
   const handleSearch = (formData: any) => {
     // TODO:- implement Client List search (could map fields to existing searchTerms if desired)
-    console.log('Client List search:', formData);
+    // console.log('Client List search:', formData);
     setSearchLoading(false);
   };
 
   const handleReset = () => {
     // TODO:- reset Client List search
-    console.log('Client List reset');
+    // console.log('Client List reset');
     setShowSearchForm(false);
   };
   const [sortConfig, setSortConfig] = useState<{
@@ -80,7 +80,6 @@ function ClientList() {
 
   useEffect(() => {
     fetchScheduleSessions(currentPage);
-    console.log("Fetching addresses for client list", scheduleSessions);
   }, [currentPage]);
 
   // Helper function to get nested values

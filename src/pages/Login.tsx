@@ -111,7 +111,7 @@ const Login = () => {
     setIsLoading(true);
 
     const result = await login(username, password);  // ✅ Await login here
-    console.log(result);
+    // console.log(result);
     if (result.success) {
       const storedRole = localStorage.getItem('role'); // ✅ Get role from localStorage
       let redirectPath = '/';

@@ -4,7 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { formatDateLocal, formatTimeDisplay } from "../lib/utils";
+import { formatDateLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -98,7 +98,11 @@ const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
 
 const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
   const total = scheduleData
-    .filter(item => item.startDate === date)
+    .filter(item => {
+      // Handle both local date format and ISO date format
+      const itemDate = item.startDate.includes('T') ? formatDateLocal(new Date(item.startDate)) : item.startDate;
+      return itemDate === date;
+    })
     .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   return parseFloat(total.toFixed(2));
 };
@@ -159,6 +163,17 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       });
     }
     return dates;
+  };
+
+  // Helper function to format date from ISO string to local format
+  const formatDateFromISO = (isoDate: string) => {
+    try {
+      const date = new Date(isoDate);
+      return formatDateLocal(date);
+    } catch (error) {
+      console.error('Error formatting date:', isoDate, error);
+      return isoDate; // fallback to original if parsing fails
+    }
   };
 
   const dateColumns = generateDateColumns();
@@ -491,15 +506,17 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
                           rowSpan={rowCount}
                         >
-                          <div className="font-medium text-gray-800">{user.name}</div>
-                          <div className="text-xs text-gray-500">{user.phone}</div>
+                                                   <div className="font-medium text-gray-800">{user.name}</div>
+                          <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
                         </td>
                       )}
 
                       {dateColumns.map(dateCol => {
-                        const daySchedules = scheduleData.filter(
-                          i => i.userId === user.id && i.startDate === dateCol.date
-                        );
+                        const daySchedules = scheduleData.filter(item => {
+                          // Handle both local date format and ISO date format
+                          const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
+                          return item.userId === user.id && itemDate === dateCol.date;
+                        });
                         const sortedShifts = sortShiftsByTime(
                           daySchedules.flatMap(s => s.shifts)
                         );
@@ -530,7 +547,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                     </div>
                                     <button
                                       onClick={() => {
-                                        console.log('Edit button clicked for shift:', shift);
                                         handleEditShift(user.id, dateCol.date, shift);
                                       }}
                                       className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
@@ -587,9 +603,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                       Total
                     </td>
                     {dateColumns.map(dateCol => {
-                      const daySchedules = scheduleData.filter(
-                        i => i.userId === user.id && i.startDate === dateCol.date
-                      );
+                      const daySchedules = scheduleData.filter(item => {
+                        // Handle both local date format and ISO date format
+                        const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
+                        return item.userId === user.id && itemDate === dateCol.date;
+                      });
                       const dayTotal = daySchedules.reduce(
                         (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
                         0

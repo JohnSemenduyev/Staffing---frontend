@@ -4,7 +4,7 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { formatDateLocal, formatDateStringLocal, formatTimeDisplay } from "../lib/utils";
+import { formatDateLocal, formatDateStringLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
 
 interface Shift {
   id: number;
@@ -216,7 +216,7 @@ const logEditableCells = (sd: ScheduleItem[]) => {
       shiftId: shift.id,
     }))
   );
-  console.log('Editable cells:', cells);
+  // console.log('Editable cells:', cells);
 };
 
 const calculateHours = (start: string, end: string) =>
@@ -819,7 +819,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                           rowSpan={rowCount}
                         >
                           <div className="font-medium text-gray-800">{user.name}</div>
-                          <div className="text-xs text-gray-500">{user.phone}</div>
+                          <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
                         </td>
                       )}
 
@@ -877,7 +877,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                     onClick={() => {
                                       handleAddSession(user.id, dateCol.date, shift!.id);
                                     }}
-                                    className="text-green-600 p-0.5"
+                                    className="text-blue-600 hover:text-blue-700 p-0.5"
                                     title="Add session"
                                   >
                                     <Plus className="w-4 h-4" />
@@ -904,7 +904,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                             className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
                             rowSpan={rowCount}
                           >
-                            {isEditMode && (
+                            {/* {isEditMode && (
                               <button
                                 onClick={() => handleDeleteUser(user.id)}
                                 className="text-red-600 hover:text-red-800 p-1"
@@ -912,7 +912,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                            )}
+                            )} */}
                           </td>
                         </>
                       )}

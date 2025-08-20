@@ -247,8 +247,8 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
     <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
       <h3 className="text-lg font-semibold mb-3 text-gray-800">Edit Schedule</h3>
 
-      <form onSubmit={onSubmitAddGuard} autoComplete="off">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+            <form onSubmit={onSubmitAddGuard} autoComplete="off">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
 
           {/* User Search */}
           <div className="relative">
@@ -378,14 +378,17 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
             )}
           </div>
 
-          {/* Auto Toggle and Buttons */}
-          <div className="flex items-center gap-2">
+          {/* Auto Toggle */}
+          <div >
             <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+          </div>
 
+          {/* Buttons */}
+          <div className="flex w-full items-center justify-center h-10 gap-2">
             <button
               type="submit"
               disabled={submitLoader}
-              className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+              className="inline-flex items-center px-4 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
             >
               {submitLoader ? (
                 <>

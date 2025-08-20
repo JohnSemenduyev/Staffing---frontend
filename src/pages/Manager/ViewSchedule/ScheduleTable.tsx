@@ -9,7 +9,7 @@ import {
   calculateDayTotal, 
   calculateGrandTotal 
 } from "./utils";
-import { formatTimeDisplay } from "../../../lib/utils";
+import { formatTimeDisplay, formatUSPhone } from "../../../lib/utils";
 
 interface ScheduleTableProps {
   scheduleData: ScheduleItem[];
@@ -110,7 +110,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           rowSpan={rowCount}
                         >
                           <div className="font-medium text-gray-800">{user.name}</div>
-                          <div className="text-xs text-gray-500">{user.phone}</div>
+                                                      <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
                         </td>
                       )}
 

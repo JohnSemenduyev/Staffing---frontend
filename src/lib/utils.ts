@@ -35,17 +35,11 @@ export const formatTimeDisplay = (timeString: string): string => {
 export function getWeekRangeFromDateLocal(base: Date) {
 
   const day = base.getDay();
-  console.log("day", day);
   const daysSinceThursday = (day + 3) % 7; // Thu..Wed week
-  console.log("daysSinceThursday", daysSinceThursday);
   const start = new Date(base);
-  console.log("start", start);
   start.setHours(0, 0, 0, 0);
-  console.log("start", start);
   start.setDate(start.getDate() - daysSinceThursday);
-  console.log("start", start);
   const end = new Date(start);
-  console.log("end", end);
   end.setDate(start.getDate() + 6);
   
   end.setHours(23, 59, 59, 999);
@@ -72,4 +66,26 @@ export function stripTime(input: string) {
   return firstPart.split(' ')[0]; // handles "YYYY-MM-DD HH:mm"
 }
 
+
+// Formats US phone numbers to (XXX) XXX-XXXX.
+// Leaves the original value if it cannot be formatted cleanly.
+export function formatUSPhone(value?: string | null): string {
+  if (!value) return "";
+  const digits = String(value).replace(/\D+/g, "");
+  let d = digits;
+
+  // Handle leading country code
+  if (d.length === 11 && d.startsWith("1")) {
+    d = d.slice(1);
+  }
+
+  if (d.length !== 10) {
+    return value;
+  }
+
+  const area = d.slice(0, 3);
+  const prefix = d.slice(3, 6);
+  const line = d.slice(6);
+  return `(${area}) ${prefix}-${line}`;
+}
 

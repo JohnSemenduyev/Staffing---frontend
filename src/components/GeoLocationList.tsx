@@ -28,7 +28,6 @@ const searchFields: FieldConfig[] = [
 ];
 const handleSearch = (formData: any) => {
   // TODO:- implement Post Assignment search
-  console.log("Post Assignment search:", formData);
 };
 
 const handleReset = () => {

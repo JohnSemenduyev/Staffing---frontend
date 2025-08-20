@@ -9,7 +9,7 @@ interface ToggleProps {
 
 const ToggleSwitch: React.FC<ToggleProps> = ({ enabled, onToggle, label, disabled = false }) => {
   return (
-    <div className="w-full px-3  border border-gray-300 rounded-md bg-white flex items-center justify-between transition focus-within:ring-2 focus-within:ring-blue-600">
+    <div className="w-full px-3 h-[32px] border border-gray-300 rounded-md bg-white flex items-center justify-between transition focus-within:ring-2 focus-within:ring-blue-600">
       {label && <span className=" text-gray-400 ">{label}</span>}
       <button
         type="button"
