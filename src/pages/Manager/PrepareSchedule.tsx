@@ -5,14 +5,15 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
-import { useToast } from "../../hooks/use-toast";
+
 import { graphQLClient } from "../../GraphqlClient";
 import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
-import { formatDateLocal, formatTimeDisplay, getWeekRangeFromDateUTC } from "../../lib/utils";
+import { formatDateLocal, formatTimeDisplay, getWeekRangeFromDateUTC, formatUSPhone } from "../../lib/utils";
+import { useToast } from "../../hooks/use-toast";
 
 interface FormData {
   clientId: string;
@@ -183,6 +184,7 @@ function formatLocalMDY(d: Date): string {
 }
 
 export const PrepareSchedule = () => {
+  const { toast } = useToast();
   const [form, setForm] = useState<FormData>({
     clientId: "",
     addressId: "",
@@ -214,7 +216,6 @@ export const PrepareSchedule = () => {
   const [showApplyAllDropdown, setShowApplyAllDropdown] = useState(false);
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
-  const { toast } = useToast();
   const [hasOverlapError, setHasOverlapError] = useState(false);
   const checkScheduleSessionIdRef = useRef<number | null>(null);
 
@@ -349,10 +350,10 @@ export const PrepareSchedule = () => {
 
         if (existingWeekStart !== newWeekStart) {
           toast({
-            title: "Invalid Date Selection",
-            description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
-            variant: "destructive",
-          });
+          title: "Error",
+          description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+          variant: "destructive",
+        });
           setForm(f => ({ ...f, date: "" }));
           return;
         }
@@ -419,10 +420,10 @@ export const PrepareSchedule = () => {
     setApplyToAllDates(false);
     setApplyAllWeek(false);
 
-    toast({
-      title: "Form Reset",
-      description: "Form has been reset successfully.",
-    });
+          toast({
+        title: "Success",
+        description: "Form has been reset successfully.",
+      });
   };
 
 
@@ -494,10 +495,10 @@ const generateDateColumns = () => {
       item.userId === userId ? { ...item, auto: enabled } : item
     ));
 
-    toast({
-      title: "Auto Setting Updated",
-      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
-    });
+            toast({
+          title: "Success",
+          description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+        });
   };
 
   const handlePublish = async () => {
@@ -565,10 +566,10 @@ const generateDateColumns = () => {
       setCurrentWeekRange(null);
       resetForm();
 
-      toast({
-        title: "Schedule Published",
-        description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
-      });
+              toast({
+          title: "Success",
+          description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+        });
     } catch (err) {
       console.error("Error publishing schedule sessions:", err);
 
@@ -582,11 +583,11 @@ const generateDateColumns = () => {
         }
       }
 
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+              toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
     }
     finally {
       setPublishLoader(false);
@@ -620,12 +621,20 @@ const generateDateColumns = () => {
 
       // message present -> blocked; show server message
       if (result?.message) {
-        toast({ title: "Schedule conflict", description: result.message, variant: "destructive" });
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        });
         return false;
       }
       return false;
     } catch {
-      toast({ title: "Error", description: "Error checking schedule overlap.", variant: "destructive" });
+              toast({
+          title: "Error",
+          description: "Error checking schedule overlap.",
+          variant: "destructive",
+        });
       return false;
     }
   };
@@ -793,11 +802,11 @@ const generateDateColumns = () => {
       });
     } catch (err) {
       console.error("Error creating schedule session:", err);
-      toast({
-        title: "Error",
-        description: "Failed to create schedule session.",
-        variant: "destructive",
-      });
+              toast({
+          title: "Error",
+          description: "Failed to create schedule session.",
+          variant: "destructive",
+        });
     } finally {
       setSubmitLoader(false);
     }
@@ -822,9 +831,9 @@ const generateDateColumns = () => {
 
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
     toast({
-      title: "Shift Deleted",
-      description: "Shift has been deleted successfully.",
-    });
+          title: "Success",
+          description: "Shift has been deleted successfully.",
+        });
   };
 
   const cancelDeleteShift = () => {
@@ -852,10 +861,10 @@ const generateDateColumns = () => {
     const minutes = minutesDiffWithWrap(form.starttime, form.endtime);
     if (minutes < 1) {
       toast({
-        title: "Invalid Time",
-        description: "End time must be at least 1 minute after start time",
-        variant: "destructive",
-      });
+          title: "Error",
+          description: "End time must be at least 1 minute after start time",
+          variant: "destructive",
+        });
       return;
     }
     const existingShifts = scheduleData
@@ -863,10 +872,10 @@ const generateDateColumns = () => {
     const hasConflict = existingShifts.some(s => s.id !== shift.id && doTimesOverlap(form.starttime, form.endtime, s.startTime, s.endTime));
     if (hasConflict) {
       toast({
-        title: "Overlapping Shift",
-        description: "Shift time conflicts with an existing shift for this user and date.",
-        variant: "destructive",
-      });
+          title: "Error",
+          description: "Shift time conflicts with an existing shift for this user and date.",
+          variant: "destructive",
+        });
       return;
     }
     setScheduleData(prev => prev.map(item => {
@@ -924,9 +933,9 @@ const generateDateColumns = () => {
     setScheduleData(prev => prev.filter(item => item.userId !== userId));
     setDeleteUserModal({ isOpen: false, userId: null });
     toast({
-      title: "User Data Deleted",
-      description: "All data for this user has been deleted successfully.",
-    });
+          title: "Success",
+          description: "All data for this user has been deleted successfully.",
+        });
   };
 
   const cancelDeleteUser = () => {
@@ -1033,9 +1042,9 @@ const generateDateColumns = () => {
     setDragOverCell(null);
 
     toast({
-      title: "Shift Copied",
-      description: "Shift has been copied successfully.",
-    });
+          title: "Success",
+          description: "Shift has been copied successfully.",
+        });
   };
 
   const handleDragEnd = () => {
@@ -1207,8 +1216,8 @@ const generateDateColumns = () => {
                 onChange={handleChange}
                 placeholder="Select Date"
                 className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
-                minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
-                maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
+                // minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
+                // maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
 
               />
               
@@ -1376,7 +1385,7 @@ const generateDateColumns = () => {
                                 rowSpan={rowCount}
                               >
                                 <div className="font-medium text-gray-800">{user.name}</div>
-                                <div className="text-xs text-gray-500">{user.phone}</div>
+                                <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
                               </td>
                             )}
                             {dateColumns.map(dateCol => {

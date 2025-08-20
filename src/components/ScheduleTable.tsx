@@ -98,7 +98,11 @@ const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
 
 const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
   const total = scheduleData
-    .filter(item => item.startDate === date)
+    .filter(item => {
+      // Handle both local date format and ISO date format
+      const itemDate = item.startDate.includes('T') ? formatDateLocal(new Date(item.startDate)) : item.startDate;
+      return itemDate === date;
+    })
     .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   return parseFloat(total.toFixed(2));
 };
@@ -159,6 +163,17 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       });
     }
     return dates;
+  };
+
+  // Helper function to format date from ISO string to local format
+  const formatDateFromISO = (isoDate: string) => {
+    try {
+      const date = new Date(isoDate);
+      return formatDateLocal(date);
+    } catch (error) {
+      console.error('Error formatting date:', isoDate, error);
+      return isoDate; // fallback to original if parsing fails
+    }
   };
 
   const dateColumns = generateDateColumns();
@@ -497,9 +512,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                       )}
 
                       {dateColumns.map(dateCol => {
-                        const daySchedules = scheduleData.filter(
-                          i => i.userId === user.id && i.startDate === dateCol.date
-                        );
+                        const daySchedules = scheduleData.filter(item => {
+                          // Handle both local date format and ISO date format
+                          const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
+                          return item.userId === user.id && itemDate === dateCol.date;
+                        });
                         const sortedShifts = sortShiftsByTime(
                           daySchedules.flatMap(s => s.shifts)
                         );
@@ -586,9 +603,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                       Total
                     </td>
                     {dateColumns.map(dateCol => {
-                      const daySchedules = scheduleData.filter(
-                        i => i.userId === user.id && i.startDate === dateCol.date
-                      );
+                      const daySchedules = scheduleData.filter(item => {
+                        // Handle both local date format and ISO date format
+                        const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
+                        return item.userId === user.id && itemDate === dateCol.date;
+                      });
                       const dayTotal = daySchedules.reduce(
                         (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
                         0

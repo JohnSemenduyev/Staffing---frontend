@@ -110,7 +110,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           rowSpan={rowCount}
                         >
                           <div className="font-medium text-gray-800">{user.name}</div>
-                          <div className="text-xs text-gray-500">{user.phone}</div>
+                                                      <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
                         </td>
                       )}
 

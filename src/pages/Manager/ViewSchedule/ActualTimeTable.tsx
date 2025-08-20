@@ -11,7 +11,7 @@ import {
   calculateHours // Add this import
 } from "./utils";
 import { toast } from "sonner";
-import { formatTimeDisplay } from "../../../lib/utils";
+import { formatTimeDisplay, formatUSPhone } from "../../../lib/utils";
 
 interface ActualTimeTableProps {
   scheduleData: ScheduleItem[];
@@ -600,7 +600,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                             rowSpan={rowCount}
                           >
                             <div className="font-medium text-gray-800">{user.name}</div>
-                            <div className="text-xs text-gray-500">{user.phone}</div>
+                            <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
                           </td>
                         )}
 

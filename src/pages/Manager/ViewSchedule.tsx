@@ -6,14 +6,19 @@ import { ActualTimeTable } from "../../components/ActualTimeTable";
 import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
-import { toast } from "sonner";
 import * as XLSX from "xlsx";
+
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
 import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
+import { 
+  generateSchedulePrintableTable, 
+  generateActualTimePrintableTable, 
+  handlePrint 
+} from "../../utils/printUtils";
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
@@ -268,6 +273,7 @@ const DateNavigation = ({
 };
 
 export const ViewSchedule = () => {
+  const { toast } = useToast();
   const {
     clientSessions,
     loading,
@@ -295,7 +301,6 @@ export const ViewSchedule = () => {
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
-  const { toast: hookToast } = useToast();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
@@ -395,8 +400,8 @@ export const ViewSchedule = () => {
     const addressId = selectedClient?.addressId;
 
     if (!clientId || !addressId) {
-      hookToast({
-        title: "Missing Information",
+      toast({
+        title: "Error",
         description: "Missing client or address information!",
         variant: "destructive",
       });
@@ -420,6 +425,10 @@ export const ViewSchedule = () => {
     // Convert date format for backend
     const formattedDate = convertDateFormat(weekStartStr);
 
+    // Update week range using week start - FIX: Add this missing update
+    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+    setCurrentWeekRange(weekRange);
+
     // Clear any existing schedule data
     clearScheduleData();
 
@@ -427,7 +436,7 @@ export const ViewSchedule = () => {
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to load schedule data!",
         variant: "destructive",
@@ -456,8 +465,8 @@ export const ViewSchedule = () => {
     const formattedDate = convertDateFormat(weekStartStr);
 
     if (!clientId || !addressId) {
-      hookToast({
-        title: "Missing Information",
+      toast({
+        title: "Error",
         description: "Missing client or address information!",
         variant: "destructive",
       });
@@ -477,7 +486,7 @@ export const ViewSchedule = () => {
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to load schedule data!",
         variant: "destructive",
@@ -535,7 +544,7 @@ export const ViewSchedule = () => {
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        hookToast({
+        toast({
           title: "No Schedule Found",
           description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
           variant: "destructive",
@@ -543,7 +552,7 @@ export const ViewSchedule = () => {
         
                 // Only show the "No Schedule" toast when a navigation attempt triggered this state
                 if (isNavigationAttempt) {
-                  hookToast({
+                  toast({
                     title: "No Schedule Found",
                     description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
                     variant: "destructive",
@@ -712,7 +721,7 @@ export const ViewSchedule = () => {
       const newWeekStart = toLocalYMD(weekRange.startOfWeek);
 
       if (existingWeekStart !== newWeekStart) {
-        hookToast({
+        toast({
           title: "Invalid Date Selection",
           description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
           variant: "destructive",
@@ -742,7 +751,7 @@ export const ViewSchedule = () => {
     setErrors({});
     setApplyAllWeek(false);
 
-    hookToast({
+    toast({
       title: "Form Reset",
       description: "Add guard form has been reset successfully.",
     });
@@ -770,7 +779,7 @@ export const ViewSchedule = () => {
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
 
       if (!selectedUser) {
-        hookToast({
+        toast({
           title: "Error",
           description: "Selected user not found.",
           variant: "destructive",
@@ -888,13 +897,13 @@ export const ViewSchedule = () => {
 
       resetAddGuardForm();
 
-      hookToast({
+      toast({
         title: "Success",
         description: "New guard shift added successfully!",
       });
     } catch (err) {
       console.error("Error adding guard shift:", err);
-      hookToast({
+      toast({
         title: "Error",
         description: "Failed to add guard shift.",
         variant: "destructive",
@@ -912,7 +921,11 @@ export const ViewSchedule = () => {
   // Updated Publish functionality
   const handlePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
-      toast.error("No data available to publish!");
+      toast({
+        title: "Error",
+        description: "No data available to publish!",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -1015,14 +1028,21 @@ export const ViewSchedule = () => {
       await bulkUpsertScheduleSessions(scheduleInput);
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
-      toast.success("Schedule published successfully!");
+      toast({
+          title: "Success",
+          description: "Schedule published successfully!",
+        });
 
       // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
 
     } catch (error) {
       console.error("Error publishing schedule:", error);
-      toast.error("Failed to publish schedule. Please try again.");
+      toast({
+          title: "Error",
+          description: "Failed to publish schedule. Please try again.",
+          variant: "destructive",
+        });
     } finally {
       setIsPublishing(false);
     }
@@ -1033,7 +1053,11 @@ export const ViewSchedule = () => {
       // Find the schedule session for this user
       const userSchedule = scheduleData.find(item => item.userId === userId);
       if (!userSchedule) {
-        toast.error("Schedule session not found for this user");
+        toast({
+          title: "Error",
+          description: "Schedule session not found for this user",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -1049,10 +1073,17 @@ export const ViewSchedule = () => {
         item.userId === userId ? { ...item, auto: enabled } : item
       ));
 
-      toast.success(`Auto setting ${enabled ? 'enabled' : 'disabled'} for user`);
+      toast({
+          title: "Success",
+          description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
+        });
     } catch (error) {
       console.error("Error updating auto setting:", error);
-      toast.error("Failed to update auto setting");
+      toast({
+          title: "Error",
+          description: "Failed to update auto setting",
+          variant: "destructive",
+        });
     }
   };
 
@@ -1080,7 +1111,11 @@ export const ViewSchedule = () => {
   // Handle actual time publish
   const handleActualTimePublish = async () => {
     if (!sessionData || sessionData.length === 0) {
-      toast.error("No actual time data available to publish!");
+      toast({
+          title: "Error",
+          description: "No actual time data available to publish!",
+          variant: "destructive",
+        });
       return;
     }
 
@@ -1101,7 +1136,11 @@ export const ViewSchedule = () => {
         });
 
       if (items.length === 0) {
-        toast.error("No sessions to publish.");
+        toast({
+          title: "Error",
+          description: "No sessions to publish.",
+          variant: "destructive",
+        });
         setIsActualTimePublishing(false);
         return;
       }
@@ -1112,14 +1151,21 @@ export const ViewSchedule = () => {
 
       await updateSessionTimes(items);
 
-      toast.success("Actual time data published successfully!");
+      toast({
+          title: "Success",
+          description: "Actual time data published successfully!",
+        });
 
       // Switch to view mode after successful publish
       setIsActualTimeEditMode(false);
 
     } catch (error) {
       console.error("Error publishing actual time data:", error);
-      toast.error("Failed to publish actual time data. Please try again.");
+      toast({
+          title: "Error",
+          description: "Failed to publish actual time data. Please try again.",
+          variant: "destructive",
+        });
     } finally {
       setIsActualTimePublishing(false);
     }
@@ -1177,20 +1223,26 @@ export const ViewSchedule = () => {
   const generateScheduleExcelData = () => {
     const excelData = [];
 
-    // Add header row
-    const headerRow = ['Employee Name', 'Phone'];
+    // Add header row - match UI table headers exactly (no phone column)
+    const headerRow = ['Employee Name'];
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
-        headerRow.push(toLocalYMD(date));
+        // Format date as MM-DD-YYYY for headers
+        const formattedDate = date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        });
+        headerRow.push(formattedDate);
       }
     }
     headerRow.push('Total Hours');
     excelData.push(headerRow);
 
-    // Get unique users
+    // Get unique users and sort by name to match UI
     const uniqueUsers = new Map();
     scheduleData.forEach(item => {
       if (!uniqueUsers.has(item.userId)) {
@@ -1202,43 +1254,130 @@ export const ViewSchedule = () => {
       }
     });
 
-    // Add data rows
-    uniqueUsers.forEach(user => {
-      const row = [user.name, user.phone];
-      
+    // Sort users by name to match UI table order
+    const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Add data rows - fill first row completely before moving to next row
+    sortedUsers.forEach(user => {
+      // Get all shifts for this user across the week
+      const userShifts = [];
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
         for (let i = 0; i < 7; i++) {
           const date = new Date(startDate);
           date.setDate(startDate.getDate() + i);
-          const dateStr = formatDateLocal(date);
+          const dateStr = toLocalYMD(date);
           
           const daySchedules = scheduleData.filter(
             item => item.userId === user.id && item.startDate === dateStr
           );
           const shifts = daySchedules.flatMap(s => s.shifts);
           
-          if (shifts.length > 0) {
-            const shiftTimes = shifts.map(shift => 
-              `${shift.startTime} - ${shift.endTime}`
-            ).join(', ');
-            row.push(shiftTimes);
-          } else {
-            row.push('');
-          }
+          shifts.forEach(shift => {
+            userShifts.push({
+              ...shift,
+              dayIndex: i,
+              dateStr: dateStr
+            });
+          });
         }
       }
       
-      // Add total hours
-      const userTotal = scheduleData
-        .filter(item => item.userId === user.id)
-        .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-      row.push(userTotal.toFixed(2));
+      // Sort shifts by day and time
+      userShifts.sort((a, b) => {
+        if (a.dayIndex !== b.dayIndex) {
+          return a.dayIndex - b.dayIndex;
+        }
+        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+      });
       
-      excelData.push(row);
+      // Group shifts by day
+      const shiftsByDay = new Map();
+      userShifts.forEach(shift => {
+        if (!shiftsByDay.has(shift.dayIndex)) {
+          shiftsByDay.set(shift.dayIndex, []);
+        }
+        shiftsByDay.get(shift.dayIndex).push(shift);
+      });
+      
+      // Find max shifts per day for this user
+      const maxShiftsPerDay = Math.max(...Array.from(shiftsByDay.values()).map(shifts => shifts.length), 1);
+      
+      // Create rows - fill first row completely, then next row, etc.
+      for (let shiftIndex = 0; shiftIndex < maxShiftsPerDay; shiftIndex++) {
+        const row = [
+          shiftIndex === 0 ? user.name : '', // Only show name on first row
+        ];
+        
+        // Fill all days in this row
+        if (currentWeekRange) {
+          const startDate = new Date(currentWeekRange.startOfWeek);
+          for (let i = 0; i < 7; i++) {
+            const dayShifts = shiftsByDay.get(i) || [];
+            const shift = dayShifts[shiftIndex];
+            
+            if (shift) {
+              row.push(`${shift.startTime} - ${shift.endTime}`);
+            } else {
+              row.push('');
+            }
+          }
+        }
+        
+        // Add total hours only on first row
+        if (shiftIndex === 0) {
+          const userTotal = scheduleData
+            .filter(item => item.userId === user.id)
+            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+          row.push(userTotal.toFixed(2));
+        } else {
+          row.push('');
+        }
+        
+        excelData.push(row);
+      }
     });
 
     return excelData;
+  };
+
+  const handleSchedulePrint = async () => {
+    try {
+      setIsPrinting(true);
+      
+      // Small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange);
+      
+      await handlePrint(
+        tableContent,
+        {
+          title: "Schedule Report",
+          selectedClient,
+          currentWeekRange
+        },
+        (error) => toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        }),
+        () => toast({
+          title: "Success",
+          description: "Schedule report printed successfully!",
+        })
+      );
+      
+    } catch (error) {
+      console.error("Error printing schedule:", error);
+      toast({
+          title: "Error",
+          description: "Failed to print schedule report",
+          variant: "destructive",
+        });
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   const handleScheduleDownloadExcel = () => {
@@ -1268,254 +1407,41 @@ export const ViewSchedule = () => {
       a.remove();
       URL.revokeObjectURL(url);
       
-      toast.success("Schedule Excel report exported successfully!");
+      toast({
+          title: "Success",
+          description: "Schedule Excel report exported successfully!",
+        });
     } catch (error) {
       console.error("Error exporting Schedule Excel:", error);
-      toast.error("Failed to export Schedule Excel report");
-    }
-  };
-
-  const generateSchedulePrintableTable = () => {
-    if (!scheduleData || scheduleData.length === 0) {
-      return `
-        <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
-          <p>No schedule data available to print</p>
-        </div>
-      `;
-    }
-
-    // Get unique users
-    const uniqueUsers = new Map();
-    scheduleData.forEach(item => {
-      if (!uniqueUsers.has(item.userId)) {
-        uniqueUsers.set(item.userId, {
-          id: item.userId,
-          name: item.userName,
-          phone: item.userPhone
+      toast({
+          title: "Error",
+          description: "Failed to export Schedule Excel report",
+          variant: "destructive",
         });
-      }
-    });
-
-    // Table headers
-    const headers = ['Employee Name', 'Phone'];
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        headers.push(formatDateLocal(date));
-      }
-    }
-    headers.push('Total Hours');
-
-    const headerRow = headers.map(header => 
-      `<th style="background-color: #004175; color: white; font-weight: bold; padding: 12px; text-align: left; border: 1px solid #004175;">${header}</th>`
-    ).join('');
-    
-    // Table rows from data
-    const dataRows = Array.from(uniqueUsers.values()).map((user, index) => {
-      const rowStyle = index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
-      
-      const row = [
-        user.name || '-',
-        user.phone || '-'
-      ];
-      
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = formatDateLocal(date);
-          
-          const daySchedules = scheduleData.filter(
-            item => item.userId === user.id && item.startDate === dateStr
-          );
-          const shifts = daySchedules.flatMap(s => s.shifts);
-          
-          if (shifts.length > 0) {
-            const shiftTimes = shifts.map(shift => 
-              `${shift.startTime} - ${shift.endTime}`
-            ).join(', ');
-            row.push(shiftTimes);
-          } else {
-            row.push('-');
-          }
-        }
-      }
-      
-      // Add total hours
-      const userTotal = scheduleData
-        .filter(item => item.userId === user.id)
-        .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-      row.push(userTotal.toFixed(2));
-      
-      return `
-        <tr style="${rowStyle}">
-          ${row.map(cell => `<td style="padding: 10px; border: 1px solid #dee2e6;">${cell}</td>`).join('')}
-        </tr>
-      `;
-    }).join('');
-
-    return `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px;">
-        <thead>
-          <tr>${headerRow}</tr>
-        </thead>
-        <tbody>
-          ${dataRows}
-        </tbody>
-      </table>
-    `;
-  };
-
-  const handleSchedulePrint = async () => {
-    try {
-      setIsPrinting(true);
-      
-      // Small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const tableContent = generateSchedulePrintableTable();
-      const currentDate = new Date().toLocaleDateString();
-      const currentTime = new Date().toLocaleTimeString();
-      
-      const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
-
-      if (!printWindow) {
-        toast.error("Pop-up blocked! Please allow pop-ups and try again.");
-        return;
-      }
-
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Schedule Report</title>
-            <style>
-              @page {
-                margin: 1in;
-                size: landscape;
-              }
-              
-              * {
-                box-sizing: border-box;
-              }
-              
-              body { 
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                margin: 0;
-                padding: 20px;
-                background: white;
-                color: #333;
-                line-height: 1.4;
-              }
-              
-              .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #004175;
-                padding-bottom: 15px;
-              }
-              
-              .header h1 { 
-                margin: 0;
-                color: #004175;
-                font-size: 24px;
-                font-weight: bold;
-              }
-              
-              .header .subtitle {
-                margin: 5px 0 0 0;
-                color: #666;
-                font-size: 14px;
-              }
-              
-              .print-info {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 20px;
-                font-size: 12px;
-                color: #666;
-              }
-              
-              table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                margin-top: 10px;
-                background: white;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-              }
-              
-              th { 
-                background-color: #004175 !important;
-                color: white !important;
-                font-weight: bold;
-                padding: 12px 8px;
-                text-align: left;
-                border: 1px solid #004175;
-                font-size: 12px;
-              }
-              
-              td { 
-                padding: 8px;
-                border: 1px solid #dee2e6;
-                font-size: 11px;
-                vertical-align: top;
-              }
-              
-              tr:nth-child(even) {
-                background-color: #f8f9fa;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Schedule Report</h1>
-              <div class="subtitle">${selectedClient ? `${selectedClient.name} - ${selectedClient.address}` : 'All Clients'}</div>
-            </div>
-            
-            <div class="print-info">
-              <span>Generated on: ${currentDate} at ${currentTime}</span>
-              <span>Week: ${currentWeekRange ? `${formatDateLocal(currentWeekRange.startOfWeek)} to ${formatDateLocal(currentWeekRange.endOfWeek)}` : ''}</span>
-            </div>
-            
-            ${tableContent}
-          </body>
-        </html>
-      `;
-
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      
-      // Wait for content to load then print
-      printWindow.onload = () => {
-        printWindow.print();
-        printWindow.close();
-      };
-      
-      toast.success("Schedule report printed successfully!");
-    } catch (error) {
-      console.error("Error printing schedule:", error);
-      toast.error("Failed to print schedule report");
-    } finally {
-      setIsPrinting(false);
     }
   };
+
+
+
 
   // Export functionality for Actual Time Table
   const generateActualTimeExcelData = () => {
     const excelData = [];
 
-    // Add header row
-    const headerRow = ['Employee Name', 'Phone'];
+    // Add header row - match UI table headers exactly (no phone column)
+    const headerRow = ['Employee Name'];
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
-        headerRow.push(toLocalYMD(date));
+        // Format date as MM-DD-YYYY for headers
+        const formattedDate = date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        });
+        headerRow.push(formattedDate);
       }
     }
     headerRow.push('Total Hours');
@@ -1536,9 +1462,12 @@ export const ViewSchedule = () => {
       }
     });
 
+    // Sort users by name to match UI table order
+    const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+    
     // Add data rows
-    uniqueUsers.forEach(user => {
-      const row = [user.name, user.phone];
+    sortedUsers.forEach(user => {
+      const row = [user.name];
       
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
@@ -1607,250 +1536,56 @@ export const ViewSchedule = () => {
       a.remove();
       URL.revokeObjectURL(url);
       
-      toast.success("Actual Time Excel report exported successfully!");
+      toast({
+          title: "Success",
+          description: "Actual Time Excel report exported successfully!",
+        });
     } catch (error) {
       console.error("Error exporting Actual Time Excel:", error);
-      toast.error("Failed to export Actual Time Excel report");
-    }
-  };
-
-  const generateActualTimePrintableTable = () => {
-    if (!sessionData || sessionData.length === 0) {
-      return `
-        <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
-          <p>No actual time data available to print</p>
-        </div>
-      `;
-    }
-
-    // Get unique users from session data
-    const uniqueUsers = new Map();
-    sessionData.forEach(item => {
-      const scheduleItem = scheduleData.find(si =>
-        si.shifts.some(shift => shift.id === item.shiftId)
-      );
-      if (scheduleItem && !uniqueUsers.has(scheduleItem.userId)) {
-        uniqueUsers.set(scheduleItem.userId, {
-          id: scheduleItem.userId,
-          name: scheduleItem.userName,
-          phone: scheduleItem.userPhone
+      toast({
+          title: "Error",
+          description: "Failed to export Actual Time Excel report",
+          variant: "destructive",
         });
-      }
-    });
-
-    // Table headers
-    const headers = ['Employee Name', 'Phone'];
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        headers.push(formatDateLocal(date));
-      }
     }
-    headers.push('Total Hours');
-
-    const headerRow = headers.map(header => 
-      `<th style="background-color: #004175; color: white; font-weight: bold; padding: 12px; text-align: left; border: 1px solid #004175;">${header}</th>`
-    ).join('');
-    
-    // Table rows from data
-    const dataRows = Array.from(uniqueUsers.values()).map((user, index) => {
-      const rowStyle = index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
-      
-      const row = [
-        user.name || '-',
-        user.phone || '-'
-      ];
-      
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = formatDateLocal(date);
-          
-          const daySessions = sessionData.filter(item => {
-            const scheduleItem = scheduleData.find(si =>
-              si.shifts.some(shift => shift.id === item.shiftId)
-            );
-            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-            
-            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-            return shift && shift.date === dateStr;
-          });
-          
-          if (daySessions.length > 0) {
-            const sessionTimes = daySessions.map(session => 
-              `${session.clockIn} - ${session.clockOut}`
-            ).join(', ');
-            row.push(sessionTimes);
-          } else {
-            row.push('-');
-          }
-        }
-      }
-      
-      // Add total hours
-      const userTotal = sessionData
-        .filter(item => {
-          const scheduleItem = scheduleData.find(si =>
-            si.shifts.some(shift => shift.id === item.shiftId)
-          );
-          return scheduleItem && scheduleItem.userId === user.id;
-        })
-        .reduce((total, item) => total + (item.workedTime || 0), 0);
-      row.push((userTotal / 60).toFixed(2)); // Convert minutes to hours
-      
-      return `
-        <tr style="${rowStyle}">
-          ${row.map(cell => `<td style="padding: 10px; border: 1px solid #dee2e6;">${cell}</td>`).join('')}
-        </tr>
-      `;
-    }).join('');
-
-    return `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px;">
-        <thead>
-          <tr>${headerRow}</tr>
-        </thead>
-        <tbody>
-          ${dataRows}
-        </tbody>
-      </table>
-    `;
   };
 
-  const handleActualTimePrint = async () => {
+
+
+    const handleActualTimePrint = async () => {
     try {
       setIsPrinting(true);
       
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      const tableContent = generateActualTimePrintableTable();
-      const currentDate = new Date().toLocaleDateString();
-      const currentTime = new Date().toLocaleTimeString();
+      const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange);
       
-      const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
-
-      if (!printWindow) {
-        toast.error("Pop-up blocked! Please allow pop-ups and try again.");
-        return;
-      }
-
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Actual Time Report</title>
-            <style>
-              @page {
-                margin: 1in;
-                size: landscape;
-              }
-              
-              * {
-                box-sizing: border-box;
-              }
-              
-              body { 
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                margin: 0;
-                padding: 20px;
-                background: white;
-                color: #333;
-                line-height: 1.4;
-              }
-              
-              .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #004175;
-                padding-bottom: 15px;
-              }
-              
-              .header h1 { 
-                margin: 0;
-                color: #004175;
-                font-size: 24px;
-                font-weight: bold;
-              }
-              
-              .header .subtitle {
-                margin: 5px 0 0 0;
-                color: #666;
-                font-size: 14px;
-              }
-              
-              .print-info {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 20px;
-                font-size: 12px;
-                color: #666;
-              }
-              
-              table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                margin-top: 10px;
-                background: white;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-              }
-              
-              th { 
-                background-color: #004175 !important;
-                color: white !important;
-                font-weight: bold;
-                padding: 12px 8px;
-                text-align: left;
-                border: 1px solid #004175;
-                font-size: 12px;
-              }
-              
-              td { 
-                padding: 8px;
-                border: 1px solid #dee2e6;
-                font-size: 11px;
-                vertical-align: top;
-              }
-              
-              tr:nth-child(even) {
-                background-color: #f8f9fa;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Actual Time Report</h1>
-              <div class="subtitle">${selectedClient ? `${selectedClient.name} - ${selectedClient.address}` : 'All Clients'}</div>
-            </div>
-            
-            <div class="print-info">
-              <span>Generated on: ${currentDate} at ${currentTime}</span>
-              <span>Week: ${currentWeekRange ? `${formatDateLocal(currentWeekRange.startOfWeek)} to ${formatDateLocal(currentWeekRange.endOfWeek)}` : ''}</span>
-            </div>
-            
-            ${tableContent}
-          </body>
-        </html>
-      `;
-
-      printWindow.document.write(printContent);
-      printWindow.document.close();
+      await handlePrint(
+        tableContent,
+        {
+          title: "Actual Time Report",
+          selectedClient,
+          currentWeekRange
+        },
+        (error) => toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        }),
+        () => toast({
+          title: "Success",
+          description: "Actual Time report printed successfully!",
+        })
+      );
       
-      // Wait for content to load then print
-      printWindow.onload = () => {
-        printWindow.print();
-        printWindow.close();
-      };
-      
-      toast.success("Actual Time report printed successfully!");
     } catch (error) {
       console.error("Error printing actual time:", error);
-      toast.error("Failed to print actual time report");
+      toast({
+          title: "Error",
+          description: "Failed to print actual time report",
+          variant: "destructive",
+        });
     } finally {
       setIsPrinting(false);
     }
@@ -2153,3 +1888,5 @@ export const ViewSchedule = () => {
     </div>
   );
 };
+
+export default ViewSchedule;
