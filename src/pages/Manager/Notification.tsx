@@ -166,15 +166,6 @@ export const Notification = () => {
         userId: Number(form.userId),
         date: form.Startdate ||null
       });
-      
-      console.log("Notification filters applied:", {
-        clientId: form.clientId,
-        addressId: form.addressId,
-        userId: form.userId,
-        startDate: form.Startdate,
-        notifications: form.notification
-      });
-      
       toast.success("Notifications fetched successfully!");
       
     } catch (error) {

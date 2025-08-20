@@ -137,7 +137,7 @@ export default function AssignmentForm() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    console.log("Submitting form with data:", form); 
+    // console.log("Submitting form with data:", form); 
     createAssignment.mutate({
       userId: Number(form.userId),
       guardId: Number(form.guardId),

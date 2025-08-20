@@ -231,9 +231,9 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         { Authorization: `Bearer ${token}` }
       );
       toasted.success("Schedule saved successfully!");
-      console.log("Bulk upsert response:", response);
+      // console.log("Bulk upsert response:", response);
     } catch (err) {
-      console.error('bulkUpsertScheduleSessions:', err);
+      // console.error('bulkUpsertScheduleSessions:', err);
       toasted.error(genericError('bulkUpsert', err));
     } finally {
       setMutationLoading(false);

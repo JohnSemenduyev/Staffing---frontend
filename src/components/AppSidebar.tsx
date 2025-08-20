@@ -129,10 +129,8 @@ if (isLoading) {
 }
     // Replace the user check with role check
     if (!role || !token) {
-      console.log('🔒 Sidebar: No role or token found', { role, hasToken: !!token });
       return null;
     }
-    console.log('🔍 Sidebar render:', { role, hasToken: !!token, state });
 
 // Fix the tabs and portalTitle logic
 const tabs = role === 'manager' ? managerTabs : adminTabs; // ✅ Use role instead of user.role

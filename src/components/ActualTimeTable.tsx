@@ -216,7 +216,7 @@ const logEditableCells = (sd: ScheduleItem[]) => {
       shiftId: shift.id,
     }))
   );
-  console.log('Editable cells:', cells);
+  // console.log('Editable cells:', cells);
 };
 
 const calculateHours = (start: string, end: string) =>

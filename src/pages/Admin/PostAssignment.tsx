@@ -153,7 +153,6 @@ export const PostAssignment = () => {
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const handleEdit = (record: any) => {
-    console.log("Editing record:", record);
     setIsEditMode(true);
     setEditId(record.id);
 

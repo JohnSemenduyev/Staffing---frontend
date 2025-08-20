@@ -530,7 +530,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                     </div>
                                     <button
                                       onClick={() => {
-                                        console.log('Edit button clicked for shift:', shift);
                                         handleEditShift(user.id, dateCol.date, shift);
                                       }}
                                       className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"

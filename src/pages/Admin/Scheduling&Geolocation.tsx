@@ -29,15 +29,12 @@ export const SchedulingAndGeolocation = () => {
       setTimeout(() => {
         setLoading(false);
       }, 2000);
-      console.log("Time Setups:", timeSetups);
     }, []);
     
     const handleEdit = (record: any) => {
-  console.log("Edit record:", record);
 };
 
 const handleDelete = (record: any) => {
-  console.log("Delete record:", record);
 }
 
 const tableColumns: TableColumn[] = [

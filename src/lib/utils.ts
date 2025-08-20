@@ -35,17 +35,11 @@ export const formatTimeDisplay = (timeString: string): string => {
 export function getWeekRangeFromDateLocal(base: Date) {
 
   const day = base.getDay();
-  console.log("day", day);
   const daysSinceThursday = (day + 3) % 7; // Thu..Wed week
-  console.log("daysSinceThursday", daysSinceThursday);
   const start = new Date(base);
-  console.log("start", start);
   start.setHours(0, 0, 0, 0);
-  console.log("start", start);
   start.setDate(start.getDate() - daysSinceThursday);
-  console.log("start", start);
   const end = new Date(start);
-  console.log("end", end);
   end.setDate(start.getDate() + 6);
   
   end.setHours(23, 59, 59, 999);

@@ -530,7 +530,7 @@ const Signup = () => {
           }))
         };
 
-        console.log('🚀 Client Registration Data:', clientData);
+        // console.log('🚀 Client Registration Data:', clientData);
 
         const result = await createClientRegistration(clientData);
 
@@ -562,7 +562,7 @@ const Signup = () => {
           zipcode: formData.addresses[0].zipcode,
         };
 
-        console.log('🚀 User Registration Data:', userData);
+        // console.log('🚀 User Registration Data:', userData);
 
         const result = await createUser(userData);
 
