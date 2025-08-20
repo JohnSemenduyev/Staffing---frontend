@@ -31,3 +31,35 @@ export const formatTimeDisplay = (timeString: string): string => {
   
   return timeString;
 };
+
+export function getWeekRangeFromDateUTC(base: Date) {
+  if (import.meta.env.DEV) {
+    console.debug("[utils] getWeekRangeFromDateUTC: input (local)", base, base.toString());
+  }
+  const utc = new Date(Date.UTC(base.getFullYear(), base.getMonth(), base.getDate()));
+  const day = utc.getUTCDay();
+  const daysSinceThursday = (day + 3) % 7;
+
+  const startOfWeek = new Date(utc);
+  startOfWeek.setUTCDate(utc.getUTCDate() - daysSinceThursday);
+  startOfWeek.setUTCHours(0, 0, 0, 0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
+  endOfWeek.setUTCHours(23, 59, 59, 999);
+
+  if (import.meta.env.DEV) {
+    console.debug("[utils] getWeekRangeFromDateUTC: utc", utc.toISOString(), "day", day, "offset", daysSinceThursday);
+    console.debug("[utils] getWeekRangeFromDateUTC: start", startOfWeek.toISOString(), "end", endOfWeek.toISOString());
+  }
+  return { startOfWeek, endOfWeek };
+}
+
+export function formatDateUTC(d: Date) {
+  const out = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  if (import.meta.env.DEV) {
+    console.debug("[utils] formatDateUTC:", d.toString(), "->", out);
+  }
+  return out;
+}
+

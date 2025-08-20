@@ -9,7 +9,7 @@ import { useUniformCompliance } from "../../context/unifromCompliace";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
-import { formatDateLocal } from "../../lib/utils";
+import { formatDateLocal, getWeekRangeFromDateUTC } from "../../lib/utils";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -50,19 +50,7 @@ export const UniformCompliance = () => {
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   // Week range function (Thursday to Wednesday)
-  const getWeekRangeFromDate = (baseDate) => {
-    const day = baseDate.getUTCDay();
-    const daysSinceThursday = (day + 3) % 7;
-    const startOfWeek = new Date(baseDate);
-    startOfWeek.setUTCDate(baseDate.getUTCDate() - daysSinceThursday);
-    startOfWeek.setUTCHours(0, 0, 0, 0);
 
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
-    endOfWeek.setUTCHours(23, 59, 59, 999);
-
-    return { startOfWeek, endOfWeek };
-  };
 
   // Format date to YYYY-MM-DD for input fields
   const formatDateForInput = (date) => {
@@ -102,7 +90,7 @@ export const UniformCompliance = () => {
   const handleChange = (field: string, value: any) => {
     if (field === 'startDate' && value) {
       const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDate(selectedDate);
+      const weekRange = getWeekRangeFromDateUTC(selectedDate);
 
       // Set constraints for end date picker - from start date to end of week (future dates)
       setEndDateConstraints({
@@ -116,7 +104,7 @@ export const UniformCompliance = () => {
       }));
     } else if (field === 'endDate' && value) {
       const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDate(selectedDate);
+      const weekRange = getWeekRangeFromDateUTC(selectedDate);
 
       // Set constraints for start date picker - from beginning of week to end date (past dates)
       setStartDateConstraints({
@@ -202,9 +190,9 @@ export const UniformCompliance = () => {
     // Calculate full week range from either start or end date
     let weekRange;
     if (form.startDate) {
-      weekRange = getWeekRangeFromDate(new Date(form.startDate));
+      weekRange = getWeekRangeFromDateUTC(new Date(form.startDate));
     } else if (form.endDate) {
-      weekRange = getWeekRangeFromDate(new Date(form.endDate));
+      weekRange = getWeekRangeFromDateUTC(new Date(form.endDate));
     }
 
     // Always send full week range to backend (Thursday to Wednesday)

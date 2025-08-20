@@ -12,7 +12,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
-import { formatDateLocal, formatTimeDisplay } from "../../lib/utils";
+import { formatDateLocal, formatTimeDisplay, getWeekRangeFromDateUTC } from "../../lib/utils";
 
 interface FormData {
   clientId: string;
@@ -80,23 +80,6 @@ const inputClasses = `
 `;
 
 
-const getWeekRangeFromDate = (baseDate) => {
-  const day = baseDate.getDay();
-  const daysSinceThursday = (day + 3) % 7;
-
-  const startOfWeek = new Date(baseDate);
-  startOfWeek.setDate(baseDate.getDate() - daysSinceThursday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  return {
-    startOfWeek,
-    endOfWeek
-  };
-};
 
 const timeToMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -302,7 +285,7 @@ export const PrepareSchedule = () => {
         if (parsedData.length > 0) {
           // Set the week range based on existing data
           const firstDate = new Date(parsedData[0].startDate);
-          setCurrentWeekRange(getWeekRangeFromDate(firstDate));
+          setCurrentWeekRange(getWeekRangeFromDateUTC(firstDate));
 
           // Restore client name and address from saved data
           const firstScheduleItem = parsedData[0];
@@ -357,7 +340,7 @@ export const PrepareSchedule = () => {
     // Check week range when date changes
     if (field === 'date' && value) {
       const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDate(selectedDate);
+      const weekRange = getWeekRangeFromDateUTC(selectedDate);
 
       // If there's existing data and it's not published, check if the week is different
       if (scheduleData.length > 0 && !isPublished && currentWeekRange) {
@@ -657,9 +640,9 @@ const generateDateColumns = () => {
       const selectedClient = searchedClients.find(c => String(c.id) === form.clientId);
       const selectedAddress = selectedClient?.addresses.find(a => String(a.id) === form.addressId);
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
-      const formatedDate = convertDateFormat(form.date);
+      const formatedDate = formatDateUTC(new Date(form.date));
       const results = await handleCheck(form.clientId, form.addressId, form.userId, formatedDate);
-      if (!results) { // conflict → message shown in handleCheck → stop
+      if (!results) { 
         setHasOverlapError(true);
         setSubmitLoader(false);
         return;
@@ -787,7 +770,7 @@ const generateDateColumns = () => {
 
       if (scheduleData.length === 0) {
         const selectedDate = new Date(form.date);
-        setCurrentWeekRange(getWeekRangeFromDate(selectedDate));
+        setCurrentWeekRange(getWeekRangeFromDateUTC(selectedDate));
       }
       console.log("Schedule Data:", form);
       setForm({
@@ -1062,6 +1045,9 @@ const generateDateColumns = () => {
 
   const toYMD = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  const formatDateUTC = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 
   return (
     <div className="min-h-screen font-sans w-full p-6">

@@ -12,7 +12,7 @@ import {
     validateForm, 
     calculateHours, 
     sortShiftsByTime,
-    getWeekRangeFromDate 
+    getWeekRangeFromDateUTC 
   } from "./utils";
 import { ErrorMessage } from "../../../components/ui/error-message";
 interface AddGuardFormProps {
@@ -51,7 +51,7 @@ export const AddGuardForm: React.FC<AddGuardFormProps> = ({
     // Check week range when date changes
     if (field === 'date' && value && currentWeekRange) {
       const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDate(selectedDate);
+      const weekRange = getWeekRangeFromDateUTC(selectedDate);
   
       const existingWeekStart = formatDateLocal(currentWeekRange.startOfWeek);
       const newWeekStart = formatDateLocal(weekRange.startOfWeek);
