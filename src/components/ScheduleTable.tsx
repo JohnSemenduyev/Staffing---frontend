@@ -38,8 +38,22 @@ interface User {
   phone?: string;
 }
 
+interface SessionItem {
+  id: number;
+  shiftId?: number;
+  scheduleSessionId: number;
+  clockIn: string;
+  clockOut: string;
+  workedTime: number;
+  shift?: {
+    id: number;
+    date: string;
+  };
+}
+
 interface ScheduleTableProps {
   scheduleData: ScheduleItem[];
+  sessionData?: SessionItem[]; // Add session data for comparison
   selectedDate: string;
   currentWeekRange: any;
   isEditMode: boolean;
@@ -60,6 +74,23 @@ interface ScheduleTableProps {
 const timeToMinutes = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
+};
+
+// Check if times don't match exactly (for highlighting)
+const hasTimeMismatch = (shift: Shift, session?: { clockIn?: string; clockOut?: string }): boolean => {
+  if (!session) return false;
+  
+  // Check if start time doesn't match clock-in OR end time doesn't match clock-out
+  const startTimeMismatch = shift.startTime !== session.clockIn;
+  const endTimeMismatch = shift.endTime !== session.clockOut;
+  
+  return startTimeMismatch || endTimeMismatch;
+};
+
+// Find session data for a specific shift
+const findSessionForShift = (shiftId: number, sessionData?: SessionItem[]): SessionItem | null => {
+  if (!sessionData) return null;
+  return sessionData.find(s => s.shiftId === shiftId) || null;
 };
 
 const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
@@ -123,6 +154,7 @@ const calculateGrandTotal = (scheduleData: ScheduleItem[]) => {
 
 export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   scheduleData,
+  sessionData = [], // Add sessionData with default empty array
   selectedDate,
   currentWeekRange,
   isEditMode,
@@ -217,10 +249,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
     onScheduleDataChange(updatedData);
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
-    hookToast({
-      title: "Shift Deleted",
-      description: "Shift has been deleted successfully.",
-    });
   };
 
   const cancelDeleteShift = () => {
@@ -292,10 +320,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     onScheduleDataChange(updatedData);
     setEditModal({ isOpen: false, shift: null, userId: null, date: null });
     setEditForm({ starttime: "", endtime: "" });
-    hookToast({
-      title: "Shift Updated",
-      description: "Shift has been updated successfully.",
-    });
   };
 
   const cancelEditShift = () => {
@@ -313,10 +337,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     const updatedData = scheduleData.filter(item => item.userId !== userId);
     onScheduleDataChange(updatedData);
     setDeleteUserModal({ isOpen: false, userId: null });
-    hookToast({
-      title: "User Data Deleted",
-      description: "All data for this user has been deleted successfully.",
-    });
   };
 
   const cancelDeleteUser = () => {
@@ -334,11 +354,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         item.userId === userId ? { ...item, auto: enabled } : item
       );
       onScheduleDataChange(updatedData);
-
-      hookToast({
-        title: "Auto Setting Updated",
-        description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
-      });
     }
   };
 
@@ -452,11 +467,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     }
     setDraggedShift(null);
     setDragOverCell(null);
-
-    hookToast({
-      title: "Shift Copied",
-      description: "Shift has been copied successfully.",
-    });
   };
 
   const handleDragEnd = () => {
@@ -525,13 +535,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                         );
                         const shift = sortedShifts[rowIdx]; // take nth shift of the day
 
+                        // Find corresponding session data for this shift
+                        const session = shift ? findSessionForShift(shift.id, sessionData) : null;
+                        const hasMismatch = shift && session ? hasTimeMismatch(shift, session) : false;
+
                         return (
                           <td
                             key={dateCol.date + '-' + rowIdx}
-                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${!readOnly && dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
+                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
+                              !readOnly && dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
                                 ? 'bg-blue-50 border-blue-300'
+                                : hasMismatch
+                                ? 'bg-yellow-100 border-yellow-300'
                                 : ''
-                              }`}
+                            }`}
                             onDragOver={!readOnly ? (e => handleDragOver(e, user.id, dateCol.date, rowIdx)) : undefined}
                             onDragLeave={!readOnly ? handleDragLeave : undefined}
                             onDrop={!readOnly ? (e => handleDrop(e, user.id, dateCol.date, rowIdx)) : undefined}
