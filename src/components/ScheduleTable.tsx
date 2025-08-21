@@ -15,6 +15,7 @@ interface Shift {
   scheduleSessionId?: number;
   clockIn?: string;
   clockOut?: string;
+  auto?: boolean;
 }
 
 interface ScheduleItem {
@@ -52,6 +53,7 @@ interface ScheduleTableProps {
   readOnly?: boolean;
   loading?: boolean;
   onUserAutoToggle?: (userId: number, enabled: boolean) => void;
+  onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
 }
 
 // Utility functions
@@ -133,7 +135,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   isPrinting,
   readOnly = false,
   loading = false,
-  onUserAutoToggle
+  onUserAutoToggle,
+  onShiftAutoToggle
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -563,9 +566,35 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                     </button>
                                   </div>
                                 )}
-                                <span className="text-sm">
-                                  {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
-                                </span>
+                                <div className="flex items-center gap-2 justify-center flex-col">
+                                  <span className="text-sm">
+                                    {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
+                                  </span>
+                                  <div className="w-[50px] h-[20px]">
+                                    <ToggleSwitch
+                                      size="small"
+                                      enabled={Boolean(shift.auto)}
+                                      onToggle={(enabled) => {
+                                        if (readOnly) return;
+                                        if (onShiftAutoToggle) {
+                                          onShiftAutoToggle(user.id as number, dateCol.date, shift.id, enabled);
+                                        } else {
+                                          // fallback local update
+                                          const updated = scheduleData.map(item => {
+                                            if (item.userId === user.id && item.startDate === dateCol.date) {
+                                              return {
+                                                ...item,
+                                                shifts: item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled } : s)
+                                              };
+                                            }
+                                            return item;
+                                          });
+                                          onScheduleDataChange(updated);
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </div>
                               </div>
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -588,6 +617,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           >
                             <div className="flex items-center justify-center">
                               <ToggleSwitch
+                                size="medium"
                                 enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
                                 onToggle={readOnly ? undefined : (enabled => handleUserAutoToggle(user.id, enabled))}
                               />

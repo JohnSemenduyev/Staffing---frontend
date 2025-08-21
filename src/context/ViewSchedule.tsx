@@ -101,6 +101,7 @@ export type ShiftInput = {
   endTime: string;
   hours: number;
   shiftId?: number;
+  auto?: boolean | null;
 };
 
 export type ScheduleSessionInputExtended = {

@@ -39,6 +39,7 @@ export interface Shift {
   endTime: string;
   hours: number;
   scheduleSessionId?: number;
+  auto?: boolean;
   // Add these properties for session data
   clockIn?: string | null;
   clockOut?: string | null;

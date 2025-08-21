@@ -25,6 +25,7 @@ interface ScheduleTableProps {
   onDeleteShift: (userId: number, date: string, shiftId: number) => void;
   onDeleteUser: (userId: number) => void;
   onUserAutoToggle: (userId: number, enabled: boolean) => void;
+  onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
   onDragStart: (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => void;
   onDragOver: (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => void;
   onDragLeave: (e: React.DragEvent) => void;
@@ -46,6 +47,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onDeleteShift,
   onDeleteUser,
   onUserAutoToggle,
+  onShiftAutoToggle,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -165,9 +167,30 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                     </button>
                                   </div>
                                 )}
-                                <span className="text-sm">
-                                    `${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`
-                                </span>
+                                <div className="flex items-center gap-2 justify-center">
+                                  <span className="text-sm">
+                                    {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
+                                  </span>
+                                  <div className="w-[46px]">
+                                    <ToggleSwitch
+                                      enabled={Boolean(shift.auto)}
+                                      onToggle={(enabled) => {
+                                        if (readOnly) return;
+                                        if (onShiftAutoToggle) {
+                                          onShiftAutoToggle(user.id, dateCol.date, shift.id, enabled);
+                                        } else {
+                                          setScheduleData(prev => prev.map(item => {
+                                            if (item.userId === user.id && item.startDate === dateCol.date) {
+                                              return { ...item, shifts: item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled } : s) };
+                                            }
+                                            return item;
+                                          }));
+                                        }
+                                      }}
+                                      disabled={readOnly}
+                                    />
+                                  </div>
+                                </div>
                               </div>
                             ) : (
                               <span className="text-gray-400">-</span>
