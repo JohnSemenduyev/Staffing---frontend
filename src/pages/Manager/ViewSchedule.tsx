@@ -1301,6 +1301,30 @@ export const ViewSchedule = () => {
       }
     });
 
+    // Add totals row
+    const totalsRow = ['TOTAL'];
+    let grandTotal = 0;
+    
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = toLocalYMD(date);
+        
+        // Calculate total hours for this day across all users
+        const dayTotal = scheduleData
+          .filter(item => item.startDate === dateStr)
+          .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+        
+        totalsRow.push(dayTotal.toFixed(2));
+        grandTotal += dayTotal;
+      }
+    }
+    
+    totalsRow.push(grandTotal.toFixed(2));
+    excelData.push(totalsRow);
+
     return excelData;
   };
 
@@ -1481,6 +1505,40 @@ export const ViewSchedule = () => {
       
       excelData.push(row);
     });
+
+    // Add totals row
+    const totalsRow = ['TOTAL'];
+    let grandTotal = 0;
+    
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = toLocalYMD(date);
+        
+        // Calculate total hours for this day across all users
+        const daySessions = sessionData.filter(item => {
+          const scheduleItem = scheduleData.find(si =>
+            si.shifts.some(shift => shift.id === item.shiftId)
+          );
+          if (!scheduleItem) return false;
+          
+          const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+          return shift && shift.date === dateStr;
+        });
+        
+        const dayTotal = daySessions.reduce((total, session) => total + (session.workedTime || 0), 0);
+        const dayTotalHours = (dayTotal / 60).toFixed(2); // Convert minutes to hours
+        
+        totalsRow.push(dayTotalHours);
+        grandTotal += dayTotal;
+      }
+    }
+    
+    const grandTotalHours = (grandTotal / 60).toFixed(2); // Convert minutes to hours
+    totalsRow.push(grandTotalHours);
+    excelData.push(totalsRow);
 
     return excelData;
   };
