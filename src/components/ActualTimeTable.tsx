@@ -246,6 +246,17 @@ const hasTimeViolation = (session: SessionItem, shift: Shift): boolean => {
   return false;
 };
 
+// Check if times don't match exactly (for highlighting)
+const hasTimeMismatch = (shift: Shift, session: SessionItem): boolean => {
+  if (!session) return false;
+  
+  // Check if start time doesn't match clock-in OR end time doesn't match clock-out
+  const startTimeMismatch = shift.startTime !== session.clockIn;
+  const endTimeMismatch = shift.endTime !== session.clockOut;
+  
+  return startTimeMismatch || endTimeMismatch;
+};
+
 
 export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   scheduleData,
@@ -355,10 +366,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
     onSessionDataChange(updatedData);
     setDeleteModal({ isOpen: false, sessionId: null, userId: null, date: null });
-    hookToast({
-      title: "Session Deleted",
-      description: "Session has been deleted successfully.",
-    });
   };
 
   const cancelDeleteSession = () => {
@@ -412,10 +419,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     onSessionDataChange(updatedData);
     setEditModal({ isOpen: false, session: null, userId: null, date: null });
     setEditForm({ starttime: "", endtime: "" });
-    hookToast({
-      title: "Session Updated",
-      description: "Session has been updated successfully.",
-    });
   };
 
   const cancelEditSession = () => {
@@ -441,10 +444,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     });
     onSessionDataChange(updatedData);
     setDeleteUserModal({ isOpen: false, userId: null });
-    hookToast({
-      title: "User Data Deleted",
-      description: "All data for this user has been deleted successfully.",
-    });
   };
 
   const cancelDeleteUser = () => {
@@ -555,11 +554,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
     setAddSessionModal({ isOpen: false, userId: null, date: null, shiftId: null });
     setAddSessionForm({ starttime: "", endtime: "" });
-
-    hookToast({
-      title: "Session Added",
-      description: "New session has been added successfully for this shift.",
-    });
   };
 
   const cancelAddSession = () => {
@@ -659,11 +653,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
     setDraggedSession(null);
     setDragOverCell(null);
-
-    hookToast({
-      title: "Session Copied",
-      description: "Session clock-in/clock-out times have been copied successfully.",
-    });
   };
 
   const handleDragEnd = () => {
@@ -835,8 +824,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                           : null;
                         const hasSession = Boolean(session);
                         
-                        // Check for time violations
+                        // Check for time violations and mismatches
                         const hasViolation = hasSession && shift ? hasTimeViolation(session!, shift) : false;
+                        const hasMismatch = hasSession && shift ? hasTimeMismatch(shift, session!) : false;
 
                         return (
                           <td
@@ -844,11 +834,19 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                             className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
                               dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date && dragOverCell?.rowIdx === rowIdx
                                 ? 'bg-blue-50 border-blue-300'
+                                : hasMismatch
+                                ? 'bg-yellow-100 border-yellow-300' // Yellow background for time mismatches
                                 : hasViolation
                                 ? 'bg-red-100' // Dull red background for time violations
                                 : ''
                             }`}
-                            title={hasViolation ? 'Time violation: Clock-in after shift start or clock-out before shift start' : ''}
+                            title={
+                              hasMismatch 
+                                ? 'Time mismatch: Scheduled time differs from actual clock-in/clock-out time' 
+                                : hasViolation 
+                                ? 'Time violation: Clock-in after shift start or clock-out before shift start' 
+                                : ''
+                            }
                             onDragOver={e => handleDragOver(e, user.id, dateCol.date, rowIdx)}
                             onDragLeave={handleDragLeave}
                             onDrop={e => handleDrop(e, user.id, dateCol.date, rowIdx)}

@@ -3,7 +3,7 @@ import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { ActualTimeTable } from "../../components/ActualTimeTable";
-import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -20,148 +20,32 @@ import {
   handlePrint 
 } from "../../utils/printUtils";
 import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
+import { 
+  inputClasses,
+  timeToMinutes,
+  doTimesOverlap,
+  sortShiftsByTime,
+  convertDateFormat,
+  validateForm,
+  calculateHours,
+  getUniqueUsers,
+  calculateDayTotal,
+  calculateUserTotal,
+  calculateGrandTotal
+} from "./ViewSchedule/utils";
+import { 
+  FormData,
+  User,
+  Shift,
+  ScheduleItem,
+  PeriodEndDateModalProps
+} from "./ViewSchedule/types";
 
-
-interface PeriodEndDateModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (date: string) => void;
-  isLoading?: boolean;
-}
-
-interface FormData {
-  userId: string;
-  date: string;
-  starttime: string;
-  endtime: string;
-}
-
-interface User {
-  id: string | number;
-  name: string;
-  phone?: string;
-}
-
-interface Shift {
-  id: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  hours: number;
-  scheduleSessionId?: number; // Updated: Added scheduleSessionId property
-  auto?: boolean;
-}
-
-interface ScheduleItem {
-  id: number;
-  clientId: number;
-  addressId: number;
-  userId: number;
-  startDate: string;
-  auto: boolean;
-  shifts: Shift[];
-  clientName: string;
-  address: string;
-  userName: string;
-  userPhone: string;
-}
-
-interface User {
-  id: string | number;
-  name: string;
-  phone?: string;
-}
-
-const inputClasses = `
-  w-full
-  px-3
-  py-1
-  h-[32px]
-  border
-  border-[#d0d4d9]
-  rounded-md
-  placeholder:text-gray-500
-  font-normal
-  focus:outline-none
-  focus:ring-2
-  focus:ring-[#004175]
-  transition
-  appearance-none
-`;
-
-
-
-const timeToMinutes = (timeStr) => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-};
-
-const doTimesOverlap = (start1, end1, start2, end2) => {
-  const timeToMinutes = (t) => t.split(':').map(Number).reduce((a, b, i) => i === 0 ? a + b * 60 : a + b, 0);
-  const toRanges = (s, e) => {
-    const ss = timeToMinutes(s), ee = timeToMinutes(e);
-    if (ss === ee) return [[0, 1440]];
-    if (ee > ss) return [[ss, ee]];
-    return [[ss, 1440], [0, ee]];
-  };
-  const r1 = toRanges(start1, end1), r2 = toRanges(start2, end2);
-  for (const a of r1) for (const b of r2) {
-    const hasGap = (a[1] + 1 <= b[0]) || (b[1] + 1 <= a[0]);
-    if (!hasGap) return true;
-  }
-  return false;
-};
-
-const sortShiftsByTime = (shifts) => {
-  return [...shifts].sort((a, b) => {
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-  });
-};
 
 // Normalize a shift key for comparison (YYYY-MM-DD|start|end)
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
   const normalizedDate = formatDateLocal(new Date(shift.date));
   return `${normalizedDate}|${shift.startTime}|${shift.endTime}`;
-};
-
-
-// Utility function to convert date from YYYY-MM-DD to MM-DD-YYYY
-const convertDateFormat = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-');
-  return `${month}-${day}-${year}`;
-};
-
-
-
-// Form validation function
-const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingShiftId?: number) => {
-  const e: { [key: string]: string } = {};
-  if (!formData.userId) e.userId = "Required";
-  if (!formData.date) e.date = "Required";
-  if (!formData.starttime) e.starttime = "Required";
-  if (!formData.endtime) e.endtime = "Required";
-
-  // Check for overlapping shifts
-  if (formData.userId && formData.date && formData.starttime && formData.endtime) {
-    const existingShifts = scheduleData
-      .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
-      .flatMap(item => item.shifts);
-
-    for (const shift of existingShifts) {
-      if (shift.id === editingShiftId) continue; // Skip current shift when editing
-
-      if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
-        e.overlap = "Shift time overlaps with existing shift for this user and date";
-        break;
-      }
-    }
-  }
-
-  return e;
 };
 
 const DateNavigation = ({
@@ -251,6 +135,10 @@ export const ViewSchedule = () => {
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
+  
+  // Publish confirmation modals
+  const [schedulePublishModal, setSchedulePublishModal] = useState({ isOpen: false });
+  const [actualTimePublishModal, setActualTimePublishModal] = useState({ isOpen: false });
 
   // Keep original shifts snapshot per user to detect changes on publish
   const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
@@ -494,7 +382,7 @@ export const ViewSchedule = () => {
         }) : "";
         toast({
           title: "No Schedule Found",
-          description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
+          description: `No schedule found for this week. Please prepare a schedule first.`,
           variant: "destructive",
         });
         
@@ -502,7 +390,7 @@ export const ViewSchedule = () => {
                 if (isNavigationAttempt) {
                   toast({
                     title: "No Schedule Found",
-                    description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
+                    description: `No schedule found for this week. Please prepare a schedule first.`,
                     variant: "destructive",
                   });
                 }
@@ -706,13 +594,7 @@ export const ViewSchedule = () => {
     });
   };
 
-  const calculateHours = (start, end) => {
-    const [startH, startM] = start.split(":").map(Number);
-    const [endH, endM] = end.split(":").map(Number);
-    let hours = endH - startH + (endM - startM) / 60;
-    if (hours < 0) hours += 24;
-    return parseFloat(hours.toFixed(2));
-  };
+
 
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
@@ -870,6 +752,10 @@ export const ViewSchedule = () => {
 
   // Updated Publish functionality
   const handlePublish = async () => {
+    setSchedulePublishModal({ isOpen: true });
+  };
+
+  const confirmSchedulePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
       toast({
         title: "Error",
@@ -986,6 +872,7 @@ export const ViewSchedule = () => {
 
       // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
+      setSchedulePublishModal({ isOpen: false });
 
     } catch (error) {
       console.error("Error publishing schedule:", error);
@@ -997,6 +884,10 @@ export const ViewSchedule = () => {
     } finally {
       setIsPublishing(false);
     }
+  };
+
+  const cancelSchedulePublish = () => {
+    setSchedulePublishModal({ isOpen: false });
   };
 
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
@@ -1073,6 +964,10 @@ export const ViewSchedule = () => {
 
   // Handle actual time publish
   const handleActualTimePublish = async () => {
+    setActualTimePublishModal({ isOpen: true });
+  };
+
+  const confirmActualTimePublish = async () => {
     if (!sessionData || sessionData.length === 0) {
       toast({
           title: "Error",
@@ -1121,6 +1016,7 @@ export const ViewSchedule = () => {
 
       // Switch to view mode after successful publish
       setIsActualTimeEditMode(false);
+      setActualTimePublishModal({ isOpen: false });
 
     } catch (error) {
       console.error("Error publishing actual time data:", error);
@@ -1132,6 +1028,10 @@ export const ViewSchedule = () => {
     } finally {
       setIsActualTimePublishing(false);
     }
+  };
+
+  const cancelActualTimePublish = () => {
+    setActualTimePublishModal({ isOpen: false });
   };
 
   // Create immutable copy of schedule data for actual time table
@@ -1898,6 +1798,7 @@ export const ViewSchedule = () => {
             <ScheduleTable
               key={`schedule-${viewKey}`}
               scheduleData={scheduleData}
+              sessionData={sessionData}
               selectedDate={selectedDate}
               currentWeekRange={currentWeekRange}
               isEditMode={isScheduleEditMode}
@@ -1937,6 +1838,90 @@ export const ViewSchedule = () => {
                   loading={sessionLoading}
                 />
               )}
+            </div>
+          )}
+
+          {/* Schedule Publish Confirmation Modal */}
+          {schedulePublishModal.isOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Schedule Publish</h3>
+                  <p className="text-sm text-gray-500">
+                    Are you sure you want to publish the schedule? This will update the schedule for all employees and notify them of any changes.
+                  </p>
+                </div>
+
+                <div className="flex space-x-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={cancelSchedulePublish}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmSchedulePublish}
+                    disabled={isPublishing}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isPublishing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Publish Schedule
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Actual Time Publish Confirmation Modal */}
+          {actualTimePublishModal.isOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Actual Time Publish</h3>
+                  <p className="text-sm text-gray-500">
+                    Are you sure you want to publish the actual time data? This will update the clock-in and clock-out times for all sessions.
+                  </p>
+                </div>
+
+                <div className="flex space-x-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={cancelActualTimePublish}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmActualTimePublish}
+                    disabled={isActualTimePublishing}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isActualTimePublishing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Publish Actual Time
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

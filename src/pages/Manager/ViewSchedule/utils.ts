@@ -5,9 +5,11 @@ export const inputClasses = `
   w-full
   px-3
   py-1
+  h-[32px]
   border
   border-[#d0d4d9]
   rounded-md
+  placeholder:text-gray-500
   font-normal
   focus:outline-none
   focus:ring-2
@@ -162,6 +164,21 @@ export const calculateShiftTimeTotal = (userId: number, startTime: string, endTi
 
 // Utility function to convert date from YYYY-MM-DD to MM-DD-YYYY
 export const convertDateFormat = (dateStr: string): string => {
+  // Handle ISO date strings (e.g., "2025-08-21T00:00:00.000Z")
+  if (dateStr.includes('T')) {
+    dateStr = dateStr.split('T')[0];
+  }
+  
+  // Handle date strings with timezone info (e.g., "08-21T00:00:00.000Z-2025")
+  if (dateStr.includes('T') && dateStr.includes('-2025')) {
+    const parts = dateStr.split('-');
+    const month = parts[0];
+    const day = parts[1].split('T')[0];
+    const year = parts[parts.length - 1];
+    return `${month}-${day}-${year}`;
+  }
+  
+  // Handle standard YYYY-MM-DD format
   const [year, month, day] = dateStr.split('-');
   return `${month}-${day}-${year}`;
 };
