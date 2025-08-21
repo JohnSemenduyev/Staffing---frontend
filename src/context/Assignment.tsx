@@ -65,7 +65,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
         variables.filter = effectiveFilter;
       }
-      const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, variables);
+      const token = localStorage.getItem("token");
+      const response = await graphQLClient.request<GetAssignmentsResponse>(GET_ASSIGNMENTS, variables, { Authorization: `Bearer ${token}` });
       setAssignments(response.assignments.data);
       setLastPage(response.assignments.lastPage);
       setCurrentFilter(effectiveFilter ?? null);
@@ -78,7 +79,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const createAssignment = async (data: Omit<Assignment, "id" | "createdAt">) => {
     try {
-await graphQLClient.request(CREATE_ASSIGNMENT, { ...data });
+      const token = localStorage.getItem("token");
+      await graphQLClient.request(CREATE_ASSIGNMENT, { ...data }, { Authorization: `Bearer ${token}` });
       await fetchAssignments();
     } catch (error) {
       console.error("Error creating assignment:", error);
@@ -87,7 +89,8 @@ await graphQLClient.request(CREATE_ASSIGNMENT, { ...data });
 
   const updateAssignment = async (id: number, data: Omit<Assignment, "id" | "createdAt">) => {
     try {
-      await graphQLClient.request(UPDATE_ASSIGNMENT, { id, ...data });
+      const token = localStorage.getItem("token");
+      await graphQLClient.request(UPDATE_ASSIGNMENT, { id, ...data }, { Authorization: `Bearer ${token}` });
       await fetchAssignments();
     } catch (error) {
       console.error("Error updating assignment:", error);
@@ -96,7 +99,8 @@ await graphQLClient.request(CREATE_ASSIGNMENT, { ...data });
 
   const deleteAssignment = async (id: number) => {
     try {
-      await graphQLClient.request(DELETE_ASSIGNMENT, { id });
+      const token = localStorage.getItem("token");
+      await graphQLClient.request(DELETE_ASSIGNMENT, { id }, { Authorization: `Bearer ${token}` });
       await fetchAssignments();
     } catch (error) {
       console.error("Error deleting assignment:", error);
