@@ -1336,7 +1336,7 @@ const generateDateColumns = () => {
               )}
             </div>
             <div className="flex items-center">
-              <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+              <ToggleSwitch size="big" enabled={auto} onToggle={setAuto} label="Auto" />
             </div>
 
             <div className="flex gap-2 justify-start">
