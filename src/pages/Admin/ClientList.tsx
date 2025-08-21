@@ -786,7 +786,10 @@ function ClientList() {
                           }`}
                       >
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
-                          {getNestedValue(record, "client.name") || "-"}
+                          {[
+                            getNestedValue(record, "client.name"),
+                            getNestedValue(record, "client.lastName")
+                          ].filter(Boolean).join(' ') || "-"}
                         </td>
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                           {getNestedValue(record, "industry") || "-"}

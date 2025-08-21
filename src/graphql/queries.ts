@@ -355,6 +355,7 @@ export const GET_SCHEDULE_SESSIONS = gql`
         client {
           id
           name
+          lastName
         }
         address {
           id
@@ -363,6 +364,7 @@ export const GET_SCHEDULE_SESSIONS = gql`
         user {
           id
           name
+          lastName
         }
         shifts {
           id

@@ -1,26 +1,9 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { gql } from "graphql-request";
 import { graphQLClient } from '../GraphqlClient';
-import {CREATE_CLIENT_WITH_ADDRESSES} from '../graphql/mutation'
+import {CREATE_CLIENT_WITH_ADDRESSES, GET_SCHEDULE_SESSIONS} from '../graphql/mutation'
 // ---------------- GraphQL ----------------
-const GET_SCHEDULE_SESSIONS = `
-  query GetScheduleSessions($page: Int) {
-    allAddresses(page: $page) {
-      data {
-        contractHour
-        client {
-          name
-        }
-        address
-        industry
-        city
-        state
-        pincode
-      }
-      lastPage
-    }
-  }
-`;
+
 
 
 interface CreateClientWithAddressesResponse {
@@ -170,9 +153,25 @@ export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProp
   try {
     dispatch({ type: 'SET_LOADING', payload: true });
 
+    // Sanitize payload: remove null/undefined latitude/longitude fields from addresses
+    const sanitizedInput = {
+      ...input,
+      addresses: Array.isArray(input?.addresses)
+        ? input.addresses.map((addr: any) => {
+            const { latitude, longitude, longitute, ...rest } = addr || {};
+            const cleaned: any = { ...rest };
+            if (latitude !== null && latitude !== undefined) cleaned.latitude = latitude;
+            // Backend expects 'longitute'; include only if provided and not null under either spelling
+            const lonVal = longitute !== undefined ? longitute : longitude;
+            if (lonVal !== null && lonVal !== undefined) cleaned.longitute = lonVal;
+            return cleaned;
+          })
+        : input?.addresses,
+    };
+
     const response = await graphQLClient.request<CreateClientWithAddressesResponse>(
       CREATE_CLIENT_WITH_ADDRESSES,
-      { input }
+      { input: sanitizedInput }
     );
 
     dispatch({ type: 'SET_LOADING', payload: false });

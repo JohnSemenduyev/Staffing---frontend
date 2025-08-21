@@ -35,7 +35,25 @@ export const GET_ASSIGNMENTS = gql`
     }
   }
 `;
-
+export const GET_SCHEDULE_SESSIONS = `
+  query GetScheduleSessions($page: Int) {
+    allAddresses(page: $page) {
+      data {
+        contractHour
+        client {
+          name
+          lastName
+        }
+        address
+        industry
+        city
+        state
+        pincode
+      }
+      lastPage
+    }
+  }
+`;
 export const CREATE_ASSIGNMENT = gql`
   mutation CreateAssignment(
     $userId: Int!,
@@ -423,9 +441,15 @@ export const UPDATE_MANY_SESSION_TIMES = gql`
   mutation UpdateManySessionTimes($items: [UpdateOneSessionTimesInput!]!) {
     updateManySessionTimes(items: $items) {
       id
+      shiftId
+      scheduleSessionId
       clockIn
       clockOut
       workedTime
+      clockInLat
+      clockInLong
+      clockOutLat
+      clockOutLong
     }
   }
 `;
