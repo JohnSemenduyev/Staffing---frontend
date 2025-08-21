@@ -229,7 +229,7 @@ export const TimeSetup = () => {
       key: "overlap",
       label: "Overlap",
       sortable: false,
-      searchable: true,
+      searchable: false,
       width: "250px",
       className: "whitespace-nowrap",
       render: (value: boolean) => (
@@ -247,7 +247,7 @@ export const TimeSetup = () => {
       )
     },
     {
-      key: "unscheduledTime", label: "Unscheduled Time", width: "250px", sortable: false, searchable: true, render: (v) => (
+      key: "unscheduledTime", label: "Unscheduled Time", width: "250px", sortable: false, searchable: false, render: (v) => (
         <label className="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
