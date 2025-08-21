@@ -49,6 +49,7 @@ interface Shift {
   endTime: string;
   hours: number;
   scheduleSessionId?: number; // Updated: Added scheduleSessionId property
+  auto?: boolean;
 }
 
 interface ScheduleItem {
@@ -572,7 +573,8 @@ export const ViewSchedule = () => {
             startTime: shift.startTime,
             endTime: shift.endTime,
             hours: shift.hours,
-            scheduleSessionId: shift.scheduleSessionId
+            scheduleSessionId: shift.scheduleSessionId,
+            auto: (shift as any)?.auto ?? false
           });
         });
       });
@@ -741,6 +743,7 @@ export const ViewSchedule = () => {
         startTime: form.starttime,
         endTime: form.endtime,
         hours: calculateHours(form.starttime, form.endtime),
+        auto: false,
       };
 
       if (applyAllWeek && currentWeekRange) {
@@ -932,7 +935,8 @@ export const ViewSchedule = () => {
             startTime: shift.startTime,
             endTime: shift.endTime,
             hours: shift.hours,
-            shiftId: isClientGeneratedId ? null : shift.id
+            shiftId: isClientGeneratedId ? null : shift.id,
+            auto: (shift as any)?.auto ?? null
           });
         });
       });
@@ -1032,6 +1036,18 @@ export const ViewSchedule = () => {
           variant: "destructive",
         });
     }
+  };
+
+  const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.map(s => s.id === shiftId ? { ...s, auto: enabled } : s)
+        };
+      }
+      return item;
+    }));
   };
 
   const resetScheduleView = () => {
@@ -1817,6 +1833,7 @@ export const ViewSchedule = () => {
               isPrinting={isPrinting}
               loading={scheduleLoading || tableLoading}
               onUserAutoToggle={handleUserAutoToggle}
+              onShiftAutoToggle={handleShiftAutoToggle}
             />
           )}
 

@@ -474,6 +474,7 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
         id
         scheduleSessionId
         date
+        auto
       }
         user {
       id
@@ -483,6 +484,7 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
       clientId
       addressId
       weeklyHours
+      auto
     }
   }
 `;

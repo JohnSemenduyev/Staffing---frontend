@@ -48,6 +48,7 @@ interface Shift {
   startTime: string;
   endTime: string;
   hours: number;
+  auto?: boolean;
 }
 
 interface ScheduleItem {
@@ -501,6 +502,18 @@ const generateDateColumns = () => {
         });
   };
 
+  const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.map(s => s.id === shiftId ? { ...s, auto: enabled } : s)
+        };
+      }
+      return item;
+    }));
+  };
+
   const handlePublish = async () => {
     setPublishLoader(true);
     try {
@@ -515,37 +528,38 @@ const generateDateColumns = () => {
         // Create a map to deduplicate shifts by date and time
         const shiftMap = new Map();
 
-        userSchedules.forEach(schedule => {
-          schedule.shifts.forEach(shift => {
-            const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
-            if (!shiftMap.has(shiftKey)) {
-              shiftMap.set(shiftKey, {
-                date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
-                startTime: shift.startTime,
-                endTime: shift.endTime,
-                hours: shift.hours
-              });
-            }
-          });
-        });
+                 userSchedules.forEach(schedule => {
+           schedule.shifts.forEach(shift => {
+             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
+             if (!shiftMap.has(shiftKey)) {
+               shiftMap.set(shiftKey, {
+                 date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+                 startTime: shift.startTime,
+                 endTime: shift.endTime,
+                 hours: shift.hours,
+                 auto: shift.auto ?? null
+               });
+             }
+           });
+         });
 
-        // Convert map values to array
-        const userShifts = Array.from(shiftMap.values());
+                 // Convert map values to array
+         const userShifts = Array.from(shiftMap.values());
 
-        // Calculate total weekly hours for this user
-        const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
+         // Calculate total weekly hours for this user
+         const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
 
-        return {
-          clientId: firstSchedule?.clientId,
-          addressId: firstSchedule?.addressId,
-          userId: user.id,
-          startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
-          endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
+         return {
+           clientId: firstSchedule?.clientId,
+           addressId: firstSchedule?.addressId,
+           userId: user.id,
+           startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
+           endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
 
-          weeklyHours: weeklyHours,
-          shifts: userShifts,
-          auto: firstSchedule?.auto || false
-        };
+           weeklyHours: weeklyHours,
+           shifts: userShifts,
+           auto: firstSchedule?.auto || false
+         };
       });
 
       console.log('Backend Data Structure:', backendData);
@@ -707,6 +721,7 @@ const generateDateColumns = () => {
                 startTime: form.starttime,
                 endTime: form.endtime,
                 hours: calculateHours(form.starttime, form.endtime),
+                auto: auto,
               }
             ];
       
@@ -731,6 +746,7 @@ const generateDateColumns = () => {
                   startTime: form.starttime,
                   endTime: form.endtime,
                   hours: calculateHours(form.starttime, form.endtime),
+                  auto: auto,
                 },
               ],
               clientName: scheduleData[0]?.clientName ||
@@ -762,6 +778,7 @@ const generateDateColumns = () => {
               startTime: form.starttime,
               endTime: form.endtime,
               hours: calculateHours(form.starttime, form.endtime),
+              auto: auto,
             }
           ];
 
@@ -787,6 +804,7 @@ const generateDateColumns = () => {
                 startTime: form.starttime,
                 endTime: form.endtime,
                 hours: calculateHours(form.starttime, form.endtime),
+                auto: auto,
               },
             ],
             clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
@@ -906,7 +924,7 @@ const generateDateColumns = () => {
           ...item,
           shifts: item.shifts.map(s =>
             s.id === shift.id
-              ? { ...s, startTime: form.starttime, endTime: form.endtime, hours: calculateHours(form.starttime, form.endtime) }
+              ? { ...s, startTime: form.starttime, endTime: form.endtime, hours: calculateHours(form.starttime, form.endtime), auto: s.auto ?? false }
               : s
           )
         };
@@ -1030,7 +1048,7 @@ const generateDateColumns = () => {
         if (item.userId === targetUserId && item.startDate === targetDate) {
           return {
             ...item,
-            shifts: sortShiftsByTime([...item.shifts, { ...shift, id: Date.now(), date: targetDate }])
+            shifts: sortShiftsByTime([...item.shifts, { ...shift, id: Date.now(), date: targetDate, auto: shift.auto ?? false }])
           };
         }
         return item;
@@ -1050,7 +1068,7 @@ const generateDateColumns = () => {
           userId: targetUserId,
           startDate: targetDate,
           auto: sourceSchedule.auto,
-          shifts: [{ ...shift, id: Date.now(), date: targetDate }],
+          shifts: [{ ...shift, id: Date.now(), date: targetDate, auto: shift.auto ?? false }],
           clientName: sourceSchedule.clientName,
           address: sourceSchedule.address,
           userName: targetUser?.name || sourceSchedule.userName,
@@ -1455,7 +1473,20 @@ const generateDateColumns = () => {
                                           <Trash2 className="w-3 h-3" />
                                         </button>
                                       </div>
-                                      <span className="text-sm">{shift.startTime} - {formatTimeDisplay(shift.endTime)}</span>
+                                      <div className="flex items-center gap-2 justify-center flex-col">
+                                        <span className="text-sm">
+                                          {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
+                                        </span>
+                                        <div className="w-[50px] h-[20px]">
+                                          <ToggleSwitch
+                                            size="small"
+                                            enabled={Boolean(shift.auto)}
+                                            onToggle={(enabled) => {
+                                              handleShiftAutoToggle(user.id, dateCol.date, shift.id, enabled);
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
                                     </div>
                                   ) : (
                                     <span className="text-gray-400">-</span>
@@ -1473,6 +1504,7 @@ const generateDateColumns = () => {
                               >
                                 <div className="flex items-center justify-center">
                                   <ToggleSwitch
+                                    size="medium"
                                     enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
                                     onToggle={(enabled) => handleUserAutoToggle(user.id, enabled)}
                                   />
