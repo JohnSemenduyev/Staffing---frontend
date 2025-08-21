@@ -494,7 +494,7 @@ export const ViewSchedule = () => {
         }) : "";
         toast({
           title: "No Schedule Found",
-          description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
+          description: `No schedule found for this week. Please prepare a schedule first.`,
           variant: "destructive",
         });
         
@@ -502,7 +502,7 @@ export const ViewSchedule = () => {
                 if (isNavigationAttempt) {
                   toast({
                     title: "No Schedule Found",
-                    description: `No schedule found for ${clientName} for week ${formattedDate}. Please prepare a schedule first.`,
+                    description: `No schedule found for this week. Please prepare a schedule first.`,
                     variant: "destructive",
                   });
                 }
