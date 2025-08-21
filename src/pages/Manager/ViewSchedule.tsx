@@ -1202,7 +1202,7 @@ export const ViewSchedule = () => {
         headerRow.push(formattedDate);
       }
     }
-    headerRow.push('Total Hours');
+    headerRow.push('Total');
     excelData.push(headerRow);
 
     // Get unique users and sort by name to match UI
@@ -1287,19 +1287,64 @@ export const ViewSchedule = () => {
           }
         }
         
-        // Add total hours only on first row
+        // Add per-row total count only on first row
         if (shiftIndex === 0) {
-          const userTotal = scheduleData
+          const userTotalCount = scheduleData
             .filter(item => item.userId === user.id)
-            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-          row.push(userTotal.toFixed(2));
+            .reduce((total, item) => total + item.shifts.length, 0);
+          row.push(String(userTotalCount));
         } else {
           row.push('');
         }
         
         excelData.push(row);
       }
+
+      // Add per-guard totals row
+      const userTotalsRow = [`${user.name} Total`];
+      let userGrandTotal = 0;
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
+
+          const dayTotal = scheduleData
+            .filter(item => item.userId === user.id && item.startDate === dateStr)
+            .reduce((total, item) => total + item.shifts.length, 0);
+
+          userTotalsRow.push(String(dayTotal));
+          userGrandTotal += dayTotal;
+        }
+      }
+      userTotalsRow.push(String(userGrandTotal));
+      excelData.push(userTotalsRow);
     });
+
+    // Add totals row
+    const totalsRow = ['GRAND TOTAL'];
+    let grandTotal = 0;
+    
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = toLocalYMD(date);
+        
+        // Calculate total hours for this day across all users
+        const dayTotal = scheduleData
+          .filter(item => item.startDate === dateStr)
+          .reduce((total, item) => total + item.shifts.length, 0);
+        
+        totalsRow.push(String(dayTotal));
+        grandTotal += dayTotal;
+      }
+    }
+    
+    totalsRow.push(String(grandTotal));
+    excelData.push(totalsRow);
 
     return excelData;
   };
@@ -1415,7 +1460,7 @@ export const ViewSchedule = () => {
         headerRow.push(formattedDate);
       }
     }
-    headerRow.push('Total Hours');
+    headerRow.push('Total');
     excelData.push(headerRow);
 
     // Get unique users from session data
@@ -1468,7 +1513,7 @@ export const ViewSchedule = () => {
         }
       }
       
-      // Add total hours
+      // Add per-row total count of sessions
       const userTotal = sessionData
         .filter(item => {
           const scheduleItem = scheduleData.find(si =>
@@ -1476,11 +1521,43 @@ export const ViewSchedule = () => {
           );
           return scheduleItem && scheduleItem.userId === user.id;
         })
-        .reduce((total, item) => total + (item.workedTime || 0), 0);
-      row.push((userTotal / 60).toFixed(2)); // Convert minutes to hours
+        .length;
+      row.push(String(userTotal));
       
       excelData.push(row);
     });
+
+    // Add totals row
+    const totalsRow = ['GRAND TOTAL'];
+    let grandTotal = 0;
+    
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = toLocalYMD(date);
+        
+        // Calculate total hours for this day across all users
+        const daySessions = sessionData.filter(item => {
+          const scheduleItem = scheduleData.find(si =>
+            si.shifts.some(shift => shift.id === item.shiftId)
+          );
+          if (!scheduleItem) return false;
+          
+          const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+          return shift && shift.date === dateStr;
+        });
+        
+        const dayTotalCount = daySessions.length;
+        
+        totalsRow.push(String(dayTotalCount));
+        grandTotal += dayTotalCount;
+      }
+    }
+    
+    totalsRow.push(String(grandTotal));
+    excelData.push(totalsRow);
 
     return excelData;
   };
