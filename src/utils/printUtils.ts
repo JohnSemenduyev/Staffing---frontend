@@ -40,6 +40,8 @@ interface PrintOptions {
     startOfWeek: Date;
     endOfWeek: Date;
   };
+  totalEmployees?: number;
+  totalHours?: number;
 }
 
 const timeToMinutes = (timeStr: string) => {
@@ -689,7 +691,13 @@ export const generatePrintContent = (
   tableContent: string,
   options: PrintOptions
 ) => {
-  const { title, selectedClient, currentWeekRange } = options;
+  const { title, selectedClient, currentWeekRange, totalEmployees, totalHours } = options;
+  const generatedDateStr = new Date().toLocaleDateString('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric'
+  });
+  const generatedTimeStr = new Date().toLocaleTimeString();
   
   return `
     <!DOCTYPE html>
@@ -718,9 +726,9 @@ export const generatePrintContent = (
           
           .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 16px;
             border-bottom: 2px solid #004175;
-            padding-bottom: 15px;
+            padding-bottom: 12px;
           }
           
           .header h1 { 
@@ -736,6 +744,18 @@ export const generatePrintContent = (
             font-size: 14px;
           }
           
+          .meta-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            margin: 8px 0 12px 0;
+            font-size: 13px;
+            max-width: 55%;
+          }
+
+          .meta-info div b { color: #000; }
+
           .print-info {
             display: flex;
             justify-content: space-between;
@@ -777,15 +797,17 @@ export const generatePrintContent = (
       <body>
         <div class="header">
           <h1>${title}</h1>
-          <div class="subtitle">${selectedClient ? `${selectedClient.name} - ${selectedClient.address}` : 'All Clients'}</div>
+          <div class="subtitle">Generated on: ${generatedDateStr} at ${generatedTimeStr}</div>
+        </div>
+        
+        <div class="meta-info">
+          <div><b>Client:</b> ${selectedClient ? selectedClient.name : 'All Clients'}</div>
+          <div><b>Address:</b> ${selectedClient ? selectedClient.address : '-'}</div>
+          ${typeof totalEmployees === 'number' ? `<div><b>Total Employees:</b> ${totalEmployees}</div>` : ``}
+          ${typeof totalHours === 'number' ? `<div><b>Total Hours:</b> ${Number(totalHours).toFixed(2)}</div>` : ``}
         </div>
         
         <div class="print-info">
-          <span>Generated on: ${new Date().toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-          })} at ${new Date().toLocaleTimeString()}</span>
           <span>Week: ${currentWeekRange ? `${new Date(currentWeekRange.startOfWeek).toLocaleDateString('en-US', {
             month: '2-digit',
             day: '2-digit',

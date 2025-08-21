@@ -2,7 +2,9 @@ export interface PeriodEndDateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (date: string) => void;
+  isLoading?: boolean;
 }
+
 
 export interface SessionData {
   id: number;

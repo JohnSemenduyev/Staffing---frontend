@@ -19,11 +19,14 @@ import {
   generateActualTimePrintableTable, 
   handlePrint 
 } from "../../utils/printUtils";
+import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
+
 
 interface PeriodEndDateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (date: string) => void;
+  isLoading?: boolean;
 }
 
 interface FormData {
@@ -160,66 +163,6 @@ const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingS
   return e;
 };
 
-export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ isOpen, onClose, onSubmit }) => {
-  const [selectedDate, setSelectedDate] = useState("");
-
-  const handleSubmit = () => {
-    if (selectedDate) {
-      onSubmit(selectedDate);
-      // Don't close automatically - let the parent component handle closing
-    }
-  };
-
-  const handleClose = () => {
-    setSelectedDate(""); // Reset the date
-    onClose();
-  };
-
-  const handleCurrentWeek = () => {
-    const { startOfWeek } = getWeekRangeFromDateLocal(new Date());
-    const formatted = toLocalYMD(startOfWeek); 
-    setSelectedDate(formatted);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-80 shadow-lg">
-        <h2 className="text-lg font-semibold mb-4 text-center">Period End Date</h2>
-        <CustomDatePicker
-          value={selectedDate}
-          onChange={(field, value) => setSelectedDate(value)}
-          placeholder="Select Date"
-          className="border border-gray-300 rounded w-full p-2 mb-4"
-        />
-        <button
-          onClick={handleSubmit}
-          className="w-full py-2 rounded mb-4 text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
-        >
-          Enter
-        </button>
-
-        <div className="flex justify-between">
-          <button
-            onClick={handleCurrentWeek}
-            className="w-[48%] py-2 rounded text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
-          >
-            Current Week
-          </button>
-          <button
-            onClick={handleClose}
-            className="w-[48%] py-2 rounded text-white bg-[#2563eb] hover:bg-[#1d4ed8] transition-colors"
-          >
-            Return
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Date Navigation Component
 const DateNavigation = ({
   selectedDate,
   onDateChange,
@@ -485,6 +428,8 @@ export const ViewSchedule = () => {
 
     try {
       await fetchScheduleData(clientId, addressId, formattedDate);
+      // Close the modal only after successful API call
+      setModalOpen(false);
     } catch (error) {
       console.error("Error fetching schedule data:", error);
       toast({
@@ -492,6 +437,7 @@ export const ViewSchedule = () => {
         description: "Failed to load schedule data!",
         variant: "destructive",
       });
+      // Don't close the modal on error - let user try again
     } finally {
       setTableLoading(false);
     }
@@ -1351,12 +1297,20 @@ export const ViewSchedule = () => {
       
       const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange);
       
+      // Compute meta details for header
+      const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
+      const totalHours = scheduleData.reduce((sum, item) =>
+        sum + item.shifts.reduce((s, sh) => s + (sh.hours || 0), 0), 0
+      );
+      
       await handlePrint(
         tableContent,
         {
           title: "Schedule Report",
           selectedClient,
-          currentWeekRange
+          currentWeekRange,
+          totalEmployees,
+          totalHours
         },
         (error) => toast({
           title: "Error",
@@ -1562,12 +1516,18 @@ export const ViewSchedule = () => {
       
       const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange);
       
+      // Compute meta details for header (Actual Time)
+      const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
+      const totalHours = sessionData.reduce((sum, item) => sum + (item.workedTime || 0), 0) / 60;
+      
       await handlePrint(
         tableContent,
         {
           title: "Actual Time Report",
           selectedClient,
-          currentWeekRange
+          currentWeekRange,
+          totalEmployees,
+          totalHours
         },
         (error) => toast({
           title: "Error",
@@ -1614,6 +1574,7 @@ export const ViewSchedule = () => {
             isOpen={isModalOpen}
             onClose={() => setModalOpen(false)}
             onSubmit={handleDateSubmit}
+            isLoading={tableLoading}
           />
         </>
       ) : (
