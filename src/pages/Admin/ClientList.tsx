@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ChevronDown, Plus, Check, X } from "lucide-react";
+import { ChevronDown, Plus, Check, X, Edit, Trash2 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
 import { toast } from 'sonner';
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 import { Search } from "lucide-react";
 import { GenericTable } from "@/components/GenericTable";
+import { graphQLClient } from "../../GraphqlClient";
+import { DELETE_CLIENT, UPDATE_CLIENT_WITH_ADDRESS } from "../../graphql/mutation";
 
 interface NewClientData {
   clientName: string;
@@ -48,6 +50,26 @@ function ClientList() {
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
   const [showSearchForm, setShowSearchForm] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Client edit/delete modals
+  const [deleteClientModal, setDeleteClientModal] = useState({ isOpen: false, clientId: null, clientName: "" });
+  const [saveEditModal, setSaveEditModal] = useState({ isOpen: false, clientData: null });
+  const [cancelEditModal, setCancelEditModal] = useState({ isOpen: false });
+
+  // Client editing state
+  const [editingClientId, setEditingClientId] = useState<number | null>(null);
+  const [editClientForm, setEditClientForm] = useState({
+    name: "",
+    lastName: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    industry: "",
+    contractHour: "",
+    latitude: "",
+    longitude: ""
+  });
 
   const searchFields: FieldConfig[] = [
     { name: "clientName", type: "text", placeholder: "Client Name" },
@@ -111,6 +133,149 @@ function ClientList() {
       latitude: "",   // Reset latitude
       longitude: ""   // Reset longitude
     });
+  };
+
+  // Handle delete client
+  const handleDeleteClient = (clientId: number, clientName: string) => {
+    console.log("Delete client clicked:", clientId, clientName);
+    setDeleteClientModal({ isOpen: true, clientId, clientName });
+  };
+
+  const confirmDeleteClient = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await graphQLClient.request(
+        DELETE_CLIENT,
+        { deleteClientId: deleteClientModal.clientId },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      toast.success(`Client "${deleteClientModal.clientName}" deleted successfully!`);
+
+      // Refresh the client list
+      refreshScheduleSessions();
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast.error("Failed to delete client. Please try again.");
+    } finally {
+      setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" });
+    }
+  };
+
+  const cancelDeleteClient = () => {
+    setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" });
+  };
+
+  // Handle edit client (inline editing)
+  const handleEditClient = (clientData: any) => {
+    console.log("Edit client clicked:", clientData);
+    setEditingClientId(clientData.client?.id);
+    setEditClientForm({
+      name: clientData.client?.name || "",
+      lastName: clientData.client?.lastName || "",
+      address: clientData.address || "",
+      city: clientData.city || "",
+      state: clientData.state || "",
+      pincode: clientData.pincode || "",
+      industry: clientData.industry || "",
+      contractHour: clientData.contractHour || "",
+      latitude: clientData.latitude || "",
+      longitude: clientData.longitute || ""
+    });
+  };
+
+  const handleSaveEdit = (clientData: any) => {
+    console.log("Save edit clicked:", clientData);
+    setSaveEditModal({ isOpen: true, clientData });
+  };
+
+  const confirmSaveEdit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Build input object, excluding null/empty latitude/longitude
+      const input: any = {
+        clientId: saveEditModal.clientData?.client?.id,
+        addressId: saveEditModal.clientData?.id,
+        name: editClientForm.name,
+        lastName: editClientForm.lastName,
+        address: editClientForm.address,
+        city: editClientForm.city,
+        state: editClientForm.state,
+        pincode: editClientForm.pincode,
+        industry: editClientForm.industry,
+        contractHours: parseInt(editClientForm.contractHour) || 0
+      };
+
+      // Only add latitude/longitude if they have values
+      if (editClientForm.latitude && String(editClientForm.latitude).trim()) {
+        input.latitude = parseFloat(String(editClientForm.latitude));
+      }
+      if (editClientForm.longitude && String(editClientForm.longitude).trim()) {
+        input.longitute = parseFloat(String(editClientForm.longitude));
+      }
+
+      await graphQLClient.request(
+        UPDATE_CLIENT_WITH_ADDRESS,
+        { input },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      toast.success("Client updated successfully!");
+
+      // Reset editing state
+      setEditingClientId(null);
+      setEditClientForm({
+        name: "",
+        lastName: "",
+        address: "",
+        city: "",
+        state: "",
+        pincode: "",
+        industry: "",
+        contractHour: "",
+        latitude: "",
+        longitude: ""
+      });
+
+      // Refresh the client list
+      refreshScheduleSessions();
+    } catch (error) {
+      console.error("Error updating client:", error);
+      toast.error("Failed to update client. Please try again.");
+    } finally {
+      setSaveEditModal({ isOpen: false, clientData: null });
+    }
+  };
+
+  const cancelSaveEdit = () => {
+    setSaveEditModal({ isOpen: false, clientData: null });
+  };
+
+  const handleCancelEdit = () => {
+    console.log("Cancel edit clicked");
+    setCancelEditModal({ isOpen: true });
+  };
+
+  const confirmCancelEdit = () => {
+    setEditingClientId(null);
+    setEditClientForm({
+      name: "",
+      lastName: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      industry: "",
+      contractHour: "",
+      latitude: "",
+      longitude: ""
+    });
+    setCancelEditModal({ isOpen: false });
+  };
+
+  const cancelCancelEdit = () => {
+    setCancelEditModal({ isOpen: false });
   };
 
   // Handle cancel add
@@ -452,7 +617,7 @@ function ClientList() {
                         </span>
                         <span className={`cursor-pointer ${sortConfig.key === "address" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}>
                           <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-                            <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0 31.56 24.05-18.18 39.62z"></path>
+                            <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path>
                           </svg>
                         </span>
                       </div>
@@ -542,6 +707,9 @@ function ClientList() {
                         </span>
                       </div>
                     </div>
+                  </th>
+                  <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
+                    Actions
                   </th>
                 </tr>
 
@@ -636,6 +804,9 @@ function ClientList() {
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>
+                  <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -643,7 +814,7 @@ function ClientList() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="relative p-0"
                       style={{ height: "calc(400px - 150px)" }}
                     >
@@ -776,52 +947,201 @@ function ClientList() {
                             </div>
                           </div>
                         </td>
+                        <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
+                          {/* Empty cell for actions in add row */}
+                        </td>
                       </tr>
                     )}
 
-                    {filteredAndSortedData.map((record, index) => (
-                      <tr
-                        key={`client-row-${index}`}
-                        className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                          }`}
-                      >
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
-                          {[
-                            getNestedValue(record, "client.name"),
-                            getNestedValue(record, "client.lastName")
-                          ].filter(Boolean).join(' ') || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
-                          {getNestedValue(record, "industry") || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
-                          {getNestedValue(record, "contractHour") || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "250px" }}>
-                          {getNestedValue(record, "address") || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "150px" }}>
-                          {getNestedValue(record, "city") || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "100px" }}>
-                          {getNestedValue(record, "state") || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
-                          {getNestedValue(record, "pincode") || "-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
-                          {"-"}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
-                          {"-"}
-                        </td>
-                      </tr>
-                    ))}
+                                         {filteredAndSortedData.map((record, index) => {
+                       const isEditing = editingClientId === getNestedValue(record, "client.id");
+                       
+                       return (
+                        <tr
+                          key={`client-row-${index}`}
+                          className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${isEditing ? 'bg-blue-50' : ''}`}
+                        >
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                            {isEditing ? (
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={editClientForm.name}
+                                  onChange={(e) => setEditClientForm(prev => ({ ...prev, name: e.target.value }))}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  placeholder="First name"
+                                />
+                                <input
+                                  type="text"
+                                  value={editClientForm.lastName}
+                                  onChange={(e) => setEditClientForm(prev => ({ ...prev, lastName: e.target.value }))}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  placeholder="Last name"
+                                />
+                              </div>
+                            ) : (
+                              [
+                                getNestedValue(record, "client.name"),
+                                getNestedValue(record, "client.lastName")
+                              ].filter(Boolean).join(' ') || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editClientForm.industry}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, industry: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="Industry"
+                              />
+                            ) : (
+                              getNestedValue(record, "industry") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={editClientForm.contractHour}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, contractHour: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="Contract hours"
+                              />
+                            ) : (
+                              getNestedValue(record, "contractHour") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "250px" }}>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editClientForm.address}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, address: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="Address"
+                              />
+                            ) : (
+                              getNestedValue(record, "address") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "150px" }}>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editClientForm.city}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, city: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="City"
+                              />
+                            ) : (
+                              getNestedValue(record, "city") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "100px" }}>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editClientForm.state}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, state: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="State"
+                              />
+                            ) : (
+                              getNestedValue(record, "state") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editClientForm.pincode}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, pincode: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="Zip code"
+                              />
+                            ) : (
+                              getNestedValue(record, "pincode") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                step="any"
+                                value={editClientForm.latitude}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, latitude: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="Latitude"
+                              />
+                            ) : (
+                              getNestedValue(record, "latitude") || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                step="any"
+                                value={editClientForm.longitude}
+                                onChange={(e) => setEditClientForm(prev => ({ ...prev, longitude: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                placeholder="Longitude"
+                              />
+                                                         ) : (
+                               getNestedValue(record, "longitute") || "-"
+                             )}
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                            <div className="flex items-center gap-2">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSaveEdit(record)}
+                                    className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded"
+                                    title="Save changes"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                                    title="Cancel editing"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                                                     <button
+                                     onClick={() => handleEditClient(record)}
+                                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
+                                     title="Edit client"
+                                   >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                                                     <button
+                                     onClick={() => handleDeleteClient(
+                                       getNestedValue(record, "client.id"),
+                                       [getNestedValue(record, "client.name"), getNestedValue(record, "client.lastName")].filter(Boolean).join(' ')
+                                     )}
+                                     className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                                     title="Delete client"
+                                   >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
 
                     {filteredAndSortedData.length === 0 && !showAddRow && (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={10}
                           className="relative p-0"
                           style={{ height: "calc(400px - 150px)" }}
                         >
@@ -841,6 +1161,101 @@ function ClientList() {
         </div>
       </div>
 
+      {/* Delete Client Confirmation Modal */}
+      {deleteClientModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Client</h3>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete client "{deleteClientModal.clientName}"? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDeleteClient}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteClient}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Edit Confirmation Modal */}
+      {saveEditModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Save Changes</h3>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to save the changes to this client?
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelSaveEdit}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmSaveEdit}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Edit Confirmation Modal */}
+      {cancelEditModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Cancel Editing</h3>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to cancel editing? All unsaved changes will be lost.
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelCancelEdit}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Continue Editing
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancelEdit}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pagination */}
       {lastPage > 1 && (

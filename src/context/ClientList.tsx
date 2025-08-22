@@ -15,16 +15,20 @@ interface CreateClientWithAddressesResponse {
 
 // ---------------- Types ----------------
 export interface ScheduleSession {
+  id: number;
   contractHour: number;
   client: {
+    id: number;
     name: string;
+    lastName?: string;
   };
   address: string;
   industry: string;
   city: string;
   state: string;
   pincode: string;
-  // Remove latitude and longitude from the interface since they don't exist in the backend yet
+  latitude?: number;
+  longitute?: number;
 }
 
 interface ScheduleSessionState {
