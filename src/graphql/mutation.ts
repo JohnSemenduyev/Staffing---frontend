@@ -427,15 +427,7 @@ export const BULK_UPSERT_SCHEDULE_SESSION = gql`
   }
 `;
 
-export const UPDATE_SCHEDULE_SESSION_AUTO = gql`
-  mutation UpdateScheduleSessionAuto($id: Int!, $auto: Boolean!) {
-    updateScheduleSessionAuto(id: $id, auto: $auto) {
-      id
-      auto
-      updatedAt
-    }
-  }
-`;
+
 
 export const UPDATE_MANY_SESSION_TIMES = gql`
   mutation UpdateManySessionTimes($items: [UpdateOneSessionTimesInput!]!) {

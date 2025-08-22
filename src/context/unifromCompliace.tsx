@@ -58,8 +58,6 @@ interface UniformComplianceContextType {
   error: string | null;
   fetchUniformCompliances: (variables: FetchVariables) => Promise<void>;
 }
-const token=localStorage.getItem('token')||'';
-
 // === Context Creation ===
 const UniformComplianceContext = createContext<UniformComplianceContextType | undefined>(undefined);
 
@@ -73,6 +71,12 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
     setLoading(true);
     setError(null);
     try {
+      // Get fresh token for each request
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const data: UniformComplianceQueryResponse = await graphQLClient.request(
         UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER,
         variables,{ 
