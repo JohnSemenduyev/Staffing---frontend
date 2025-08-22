@@ -920,40 +920,40 @@ function ClientList() {
                           />
                         </td>
                                                  <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
-                           <input
-                             placeholder="Enter longitude"
+                            <input
+                              placeholder="Enter longitude"
                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                             type="number"
-                             step="any"
-                             value={newClientData.longitude}
-                             onChange={(e) => handleNewClientInputChange("longitude", e.target.value)}
-                             disabled={isCreating}
-                           />
+                              type="number"
+                              step="any"
+                              value={newClientData.longitude}
+                              onChange={(e) => handleNewClientInputChange("longitude", e.target.value)}
+                              disabled={isCreating}
+                            />
                          </td>
                          <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
                            <div className="flex items-center gap-2">
-                             <button
-                               onClick={handleSaveNewClient}
-                               disabled={isCreating}
-                               className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                               title="Save client"
-                             >
-                               {isCreating ? (
-                                 <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                               ) : (
-                                 <Check className="w-4 h-4" />
-                               )}
-                             </button>
-                             <button
-                               onClick={handleCancelAdd}
-                               disabled={isCreating}
-                               className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                               title="Cancel"
-                             >
-                               <X className="w-4 h-4" />
-                             </button>
-                           </div>
-                         </td>
+                              <button
+                                onClick={handleSaveNewClient}
+                                disabled={isCreating}
+                                className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Save client"
+                              >
+                                {isCreating ? (
+                                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <Check className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={handleCancelAdd}
+                                disabled={isCreating}
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                          </div>
+                        </td>
                       </tr>
                     )}
 
@@ -961,11 +961,11 @@ function ClientList() {
                        const isEditing = editingClientId === getNestedValue(record, "client.id");
                        
                        return (
-                        <tr
-                          key={`client-row-${index}`}
+                      <tr
+                        key={`client-row-${index}`}
                           className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${isEditing ? 'bg-blue-50' : ''}`}
-                        >
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                      >
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <div className="flex gap-2">
                                 <input
@@ -985,12 +985,12 @@ function ClientList() {
                               </div>
                             ) : (
                               [
-                                getNestedValue(record, "client.name"),
-                                getNestedValue(record, "client.lastName")
+                            getNestedValue(record, "client.name"),
+                            getNestedValue(record, "client.lastName")
                               ].filter(Boolean).join(' ') || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1002,8 +1002,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "industry") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1015,8 +1015,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "contractHour") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "250px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "250px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1028,8 +1028,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "address") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "150px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "150px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1041,8 +1041,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "city") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "100px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "100px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1054,8 +1054,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "state") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1067,8 +1067,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "pincode") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1081,8 +1081,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "latitude") || "-"
                             )}
-                          </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1137,8 +1137,8 @@ function ClientList() {
                                 </>
                               )}
                             </div>
-                          </td>
-                        </tr>
+                        </td>
+                      </tr>
                       );
                     })}
 
