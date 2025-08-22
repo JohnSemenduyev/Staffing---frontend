@@ -196,6 +196,7 @@ function ClientList() {
   };
 
   const confirmSaveEdit = async () => {
+    setIsSaving(true);
     try {
       const token = localStorage.getItem("token");
       
@@ -251,6 +252,7 @@ function ClientList() {
       toast.error("Failed to update client. Please try again.");
     } finally {
       setSaveEditModal({ isOpen: false, clientData: null });
+      setIsSaving(false);
     }
   };
 
