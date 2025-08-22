@@ -3,7 +3,7 @@ import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { ActualTimeTable } from "../../components/ActualTimeTable";
-import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight, Send, Edit, Trash2 } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -13,7 +13,6 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
 import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
-import { UPDATE_MANY_SESSION_TIMES } from "../../graphql/mutation";
 import {
   generateSchedulePrintableTable,
   generateActualTimePrintableTable,
@@ -214,11 +213,14 @@ export const ViewSchedule = () => {
   // Bump key to remount tables and reset any internal component state
   const [viewKey, setViewKey] = useState(0);
 
+  // Ref to track if we've already restored state from URL parameters
+  const hasRestoredState = useRef(false);
+
   // Initialize state from URL parameters on component mount
   useEffect(() => {
     const urlParams = getUrlParams();
     
-    if (urlParams.showSchedule && urlParams.clientId && urlParams.addressId) {
+    if (!hasRestoredState.current && urlParams.showSchedule && urlParams.clientId && urlParams.addressId) {
       // Restore schedule view state
       setShowScheduleTable(true);
       
@@ -248,11 +250,31 @@ export const ViewSchedule = () => {
             setSelectedDate(urlParams.selectedDate);
             const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(urlParams.selectedDate));
             setCurrentWeekRange(weekRange);
+            
+            // Trigger API call to fetch schedule data
+            const formattedDate = convertDateFormat(urlParams.selectedDate);
+            setTableLoading(true);
+            
+            fetchScheduleData(clientSession.clientId, clientSession.addressId, formattedDate)
+              .catch(error => {
+                console.error("Error fetching schedule data on refresh:", error);
+                toast({
+                  title: "Error",
+                  description: "Failed to load schedule data on refresh!",
+                  variant: "destructive",
+                });
+              })
+              .finally(() => {
+                setTableLoading(false);
+              });
           }
+          
+          // Mark that we've restored the state
+          hasRestoredState.current = true;
         }
       }
     }
-  }, [clientSessions]);
+  }, [clientSessions]); // Remove fetchScheduleData from dependencies
 
   const resetUIForWeekNavigation = () => {
     // Close modals

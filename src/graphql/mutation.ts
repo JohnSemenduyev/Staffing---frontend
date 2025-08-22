@@ -39,8 +39,10 @@ export const GET_SCHEDULE_SESSIONS = `
   query GetScheduleSessions($page: Int) {
     allAddresses(page: $page) {
       data {
+        id
         contractHour
         client {
+          id
           name
           lastName
         }
@@ -49,6 +51,8 @@ export const GET_SCHEDULE_SESSIONS = `
         city
         state
         pincode
+        latitude
+        longitute
       }
       lastPage
     }
@@ -511,6 +515,29 @@ export const CHECK_SCHEDULE_SESSION = gql`
   mutation CheckScheduleSession($clientId: Int!, $addressId: Int!, $userId: Int!, $startDate: String!) {
     checkScheduleSession(clientId: $clientId, addressId: $addressId, userId: $userId, startDate: $startDate) {
       message
+      id
+    }
+  }
+`;
+
+// -------------------- CLIENT MUTATIONS --------------------
+
+export const DELETE_CLIENT = gql`
+  mutation DeleteClient($deleteClientId: Int!) {
+    deleteClient(id: $deleteClientId) {
+      id
+      name
+      email
+      phone
+      lastName
+      company
+    }
+  }
+`;
+
+export const UPDATE_CLIENT_WITH_ADDRESS = gql`
+  mutation UpdateClientWithAddress($input: UpdateClientWithAddressInput!) {
+    updateClientWithAddress(input: $input) {
       id
     }
   }
