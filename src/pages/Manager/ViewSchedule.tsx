@@ -1222,7 +1222,7 @@ useEffect(() => {
       }
 
       // Add per-guard totals row
-      const userTotalsRow = [`${user.name} Total`];
+      const userTotalsRow = [` Total`];
       let userGrandTotal = 0;
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
@@ -1244,7 +1244,7 @@ useEffect(() => {
     });
 
     // Add totals row
-    const totalsRow = ['GRAND TOTAL'];
+    const totalsRow = ['Grand Total'];
     let grandTotal = 0;
     
     if (currentWeekRange) {
