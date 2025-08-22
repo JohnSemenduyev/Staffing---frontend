@@ -407,6 +407,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     );
 
     if (existingSchedule) {
+      // :TODO : Check if the shift is already in the schedule
+      // :TODO : Check if the shift is already in the schedule
       const hasOverlap = existingSchedule.shifts.some(existingShift => {
         return doTimesOverlap(
           shift.startTime,

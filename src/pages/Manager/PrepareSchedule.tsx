@@ -305,16 +305,8 @@ export const PrepareSchedule = () => {
     }
   }, []);
 
-  // Control client search - only allow search when no schedule data or published
-  useEffect(() => {
-    if (scheduleData.length > 0 && !isPublished) {
-      // Only clear client search if it's different from the existing client
-      const existingClientName = scheduleData[0]?.clientName;
-      if (clientSearch && clientSearch !== existingClientName) {
-        setClientSearch("");
-      }
-    }
-  }, [scheduleData.length, isPublished, clientSearch]);
+  // Keep client name visible when schedule data exists - don't clear it
+  // This effect is removed to prevent clearing the client name
 
   useEffect(() => {
     if (scheduleData.length > 0) {
@@ -537,10 +529,10 @@ export const PrepareSchedule = () => {
       // Close the modal
       setPublishModal({ isOpen: false });
 
-      toast({
-        title: "Success",
-        description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
-      });
+              toast({
+          title: "Success",
+          description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+        });
     } catch (err) {
       console.error("Error publishing schedule sessions:", err);
 
@@ -848,23 +840,30 @@ export const PrepareSchedule = () => {
   <input
     type="text"
     value={clientSearch}
-    onFocus={() => setShowClientDropdown(true)}
+    disabled={scheduleData.length > 0 && !isPublished}
+    onFocus={() => {
+      if (scheduleData.length === 0 || isPublished) {
+        setShowClientDropdown(true);
+      }
+    }}
     onBlur={() =>
       setTimeout(() => setShowClientDropdown(false), 200)
     }
     onChange={(e) => {
+      if (scheduleData.length === 0 || isPublished) {
       setClientSearch(e.target.value);
       setForm((f) => ({ ...f, clientId: "", addressId: "" }));
       setSelectedAddressText("");
+      }
     }}
     placeholder="Client Name"
-    className={inputClasses}
+    className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? '' : ''}`}
   />
   {errors.clientId && (
     <ErrorMessage message={errors.clientId} />
   )}
 
-  {showClientDropdown && clientSearch.length >= 2 && (
+  {showClientDropdown && clientSearch.length >= 2 && scheduleData.length === 0 && (
     <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
       {loadingClients ? (
         <div className="p-2 text-sm text-gray-500">
@@ -1099,15 +1098,15 @@ export const PrepareSchedule = () => {
 
       {scheduleData.length > 0 && (
         <div className="w-full mt-2">
-          {/* Client Info */}
+              {/* Client Info */}
           <div className="p-4 border-b bg-gray-50 rounded-t-2xl border border-gray-200 shadow-xl">
-            <div className="font-medium text-gray-800">
-              {scheduleData[0]?.clientName || 'Client Name'}
-            </div>
-            <div className="text-sm text-gray-600">
-              {scheduleData[0]?.address || 'Address'}
-            </div>
-          </div>
+                <div className="font-medium text-gray-800">
+                  {scheduleData[0]?.clientName || 'Client Name'}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {scheduleData[0]?.address || 'Address'}
+                </div>
+              </div>
 
           {/* ScheduleTable Component */}
           <ScheduleTable
@@ -1128,8 +1127,8 @@ export const PrepareSchedule = () => {
             onUserAutoToggle={handleUserAutoToggle}
             onShiftAutoToggle={handleShiftAutoToggle}
             hideActionButtons={true} // Hide cancel, edit, download buttons in PrepareSchedule
-          />
-        </div>
+                                          />
+                                        </div>
       )}
 
       {/* Publish Confirmation Modal */}
