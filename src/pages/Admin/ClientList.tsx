@@ -55,6 +55,10 @@ function ClientList() {
   const [deleteClientModal, setDeleteClientModal] = useState({ isOpen: false, clientId: null, clientName: "" });
   const [saveEditModal, setSaveEditModal] = useState({ isOpen: false, clientData: null });
   const [cancelEditModal, setCancelEditModal] = useState({ isOpen: false });
+  
+  // Loading states
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Client editing state
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
@@ -142,6 +146,7 @@ function ClientList() {
   };
 
   const confirmDeleteClient = async () => {
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem("token");
       await graphQLClient.request(
@@ -159,6 +164,7 @@ function ClientList() {
       toast.error("Failed to delete client. Please try again.");
     } finally {
       setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" });
+      setIsDeleting(false);
     }
   };
 
