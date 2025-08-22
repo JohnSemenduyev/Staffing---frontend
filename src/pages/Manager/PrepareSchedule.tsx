@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Plus, RotateCcw, Edit, Trash2, GripVertical, Calendar } from "lucide-react";
+import { Plus, RotateCcw, Edit, Trash2, GripVertical, Calendar, Send } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -215,6 +215,9 @@ export const PrepareSchedule = () => {
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const [hasOverlapError, setHasOverlapError] = useState(false);
+  
+  // Publish confirmation modal
+  const [publishModal, setPublishModal] = useState({ isOpen: false });
   const checkScheduleSessionIdRef = useRef<number | null>(null);
   
 
@@ -450,6 +453,10 @@ export const PrepareSchedule = () => {
   };
 
   const handlePublish = async () => {
+    setPublishModal({ isOpen: true });
+  };
+
+  const confirmPublish = async () => {
     setPublishLoader(true);
     try {
       // Get fresh token for each request
@@ -527,10 +534,13 @@ export const PrepareSchedule = () => {
       setCurrentWeekRange(null);
       resetForm();
 
-              toast({
-          title: "Success",
-          description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
-        });
+      // Close the modal
+      setPublishModal({ isOpen: false });
+
+      toast({
+        title: "Success",
+        description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+      });
     } catch (err) {
       console.error("Error publishing schedule sessions:", err);
 
@@ -553,6 +563,10 @@ export const PrepareSchedule = () => {
     finally {
       setPublishLoader(false);
     }
+  };
+
+  const cancelPublish = () => {
+    setPublishModal({ isOpen: false });
   };
 
   // add a variable to hold id (todo marker above it)
@@ -1118,6 +1132,48 @@ export const PrepareSchedule = () => {
         </div>
       )}
 
+      {/* Publish Confirmation Modal */}
+      {publishModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <p className="text-sm text-gray-500">
+                Are you sure you
+                would like to save
+                changes?                  
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelPublish}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmPublish}
+                disabled={publishLoader}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {publishLoader ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Publish Schedule
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

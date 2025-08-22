@@ -14,13 +14,13 @@ import { CustomDatePicker } from "../../components/CustomDatePicker"; // use sha
 import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
-import { 
-  generateSchedulePrintableTable, 
-  generateActualTimePrintableTable, 
-  handlePrint 
+import {
+  generateSchedulePrintableTable,
+  generateActualTimePrintableTable,
+  handlePrint
 } from "../../utils/printUtils";
 import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
-import { 
+import {
   inputClasses,
   timeToMinutes,
   doTimesOverlap,
@@ -33,7 +33,7 @@ import {
   calculateUserTotal,
   calculateGrandTotal
 } from "./ViewSchedule/utils";
-import { 
+import {
   FormData,
   User,
   Shift,
@@ -65,7 +65,7 @@ const DateNavigation = ({
 }) => {
   const formatDateForDisplay = (ymd: string) => {
     if (!ymd) return "";
-    const [y,m,d] = ymd.split("-");
+    const [y, m, d] = ymd.split("-");
     return `${m}/${d}/${y}`;
   };
 
@@ -141,10 +141,10 @@ export const ViewSchedule = () => {
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
-    // Add state to store original data for cancel functionality
-    const [originalScheduleData, setOriginalScheduleData] = useState<ScheduleItem[]>([]);
-    const [originalSessionData, setOriginalSessionData] = useState([]);
-  
+  // Add state to store original data for cancel functionality
+  const [originalScheduleData, setOriginalScheduleData] = useState<ScheduleItem[]>([]);
+  const [originalSessionData, setOriginalSessionData] = useState([]);
+
   // Publish confirmation modals
   const [schedulePublishModal, setSchedulePublishModal] = useState({ isOpen: false });
   const [actualTimePublishModal, setActualTimePublishModal] = useState({ isOpen: false });
@@ -221,7 +221,7 @@ export const ViewSchedule = () => {
     setHasApiData(false);
     setIsNavigationAttempt(false);
     setTargetDate("");
-  
+
     const clientData = {
       clientId: rowData.clientId,
       addressId: rowData.addressId,
@@ -232,97 +232,97 @@ export const ViewSchedule = () => {
       pincode: rowData.pincode,
       addresses: rowData.client?.addresses || []
     };
-  
+
     setSelectedClient(clientData);
     setModalOpen(true);
   };
-const validateAndNavigate = async (newDate: string) => {
-  console.log("validateAndNavigate called with:", newDate);
-  setNavigationSource("week");
+  const validateAndNavigate = async (newDate: string) => {
+    console.log("validateAndNavigate called with:", newDate);
+    setNavigationSource("week");
 
-  const clientId = selectedClient?.clientId;
-  const addressId = selectedClient?.addressId;
+    const clientId = selectedClient?.clientId;
+    const addressId = selectedClient?.addressId;
 
-  if (!clientId || !addressId) {
-    toast({
-      title: "Error",
-      description: "Missing client or address information!",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (!clientId || !addressId) {
+      toast({
+        title: "Error",
+        description: "Missing client or address information!",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // Normalize to start of week
-  const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
-  const weekStartStr = toLocalYMD(week.startOfWeek);
+    // Normalize to start of week
+    const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
+    const weekStartStr = toLocalYMD(week.startOfWeek);
 
-  // Store the current date as previous date before attempting navigation
-  setPreviousDate(selectedDate);
-  setTargetDate(weekStartStr); // Store the target date (week start)
-  setIsNavigationAttempt(true);
+    // Store the current date as previous date before attempting navigation
+    setPreviousDate(selectedDate);
+    setTargetDate(weekStartStr); // Store the target date (week start)
+    setIsNavigationAttempt(true);
 
-  // IMMEDIATELY update the selected date and week range
-  setSelectedDate(weekStartStr);
-  const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
-  setCurrentWeekRange(weekRange);
+    // IMMEDIATELY update the selected date and week range
+    setSelectedDate(weekStartStr);
+    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+    setCurrentWeekRange(weekRange);
 
-  // Reset UI for week navigation attempt
-  resetUIForWeekNavigation();
+    // Reset UI for week navigation attempt
+    resetUIForWeekNavigation();
 
-  setTableLoading(true); // Set local loading state
+    setTableLoading(true); // Set local loading state
 
-  // Convert date format for backend
-  const formattedDate = convertDateFormat(weekStartStr);
+    // Convert date format for backend
+    const formattedDate = convertDateFormat(weekStartStr);
 
-  // Clear any existing schedule data
-  clearScheduleData();
+    // Clear any existing schedule data
+    clearScheduleData();
 
-  try {
-    await fetchScheduleData(clientId, addressId, formattedDate);
-  } catch (error) {
-    console.error("Error fetching schedule data:", error);
-    toast({
-      title: "Error",
-      description: "Failed to load schedule data!",
-      variant: "destructive",
-    });
-  } finally {
-    setTableLoading(false);
-  }
-};
+    try {
+      await fetchScheduleData(clientId, addressId, formattedDate);
+    } catch (error) {
+      console.error("Error fetching schedule data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load schedule data!",
+        variant: "destructive",
+      });
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
-const handleDateSubmit = async (date: string) => {
-  setNavigationSource("modal");
+  const handleDateSubmit = async (date: string) => {
+    setNavigationSource("modal");
 
-  const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
-  const weekStartStr = toLocalYMD(week.startOfWeek);
+    const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
+    const weekStartStr = toLocalYMD(week.startOfWeek);
 
-  setPreviousDate(selectedDate);
-  setTargetDate(weekStartStr);
-  setIsNavigationAttempt(true);
+    setPreviousDate(selectedDate);
+    setTargetDate(weekStartStr);
+    setIsNavigationAttempt(true);
 
-  // IMMEDIATELY update the selected date and week range
-  setSelectedDate(weekStartStr);
-  const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
-  setCurrentWeekRange(weekRange);
+    // IMMEDIATELY update the selected date and week range
+    setSelectedDate(weekStartStr);
+    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+    setCurrentWeekRange(weekRange);
 
-  // Reset UI for navigation
-  resetUIForWeekNavigation();
-  setTableLoading(true);
+    // Reset UI for navigation
+    resetUIForWeekNavigation();
+    setTableLoading(true);
 
-  const formattedDate = convertDateFormat(weekStartStr);
-  clearScheduleData();
+    const formattedDate = convertDateFormat(weekStartStr);
+    clearScheduleData();
 
-  try {
-    const clientId = selectedClient?.clientId!;
-    const addressId = selectedClient?.addressId!;
-    await fetchScheduleData(clientId, addressId, formattedDate);
-  } catch (e) {
-    toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
-  } finally {
-    setTableLoading(false);
-  }
-};
+    try {
+      const clientId = selectedClient?.clientId!;
+      const addressId = selectedClient?.addressId!;
+      await fetchScheduleData(clientId, addressId, formattedDate);
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchClientSessions(); // Fetch only when needed
@@ -353,145 +353,145 @@ const handleDateSubmit = async (date: string) => {
   }, [clientSessions]);
 
   // Transform API data when it arrives - FIXED VERSION
-// Transform API data when it arrives - FIXED VERSION
-useEffect(() => {
-  console.log("useEffect triggered with:", {
-    apiScheduleData: apiScheduleData?.length,
-    isNavigationAttempt,
-    targetDate,
-    selectedDate,
-    hasApiData
-  });
+  // Transform API data when it arrives - FIXED VERSION
+  useEffect(() => {
+    console.log("useEffect triggered with:", {
+      apiScheduleData: apiScheduleData?.length,
+      isNavigationAttempt,
+      targetDate,
+      selectedDate,
+      hasApiData
+    });
 
-  if (apiScheduleData && Array.isArray(apiScheduleData)) {
-    console.log("API Schedule Data received:", apiScheduleData.length, "items");
-    
-    // Check if we have any data
-    if (apiScheduleData.length === 0) {
-      const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
-      const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric'
-      }) : "";
-      toast({
-        title: "No Schedule Found",
-        description: `No schedule found for this week. Please prepare a schedule first.`,
-        variant: "destructive",
-      });
-      
-      // Only show the "No Schedule" toast when a navigation attempt triggered this state
-      if (isNavigationAttempt) {
+    if (apiScheduleData && Array.isArray(apiScheduleData)) {
+      console.log("API Schedule Data received:", apiScheduleData.length, "items");
+
+      // Check if we have any data
+      if (apiScheduleData.length === 0) {
+        const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
+        const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        }) : "";
         toast({
           title: "No Schedule Found",
           description: `No schedule found for this week. Please prepare a schedule first.`,
           variant: "destructive",
         });
-      }
-      
-      setHasApiData(false);
-      
-      // Don't update selectedDate here since it's already updated in validateAndNavigate
-      if (isNavigationAttempt && targetDate) {
-        if (navigationSource === "week") {
-          // Allow navigation to empty view - selectedDate is already set
-          if (!showScheduleTable) setShowScheduleTable(true);
+
+        // Only show the "No Schedule" toast when a navigation attempt triggered this state
+        if (isNavigationAttempt) {
+          toast({
+            title: "No Schedule Found",
+            description: `No schedule found for this week. Please prepare a schedule first.`,
+            variant: "destructive",
+          });
         }
-        // If source is modal: do NOT change selectedDate or view; keep modal open
+
+        setHasApiData(false);
+
+        // Don't update selectedDate here since it's already updated in validateAndNavigate
+        if (isNavigationAttempt && targetDate) {
+          if (navigationSource === "week") {
+            // Allow navigation to empty view - selectedDate is already set
+            if (!showScheduleTable) setShowScheduleTable(true);
+          }
+          // If source is modal: do NOT change selectedDate or view; keep modal open
+        }
+
+        setIsNavigationAttempt(false);
+        setTargetDate("");
+        return;
       }
-      
+
+      // We have data
+      setHasApiData(true);
+      if (isNavigationAttempt && targetDate) {
+        // Don't update selectedDate here since it's already updated in validateAndNavigate
+        if (!showScheduleTable) setShowScheduleTable(true);
+        if (navigationSource === "modal") {
+          setModalOpen(false); // close only when data exists
+        }
+        // Reset UI when week change is applied
+        if (navigationSource === "week") {
+          resetUIForWeekNavigation();
+        }
+      }
       setIsNavigationAttempt(false);
       setTargetDate("");
-      return;
-    }
 
-    // We have data
-    setHasApiData(true);
-    if (isNavigationAttempt && targetDate) {
-      // Don't update selectedDate here since it's already updated in validateAndNavigate
-      if (!showScheduleTable) setShowScheduleTable(true);
-      if (navigationSource === "modal") {
-        setModalOpen(false); // close only when data exists
-      }
-      // Reset UI when week change is applied
-      if (navigationSource === "week") {
-        resetUIForWeekNavigation();
-      }
-    }
-    setIsNavigationAttempt(false);
-    setTargetDate("");
+      // Transform the API data
+      const keyedByUserDate = new Map();
 
-    // Transform the API data
-    const keyedByUserDate = new Map();
+      apiScheduleData.forEach((group: any) => {
+        const userId = group.user?.id;
+        group.shifts?.forEach(shift => {
+          if (!shift?.date || userId == null) return;
 
-    apiScheduleData.forEach((group: any) => {
-      const userId = group.user?.id;
-      group.shifts?.forEach(shift => {
-        if (!shift?.date || userId == null) return;
+          // FIX: Handle UTC dates properly - treat as local date
+          let date: string;
+          if (shift.date.includes('T') && shift.date.includes('Z')) {
+            // This is a UTC date, extract just the date part without timezone conversion
+            date = shift.date.split('T')[0];
+          } else {
+            date = formatDateLocal(new Date(shift.date));
+          }
 
-        // FIX: Handle UTC dates properly - treat as local date
-        let date: string;
-        if (shift.date.includes('T') && shift.date.includes('Z')) {
-          // This is a UTC date, extract just the date part without timezone conversion
-          date = shift.date.split('T')[0];
-        } else {
-          date = formatDateLocal(new Date(shift.date));
-        }
-        
-        const key = `${userId}-${date}`;
+          const key = `${userId}-${date}`;
 
-        let item = keyedByUserDate.get(key);
-        if (!item) {
-          item = {
-            id: keyedByUserDate.size + 1,
-            clientId: group.clientId,
-            addressId: group.addressId,
-            userId,
-            startDate: date,
-            auto: group.auto ?? false,
-            shifts: [],
-            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
-            address: selectedClient?.address || "Unknown Address",
-            userName: group.user?.name ?? "",
-            userPhone: group.user?.phone ?? ""
-          };
-          keyedByUserDate.set(key, item);
-        }
+          let item = keyedByUserDate.get(key);
+          if (!item) {
+            item = {
+              id: keyedByUserDate.size + 1,
+              clientId: group.clientId,
+              addressId: group.addressId,
+              userId,
+              startDate: date,
+              auto: group.auto ?? false,
+              shifts: [],
+              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
+              address: selectedClient?.address || "Unknown Address",
+              userName: group.user?.name ?? "",
+              userPhone: group.user?.phone ?? ""
+            };
+            keyedByUserDate.set(key, item);
+          }
 
-        item.shifts.push({
-          id: shift.id,
-          date: shift.date,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          hours: shift.hours,
-          scheduleSessionId: shift.scheduleSessionId,
-          auto: (shift as any)?.auto ?? false
+          item.shifts.push({
+            id: shift.id,
+            date: shift.date,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            hours: shift.hours,
+            scheduleSessionId: shift.scheduleSessionId,
+            auto: (shift as any)?.auto ?? false
+          });
         });
       });
-    });
 
-    const transformedData = Array.from(keyedByUserDate.values());
-    setScheduleData(transformedData);
+      const transformedData = Array.from(keyedByUserDate.values());
+      setScheduleData(transformedData);
 
-    // Capture original snapshot of shifts per user to detect changes on publish
-    const baseMap = new Map<number, Set<string>>();
-    transformedData.forEach(item => {
-      const set = baseMap.get(item.userId) || new Set<string>();
-      item.shifts.forEach(s => set.add(makeShiftKey(s)));
-      baseMap.set(item.userId, set);
-    });
-    originalShiftsRef.current = baseMap;
+      // Capture original snapshot of shifts per user to detect changes on publish
+      const baseMap = new Map<number, Set<string>>();
+      transformedData.forEach(item => {
+        const set = baseMap.get(item.userId) || new Set<string>();
+        item.shifts.forEach(s => set.add(makeShiftKey(s)));
+        baseMap.set(item.userId, set);
+      });
+      originalShiftsRef.current = baseMap;
 
-    // Fetch session data for the schedule sessions
-    if (transformedData.length > 0) {
-      const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
-      fetchSessionData(scheduleSessionIds);
+      // Fetch session data for the schedule sessions
+      if (transformedData.length > 0) {
+        const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
+        fetchSessionData(scheduleSessionIds);
+      }
+
+    } else if (apiScheduleData === null) {
+      setHasApiData(false);
     }
-
-  } else if (apiScheduleData === null) {
-    setHasApiData(false);
-  }
-}, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
+  }, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
   // Update local session data when API session data changes
   useEffect(() => {
     if (apiSessionData) {
@@ -678,7 +678,7 @@ useEffect(() => {
                   date: dateStr,
                 },
               ],
-              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",              address: selectedClient?.address || "Unknown Address",
+              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client", address: selectedClient?.address || "Unknown Address",
               userName: selectedUser.name,
               userPhone: selectedUser.phone || '',
             });
@@ -720,7 +720,7 @@ useEffect(() => {
                 date: form.date,
               },
             ],
-            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",            address: selectedClient?.address || "Unknown Address",
+            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client", address: selectedClient?.address || "Unknown Address",
             userName: selectedUser.name,
             userPhone: selectedUser.phone || '',
           });
@@ -869,9 +869,9 @@ useEffect(() => {
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
       toast({
-          title: "Success",
-          description: "Schedule published successfully!",
-        });
+        title: "Success",
+        description: "Schedule published successfully!",
+      });
 
       // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
@@ -880,10 +880,10 @@ useEffect(() => {
     } catch (error) {
       console.error("Error publishing schedule:", error);
       toast({
-          title: "Error",
-          description: "Failed to publish schedule. Please try again.",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to publish schedule. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -919,16 +919,16 @@ useEffect(() => {
       ));
 
       toast({
-          title: "Success",
-          description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
-        });
+        title: "Success",
+        description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
+      });
     } catch (error) {
       console.error("Error updating auto setting:", error);
       toast({
-          title: "Error",
-          description: "Failed to update auto setting",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to update auto setting",
+        variant: "destructive",
+      });
     }
   };
 
@@ -991,10 +991,10 @@ useEffect(() => {
   const confirmActualTimePublish = async () => {
     if (!sessionData || sessionData.length === 0) {
       toast({
-          title: "Error",
-          description: "No actual time data available to publish!",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "No actual time data available to publish!",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -1031,9 +1031,9 @@ useEffect(() => {
       await updateSessionTimes(items);
 
       toast({
-          title: "Success",
-          description: "Actual time data published successfully!",
-        });
+        title: "Success",
+        description: "Actual time data published successfully!",
+      });
 
       // Switch to view mode after successful publish
       setIsActualTimeEditMode(false);
@@ -1042,10 +1042,10 @@ useEffect(() => {
     } catch (error) {
       console.error("Error publishing actual time data:", error);
       toast({
-          title: "Error",
-          description: "Failed to publish actual time data. Please try again.",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to publish actual time data. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsActualTimePublishing(false);
     }
@@ -1151,12 +1151,12 @@ useEffect(() => {
           const date = new Date(startDate);
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
-          
+
           const daySchedules = scheduleData.filter(
             item => item.userId === user.id && item.startDate === dateStr
           );
           const shifts = daySchedules.flatMap(s => s.shifts);
-          
+
           shifts.forEach(shift => {
             userShifts.push({
               ...shift,
@@ -1166,7 +1166,7 @@ useEffect(() => {
           });
         }
       }
-      
+
       // Sort shifts by day and time
       userShifts.sort((a, b) => {
         if (a.dayIndex !== b.dayIndex) {
@@ -1174,7 +1174,7 @@ useEffect(() => {
         }
         return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
       });
-      
+
       // Group shifts by day
       const shiftsByDay = new Map();
       userShifts.forEach(shift => {
@@ -1183,23 +1183,23 @@ useEffect(() => {
         }
         shiftsByDay.get(shift.dayIndex).push(shift);
       });
-      
+
       // Find max shifts per day for this user
       const maxShiftsPerDay = Math.max(...Array.from(shiftsByDay.values()).map(shifts => shifts.length), 1);
-      
+
       // Create rows - fill first row completely, then next row, etc.
       for (let shiftIndex = 0; shiftIndex < maxShiftsPerDay; shiftIndex++) {
         const row = [
           shiftIndex === 0 ? user.name : '', // Only show name on first row
         ];
-        
+
         // Fill all days in this row
         if (currentWeekRange) {
           const startDate = new Date(currentWeekRange.startOfWeek);
           for (let i = 0; i < 7; i++) {
             const dayShifts = shiftsByDay.get(i) || [];
             const shift = dayShifts[shiftIndex];
-            
+
             if (shift) {
               row.push(`${shift.startTime} - ${shift.endTime}`);
             } else {
@@ -1207,7 +1207,7 @@ useEffect(() => {
             }
           }
         }
-        
+
         // Add per-row total count only on first row
         if (shiftIndex === 0) {
           const userTotalCount = scheduleData
@@ -1217,7 +1217,7 @@ useEffect(() => {
         } else {
           row.push('');
         }
-        
+
         excelData.push(row);
       }
 
@@ -1246,24 +1246,24 @@ useEffect(() => {
     // Add totals row
     const totalsRow = ['Grand Total'];
     let grandTotal = 0;
-    
+
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
-        
+
         // Calculate total hours for this day across all users
         const dayTotal = scheduleData
           .filter(item => item.startDate === dateStr)
           .reduce((total, item) => total + item.shifts.length, 0);
-        
+
         totalsRow.push(String(dayTotal));
         grandTotal += dayTotal;
       }
     }
-    
+
     totalsRow.push(String(grandTotal));
     excelData.push(totalsRow);
 
@@ -1273,18 +1273,18 @@ useEffect(() => {
   const handleSchedulePrint = async () => {
     try {
       setIsPrinting(true);
-      
+
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange);
-      
+
       // Compute meta details for header
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
       const totalHours = scheduleData.reduce((sum, item) =>
         sum + item.shifts.reduce((s, sh) => s + (sh.hours || 0), 0), 0
       );
-      
+
       await handlePrint(
         tableContent,
         {
@@ -1304,14 +1304,14 @@ useEffect(() => {
           description: "Schedule report printed successfully!",
         })
       );
-      
+
     } catch (error) {
       console.error("Error printing schedule:", error);
       toast({
-          title: "Error",
-          description: "Failed to print schedule report",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to print schedule report",
+        variant: "destructive",
+      });
     } finally {
       setIsPrinting(false);
     }
@@ -1329,12 +1329,12 @@ useEffect(() => {
       const worksheet = XLSX.utils.aoa_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Schedule Report");
-      
+
       const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
       const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1343,18 +1343,18 @@ useEffect(() => {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      
+
       toast({
-          title: "Success",
-          description: "Schedule Excel report exported successfully!",
-        });
+        title: "Success",
+        description: "Schedule Excel report exported successfully!",
+      });
     } catch (error) {
       console.error("Error exporting Schedule Excel:", error);
       toast({
-          title: "Error",
-          description: "Failed to export Schedule Excel report",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to export Schedule Excel report",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1401,30 +1401,30 @@ useEffect(() => {
 
     // Sort users by name to match UI table order
     const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
-    
+
     // Add data rows
     sortedUsers.forEach(user => {
       const row = [user.name];
-      
+
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
         for (let i = 0; i < 7; i++) {
           const date = new Date(startDate);
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
-          
+
           const daySessions = sessionData.filter(item => {
             const scheduleItem = scheduleData.find(si =>
               si.shifts.some(shift => shift.id === item.shiftId)
             );
             if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-            
+
             const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
             return shift && shift.date === dateStr;
           });
-          
+
           if (daySessions.length > 0) {
-            const sessionTimes = daySessions.map(session => 
+            const sessionTimes = daySessions.map(session =>
               `${session.clockIn} - ${session.clockOut}`
             ).join(', ');
             row.push(sessionTimes);
@@ -1433,7 +1433,7 @@ useEffect(() => {
           }
         }
       }
-      
+
       // Add per-row total count of sessions
       const userTotal = sessionData
         .filter(item => {
@@ -1444,39 +1444,39 @@ useEffect(() => {
         })
         .length;
       row.push(String(userTotal));
-      
+
       excelData.push(row);
     });
 
     // Add totals row
     const totalsRow = ['GRAND TOTAL'];
     let grandTotal = 0;
-    
+
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
-        
+
         // Calculate total hours for this day across all users
         const daySessions = sessionData.filter(item => {
           const scheduleItem = scheduleData.find(si =>
             si.shifts.some(shift => shift.id === item.shiftId)
           );
           if (!scheduleItem) return false;
-          
+
           const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
           return shift && shift.date === dateStr;
         });
-        
+
         const dayTotalCount = daySessions.length;
-        
+
         totalsRow.push(String(dayTotalCount));
         grandTotal += dayTotalCount;
       }
     }
-    
+
     totalsRow.push(String(grandTotal));
     excelData.push(totalsRow);
 
@@ -1486,16 +1486,16 @@ useEffect(() => {
   const handleActualTimeDownloadExcel = () => {
     try {
       const excelData = generateActualTimeExcelData();
-      
+
       const worksheet = XLSX.utils.aoa_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Actual Time Report");
-      
+
       const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
       const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
-      
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1504,36 +1504,36 @@ useEffect(() => {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      
+
       toast({
-          title: "Success",
-          description: "Actual Time Excel report exported successfully!",
-        });
+        title: "Success",
+        description: "Actual Time Excel report exported successfully!",
+      });
     } catch (error) {
       console.error("Error exporting Actual Time Excel:", error);
       toast({
-          title: "Error",
-          description: "Failed to export Actual Time Excel report",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to export Actual Time Excel report",
+        variant: "destructive",
+      });
     }
   };
 
 
 
-    const handleActualTimePrint = async () => {
+  const handleActualTimePrint = async () => {
     try {
       setIsPrinting(true);
-      
+
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange);
-      
+
       // Compute meta details for header (Actual Time)
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
       const totalHours = sessionData.reduce((sum, item) => sum + (item.workedTime || 0), 0) / 60;
-      
+
       await handlePrint(
         tableContent,
         {
@@ -1553,14 +1553,14 @@ useEffect(() => {
           description: "Actual Time report printed successfully!",
         })
       );
-      
+
     } catch (error) {
       console.error("Error printing actual time:", error);
       toast({
-          title: "Error",
-          description: "Failed to print actual time report",
-          variant: "destructive",
-        });
+        title: "Error",
+        description: "Failed to print actual time report",
+        variant: "destructive",
+      });
     } finally {
       setIsPrinting(false);
     }
@@ -1574,7 +1574,7 @@ useEffect(() => {
             <p className="text-red-500">Error loading data: {error}</p>
           ) : (
             <GenericTable
-              key={viewKey} 
+              key={viewKey}
               data={tableData}
               columns={tableColumns}
               actions={tableActions}
@@ -1616,8 +1616,8 @@ useEffect(() => {
                 {scheduleData.length > 0 ? "Edit Schedule" : "Add New Schedule"}
               </h3>
 
-                             <form onSubmit={onSubmitAddGuard} autoComplete="off">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+              <form onSubmit={onSubmitAddGuard} autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
 
                   {/* User Search */}
                   <div className="relative">
@@ -1744,39 +1744,39 @@ useEffect(() => {
                     )}
                   </div>
 
-                                                        {/* Auto Toggle and Buttons */}
-                    <div className="flex items-center justify-center h-[32px] border border-none ">
-                       <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
-                     </div>
-                    <div className="flex items-center gap-2">
+                  {/* Auto Toggle and Buttons */}
+                  <div className="flex items-center justify-center h-[32px] border border-none ">
+                    <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="submit"
+                      disabled={submitLoader}
+                      className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                    >
+                      {submitLoader ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add
+                        </>
+                      )}
+                    </button>
+                    {(form.date || form.starttime || form.endtime || form.userId || auto) && (
                       <button
-                        type="submit"
-                        disabled={submitLoader}
-                        className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                        type="button"
+                        onClick={resetAddGuardForm}
+                        className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
                       >
-                       {submitLoader ? (
-                         <>
-                           <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-                           Adding...
-                         </>
-                       ) : (
-                         <>
-                           <Plus className="w-4 h-4 mr-1" />
-                           Add
-                         </>
-                       )}
-                     </button>
-                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
-                                               <button
-                          type="button"
-                          onClick={resetAddGuardForm}
-                          className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
-                        >
-                         <RotateCcw className="w-4 h-4 mr-1" />
-                         Reset
-                       </button>
-                     )}
-                   </div>
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
               </form>
             </div>
@@ -1804,7 +1804,7 @@ useEffect(() => {
               <div className="text-gray-500">
                 <h3 className="text-lg font-medium mb-2">No Schedule Found</h3>
                 <p className="text-sm">
-                No schedule found for {[selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client"} for week {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
+                  No schedule found for {[selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client"} for week {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
                     month: '2-digit',
                     day: '2-digit',
                     year: 'numeric'
@@ -1814,8 +1814,8 @@ useEffect(() => {
             </div>
           )}
 
-                    {/* Only render ScheduleTable when we have data */}
-                    {!scheduleError && hasApiData && scheduleData.length > 0 && (
+          {/* Only render ScheduleTable when we have data */}
+          {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <ScheduleTable
               key={`schedule-${viewKey}`}
               scheduleData={scheduleData}
@@ -1867,9 +1867,10 @@ useEffect(() => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Schedule Publish</h3>
                   <p className="text-sm text-gray-500">
-                    Are you sure you want to publish the schedule? This will update the schedule for all employees and notify them of any changes.
+                    Are you sure you
+                    would like to save
+                    changes?                  
                   </p>
                 </div>
 
@@ -1909,9 +1910,10 @@ useEffect(() => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Actual Time Publish</h3>
                   <p className="text-sm text-gray-500">
-                    Are you sure you want to publish the actual time data? This will update the clock-in and clock-out times for all sessions.
+                    Are you sure you
+                    would like to save
+                    changes?                  
                   </p>
                 </div>
 
