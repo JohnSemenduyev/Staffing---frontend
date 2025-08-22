@@ -525,7 +525,7 @@ function ClientList() {
         </button>
       </div>
       {/* Search Button */}
-      <div className="mb-4 flex justify-end">
+      <div className="my-2 flex justify-end">
         <button
           onClick={() => setShowSearchForm(!showSearchForm)}
           className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -546,7 +546,7 @@ function ClientList() {
         resetKey={"Client List"}
       />
       {/* Table */}
-      <div className="w-full mt-6">
+      <div className="w-full mt-3">
         <div
           className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
           style={{ height: "400px", minHeight: "400px" }}
@@ -911,45 +911,41 @@ function ClientList() {
                             disabled={isCreating}
                           />
                         </td>
-                        <td className="px-4 py-3 border-b border-gray-100 relative" style={{ width: "120px" }}>
-                          <div className="flex items-center gap-2">
-                            <input
-                              placeholder="Enter longitude"
-                              className="w-fit px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                              type="number"
-                              step="any"
-                              value={newClientData.longitude}
-                              onChange={(e) => handleNewClientInputChange("longitude", e.target.value)}
-                              style={{ minWidth: "60px" }}
-                              disabled={isCreating}
-                            />
-                            <div className="flex items-center gap-1 ml-2">
-                              <button
-                                onClick={handleSaveNewClient}
-                                disabled={isCreating}
-                                className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Save client"
-                              >
-                                {isCreating ? (
-                                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                  <Check className="w-4 h-4" />
-                                )}
-                              </button>
-                              <button
-                                onClick={handleCancelAdd}
-                                disabled={isCreating}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
-                          {/* Empty cell for actions in add row */}
-                        </td>
+                                                 <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
+                           <input
+                             placeholder="Enter longitude"
+                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                             type="number"
+                             step="any"
+                             value={newClientData.longitude}
+                             onChange={(e) => handleNewClientInputChange("longitude", e.target.value)}
+                             disabled={isCreating}
+                           />
+                         </td>
+                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
+                           <div className="flex items-center gap-2">
+                             <button
+                               onClick={handleSaveNewClient}
+                               disabled={isCreating}
+                               className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                               title="Save client"
+                             >
+                               {isCreating ? (
+                                 <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                               ) : (
+                                 <Check className="w-4 h-4" />
+                               )}
+                             </button>
+                             <button
+                               onClick={handleCancelAdd}
+                               disabled={isCreating}
+                               className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                               title="Cancel"
+                             >
+                               <X className="w-4 h-4" />
+                             </button>
+                           </div>
+                         </td>
                       </tr>
                     )}
 
@@ -1098,7 +1094,7 @@ function ClientList() {
                                 <>
                                   <button
                                     onClick={() => handleSaveEdit(record)}
-                                    className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded"
+                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
                                     title="Save changes"
                                   >
                                     <Check className="w-4 h-4" />
@@ -1215,7 +1211,7 @@ function ClientList() {
               <button
                 type="button"
                 onClick={confirmSaveEdit}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
               >
                 <Check className="w-4 h-4 mr-2" />
                 Save
