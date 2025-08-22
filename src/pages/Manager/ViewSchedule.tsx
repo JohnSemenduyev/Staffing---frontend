@@ -291,58 +291,38 @@ const validateAndNavigate = async (newDate: string) => {
   }
 };
 
-  const handleDateSubmit = async (date: string) => {
-    setNavigationSource("modal");
-    // Normalize to start of week
-    const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
-    const weekStartStr = toLocalYMD(week.startOfWeek);
+const handleDateSubmit = async (date: string) => {
+  setNavigationSource("modal");
 
-    // Store the current date as previous date before attempting navigation
-    setPreviousDate(selectedDate);
-    setTargetDate(weekStartStr); // week start
-    setIsNavigationAttempt(true);
+  const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
+  const weekStartStr = toLocalYMD(week.startOfWeek);
 
-    setTableLoading(true);
+  setPreviousDate(selectedDate);
+  setTargetDate(weekStartStr);
+  setIsNavigationAttempt(true);
 
-    const clientId = selectedClient?.clientId;
-    const addressId = selectedClient?.addressId;
+  // IMMEDIATELY update the selected date and week range
+  setSelectedDate(weekStartStr);
+  const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+  setCurrentWeekRange(weekRange);
 
-    const formattedDate = convertDateFormat(weekStartStr);
+  // Reset UI for navigation
+  resetUIForWeekNavigation();
+  setTableLoading(true);
 
-    if (!clientId || !addressId) {
-      toast({
-        title: "Error",
-        description: "Missing client or address information!",
-        variant: "destructive",
-      });
-      setTableLoading(false);
-      setIsNavigationAttempt(false);
-      setTargetDate("");
-      return;
-    }
+  const formattedDate = convertDateFormat(weekStartStr);
+  clearScheduleData();
 
-    // Update week range using week start
-    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
-    setCurrentWeekRange(weekRange);
-
-    clearScheduleData();
-
-    try {
-      await fetchScheduleData(clientId, addressId, formattedDate);
-      // Close the modal only after successful API call
-      setModalOpen(false);
-    } catch (error) {
-      console.error("Error fetching schedule data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load schedule data!",
-        variant: "destructive",
-      });
-      // Don't close the modal on error - let user try again
-    } finally {
-      setTableLoading(false);
-    }
-  };
+  try {
+    const clientId = selectedClient?.clientId!;
+    const addressId = selectedClient?.addressId!;
+    await fetchScheduleData(clientId, addressId, formattedDate);
+  } catch (e) {
+    toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
+  } finally {
+    setTableLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchClientSessions(); // Fetch only when needed

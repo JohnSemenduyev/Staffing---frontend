@@ -133,7 +133,15 @@ const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
   const total = scheduleData
     .filter(item => {
       // Handle both local date format and ISO date format
-      const itemDate = item.startDate.includes('T') ? formatDateLocal(new Date(item.startDate)) : item.startDate;
+      let itemDate: string;
+      if (item.startDate.includes('T') && item.startDate.includes('Z')) {
+        // This is a UTC date, extract just the date part without timezone conversion
+        itemDate = item.startDate.split('T')[0];
+      } else if (item.startDate.includes('T')) {
+        itemDate = formatDateLocal(new Date(item.startDate));
+      } else {
+        itemDate = item.startDate;
+      }
       return itemDate === date;
     })
     .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);

@@ -16,6 +16,13 @@ export const formatDateLocal = (date: Date): string => {
 // Utility function to format date string in local timezone (YYYY-MM-DD)
 export const formatDateStringLocal = (dateString: string): string => {
   if (!dateString) return '';
+  
+  // Handle UTC dates properly - treat as local date
+  if (dateString.includes('T') && dateString.includes('Z')) {
+    // This is a UTC date, extract just the date part without timezone conversion
+    return dateString.split('T')[0];
+  }
+  
   return formatDateLocal(new Date(dateString));
 };
 
