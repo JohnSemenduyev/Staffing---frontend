@@ -68,6 +68,7 @@ interface ScheduleTableProps {
   loading?: boolean;
   onUserAutoToggle?: (userId: number, enabled: boolean) => void;
   onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
+  hideActionButtons?: boolean; // Hide cancel, edit, download buttons
 }
 
 // Utility functions
@@ -176,7 +177,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   readOnly = false,
   loading = false,
   onUserAutoToggle,
-  onShiftAutoToggle
+  onShiftAutoToggle,
+  hideActionButtons = false
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -599,8 +601,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                     <ToggleSwitch
                                       size="small"
                                       enabled={Boolean(shift.auto)}
+                                      disabled={!isEditMode || readOnly}
                                       onToggle={(enabled) => {
-                                        if (readOnly) return;
+                                        if (readOnly || !isEditMode) return;
                                         if (onShiftAutoToggle) {
                                           onShiftAutoToggle(user.id as number, dateCol.date, shift.id, enabled);
                                         } else {
@@ -644,7 +647,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                               <ToggleSwitch
                                 size="medium"
                                 enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
-                                onToggle={readOnly ? undefined : (enabled => handleUserAutoToggle(user.id, enabled))}
+                                disabled={!isEditMode || readOnly}
+                                onToggle={readOnly || !isEditMode ? undefined : (enabled => handleUserAutoToggle(user.id, enabled))}
                               />
                             </div>
                           </td>
@@ -728,13 +732,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 </>
               )}
             </button>
-            <button
-              onClick={onToggleEditMode}
-              className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
-              title="Cancel Edit Mode"
-            >
-              Cancel
-            </button>
+            {!hideActionButtons && (
+              <button
+                onClick={onToggleEditMode}
+                className="inline-flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
+                title="Cancel Edit Mode"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         ) : (
           <button
@@ -758,43 +764,45 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         )}
 
         {/* Print, Download and Edit buttons - Right side */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onPrint}
-            disabled={isPrinting}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Print Report"
-          >
-            {isPrinting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-                <span className="text-sm">Preparing...</span>
-              </>
-            ) : (
-              <Printer className="w-5 h-5" />
-            )}
-          </button>
+        {!hideActionButtons && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onPrint}
+              disabled={isPrinting}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Print Report"
+            >
+              {isPrinting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                  <span className="text-sm">Preparing...</span>
+                </>
+              ) : (
+                <Printer className="w-5 h-5" />
+              )}
+            </button>
 
-          <button
-            onClick={onDownloadExcel}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Download Excel"
-          >
-            <Upload className="w-5 h-5" />
-          </button>
+            <button
+              onClick={onDownloadExcel}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Download Excel"
+            >
+              <Upload className="w-5 h-5" />
+            </button>
 
-          <button
-            onClick={onToggleEditMode}
-            className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              isEditMode 
-                ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-            }`}
-            title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
-          >
-            <Edit className="w-5 h-5" />
-          </button>
-        </div>
+            <button
+              onClick={onToggleEditMode}
+              className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                isEditMode 
+                  ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+              }`}
+              title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+            >
+              <Edit className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Delete Shift Confirmation Modal */}

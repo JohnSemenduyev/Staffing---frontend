@@ -63,12 +63,18 @@ type ScheduleSessionQueryResponse = {
 };
 
 const ScheduleSessionContext = createContext<ScheduleSessionContextType | undefined>(undefined);
-const token=localStorage.getItem('token');
+
 export const ScheduleSessionProvider = ({ children }: { children: React.ReactNode }) => {
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
 
   const createSession = async (data: CreateSessionInput) => {
     try {
+      // Get fresh token for each request
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await graphQLClient.request<CreateScheduleSessionResponse>(
         CREATE_SCHEDULE_SESSION,
         {
@@ -78,7 +84,8 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
           startDate: data.startDate,
           auto: data.auto,
           shifts: data.shifts,
-        }
+        },
+        { Authorization: `Bearer ${token}` }
       );
       const newSession = response.createScheduleSession;
       setSessions(prev => [...prev, newSession]);
@@ -89,9 +96,16 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
 
   const fetchSessions = async (startDate: string) => {
     try {
+      // Get fresh token for each request
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await graphQLClient.request<ScheduleSessionQueryResponse>(
         GET_SCHEDULE_SESSIONS,
-        { startDate }
+        { startDate },
+        { Authorization: `Bearer ${token}` }
       );
       setSessions(response.scheduleSessions.data);
     } catch (error: any) {
@@ -107,6 +121,12 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
     userId: number
   ): Promise<WeekScheduleCheckResponse | null> => {
     try {
+      // Get fresh token for each request
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await graphQLClient.request<{ checkScheduleSession: WeekScheduleCheckResponse }>(
         CHECK_SCHEDULE_SESSION,
         { clientId, addressId, userId, startDate },
