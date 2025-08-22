@@ -44,7 +44,13 @@ import {
 
 // Normalize a shift key for comparison (YYYY-MM-DD|start|end)
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
-  const normalizedDate = formatDateLocal(new Date(shift.date));
+  // Handle UTC dates properly - treat as local date
+  let normalizedDate: string;
+  if (shift.date.includes('T') && shift.date.includes('Z')) {
+    normalizedDate = shift.date.split('T')[0];
+  } else {
+    normalizedDate = formatDateLocal(new Date(shift.date));
+  }
   return `${normalizedDate}|${shift.startTime}|${shift.endTime}`;
 };
 
@@ -135,6 +141,9 @@ export const ViewSchedule = () => {
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
+    // Add state to store original data for cancel functionality
+    const [originalScheduleData, setOriginalScheduleData] = useState<ScheduleItem[]>([]);
+    const [originalSessionData, setOriginalSessionData] = useState([]);
   
   // Publish confirmation modals
   const [schedulePublishModal, setSchedulePublishModal] = useState({ isOpen: false });
@@ -186,6 +195,9 @@ export const ViewSchedule = () => {
     // Exit edit modes
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
+    // Reset original data
+    setOriginalScheduleData([]);
+    setOriginalSessionData([]);
     // Reset form-related state
     setForm({ userId: "", date: "", starttime: "", endtime: "" });
     setErrors({});
@@ -224,113 +236,93 @@ export const ViewSchedule = () => {
     setSelectedClient(clientData);
     setModalOpen(true);
   };
+const validateAndNavigate = async (newDate: string) => {
+  console.log("validateAndNavigate called with:", newDate);
+  setNavigationSource("week");
 
-  const validateAndNavigate = async (newDate: string) => {
-    console.log("validateAndNavigate called with:", newDate);
-    setNavigationSource("week");
+  const clientId = selectedClient?.clientId;
+  const addressId = selectedClient?.addressId;
 
-    const clientId = selectedClient?.clientId;
-    const addressId = selectedClient?.addressId;
+  if (!clientId || !addressId) {
+    toast({
+      title: "Error",
+      description: "Missing client or address information!",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    if (!clientId || !addressId) {
-      toast({
-        title: "Error",
-        description: "Missing client or address information!",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Normalize to start of week
+  const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
+  const weekStartStr = toLocalYMD(week.startOfWeek);
 
-    // Normalize to start of week
-    const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
-    const weekStartStr = toLocalYMD(week.startOfWeek);
+  // Store the current date as previous date before attempting navigation
+  setPreviousDate(selectedDate);
+  setTargetDate(weekStartStr); // Store the target date (week start)
+  setIsNavigationAttempt(true);
 
-    // Store the current date as previous date before attempting navigation
-    setPreviousDate(selectedDate);
-    setTargetDate(weekStartStr); // Store the target date (week start)
-    setIsNavigationAttempt(true);
+  // IMMEDIATELY update the selected date and week range
+  setSelectedDate(weekStartStr);
+  const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+  setCurrentWeekRange(weekRange);
 
-    // Reset UI for week navigation attempt
-    resetUIForWeekNavigation();
+  // Reset UI for week navigation attempt
+  resetUIForWeekNavigation();
 
-    setTableLoading(true); // Set local loading state
+  setTableLoading(true); // Set local loading state
 
-    // Convert date format for backend
-    const formattedDate = convertDateFormat(weekStartStr);
+  // Convert date format for backend
+  const formattedDate = convertDateFormat(weekStartStr);
 
-    // Update week range using week start - FIX: Add this missing update
-    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
-    setCurrentWeekRange(weekRange);
+  // Clear any existing schedule data
+  clearScheduleData();
 
-    // Clear any existing schedule data
-    clearScheduleData();
+  try {
+    await fetchScheduleData(clientId, addressId, formattedDate);
+  } catch (error) {
+    console.error("Error fetching schedule data:", error);
+    toast({
+      title: "Error",
+      description: "Failed to load schedule data!",
+      variant: "destructive",
+    });
+  } finally {
+    setTableLoading(false);
+  }
+};
 
-    try {
-      await fetchScheduleData(clientId, addressId, formattedDate);
-    } catch (error) {
-      console.error("Error fetching schedule data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load schedule data!",
-        variant: "destructive",
-      });
-    } finally {
-      setTableLoading(false);
-    }
-  };
+const handleDateSubmit = async (date: string) => {
+  setNavigationSource("modal");
 
-  const handleDateSubmit = async (date: string) => {
-    setNavigationSource("modal");
-    // Normalize to start of week
-    const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
-    const weekStartStr = toLocalYMD(week.startOfWeek);
+  const week = getWeekRangeFromDateLocal(parseLocalYMD(date));
+  const weekStartStr = toLocalYMD(week.startOfWeek);
 
-    // Store the current date as previous date before attempting navigation
-    setPreviousDate(selectedDate);
-    setTargetDate(weekStartStr); // week start
-    setIsNavigationAttempt(true);
+  setPreviousDate(selectedDate);
+  setTargetDate(weekStartStr);
+  setIsNavigationAttempt(true);
 
-    setTableLoading(true);
+  // IMMEDIATELY update the selected date and week range
+  setSelectedDate(weekStartStr);
+  const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
+  setCurrentWeekRange(weekRange);
 
-    const clientId = selectedClient?.clientId;
-    const addressId = selectedClient?.addressId;
+  // Reset UI for navigation
+  resetUIForWeekNavigation();
+  setTableLoading(true);
 
-    const formattedDate = convertDateFormat(weekStartStr);
+  const formattedDate = convertDateFormat(weekStartStr);
+  clearScheduleData();
 
-    if (!clientId || !addressId) {
-      toast({
-        title: "Error",
-        description: "Missing client or address information!",
-        variant: "destructive",
-      });
-      setTableLoading(false);
-      setIsNavigationAttempt(false);
-      setTargetDate("");
-      return;
-    }
-
-    // Update week range using week start
-    const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
-    setCurrentWeekRange(weekRange);
-
-    clearScheduleData();
-
-    try {
-      await fetchScheduleData(clientId, addressId, formattedDate);
-      // Close the modal only after successful API call
-      setModalOpen(false);
-    } catch (error) {
-      console.error("Error fetching schedule data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load schedule data!",
-        variant: "destructive",
-      });
-      // Don't close the modal on error - let user try again
-    } finally {
-      setTableLoading(false);
-    }
-  };
+  try {
+    const clientId = selectedClient?.clientId!;
+    const addressId = selectedClient?.addressId!;
+    await fetchScheduleData(clientId, addressId, formattedDate);
+  } catch (e) {
+    toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
+  } finally {
+    setTableLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchClientSessions(); // Fetch only when needed
@@ -361,134 +353,145 @@ export const ViewSchedule = () => {
   }, [clientSessions]);
 
   // Transform API data when it arrives - FIXED VERSION
-  useEffect(() => {
-    console.log("useEffect triggered with:", {
-      apiScheduleData: apiScheduleData?.length,
-      isNavigationAttempt,
-      targetDate,
-      selectedDate,
-      hasApiData
-    });
+// Transform API data when it arrives - FIXED VERSION
+useEffect(() => {
+  console.log("useEffect triggered with:", {
+    apiScheduleData: apiScheduleData?.length,
+    isNavigationAttempt,
+    targetDate,
+    selectedDate,
+    hasApiData
+  });
 
-    if (apiScheduleData && Array.isArray(apiScheduleData)) {
-      console.log("API Schedule Data received:", apiScheduleData.length, "items");
+  if (apiScheduleData && Array.isArray(apiScheduleData)) {
+    console.log("API Schedule Data received:", apiScheduleData.length, "items");
+    
+    // Check if we have any data
+    if (apiScheduleData.length === 0) {
+      const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
+      const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }) : "";
+      toast({
+        title: "No Schedule Found",
+        description: `No schedule found for this week. Please prepare a schedule first.`,
+        variant: "destructive",
+      });
       
-      // Check if we have any data
-      if (apiScheduleData.length === 0) {
-        const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";        const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        }) : "";
+      // Only show the "No Schedule" toast when a navigation attempt triggered this state
+      if (isNavigationAttempt) {
         toast({
           title: "No Schedule Found",
           description: `No schedule found for this week. Please prepare a schedule first.`,
           variant: "destructive",
         });
-        
-                // Only show the "No Schedule" toast when a navigation attempt triggered this state
-                if (isNavigationAttempt) {
-                  toast({
-                    title: "No Schedule Found",
-                    description: `No schedule found for this week. Please prepare a schedule first.`,
-                    variant: "destructive",
-                  });
-                }
-        
-                setHasApiData(false);
-        
-                if (isNavigationAttempt && targetDate) {
-                  if (navigationSource === "week") {
-                    // Allow navigation to empty view
-                    setSelectedDate(targetDate);
-                    if (!showScheduleTable) setShowScheduleTable(true);
-                  }
-                  // If source is modal: do NOT change selectedDate or view; keep modal open
-                }
-        
-        setIsNavigationAttempt(false);
-        setTargetDate("");
-        return;
       }
-
-      // We have data
-      setHasApiData(true);
+      
+      setHasApiData(false);
+      
+      // Don't update selectedDate here since it's already updated in validateAndNavigate
       if (isNavigationAttempt && targetDate) {
-        setSelectedDate(targetDate);
-        if (!showScheduleTable) setShowScheduleTable(true);
-        if (navigationSource === "modal") {
-          setModalOpen(false); // close only when data exists
-        }
-        // Reset UI when week change is applied
         if (navigationSource === "week") {
-          resetUIForWeekNavigation();
+          // Allow navigation to empty view - selectedDate is already set
+          if (!showScheduleTable) setShowScheduleTable(true);
         }
+        // If source is modal: do NOT change selectedDate or view; keep modal open
       }
+      
       setIsNavigationAttempt(false);
       setTargetDate("");
+      return;
+    }
 
-      // Transform the API data
-      const keyedByUserDate = new Map();
+    // We have data
+    setHasApiData(true);
+    if (isNavigationAttempt && targetDate) {
+      // Don't update selectedDate here since it's already updated in validateAndNavigate
+      if (!showScheduleTable) setShowScheduleTable(true);
+      if (navigationSource === "modal") {
+        setModalOpen(false); // close only when data exists
+      }
+      // Reset UI when week change is applied
+      if (navigationSource === "week") {
+        resetUIForWeekNavigation();
+      }
+    }
+    setIsNavigationAttempt(false);
+    setTargetDate("");
 
-      apiScheduleData.forEach((group: any) => {
-        const userId = group.user?.id;
-        group.shifts?.forEach(shift => {
-          if (!shift?.date || userId == null) return;
+    // Transform the API data
+    const keyedByUserDate = new Map();
 
-          const date = formatDateLocal(new Date(shift.date));
-          const key = `${userId}-${date}`;
+    apiScheduleData.forEach((group: any) => {
+      const userId = group.user?.id;
+      group.shifts?.forEach(shift => {
+        if (!shift?.date || userId == null) return;
 
-          let item = keyedByUserDate.get(key);
-          if (!item) {
-            item = {
-              id: keyedByUserDate.size + 1,
-              clientId: group.clientId,
-              addressId: group.addressId,
-              userId,
-              startDate: date,
-              auto: group.auto ?? false,
-              shifts: [],
-              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",              address: selectedClient?.address || "Unknown Address",
-              userName: group.user?.name ?? "",
-              userPhone: group.user?.phone ?? ""
-            };
-            keyedByUserDate.set(key, item);
-          }
+        // FIX: Handle UTC dates properly - treat as local date
+        let date: string;
+        if (shift.date.includes('T') && shift.date.includes('Z')) {
+          // This is a UTC date, extract just the date part without timezone conversion
+          date = shift.date.split('T')[0];
+        } else {
+          date = formatDateLocal(new Date(shift.date));
+        }
+        
+        const key = `${userId}-${date}`;
 
-          item.shifts.push({
-            id: shift.id,
-            date: shift.date,
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            hours: shift.hours,
-            scheduleSessionId: shift.scheduleSessionId,
-            auto: (shift as any)?.auto ?? false
-          });
+        let item = keyedByUserDate.get(key);
+        if (!item) {
+          item = {
+            id: keyedByUserDate.size + 1,
+            clientId: group.clientId,
+            addressId: group.addressId,
+            userId,
+            startDate: date,
+            auto: group.auto ?? false,
+            shifts: [],
+            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
+            address: selectedClient?.address || "Unknown Address",
+            userName: group.user?.name ?? "",
+            userPhone: group.user?.phone ?? ""
+          };
+          keyedByUserDate.set(key, item);
+        }
+
+        item.shifts.push({
+          id: shift.id,
+          date: shift.date,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          hours: shift.hours,
+          scheduleSessionId: shift.scheduleSessionId,
+          auto: (shift as any)?.auto ?? false
         });
       });
+    });
 
-      const transformedData = Array.from(keyedByUserDate.values());
-      setScheduleData(transformedData);
+    const transformedData = Array.from(keyedByUserDate.values());
+    setScheduleData(transformedData);
 
-      // Capture original snapshot of shifts per user to detect changes on publish
-      const baseMap = new Map<number, Set<string>>();
-      transformedData.forEach(item => {
-        const set = baseMap.get(item.userId) || new Set<string>();
-        item.shifts.forEach(s => set.add(makeShiftKey(s)));
-        baseMap.set(item.userId, set);
-      });
-      originalShiftsRef.current = baseMap;
+    // Capture original snapshot of shifts per user to detect changes on publish
+    const baseMap = new Map<number, Set<string>>();
+    transformedData.forEach(item => {
+      const set = baseMap.get(item.userId) || new Set<string>();
+      item.shifts.forEach(s => set.add(makeShiftKey(s)));
+      baseMap.set(item.userId, set);
+    });
+    originalShiftsRef.current = baseMap;
 
-      // Fetch session data for the schedule sessions
-      if (transformedData.length > 0) {
-        const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
-        fetchSessionData(scheduleSessionIds);
-      }
-
-    } else if (apiScheduleData === null) {
-      setHasApiData(false);
+    // Fetch session data for the schedule sessions
+    if (transformedData.length > 0) {
+      const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
+      fetchSessionData(scheduleSessionIds);
     }
-  }, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
+
+  } else if (apiScheduleData === null) {
+    setHasApiData(false);
+  }
+}, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
   // Update local session data when API session data changes
   useEffect(() => {
     if (apiSessionData) {
@@ -955,10 +958,28 @@ export const ViewSchedule = () => {
   };
 
   const toggleScheduleEditMode = () => {
+    if (!isScheduleEditMode) {
+      setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
+    } else {
+      setScheduleData(originalScheduleData);
+      toast({
+        title: "Changes Cancelled",
+        description: "Schedule time changes have been reset.",
+      });
+    }
     setIsScheduleEditMode(!isScheduleEditMode);
   };
 
   const toggleActualTimeEditMode = () => {
+    if (!isActualTimeEditMode) {
+      setOriginalSessionData(JSON.parse(JSON.stringify(sessionData)));
+    } else {
+      setSessionData(originalSessionData);
+      toast({
+        title: "Changes Cancelled",
+        description: "Actual time changes have been reset.",
+      });
+    }
     setIsActualTimeEditMode(!isActualTimeEditMode);
   };
 
