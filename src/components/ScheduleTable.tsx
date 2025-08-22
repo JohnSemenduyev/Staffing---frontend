@@ -546,7 +546,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                               !readOnly && dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
                                 ? 'bg-blue-50 border-blue-300'
                                 : hasMismatch
-                                ? 'bg-yellow-100 border-yellow-300'
+                                ? 'bg-red-100 border-red-300'
                                 : ''
                             }`}
                             onDragOver={!readOnly ? (e => handleDragOver(e, user.id, dateCol.date, rowIdx)) : undefined}

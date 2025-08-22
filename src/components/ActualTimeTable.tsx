@@ -835,7 +835,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                               dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date && dragOverCell?.rowIdx === rowIdx
                                 ? 'bg-blue-50 border-blue-300'
                                 : hasMismatch
-                                ? 'bg-yellow-100 border-yellow-300' // Yellow background for time mismatches
+                                ? 'bg-red-100 border-red-300' // Yellow background for time mismatches
                                 : hasViolation
                                 ? 'bg-red-100' // Dull red background for time violations
                                 : ''
