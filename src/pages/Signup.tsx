@@ -163,6 +163,7 @@ const Signup = () => {
           phone: formData.phoneNumber,
           company: formData.company || undefined,
           password: formData.password,
+          role: formData.role.toLowerCase() as 'client',
           addresses: formData.addresses.map((addr, index) => ({
             label: `Address ${index + 1}`, // Default label
             address: addr.address,
@@ -485,16 +486,18 @@ const Signup = () => {
               />
             </div>
 
-            {/* Confirm Password */}
-            <div>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-white bg-white text-gray-900 text-sm"
-                required
-              />
-            </div>
+                         {/* Confirm Password */}
+             <div>
+               <input
+                 type="password"
+                 name="confirmPassword"
+                 value={formData.confirmPassword}
+                 onChange={handleInputChange}
+                 placeholder="Confirm Password"
+                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-white bg-white text-gray-900 text-sm"
+                 required
+               />
+             </div>
 
             {/* Submit Button */}
             <button 

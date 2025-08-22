@@ -1052,7 +1052,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Session</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete this session?
               </p>
@@ -1134,7 +1133,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete User Data</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete all data for this user?
               </p>
