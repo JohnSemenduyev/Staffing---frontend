@@ -13,7 +13,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
 import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
-import { UPDATE_MANY_SESSION_TIMES, UPDATE_SCHEDULE_SESSION_AUTO } from "../../graphql/mutation";
+import { UPDATE_MANY_SESSION_TIMES } from "../../graphql/mutation";
 import {
   generateSchedulePrintableTable,
   generateActualTimePrintableTable,
@@ -109,6 +109,31 @@ const DateNavigation = ({
 
 export const ViewSchedule = () => {
   const { toast } = useToast();
+  
+  // URL parameter handling functions
+  const getUrlParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      clientId: params.get('clientId'),
+      addressId: params.get('addressId'),
+      selectedDate: params.get('selectedDate'),
+      showSchedule: params.get('showSchedule') === 'true'
+    };
+  };
+
+  const updateUrlParams = (updates: Record<string, string | boolean | null>) => {
+    const params = new URLSearchParams(window.location.search);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  };
+
   const {
     clientSessions,
     loading,
@@ -189,6 +214,46 @@ export const ViewSchedule = () => {
   // Bump key to remount tables and reset any internal component state
   const [viewKey, setViewKey] = useState(0);
 
+  // Initialize state from URL parameters on component mount
+  useEffect(() => {
+    const urlParams = getUrlParams();
+    
+    if (urlParams.showSchedule && urlParams.clientId && urlParams.addressId) {
+      // Restore schedule view state
+      setShowScheduleTable(true);
+      
+      // Find the client data from the sessions
+      if (clientSessions && Array.isArray(clientSessions)) {
+        const clientSession = clientSessions.find(session => 
+          session.clientId === parseInt(urlParams.clientId!) && 
+          session.addressId === parseInt(urlParams.addressId!)
+        );
+        
+        if (clientSession) {
+          const clientData = {
+            clientId: clientSession.clientId,
+            addressId: clientSession.addressId,
+            name: clientSession.client.name,
+            lastName: clientSession.client.lastName,
+            address: clientSession.address.address,
+            city: clientSession.address.city,
+            pincode: clientSession.address.pincode,
+            addresses: (clientSession.client as any)?.addresses || []
+          };
+          
+          setSelectedClient(clientData);
+          
+          // Restore selected date if available
+          if (urlParams.selectedDate) {
+            setSelectedDate(urlParams.selectedDate);
+            const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(urlParams.selectedDate));
+            setCurrentWeekRange(weekRange);
+          }
+        }
+      }
+    }
+  }, [clientSessions]);
+
   const resetUIForWeekNavigation = () => {
     // Close modals
     setModalOpen(false);
@@ -235,6 +300,8 @@ export const ViewSchedule = () => {
 
     setSelectedClient(clientData);
     setModalOpen(true);
+    
+    // Remove URL parameter updates from here - they will be set in handleDateSubmit
   };
   const validateAndNavigate = async (newDate: string) => {
     console.log("validateAndNavigate called with:", newDate);
@@ -265,6 +332,11 @@ export const ViewSchedule = () => {
     setSelectedDate(weekStartStr);
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
+
+    // Update only the selectedDate parameter since others are already set
+    updateUrlParams({
+      selectedDate: weekStartStr
+    });
 
     // Reset UI for week navigation attempt
     resetUIForWeekNavigation();
@@ -305,6 +377,14 @@ export const ViewSchedule = () => {
     setSelectedDate(weekStartStr);
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
+
+    // Set ALL URL parameters here after clicking Enter button
+    updateUrlParams({
+      clientId: String(selectedClient?.clientId),
+      addressId: String(selectedClient?.addressId),
+      selectedDate: weekStartStr,
+      showSchedule: true
+    });
 
     // Reset UI for navigation
     resetUIForWeekNavigation();
@@ -894,42 +974,15 @@ export const ViewSchedule = () => {
   };
 
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
-    try {
-      // Find the schedule session for this user
-      const userSchedule = scheduleData.find(item => item.userId === userId);
-      if (!userSchedule) {
-        toast({
-          title: "Error",
-          description: "Schedule session not found for this user",
-          variant: "destructive",
-        });
-        return;
-      }
+    // Update local state only (no API call)
+    setScheduleData(prev => prev.map(item =>
+      item.userId === userId ? { ...item, auto: enabled } : item
+    ));
 
-      const token = localStorage.getItem("token");
-      await graphQLClient.request(
-        UPDATE_SCHEDULE_SESSION_AUTO,
-        { id: userSchedule.id, auto: enabled },
-        { Authorization: `Bearer ${token}` }
-      );
-
-      // Update local state
-      setScheduleData(prev => prev.map(item =>
-        item.userId === userId ? { ...item, auto: enabled } : item
-      ));
-
-      toast({
-        title: "Success",
-        description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
-      });
-    } catch (error) {
-      console.error("Error updating auto setting:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update auto setting",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Success",
+      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
+    });
   };
 
   const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
@@ -955,17 +1008,51 @@ export const ViewSchedule = () => {
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
     setTableLoading(false); // Reset local loading state
+    
+    // Clear URL parameters
+    updateUrlParams({
+      clientId: null,
+      addressId: null,
+      selectedDate: null,
+      showSchedule: null
+    });
+  };
+
+  // Helper: deep equality for schedule data (order-insensitive)
+  const schedulesEqual = (a: ScheduleItem[], b: ScheduleItem[]) => {
+    const normalize = (arr: ScheduleItem[]) =>
+      [...arr]
+        .map(item => ({
+          ...item,
+          // sort shifts by startTime/endTime/id for stable compare
+          shifts: [...item.shifts].sort((s1, s2) =>
+            s1.startTime === s2.startTime
+              ? (s1.endTime === s2.endTime ? (s1.id - s2.id) : s1.endTime.localeCompare(s2.endTime))
+              : s1.startTime.localeCompare(s2.startTime)
+          )
+        }))
+        // sort items by userId then startDate for stable compare
+        .sort((i1, i2) =>
+          i1.userId === i2.userId ? i1.startDate.localeCompare(i2.startDate) : i1.userId - i2.userId
+        );
+
+    const na = normalize(a);
+    const nb = normalize(b);
+    return JSON.stringify(na) === JSON.stringify(nb);
   };
 
   const toggleScheduleEditMode = () => {
     if (!isScheduleEditMode) {
       setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
     } else {
-      setScheduleData(originalScheduleData);
-      toast({
-        title: "Changes Cancelled",
-        description: "Schedule time changes have been reset.",
-      });
+      const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
+      if (hasChanges) {
+        setScheduleData(originalScheduleData);
+        toast({
+          title: "Changes Cancelled",
+          description: "Schedule time changes have been reset.",
+        });
+      }
     }
     setIsScheduleEditMode(!isScheduleEditMode);
   };

@@ -355,16 +355,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   // Auto toggle handler
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-    if (onUserAutoToggle) {
-      // Use the prop function for API updates
-      onUserAutoToggle(userId, enabled);
-    } else {
-      // Fall back to local state update
-      const updatedData = scheduleData.map(item =>
-        item.userId === userId ? { ...item, auto: enabled } : item
-      );
-      onScheduleDataChange(updatedData);
-    }
+    // Always perform local state update (no API call)
+    const updatedData = scheduleData.map(item =>
+      item.userId === userId ? { ...item, auto: enabled } : item
+    );
+    onScheduleDataChange(updatedData);
   };
 
   // Drag and drop handlers
@@ -407,9 +402,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     );
 
     if (existingSchedule) {
-      // :TODO : Check if the shift is already in the schedule
-      // :TODO : Check if the shift is already in the schedule
-      const hasOverlap = existingSchedule.shifts.some(existingShift => {
+      // Check for overlap, but exclude the shift at the target position (it will be replaced)
+      const sortedShifts = sortShiftsByTime(existingSchedule.shifts);
+      const hasOverlap = sortedShifts.some((existingShift, index) => {
+        // Skip overlap check for the shift at the target row position (it will be replaced)
+        if (index === targetRowIdx) {
+          return false;
+        }
+        
+        // Skip overlap check if this is the same shift being dragged from the same user/date
+        if (sourceUserId === targetUserId && sourceDate === targetDate && 
+            existingShift.startTime === shift.startTime && existingShift.endTime === shift.endTime) {
+          return false;
+        }
+        
         return doTimesOverlap(
           shift.startTime,
           shift.endTime,
