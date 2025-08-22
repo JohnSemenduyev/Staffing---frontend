@@ -363,25 +363,25 @@ export const TimeSetup = () => {
               )}
             </div>
             <div>
-              <input type="number" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={getFieldClasses('distance')} />
+              <input type="number" step="any" value={form.distance} onChange={(e) => handleChange("distance", e.target.value)} placeholder="Enter distance" min="0" className={getFieldClasses('distance')} />
               {showErrors && errors.distance && (
                 <ErrorMessage message={errors.distance} />
               )}
             </div>
             <div>
-              <input type="number" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={getFieldClasses('time')} />
+              <input type="number" step="any" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={getFieldClasses('time')} />
               {showErrors && errors.time && (
                 <ErrorMessage message={errors.time} />
               )}
             </div>
             <div>
-              <input type="number" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={getFieldClasses('hours')} />
+              <input type="number" step="any" value={form.hours} onChange={(e) => handleChange("hours", e.target.value)} placeholder="Weekly Hours" min="0" className={getFieldClasses('hours')} />
               {showErrors && errors.hours && (
                 <ErrorMessage message={errors.hours} />
               )}
             </div>
             <div>
-              <input type="number" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={getFieldClasses('reminder')} />
+              <input type="number" step="any" value={form.reminder} onChange={(e) => handleChange("reminder", e.target.value)} placeholder="Reminder" min="0" className={getFieldClasses('reminder')} />
               {showErrors && errors.reminder && (
                 <ErrorMessage message={errors.reminder} />
               )}
