@@ -874,7 +874,7 @@ export const ViewSchedule = () => {
       setIsPublishing(true);
 
       // Calculate week start and end dates from the selected date
-      const selectedDateObj = new Date(selectedDate);
+      const selectedDateObj = parseLocalYMD(selectedDate); 
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       // Use local timezone formatting
       const startDate = toLocalYMD(weekRange.startOfWeek);
