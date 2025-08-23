@@ -158,6 +158,21 @@ const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
   return max;
 };
 
+// Helper function to calculate worked time with 24-hour logic for clock-in == clock-out
+const calculateWorkedTimeWith24HourLogic = (session: SessionItem) => {
+  if (!session.clockIn || !session.clockOut) {
+    return (session.workedTime || 0) / 60; // Convert minutes to hours
+  }
+  
+  // If clock-in equals clock-out, return 24 hours
+  if (session.clockIn === session.clockOut) {
+    return 24.0; // 24 hours
+  }
+  
+  // Otherwise use the calculated hours directly
+  return calculateHours(session.clockIn, session.clockOut);
+};
+
 // Calculate totals
 const calculateDayTotal = (date: string, sessionData: SessionItem[]) => {
   const total = sessionData
@@ -167,7 +182,7 @@ const calculateDayTotal = (date: string, sessionData: SessionItem[]) => {
       const formattedSessionDate = sessionDate ? formatDateStringLocal(sessionDate) : "";
       return formattedSessionDate === date;
     })
-    .reduce((total, item) => total + (item.workedTime || 0), 0);
+    .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
 };
 
@@ -184,12 +199,12 @@ const calculateUserTotal = (
       );
       return scheduleItem?.userId === userId;
     })
-    .reduce((t, item) => t + (item.workedTime || 0), 0);
+    .reduce((t, item) => t + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
 };
 
 const calculateGrandTotal = (sessionData: SessionItem[]) => {
-  const total = sessionData.reduce((total, item) => total + item.workedTime, 0);
+  const total = sessionData.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
 };
 

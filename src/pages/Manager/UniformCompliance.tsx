@@ -9,7 +9,7 @@ import { useUniformCompliance } from "../../context/unifromCompliace";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
-import { formatDateLocal, getWeekRangeFromDateUTC } from "../../lib/utils";
+import { formatDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -58,19 +58,73 @@ export const UniformCompliance = () => {
   };
 
 
-
-
-  const formatDate = (date: Date) => {
-    return formatDateLocal(date);
+  const formatDate = (date: Date | string) => {
+    if (typeof date === 'string') {
+      // Handle different date formats
+      if (!date || date.trim() === '') {
+        return '';
+      }
+      
+      // If it's already in YYYY-MM-DD format, convert to MM-DD-YYYY
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        const [year, month, day] = date.split('-');
+        return `${month}-${day}-${year}`;
+      }
+      
+      // If it's already in MM-DD-YYYY format, return as is
+      if (/^\d{2}-\d{2}-\d{4}$/.test(date)) {
+        return date;
+      }
+      
+      // If it has timezone info (like "2024-01-15T00:00:00.000Z"), extract date part and convert
+      if (date.includes('T')) {
+        const datePart = date.split('T')[0];
+        const [year, month, day] = datePart.split('-');
+        return `${month}-${day}-${year}`;
+      }
+      
+      // Try to parse as a regular date string
+      try {
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          console.warn('Invalid date format:', date);
+          return '';
+        }
+        // Convert to MM-DD-YYYY format
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        const year = parsedDate.getFullYear();
+        return `${month}-${day}-${year}`;
+      } catch (error) {
+        console.warn('Error parsing date:', date, error);
+        return '';
+      }
+    }
+    
+    // If it's already a Date object
+    if (date instanceof Date) {
+      // Convert to MM-DD-YYYY format
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}-${day}-${year}`;
+    }
+    
+    return '';
   };
+
 
   const transformComplianceData = (uniformCompliances: any[]) => {
     return uniformCompliances.map((item) => ({
       id: `${item.scheduleSessionId}-${item.shiftId}`,
       guardFirst: { name: item.scheduleSession.user.name },
       guardLast: { name: item.scheduleSession.user.lastName },
-      date: formatDate(item.shift.date), // Apply formatting here
-      Client: { name: item.scheduleSession.client.name },
+      date: formatDate(item.shift.date),
+      Client: { 
+        name: [item.scheduleSession.client.name, item.scheduleSession.client.lastName]
+          .filter(Boolean)
+          .join(' ')
+      },
       address: { address: item.scheduleSession.address.address },
       images: [item.topUniformImage, item.bottomUniformImage],
     }));

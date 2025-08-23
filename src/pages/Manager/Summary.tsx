@@ -9,6 +9,8 @@ import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
+
 export const Summary = () => {
   const [form, setForm] = useState({
     clientId: "",
@@ -66,12 +68,29 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
     setSelectedAddressText(selectedAddress?.address || "");
   };
 
-  const formatDateToYYYYMMDD = (rawDate: string | Date): string => {
-  const dateObj = new Date(rawDate);
-  const yyyy = dateObj.getFullYear();
-  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const dd = String(dateObj.getDate()).padStart(2, '0');
-  return `${mm}-${dd}-${yyyy}`;   // ✅ YYYY-MM-DD
+  const formatDateForAPI = (rawDate: string | Date): string => {
+  if (typeof rawDate === 'string') {
+    // Convert to MM-DD-YYYY for API
+    const yyyyMMdd = formatDateStringLocal(rawDate);
+    const [year, month, day] = yyyyMMdd.split('-');
+    return `${month}-${day}-${year}`;
+  }
+  // Convert Date object to MM-DD-YYYY for API
+  const yyyyMMdd = formatDateLocal(rawDate);
+  const [year, month, day] = yyyyMMdd.split('-');
+  return `${month}-${day}-${year}`;
+};
+
+const formatDateForDisplay = (rawDate: string | Date): string => {
+  if (typeof rawDate === 'string') {
+    // Convert YYYY-MM-DD to MM-DD-YYYY for display
+    const [year, month, day] = rawDate.split('-');
+    return `${month}-${day}-${year}`;
+  }
+  // Convert Date object to MM-DD-YYYY for display
+  const yyyyMMdd = formatDateLocal(rawDate);
+  const [year, month, day] = yyyyMMdd.split('-');
+  return `${month}-${day}-${year}`;
 };
 const handleReset = () => {
     setForm({
@@ -104,7 +123,7 @@ const onSubmit = async (e) => {
 
     // Call API with or without date
     if (rawDate) {
-      const formattedDate = formatDateToYYYYMMDD(rawDate);  
+      const formattedDate = formatDateForAPI(rawDate);  // Use utility function
       console.log("Formatted Date for API:", formattedDate);
       
       // Add minimum loading time to ensure user sees the loading state
@@ -229,6 +248,11 @@ const onSubmit = async (e) => {
   };
 
   const handlePrint = async () => {
+    if (!data || data.length === 0) {
+      toast.error("No data to print!");
+      return;
+    }
+
     try {
       setIsPrinting(true);
       
@@ -236,8 +260,8 @@ const onSubmit = async (e) => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const tableContent = generatePrintableTable();
-      const currentDate = new Date().toLocaleDateString();
-      const currentDatemm=formatDateToYYYYMMDD(currentDate);
+      const currentDate = new Date();
+      const currentDateFormatted = formatDateForDisplay(currentDate); // Use utility function
       const currentTime = new Date().toLocaleTimeString();
       
       const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
@@ -379,7 +403,7 @@ const onSubmit = async (e) => {
           <body>
             <div class="header">
               <h1>Time Summary Report</h1>
-              <p class="subtitle">Generated on ${currentDatemm} at ${currentTime}</p>
+              <p class="subtitle">Generated on ${currentDateFormatted} at ${currentTime}</p>
             </div>
             
             <div class="print-info">
@@ -412,7 +436,7 @@ const onSubmit = async (e) => {
       
     } catch (error) {
       console.error("Print error:", error);
-      toast.error("Error generating print preview. Please try again.");
+      toast.error("Failed to generate print preview");
     } finally {
       setIsPrinting(false);
     }
@@ -438,7 +462,12 @@ const onSubmit = async (e) => {
       label: "Date",  
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap max-w-[200px]"
+      className: "whitespace-nowrap max-w-[200px]",
+      render: (value) => {
+        if (!value) return '-';
+        const [year, month, day] = value.split('-');
+        return `${month}-${day}-${year}`;
+      }
     },
     {
       key: "Client.name",
