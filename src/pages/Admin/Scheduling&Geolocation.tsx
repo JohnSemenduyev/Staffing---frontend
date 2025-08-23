@@ -71,7 +71,7 @@ const tableColumns: TableColumn[] = [
     sortable: true,
     searchable: true,
     className: "whitespace-nowrap",
-    render: (value: any) => `${value} Hr`
+    render: (value: any) => `${value} Min`
   },
   {
     key: "weeklyHours",
@@ -87,7 +87,7 @@ const tableColumns: TableColumn[] = [
     sortable: true,
     searchable: true,
     className: "whitespace-nowrap",
-    render: (value: any) => `${value} Min`
+    render: (value: any) => `${value} Hr`
   },
   {
   key: "overlap",
