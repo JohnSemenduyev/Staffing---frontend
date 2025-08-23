@@ -476,12 +476,14 @@ export const ViewSchedule = () => {
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        toast({
-          title: "No Schedule Found",
-          description: `No schedule found for this week. Please prepare a schedule first.`,
-          variant: "destructive",
-        });
-
+        //this toast should appear only when clicker on enter on Preiod end date modal 
+        if (navigationSource === "modal") {
+          toast({
+            title: "No Schedule Found",
+            description: `No schedule found for this week. Please prepare a schedule first.`,
+            variant: "destructive",
+          });
+        }
         // Only show the "No Schedule" toast when a navigation attempt triggered this state
         if (isNavigationAttempt) {
           toast({
