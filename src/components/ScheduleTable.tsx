@@ -68,6 +68,7 @@ interface ScheduleTableProps {
   loading?: boolean;
   onUserAutoToggle?: (userId: number, enabled: boolean) => void;
   onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
+  onScheduleAutoToggle?: (enabled: boolean) => void;
   hideActionButtons?: boolean; // Hide cancel, edit, download buttons
 }
 
@@ -178,6 +179,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   loading = false,
   onUserAutoToggle,
   onShiftAutoToggle,
+  onScheduleAutoToggle,
   hideActionButtons = false
 }) => {
   const { toast: hookToast } = useToast();
@@ -355,11 +357,16 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   // Auto toggle handler
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-    // Always perform local state update (no API call)
-    const updatedData = scheduleData.map(item =>
-      item.userId === userId ? { ...item, auto: enabled } : item
-    );
-    onScheduleDataChange(updatedData);
+    if (onUserAutoToggle) {
+      // Use the parent component's handler if provided
+      onUserAutoToggle(userId, enabled);
+    } else {
+      // Fallback to local state update
+      const updatedData = scheduleData.map(item =>
+        item.userId === userId ? { ...item, auto: enabled } : item
+      );
+      onScheduleDataChange(updatedData);
+    }
   };
 
   // Drag and drop handlers
@@ -499,7 +506,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
-      <div className="w-full overflow-auto " style={{ maxHeight: "600px" }}>
+      <div className="w-full overflow-auto custom-scrollbar" style={{ maxHeight: "600px" }}>
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
@@ -818,7 +825,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Shift</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete this shift?
               </p>
@@ -900,7 +906,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete User Data</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete all data for this user?
               </p>

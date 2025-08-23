@@ -68,7 +68,7 @@ const ToggleSwitch: React.FC<ToggleProps> = ({
     <div
       className={`p-2 flex items-center rounded-md justify-between transition focus-within:ring-2 focus-within:ring-[#004175]  border border-gray-300 ${containerHeight}`}
     >
-      {label && <span className="text-[#9b9d9e] text-sm">{label}</span>}
+      {label && <span className={`${enabled ? "text-[#000000] " : "text-[#9b9d9e]"}`}>{label}</span>}
       <button
         type="button"
         onClick={disabled ? undefined : () => onToggle(!enabled)}

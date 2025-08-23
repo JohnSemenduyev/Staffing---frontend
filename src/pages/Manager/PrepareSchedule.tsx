@@ -72,7 +72,7 @@ const generateDateColumns = (currentWeekRange: any) => {
   for (let i = 0; i < 7; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    
+
     const dateStr = formatDateLocal(date);
     dates.push({
       date: dateStr,
@@ -176,10 +176,10 @@ const inputClasses = `
 
 
 function formatLocalYMD(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function formatLocalMDY(d: Date): string {
-  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${d.getFullYear()}`;
+  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
 }
 
 export const PrepareSchedule = () => {
@@ -215,11 +215,11 @@ export const PrepareSchedule = () => {
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const [hasOverlapError, setHasOverlapError] = useState(false);
-  
+
   // Publish confirmation modal
   const [publishModal, setPublishModal] = useState({ isOpen: false });
   const checkScheduleSessionIdRef = useRef<number | null>(null);
-  
+
 
 
   // Client search hook
@@ -341,10 +341,10 @@ export const PrepareSchedule = () => {
 
         if (existingWeekStart !== newWeekStart) {
           toast({
-          title: "Error",
-          description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
-          variant: "destructive",
-        });
+            title: "Error",
+            description: "Please select a date from the same week (Thursday to Wednesday) as the existing schedule!",
+            variant: "destructive",
+          });
           setForm(f => ({ ...f, date: "" }));
           return;
         }
@@ -354,8 +354,8 @@ export const PrepareSchedule = () => {
     }
   };
 
-   const handleClientSelect = (
-    client: { id: string | number; name: string; lastName:string },
+  const handleClientSelect = (
+    client: { id: string | number; name: string; lastName: string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -405,44 +405,103 @@ export const PrepareSchedule = () => {
     setApplyToAllDates(false);
     setApplyAllWeek(false);
 
-          toast({
-        title: "Success",
-        description: "Form has been reset successfully.",
-      });
+    toast({
+      title: "Success",
+      description: "Form has been reset successfully.",
+    });
   };
 
 
 
 
 
-    const dateColumns = generateDateColumns(currentWeekRange);
+  const dateColumns = generateDateColumns(currentWeekRange);
 
   // Get unique users from schedule data
   const uniqueUsers = getUniqueUsers(scheduleData);
 
-  const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-    // Update auto setting for specific user's schedules
-    setScheduleData(prev => prev.map(item =>
-      item.userId === userId ? { ...item, auto: enabled } : item
-    ));
+// Updated handleUserAutoToggle - updates user's schedule and all their shifts
+const handleUserAutoToggle = (userId: number, enabled: boolean) => {
+  setScheduleData(prev => prev.map(item => {
+    if (item.userId === userId) {
+      return {
+        ...item,
+        auto: enabled,
+        shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+      };
+    }
+    return item;
+  }));
 
-            toast({
-          title: "Success",
-          description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
-        });
-  };
+  toast({
+    title: "Success",
+    description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+  });
+};
 
-  const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
-    setScheduleData(prev => prev.map(item => {
-      if (item.userId === userId && item.startDate === date) {
-        return {
-          ...item,
-          shifts: item.shifts.map(s => s.id === shiftId ? { ...s, auto: enabled } : s)
-        };
+// Updated handleShiftAutoToggle - updates individual shift and schedule auto with proper logic
+const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
+  setScheduleData(prev => prev.map(item => {
+    if (item.userId === userId && item.startDate === date) {
+      const updatedShifts = item.shifts.map(s => 
+        s.id === shiftId ? { ...s, auto: enabled } : s
+      );
+      
+      // Logic for schedule auto:
+      let scheduleAuto;
+      if (enabled) {
+        // When enabling a shift, always enable schedule auto (or keep it enabled if already enabled)
+        scheduleAuto = true;
+      } else {
+        // When disabling a shift, check if any other shifts still have auto enabled
+        scheduleAuto = updatedShifts.some(shift => shift.auto === true);
       }
-      return item;
-    }));
-  };
+      
+      return {
+        ...item,
+        auto: scheduleAuto,
+        shifts: updatedShifts
+      };
+    }
+    return item;
+  }));
+};
+
+// Add back the handleScheduleAutoToggle function for table-level auto control
+const handleScheduleAutoToggle = (enabled: boolean) => {
+  setScheduleData(prev => prev.map(item => ({
+    ...item,
+    auto: enabled,
+    shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+  })));
+
+  toast({
+    title: "Success",
+    description: `Schedule auto setting ${enabled ? 'enabled' : 'disabled'} for all users and shifts.`,
+  });
+};
+
+// And add this prop back to your ScheduleTable component:
+// onScheduleAutoToggle={handleScheduleAutoToggle}
+
+
+
+  // Auto-update schedule-level auto based on shift-level auto states (only for table view)
+  // useEffect(() => {
+  //   if (scheduleData.length > 0) {
+  //     // Check if any shift has auto enabled
+  //     const hasAnyShiftAuto = scheduleData.some(item => 
+  //       item.shifts.some(shift => shift.auto === true)
+  //     );
+
+  //     // Update schedule-level auto state for all users in the table
+  //     setScheduleData(prev => prev.map(item => ({
+  //       ...item,
+  //       auto: hasAnyShiftAuto
+  //     })));
+  //   }
+  // }, [scheduleData]);
+
 
   const handlePublish = async () => {
     setPublishModal({ isOpen: true });
@@ -474,38 +533,38 @@ export const PrepareSchedule = () => {
         // Create a map to deduplicate shifts by date and time
         const shiftMap = new Map();
 
-                 userSchedules.forEach(schedule => {
-           schedule.shifts.forEach(shift => {
-             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
-             if (!shiftMap.has(shiftKey)) {
-               shiftMap.set(shiftKey, {
-                 date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
-                 startTime: shift.startTime,
-                 endTime: shift.endTime,
-                 hours: shift.hours,
-                 auto: shift.auto ?? null
-               });
-             }
-           });
-         });
+        userSchedules.forEach(schedule => {
+          schedule.shifts.forEach(shift => {
+            const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
+            if (!shiftMap.has(shiftKey)) {
+              shiftMap.set(shiftKey, {
+                date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+                hours: shift.hours,
+                auto: shift.auto ?? null
+              });
+            }
+          });
+        });
 
-                 // Convert map values to array
-         const userShifts = Array.from(shiftMap.values());
+        // Convert map values to array
+        const userShifts = Array.from(shiftMap.values());
 
-         // Calculate total weekly hours for this user
-         const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
+        // Calculate total weekly hours for this user
+        const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
 
-         return {
-           clientId: firstSchedule?.clientId,
-           addressId: firstSchedule?.addressId,
-           userId: user.id,
-           startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
-           endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
+        return {
+          clientId: firstSchedule?.clientId,
+          addressId: firstSchedule?.addressId,
+          userId: user.id,
+          startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
+          endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
 
-           weeklyHours: weeklyHours,
-           shifts: userShifts,
-           auto: firstSchedule?.auto || false
-         };
+          weeklyHours: weeklyHours,
+          shifts: userShifts,
+          auto: firstSchedule?.auto || false
+        };
       });
 
       console.log('Backend Data Structure:', backendData);
@@ -529,10 +588,10 @@ export const PrepareSchedule = () => {
       // Close the modal
       setPublishModal({ isOpen: false });
 
-              toast({
-          title: "Success",
-          description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
-        });
+      toast({
+        title: "Success",
+        description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
+      });
     } catch (err) {
       console.error("Error publishing schedule sessions:", err);
 
@@ -546,11 +605,11 @@ export const PrepareSchedule = () => {
         }
       }
 
-              toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
     finally {
       setPublishLoader(false);
@@ -610,7 +669,7 @@ export const PrepareSchedule = () => {
       if (error.response?.errors && error.response.errors.length > 0) {
         const graphQLError = error.response.errors[0];
         const errorMessage = graphQLError.message || "Unknown error occurred";
-        
+
         toast({
           title: "Error",
           description: errorMessage,
@@ -640,7 +699,7 @@ export const PrepareSchedule = () => {
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
       const formatedDate = formatDateUTC(new Date(form.date));
       const results = await handleCheck(form.clientId, form.addressId, form.userId, formatedDate);
-      if (!results) { 
+      if (!results) {
         setHasOverlapError(true);
         setSubmitLoader(false);
         return;
@@ -652,18 +711,18 @@ export const PrepareSchedule = () => {
         // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
         const updatedScheduleData = [...scheduleData];
-        
+
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);
 
-          
+
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
             item => item.userId === Number(form.userId) && item.startDate === dateStr
           );
-      
+
           if (existingScheduleIndex !== -1) {
             // Add new shift to existing schedule
             const newShifts = [
@@ -677,7 +736,7 @@ export const PrepareSchedule = () => {
                 auto: auto,
               }
             ];
-      
+
             // Sort shifts by time when adding
             updatedScheduleData[existingScheduleIndex] = {
               ...updatedScheduleData[existingScheduleIndex],
@@ -711,7 +770,7 @@ export const PrepareSchedule = () => {
             });
           }
         }
-        
+
         // Update the schedule data with merged shifts
         setScheduleData(updatedScheduleData);
       } else {
@@ -776,7 +835,7 @@ export const PrepareSchedule = () => {
       }
       console.log("Schedule Data:", form);
       setForm({
-        clientId: form.clientId, // Keep client and address
+        clientId: form.clientId,
         addressId: form.addressId,
         userId: "",
         date: "",
@@ -785,7 +844,10 @@ export const PrepareSchedule = () => {
       });
       // Don't reset clientSearch and selectedAddressText
       setUserSearch("");
-      setAuto(false);
+      // Only reset auto if there's no existing schedule data
+      if (scheduleData.length === 0) {
+        setAuto(false);
+      }
       setErrors({});
       setApplyAllWeek(false);
       console.log("Schedule Data:", form);
@@ -795,11 +857,11 @@ export const PrepareSchedule = () => {
       });
     } catch (err) {
       console.error("Error creating schedule session:", err);
-              toast({
-          title: "Error",
-          description: "Failed to create schedule session.",
-          variant: "destructive",
-        });
+      toast({
+        title: "Error",
+        description: "Failed to create schedule session.",
+        variant: "destructive",
+      });
     } finally {
       setSubmitLoader(false);
     }
@@ -810,7 +872,7 @@ export const PrepareSchedule = () => {
 
 
   const toYMD = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
   const formatDateUTC = (d: Date) =>
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
@@ -836,92 +898,91 @@ export const PrepareSchedule = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
 
             {/* Client Search */}
-                                  <div className="relative">
-  <input
-    type="text"
-    value={clientSearch}
-    disabled={scheduleData.length > 0 && !isPublished}
-    onFocus={() => {
-      if (scheduleData.length === 0 || isPublished) {
-        setShowClientDropdown(true);
-      }
-    }}
-    onBlur={() =>
-      setTimeout(() => setShowClientDropdown(false), 200)
-    }
-    onChange={(e) => {
-      if (scheduleData.length === 0 || isPublished) {
-      setClientSearch(e.target.value);
-      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-      setSelectedAddressText("");
-      }
-    }}
-    placeholder="Client Name"
-    className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? '' : ''}`}
-  />
-  {errors.clientId && (
-    <ErrorMessage message={errors.clientId} />
-  )}
+            <div className="relative">
+              <input
+                type="text"
+                value={clientSearch}
+                disabled={scheduleData.length > 0 && !isPublished}
+                onFocus={() => {
+                  if (scheduleData.length === 0 || isPublished) {
+                    setShowClientDropdown(true);
+                  }
+                }}
+                onBlur={() =>
+                  setTimeout(() => setShowClientDropdown(false), 200)
+                }
+                onChange={(e) => {
+                  if (scheduleData.length === 0 || isPublished) {
+                    setClientSearch(e.target.value);
+                    setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                    setSelectedAddressText("");
+                  }
+                }}
+                placeholder="Client Name"
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? '' : ''}`}
+              />
+              {errors.clientId && (
+                <ErrorMessage message={errors.clientId} />
+              )}
 
-  {showClientDropdown && clientSearch.length >= 2 && scheduleData.length === 0 && (
-    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-      {loadingClients ? (
-        <div className="p-2 text-sm text-gray-500">
-          Searching clients...
-        </div>
-      ) : searchedClients.length === 0 ? (
-        <div className="p-2 text-gray-500 text-sm">
-          No clients found
-        </div>
-      ) : (
-        searchedClients.flatMap((client, clientIndex) =>
-          client.addresses.map((address, addressIndex) => {
-            const isEven = (clientIndex + addressIndex) % 2 === 0;
-            
-            // Generate initials from first letter of name and lastName
-            const initials = `${client.name
+              {showClientDropdown && clientSearch.length >= 2 && scheduleData.length === 0 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
+                  {loadingClients ? (
+                    <div className="p-2 text-sm text-gray-500">
+                      Searching clients...
+                    </div>
+                  ) : searchedClients.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">
+                      No clients found
+                    </div>
+                  ) : (
+                    searchedClients.flatMap((client, clientIndex) =>
+                      client.addresses.map((address, addressIndex) => {
+                        const isEven = (clientIndex + addressIndex) % 2 === 0;
+
+                        // Generate initials from first letter of name and lastName
+                        const initials = `${client.name
                           .charAt(0)
                           .toUpperCase()}${client.lastName
                             ? client.lastName.charAt(0).toUpperCase()
                             : ''}`;
-            
-            return (
-              <div
-                key={`${client.id}-${address.id}`}
-                onMouseDown={() =>
-                  handleClientSelect(
-                    { id: client.id, name: client.name, lastName: client.lastName },
-                    address.id
-                  )
-                }
-                className={`p-3 cursor-pointer flex items-center space-x-3 ${
-                  isEven ? "bg-white" : "bg-gray-50"
-                } hover:bg-gray-100 transition-colors duration-150`}
-              >
-                {/* Circular Avatar with Initials */}
-                <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-sm font-medium">
-                    {initials}
-                  </span>
+
+                        return (
+                          <div
+                            key={`${client.id}-${address.id}`}
+                            onMouseDown={() =>
+                              handleClientSelect(
+                                { id: client.id, name: client.name, lastName: client.lastName },
+                                address.id
+                              )
+                            }
+                            className={`p-3 cursor-pointer flex items-center space-x-3 ${isEven ? "bg-white" : "bg-gray-50"
+                              } hover:bg-gray-100 transition-colors duration-150`}
+                          >
+                            {/* Circular Avatar with Initials */}
+                            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-sm font-medium">
+                                {initials}
+                              </span>
+                            </div>
+
+                            {/* Client Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-blue-800 text-sm truncate">
+                                {[client.name, client.lastName].filter(Boolean).join(' ')}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {address.label || address.address}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
                 </div>
-                
-                {/* Client Info */}
-                <div className="flex-1 min-w-0">
-                <div className="font-medium text-blue-800 text-sm truncate">
-  {[client.name, client.lastName].filter(Boolean).join(' ')}
-</div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {address.label || address.address}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )
-      )}
-    </div>
-  )}
-</div>
+              )}
+            </div>
             <div>
               <input
                 type="text"
@@ -974,40 +1035,40 @@ export const PrepareSchedule = () => {
               )}
             </div>
             <div className="flex items-center flex-col">
-            <div className="flex items-center flex-row w-full ">
-            <CustomDatePicker
-                value={form.date}
-                onChange={handleChange}
-                placeholder="Select Date"
-                className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
+              <div className="flex items-center flex-row w-full ">
+                <CustomDatePicker
+                  value={form.date}
+                  onChange={handleChange}
+                  placeholder="Select Date"
+                  className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
                 // minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
                 // maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
 
-              />
-              
-              <div className="flex items-center m-2 space-x-2">
-                <input
-                  id="applyAllWeek"
-                  type="checkbox"
-                  checked={applyAllWeek}
-                  disabled={!form.date}
-                  onChange={e => setApplyAllWeek(e.target.checked)}
-                  className={`w-4 h-4 rounded ${form.date
+                />
+
+                <div className="flex items-center m-2 space-x-2">
+                  <input
+                    id="applyAllWeek"
+                    type="checkbox"
+                    checked={applyAllWeek}
+                    disabled={!form.date}
+                    onChange={e => setApplyAllWeek(e.target.checked)}
+                    className={`w-4 h-4 rounded ${form.date
                       ? "accent-blue-600 focus:ring-blue-500 border-gray-300"
                       : "accent-gray-400 border-gray-200 cursor-not-allowed"
-                    }`}
-                />
-                <label
-                  htmlFor="applyAllWeek"
-                  className={`text-xs whitespace-nowrap ${form.date
+                      }`}
+                  />
+                  <label
+                    htmlFor="applyAllWeek"
+                    className={`text-xs whitespace-nowrap ${form.date
                       ? "text-gray-600 cursor-pointer"
                       : "text-gray-400 cursor-not-allowed"
-                    }`}
-                >
-                  All Week
-                </label>
+                      }`}
+                  >
+                    All Week
+                  </label>
+                </div>
               </div>
-            </div>
               {errors.date && (
                 <ErrorMessage message={errors.date} />
               )}
@@ -1098,15 +1159,15 @@ export const PrepareSchedule = () => {
 
       {scheduleData.length > 0 && (
         <div className="w-full mt-2">
-              {/* Client Info */}
+          {/* Client Info */}
           <div className="p-4 border-b bg-gray-50 rounded-t-2xl border border-gray-200 shadow-xl">
-                <div className="font-medium text-gray-800">
-                  {scheduleData[0]?.clientName || 'Client Name'}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {scheduleData[0]?.address || 'Address'}
-                </div>
-              </div>
+            <div className="font-medium text-gray-800">
+              {scheduleData[0]?.clientName || 'Client Name'}
+            </div>
+            <div className="text-sm text-gray-600">
+              {scheduleData[0]?.address || 'Address'}
+            </div>
+          </div>
 
           {/* ScheduleTable Component */}
           <ScheduleTable
@@ -1117,18 +1178,19 @@ export const PrepareSchedule = () => {
             isEditMode={true}
             onScheduleDataChange={setScheduleData}
             onPublish={handlePublish}
-            onPrint={() => {}} // No print functionality in PrepareSchedule
-            onDownloadExcel={() => {}} // No download functionality in PrepareSchedule
-            onToggleEditMode={() => {}} // No toggle functionality in PrepareSchedule
+            onPrint={() => { }}
+            onDownloadExcel={() => { }}
+            onToggleEditMode={() => { }}
             isPublishing={publishLoader}
             isPrinting={false}
             readOnly={false}
             loading={false}
             onUserAutoToggle={handleUserAutoToggle}
             onShiftAutoToggle={handleShiftAutoToggle}
-            hideActionButtons={true} // Hide cancel, edit, download buttons in PrepareSchedule
-                                          />
-                                        </div>
+            onScheduleAutoToggle={handleScheduleAutoToggle}
+            hideActionButtons={true}
+          />
+        </div>
       )}
 
       {/* Publish Confirmation Modal */}
@@ -1139,7 +1201,7 @@ export const PrepareSchedule = () => {
               <p className="text-sm text-gray-500">
                 Are you sure you
                 would like to save
-                changes?                  
+                changes?
               </p>
             </div>
 
