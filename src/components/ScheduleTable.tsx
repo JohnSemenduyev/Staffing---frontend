@@ -310,6 +310,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     const calculateHours = (start: string, end: string) => {
       const [startH, startM] = start.split(":").map(Number);
       const [endH, endM] = end.split(":").map(Number);
+      
+      // If start time equals end time, treat as 24 hours
+      if (startH === endH && startM === endM) {
+        return 24.0;
+      }
+      
       let hours = endH - startH + (endM - startM) / 60;
       if (hours < 0) hours += 24;
       return parseFloat(hours.toFixed(2));

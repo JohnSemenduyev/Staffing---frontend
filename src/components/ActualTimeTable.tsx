@@ -119,6 +119,12 @@ const timeToMinutes = (timeStr: string) => {
 const minutesDiffWithWrap = (start: string, end: string) => {
   const startM = timeToMinutes(start);
   const endM = timeToMinutes(end);
+  
+  // If start time equals end time, treat as 24 hours (1440 minutes)
+  if (startM === endM) {
+    return 24 * 60;
+  }
+  
   let diff = endM - startM;
   if (diff <= 0) diff += 24 * 60;
   return diff;
@@ -219,8 +225,19 @@ const logEditableCells = (sd: ScheduleItem[]) => {
   // console.log('Editable cells:', cells);
 };
 
-const calculateHours = (start: string, end: string) =>
-  parseFloat((minutesDiffWithWrap(start, end) / 60).toFixed(2));
+const calculateHours = (start: string, end: string) => {
+  const [startH, startM] = start.split(":").map(Number);
+  const [endH, endM] = end.split(":").map(Number);
+  
+  // If start time equals end time, treat as 24 hours
+  if (startH === endH && startM === endM) {
+    return 24.0;
+  }
+  
+  let hours = endH - startH + (endM - startM) / 60;
+  if (hours < 0) hours += 24;
+  return parseFloat(hours.toFixed(2));
+};
 
 // Utility function to check for time violations
 const hasTimeViolation = (session: SessionItem, shift: Shift): boolean => {
