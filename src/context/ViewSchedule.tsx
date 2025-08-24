@@ -130,7 +130,7 @@ type ClientSessionContextType = {
   fetchScheduleData: (clientId: number, addressId: number, date: string) => Promise<void>;
   clearScheduleData: () => void;
 
-  bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<void>;
+  bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<any>;
   mutationLoading: boolean;
 
   // Session data for actual time tracking
@@ -226,16 +226,21 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setMutationLoading(true);
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+      
       const response = await graphQLClient.request(
         BULK_UPSERT_SCHEDULE_SESSION,
         { input },
         { Authorization: `Bearer ${token}` }
       );
-      toasted.success("Schedule saved successfully!");
-      // console.log("Bulk upsert response:", response);
+      // Don't show success toast here - let the component handle it
+      return response;
     } catch (err) {
-      // console.error('bulkUpsertScheduleSessions:', err);
-      toasted.error(genericError('bulkUpsert', err));
+      console.error('bulkUpsertScheduleSessions:', err);
+      // Throw the error so the component can handle it properly
+      throw err;
     } finally {
       setMutationLoading(false);
     }
@@ -315,7 +320,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       );
 
       console.log("Session times updated:", response.updateManySessionTimes);
-      toasted.success("Session times updated successfully!");
+      // Don't show success toast here - let the component handle it
       
       // Refresh session data after update
       if (scheduleData) {
@@ -334,7 +339,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       return response.updateManySessionTimes;
     } catch (error) {
       console.error('updateSessionTimes:', error);
-      toasted.error(genericError('updateTimes', error));
+      // Throw the error so the component can handle it properly
       throw error;
     }
   };

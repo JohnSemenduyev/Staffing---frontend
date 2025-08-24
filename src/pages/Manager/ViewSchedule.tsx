@@ -981,11 +981,27 @@ export const ViewSchedule = () => {
       setIsScheduleEditMode(false);
       setSchedulePublishModal({ isOpen: false });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error publishing schedule:", error);
+      
+      // Handle different types of errors
+      let errorMessage = "Failed to publish schedule. Please try again.";
+      
+      if (error.message) {
+        if (error.message.includes("No authentication token found")) {
+          errorMessage = "Authentication token not found. Please log in again.";
+        } else if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to publish schedule. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -1150,11 +1166,27 @@ export const ViewSchedule = () => {
       setIsActualTimeEditMode(false);
       setActualTimePublishModal({ isOpen: false });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error publishing actual time data:", error);
+      
+      // Handle different types of errors
+      let errorMessage = "Failed to publish actual time data. Please try again.";
+      
+      if (error.message) {
+        if (error.message.includes("No authentication token found")) {
+          errorMessage = "Authentication token not found. Please log in again.";
+        } else if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to publish actual time data. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

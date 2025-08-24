@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { ChevronDown, Plus, Check, X, Edit, Trash2 } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
-import { toast } from 'sonner';
+import { useToast } from '../../hooks/use-toast';
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 import { Search } from "lucide-react";
 import { GenericTable } from "@/components/GenericTable";
@@ -22,6 +22,7 @@ interface NewClientData {
 }
 
 function ClientList() {
+  const { toast } = useToast();
   const {
     state,
     fetchScheduleSessions,
@@ -89,12 +90,23 @@ function ClientList() {
     // TODO:- implement Client List search (could map fields to existing searchTerms if desired)
     // console.log('Client List search:', formData);
     setSearchLoading(false);
+    
+    // Show search feedback
+    if (Object.keys(formData).some(key => formData[key] && formData[key].trim())) {
+     
+    } else {
+      toast({
+        title: "No Search Terms",
+        description: "Please enter at least one search term.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleReset = () => {
-    // TODO:- reset Client List search
-    // console.log('Client List reset');
-    setShowSearchForm(false);
+    // setShowSearchForm(false);
+    setSearchTerms({});
+  
   };
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -105,7 +117,33 @@ function ClientList() {
   });
 
   useEffect(() => {
-    fetchScheduleSessions(currentPage);
+    const loadData = async () => {
+      try {
+        await fetchScheduleSessions(currentPage);
+      } catch (error: any) {
+        console.error("Error loading client data:", error);
+        
+        let errorMessage = "Failed to load client data. Please try again.";
+        
+        if (error.message) {
+          if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+            errorMessage = "Network error. Please check your internet connection and try again.";
+          } else if (error.response?.errors && error.response.errors.length > 0) {
+            errorMessage = error.response.errors[0].message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    };
+    
+    loadData();
   }, [currentPage]);
 
   // Helper function to get nested values
@@ -137,6 +175,7 @@ function ClientList() {
       latitude: "",   // Reset latitude
       longitude: ""   // Reset longitude
     });
+   
   };
 
   // Handle delete client
@@ -149,19 +188,49 @@ function ClientList() {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       await graphQLClient.request(
         DELETE_CLIENT,
         { deleteClientId: deleteClientModal.clientId },
         { Authorization: `Bearer ${token}` }
       );
 
-      toast.success(`Client "${deleteClientModal.clientName}" deleted successfully!`);
+      toast({
+        title: "Success",
+        description: `Client "${deleteClientModal.clientName}" deleted successfully!`,
+      });
 
       // Refresh the client list
       refreshScheduleSessions();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting client:", error);
-      toast.error("Failed to delete client. Please try again.");
+      
+      // Handle different types of errors
+      let errorMessage = "Failed to delete client. Please try again.";
+      
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" });
       setIsDeleting(false);
@@ -188,6 +257,8 @@ function ClientList() {
       latitude: clientData.latitude || "",
       longitude: clientData.longitute || ""
     });
+    
+   
   };
 
   const handleSaveEdit = (clientData: any) => {
@@ -199,6 +270,14 @@ function ClientList() {
     setIsSaving(true);
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       // Build input object, excluding null/empty latitude/longitude
       const input: any = {
@@ -228,7 +307,10 @@ function ClientList() {
         { Authorization: `Bearer ${token}` }
       );
 
-      toast.success("Client updated successfully!");
+      toast({
+        title: "Success",
+        description: "Client updated successfully!",
+      });
 
       // Reset editing state
       setEditingClientId(null);
@@ -247,9 +329,27 @@ function ClientList() {
 
       // Refresh the client list
       refreshScheduleSessions();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating client:", error);
-      toast.error("Failed to update client. Please try again.");
+      
+      // Handle different types of errors
+      let errorMessage = "Failed to update client. Please try again.";
+      
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setSaveEditModal({ isOpen: false, clientData: null });
       setIsSaving(false);
@@ -301,6 +401,12 @@ function ClientList() {
       latitude: "",   // Reset latitude
       longitude: ""   // Reset longitude
     });
+    
+    // Show feedback that add operation was cancelled
+    toast({
+      title: "Add Cancelled",
+      description: "Adding new client has been cancelled.",
+    });
   };
 
   // Validation function
@@ -348,7 +454,11 @@ function ClientList() {
     const lastName = parts.length > 1 ? parts[parts.length - 1] : undefined;
     const validationErrors = validateNewClientData();
     if (validationErrors.length > 0) {
-      toast.error(`Please fill in all required fields:\n${validationErrors.join("\n")}`);
+      toast({
+        title: "Validation Error",
+        description: `Please fill in all required fields:\n${validationErrors.join("\n")}`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -385,11 +495,32 @@ function ClientList() {
       });
 
       await refreshScheduleSessions();
-      toast.success("Client created successfully!");
-    } catch (error: any) {
-      console.error("Failed to create client:", error);
-      toast.error(`Failed to create client: ${error.message || "Unknown error"}`);
-    } finally {
+      toast({
+        title: "Success",
+        description: "Client created successfully!",
+      });
+          } catch (error: any) {
+        console.error("Failed to create client:", error);
+        
+        // Handle different types of errors
+        let errorMessage = "Failed to create client. Please try again.";
+        
+        if (error.message) {
+          if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+            errorMessage = "Network error. Please check your internet connection and try again.";
+          } else if (error.response?.errors && error.response.errors.length > 0) {
+            errorMessage = error.response.errors[0].message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
       setIsCreating(false);
     }
   };
@@ -1206,7 +1337,6 @@ function ClientList() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Save Changes</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to save the changes to this client?
               </p>
@@ -1243,7 +1373,6 @@ function ClientList() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Cancel Editing</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to cancel editing? All unsaved changes will be lost.
               </p>
@@ -1276,9 +1405,31 @@ function ClientList() {
           <Pagination
             currentPage={currentPage}
             lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchScheduleSessions(page);
+            onPageChange={async (page) => {
+              try {
+                setCurrentPage(page);
+                await fetchScheduleSessions(page);
+              } catch (error: any) {
+                console.error("Error changing page:", error);
+                
+                let errorMessage = "Failed to load page data. Please try again.";
+                
+                if (error.message) {
+                  if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+                    errorMessage = "Network error. Please check your internet connection and try again.";
+                  } else if (error.response?.errors && error.response.errors.length > 0) {
+                    errorMessage = error.response.errors[0].message || errorMessage;
+                  } else {
+                    errorMessage = error.message;
+                  }
+                }
+                
+                toast({
+                  title: "Error",
+                  description: errorMessage,
+                  variant: "destructive",
+                });
+              }
             }}
             loading={loading}
           />
