@@ -91,7 +91,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         value={formatDateForDisplay(selectedDate)}
         onChange={() => {}} // Read-only input
         placeholder={placeholder}
-        className={`${defaultClasses} ${className} text-gray-500`}
+        className={`${defaultClasses} ${className} text-black`}
         readOnly
         disabled={disabled}
       />
@@ -101,7 +101,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
           className={`w-4 h-4 ${
             disabled 
               ? 'text-gray-300' 
-              : 'text-gray-400 hover:text-gray-600'
+              : 'text-black '
           } transition-colors duration-200`}
           style={{
             fill: 'none',

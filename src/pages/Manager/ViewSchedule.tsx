@@ -18,7 +18,7 @@ import {
   generateActualTimePrintableTable,
   handlePrint
 } from "../../utils/printUtils";
-import { PeriodEndDateModal } from "./ViewSchedule/PeriodEndDateModal";
+import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
 import {
   inputClasses,
   timeToMinutes,
@@ -476,12 +476,14 @@ export const ViewSchedule = () => {
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        toast({
-          title: "No Schedule Found",
-          description: `No schedule found for this week. Please prepare a schedule first.`,
-          variant: "destructive",
-        });
-
+        //this toast should appear only when clicker on enter on Preiod end date modal 
+        if (navigationSource === "modal") {
+          toast({
+            title: "No Schedule Found",
+            description: `No schedule found for this week. Please prepare a schedule first.`,
+            variant: "destructive",
+          });
+        }
         // Only show the "No Schedule" toast when a navigation attempt triggered this state
         if (isNavigationAttempt) {
           toast({
@@ -874,7 +876,7 @@ export const ViewSchedule = () => {
       setIsPublishing(true);
 
       // Calculate week start and end dates from the selected date
-      const selectedDateObj = new Date(selectedDate);
+      const selectedDateObj = parseLocalYMD(selectedDate); 
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       // Use local timezone formatting
       const startDate = toLocalYMD(weekRange.startOfWeek);
@@ -1319,10 +1321,10 @@ export const ViewSchedule = () => {
 
         // Add per-row total count only on first row
         if (shiftIndex === 0) {
-          const userTotalCount = scheduleData
+          const userTotalHours = scheduleData
             .filter(item => item.userId === user.id)
-            .reduce((total, item) => total + item.shifts.length, 0);
-          row.push(String(userTotalCount));
+            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+          row.push(String(parseFloat(userTotalHours.toFixed(2))));
         } else {
           row.push('');
         }
@@ -1342,9 +1344,9 @@ export const ViewSchedule = () => {
 
           const dayTotal = scheduleData
             .filter(item => item.userId === user.id && item.startDate === dateStr)
-            .reduce((total, item) => total + item.shifts.length, 0);
+            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
 
-          userTotalsRow.push(String(dayTotal));
+          userTotalsRow.push(String(parseFloat(dayTotal.toFixed(2))));
           userGrandTotal += dayTotal;
         }
       }
@@ -1366,14 +1368,14 @@ export const ViewSchedule = () => {
         // Calculate total hours for this day across all users
         const dayTotal = scheduleData
           .filter(item => item.startDate === dateStr)
-          .reduce((total, item) => total + item.shifts.length, 0);
+          .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
 
-        totalsRow.push(String(dayTotal));
+        totalsRow.push(String(parseFloat(dayTotal.toFixed(2))));
         grandTotal += dayTotal;
       }
     }
 
-    totalsRow.push(String(grandTotal));
+    totalsRow.push(String(parseFloat(grandTotal.toFixed(2))));
     excelData.push(totalsRow);
 
     return excelData;
@@ -1470,6 +1472,21 @@ export const ViewSchedule = () => {
 
 
 
+  // Helper function to calculate worked time with 24-hour logic for clock-in == clock-out
+  const calculateWorkedTimeForExcel = (session: any) => {
+    if (!session.clockIn || !session.clockOut) {
+      return (session.workedTime || 0) / 60; // Convert minutes to hours
+    }
+    
+    // If clock-in equals clock-out, return 24 hours
+    if (session.clockIn === session.clockOut) {
+      return 24.0; // 24 hours
+    }
+    
+    // Otherwise use the calculated hours directly
+    return calculateHours(session.clockIn, session.clockOut);
+  };
+
   // Export functionality for Actual Time Table
   const generateActualTimeExcelData = () => {
     const excelData = [];
@@ -1529,7 +1546,20 @@ export const ViewSchedule = () => {
             if (!scheduleItem || scheduleItem.userId !== user.id) return false;
 
             const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-            return shift && shift.date === dateStr;
+            if (!shift) return false;
+            
+            // Handle both local date format and ISO date format
+            let shiftDate: string;
+            if (shift.date.includes('T') && shift.date.includes('Z')) {
+              // This is a UTC date, extract just the date part without timezone conversion
+              shiftDate = shift.date.split('T')[0];
+            } else if (shift.date.includes('T')) {
+              shiftDate = toLocalYMD(new Date(shift.date));
+            } else {
+              shiftDate = shift.date;
+            }
+            
+            return shiftDate === dateStr;
           });
 
           if (daySessions.length > 0) {
@@ -1543,7 +1573,7 @@ export const ViewSchedule = () => {
         }
       }
 
-      // Add per-row total count of sessions
+      // Add per-row total worked time
       const userTotal = sessionData
         .filter(item => {
           const scheduleItem = scheduleData.find(si =>
@@ -1551,13 +1581,54 @@ export const ViewSchedule = () => {
           );
           return scheduleItem && scheduleItem.userId === user.id;
         })
-        .length;
-      row.push(String(userTotal));
+        .reduce((total, item) => total + calculateWorkedTimeForExcel(item), 0);
+      row.push(String(parseFloat(userTotal.toFixed(2))));
 
       excelData.push(row);
+
+      // Add per-guard totals row (same as UI)
+      const userTotalsRow = [` Total`];
+      let userGrandTotal = 0;
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
+
+          const dayTotal = sessionData
+            .filter(item => {
+              const scheduleItem = scheduleData.find(si =>
+                si.shifts.some(shift => shift.id === item.shiftId)
+              );
+              if (!scheduleItem || scheduleItem.userId !== user.id) return false;
+
+              const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+              if (!shift) return false;
+              
+              // Handle both local date format and ISO date format
+              let shiftDate: string;
+              if (shift.date.includes('T') && shift.date.includes('Z')) {
+                shiftDate = shift.date.split('T')[0];
+              } else if (shift.date.includes('T')) {
+                shiftDate = toLocalYMD(new Date(shift.date));
+              } else {
+                shiftDate = shift.date;
+              }
+              
+              return shiftDate === dateStr;
+            })
+            .reduce((total, item) => total + calculateWorkedTimeForExcel(item), 0);
+
+          userTotalsRow.push(String(parseFloat(dayTotal.toFixed(2))));
+          userGrandTotal += dayTotal;
+        }
+      }
+      userTotalsRow.push(String(parseFloat(userGrandTotal.toFixed(2))));
+      excelData.push(userTotalsRow);
     });
 
-    // Add totals row
+    // Add grand totals row
     const totalsRow = ['GRAND TOTAL'];
     let grandTotal = 0;
 
@@ -1576,17 +1647,30 @@ export const ViewSchedule = () => {
           if (!scheduleItem) return false;
 
           const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-          return shift && shift.date === dateStr;
+          if (!shift) return false;
+          
+          // Handle both local date format and ISO date format
+          let shiftDate: string;
+          if (shift.date.includes('T') && shift.date.includes('Z')) {
+            // This is a UTC date, extract just the date part without timezone conversion
+            shiftDate = shift.date.split('T')[0];
+          } else if (shift.date.includes('T')) {
+            shiftDate = toLocalYMD(new Date(shift.date));
+          } else {
+            shiftDate = shift.date;
+          }
+          
+          return shiftDate === dateStr;
         });
 
-        const dayTotalCount = daySessions.length;
+        const dayTotalWorkedTime = daySessions.reduce((total, item) => total + calculateWorkedTimeForExcel(item), 0);
 
-        totalsRow.push(String(dayTotalCount));
-        grandTotal += dayTotalCount;
+        totalsRow.push(String(parseFloat(dayTotalWorkedTime.toFixed(2))));
+        grandTotal += dayTotalWorkedTime;
       }
     }
 
-    totalsRow.push(String(grandTotal));
+    totalsRow.push(String(parseFloat(grandTotal.toFixed(2))));
     excelData.push(totalsRow);
 
     return excelData;
@@ -1641,7 +1725,7 @@ export const ViewSchedule = () => {
 
       // Compute meta details for header (Actual Time)
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
-      const totalHours = sessionData.reduce((sum, item) => sum + (item.workedTime || 0), 0) / 60;
+      const totalHours = sessionData.reduce((sum, item) => sum + calculateWorkedTimeForExcel(item), 0);
 
       await handlePrint(
         tableContent,

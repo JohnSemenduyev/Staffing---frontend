@@ -137,7 +137,7 @@ export const Admin = () => {
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       {/* Search Button */}
-      <div className="mb-4 flex justify-end">
+      <div className="my-4 flex justify-end">
         <button
           onClick={() => setShowSearchForm(!showSearchForm)}
           className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

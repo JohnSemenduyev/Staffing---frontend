@@ -533,7 +533,7 @@ function ClientList() {
         </button>
       </div>
       {/* Search Button */}
-      <div className="my-2 flex justify-end">
+      <div className="my-4 flex justify-end">
         <button
           onClick={() => setShowSearchForm(!showSearchForm)}
           className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -559,7 +559,7 @@ function ClientList() {
           className="relative w-full rounded-2xl border border-gray-200 shadow-xl"
           style={{ height: "400px", minHeight: "400px" }}
         >
-          <div className="w-full h-full overflow-auto bg-white rounded-2xl">
+          <div className="w-full h-full overflow-auto bg-white rounded-2xl custom-scrollbar">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
                 <tr>
@@ -812,9 +812,9 @@ function ClientList() {
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>
-                  <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
+                  {/* <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
                     Actions
-                  </th>
+                  </th> */}
                 </tr>
               </thead>
 
@@ -1170,9 +1170,8 @@ function ClientList() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Client</h3>
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete client "{deleteClientModal.clientName}"? This action cannot be undone.
+                Are you sure you want to delete client "{deleteClientModal.clientName}"? .
               </p>
             </div>
 

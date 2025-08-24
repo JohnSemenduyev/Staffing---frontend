@@ -119,6 +119,12 @@ const timeToMinutes = (timeStr: string) => {
 const minutesDiffWithWrap = (start: string, end: string) => {
   const startM = timeToMinutes(start);
   const endM = timeToMinutes(end);
+  
+  // If start time equals end time, treat as 24 hours (1440 minutes)
+  if (startM === endM) {
+    return 24 * 60;
+  }
+  
   let diff = endM - startM;
   if (diff <= 0) diff += 24 * 60;
   return diff;
@@ -152,6 +158,21 @@ const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
   return max;
 };
 
+// Helper function to calculate worked time with 24-hour logic for clock-in == clock-out
+const calculateWorkedTimeWith24HourLogic = (session: SessionItem) => {
+  if (!session.clockIn || !session.clockOut) {
+    return (session.workedTime || 0) / 60; // Convert minutes to hours
+  }
+  
+  // If clock-in equals clock-out, return 24 hours
+  if (session.clockIn === session.clockOut) {
+    return 24.0; // 24 hours
+  }
+  
+  // Otherwise use the calculated hours directly
+  return calculateHours(session.clockIn, session.clockOut);
+};
+
 // Calculate totals
 const calculateDayTotal = (date: string, sessionData: SessionItem[]) => {
   const total = sessionData
@@ -161,7 +182,7 @@ const calculateDayTotal = (date: string, sessionData: SessionItem[]) => {
       const formattedSessionDate = sessionDate ? formatDateStringLocal(sessionDate) : "";
       return formattedSessionDate === date;
     })
-    .reduce((total, item) => total + (item.workedTime || 0), 0);
+    .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
 };
 
@@ -178,12 +199,12 @@ const calculateUserTotal = (
       );
       return scheduleItem?.userId === userId;
     })
-    .reduce((t, item) => t + (item.workedTime || 0), 0);
+    .reduce((t, item) => t + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
 };
 
 const calculateGrandTotal = (sessionData: SessionItem[]) => {
-  const total = sessionData.reduce((total, item) => total + item.workedTime, 0);
+  const total = sessionData.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
 };
 
@@ -219,8 +240,19 @@ const logEditableCells = (sd: ScheduleItem[]) => {
   // console.log('Editable cells:', cells);
 };
 
-const calculateHours = (start: string, end: string) =>
-  parseFloat((minutesDiffWithWrap(start, end) / 60).toFixed(2));
+const calculateHours = (start: string, end: string) => {
+  const [startH, startM] = start.split(":").map(Number);
+  const [endH, endM] = end.split(":").map(Number);
+  
+  // If start time equals end time, treat as 24 hours
+  if (startH === endH && startM === endM) {
+    return 24.0;
+  }
+  
+  let hours = endH - startH + (endM - startM) / 60;
+  if (hours < 0) hours += 24;
+  return parseFloat(hours.toFixed(2));
+};
 
 // Utility function to check for time violations
 const hasTimeViolation = (session: SessionItem, shift: Shift): boolean => {
@@ -770,7 +802,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
-      <div className="w-full overflow-auto rounded-2xl" style={{ maxHeight: "600px" }}>
+      <div className="w-full overflow-auto custom-scrollbar rounded-2xl" style={{ maxHeight: "600px" }}>
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
@@ -990,21 +1022,12 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         ) : (
           <button
             onClick={onPublish}
-            disabled={isPublishing}
-            className="inline-flex items-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
-            title="Publish Actual Time"
+            disabled={true}
+            className="inline-flex items-center px-4 py-2 text-white bg-gray-400 cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium shadow-sm"
+            title="Enter edit mode to publish"
           >
-            {isPublishing ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                <span>Publishing...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 mr-2" />
-                Publish
-              </>
-            )}
+            <Send className="w-4 h-4 mr-2" />
+            Publish
           </button>
         )}
 
@@ -1052,7 +1075,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Session</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete this session?
               </p>
@@ -1134,7 +1156,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete User Data</h3>
               <p className="text-sm text-gray-500">
                 Are you sure you want to delete all data for this user?
               </p>

@@ -45,9 +45,9 @@ export const TimeSetup = () => {
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
     { name: "distance", type: "text", placeholder: "Distance (Miles)" },
-    { name: "time", type: "text", placeholder: "Scheduled Time (Hr)" },
+    { name: "time", type: "text", placeholder: "Scheduled Time (Min)" },
     { name: "hours", type: "text", placeholder: "Weekly Hours" },
-    { name: "reminder", type: "text", placeholder: "Reminder Time (Min)" },
+    { name: "reminder", type: "text", placeholder: "Reminder Time (Hr)" },
     { name: "overlap", type: "toggle", label: "Overlap" },
   ], []);
 
@@ -222,9 +222,9 @@ export const TimeSetup = () => {
     { key: "client.name", label: "Client Name", sortable: true, searchable: true, width: "250px", height: "40px" },
     { key: "address.address", label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px" },
     { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile`, searchable: true, width: "250px", height: "40px" },
-    { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Hr`, searchable: true, width: "250px", height: "40px" },
+    { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Min`, searchable: true, width: "250px", height: "40px" },
     { key: "weeklyHours", label: "Weekly Hours", sortable: true, render: (v) => `${v} Hr`, searchable: true, width: "250px", height: "40px" },
-    { key: "reminderTime", label: "Reminder Time", sortable: true, render: (v) => `${v} Min`, searchable: true, width: "250px", height: "40px" },
+    { key: "reminderTime", label: "Reminder Time", sortable: true, render: (v) => `${v} Hr`, searchable: true, width: "250px", height: "40px" },
     {
       key: "overlap",
       label: "Overlap",
@@ -414,7 +414,7 @@ export const TimeSetup = () => {
         </form>
       </div>
       {/* Search Button */}
-      <div className="mb-4 flex justify-end">
+      <div className="my-4 flex justify-end">
         <button
           onClick={() => setShowSearchForm(!showSearchForm)}
           className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
