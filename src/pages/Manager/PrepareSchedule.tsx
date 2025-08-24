@@ -592,16 +592,22 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         title: "Success",
         description: "Schedule published successfully! Employees with schedule changes will receive notifications.",
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error publishing schedule sessions:", err);
 
-      // Handle specific backend error messages
+      // Handle different types of errors
       let errorMessage = "Failed to publish schedule sessions. Please try again.";
 
-      if (err.response?.errors && err.response.errors.length > 0) {
-        const backendError = err.response.errors[0];
-        if (backendError.message) {
-          errorMessage = backendError.message;
+      if (err.message) {
+        if (err.message.includes("Network Error") || err.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (err.response?.errors && err.response.errors.length > 0) {
+          const backendError = err.response.errors[0];
+          if (backendError.message) {
+            errorMessage = backendError.message;
+          }
+        } else {
+          errorMessage = err.message;
         }
       }
 
