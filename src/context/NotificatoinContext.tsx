@@ -20,6 +20,7 @@ type RawNotification = {
   message: string;
   managerId: number;
   startDate: string;
+  createdAt: string;
   endDate: string;
   shift?: NotificationShift;
 };
@@ -47,6 +48,7 @@ type NotificationsContextType = {
       userId?: number;
       date?: string;
       shiftId?: number;
+      notificationType?: string[]; // <-- Added this missing property
     }
   ) => Promise<void>;
 };
@@ -54,7 +56,7 @@ type NotificationsContextType = {
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
 // Helper function to safely parse dates
-const parseDate = (dateValue: any): string => {
+export const parseDate = (dateValue: any): string => {
   if (!dateValue) return "";
   
   let date: Date;
@@ -106,6 +108,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     userId?: number;
     date?: string;
     shiftId?: number;
+    notificationType?: string[]; // <-- Make sure implementation also matches
   }) => {
     setLoading(true);
     setError(null);
@@ -119,12 +122,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       );
 
       const rawData = response.notifications || [];
-
-      // ✅ Transform backend data into frontend format with safe date parsing
+      console.log("response" , response);
       const transformed: NotificationEntry[] = rawData.map((n) => ({
         guardFirst: { name: n.user?.name || "" },
         guardLast: { name: n.user?.lastName || "" },
-        date: parseDate(n.shift?.date), // ← Fixed date parsing
+        date: parseDate(n.createdAt),
         client: { name: n.client?.name || "" },
         address: { address: n.address?.address || "" },
         notificationType: n.notificationType,

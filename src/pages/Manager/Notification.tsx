@@ -14,6 +14,12 @@ import { ErrorMessage } from "../../components/ui/error-message";
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
+const notificationTypeMap: Record<NotificationOption, string> = {
+  Geolocation: "geo_location",
+  "Time Clock": "time_clock",
+  "Weekly Hours": "weekly_hours",
+  Scheduling: "schedule",
+};
 
 export const Notification = () => {
   const [form, setForm] = useState({
@@ -148,120 +154,38 @@ export const Notification = () => {
   },[data])
 
   const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validate()) {
-      setShowErrors(true);
-      return;
-    }
-    
-    setSubmitLoader(true);
-    setErrors({});
-    
-    try {
-      // Call fetchNotifications with filters - Note: not passing endDate as requested
-      await fetchNotifications({
-        clientId: Number(form.clientId),
-        addressId: Number(form.addressId),
-        userId: Number(form.userId),
-        date: form.Startdate ||null
-      });
-      toast.success("Notifications fetched successfully!");
-      
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-      toast.error("Failed to fetch notifications. Please try again.");
-      
-    } finally {
-      setSubmitLoader(false);
-    }
-  };
+  e.preventDefault();
+
+  if (!validate()) {
+    setShowErrors(true);
+    return;
+  }
+
+  setSubmitLoader(true);
+  setErrors({});
+
+  try {
+    await fetchNotifications({
+      clientId: Number(form.clientId),
+      addressId: Number(form.addressId),
+      userId: Number(form.userId),
+      notificationType: form.notification.map(n => notificationTypeMap[n]),
+      date: form.Startdate || null,
+    });
+
+    toast.success("Notifications fetched successfully!");
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    toast.error("Failed to fetch notifications. Please try again.");
+  } finally {
+    setSubmitLoader(false);
+  }
+};
 
   const getFieldClasses = (fieldName: string) => {
     const hasError = showErrors && errors[fieldName];
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
-
-//   const tableColumns: TableColumn[] = [
-//   {
-//     key: "client.name",
-//     label: "Client Name",
-//     sortable: true,
-//     searchable: true,
-//     width: "200px",
-//     height: "40px",
-//     allowWrap: true, // Enable text wrapping for this column
-//     render: (value: string) => value || "-"
-//   },
-//   {
-//     key: "address.address",
-//     label: "Address",
-//     sortable: true,
-//     searchable: true,
-//     className: "max-w-[200px]", // Remove break-words class, it's handled by allowWrap
-//     allowWrap: true, // Enable text wrapping
-//     render: (value: string) => (
-//       <div title={value || ""}>
-//         {value || "-"}
-//       </div>
-//     )
-//   },
-//   {
-//     key: "guardFirst.name",
-//     label: "User Name",
-//     sortable: true,
-//     searchable: true,
-//     className: "max-w-[200px]",
-//     allowWrap: true, // Enable text wrapping
-//   },
-//   {
-//     key: "date",
-//     label: "Date",
-//     sortable: true,
-//     searchable: true,
-//     className: "max-w-[200px]",
-//     allowWrap: false, // Keep dates on single line
-//     render: (value: string) => {
-//       if (!value) return "-";
-//       try {
-//         const date = new Date(value);
-//         return isNaN(date.getTime()) ? value : date.toLocaleDateString();
-//       } catch {
-//         return value || "-";
-//       }
-//     }
-//   },
-//   {
-//     key: "notificationType",
-//     label: "Type",
-//     sortable: true,
-//     searchable: true,
-//     width: "200px",
-//     className: "max-w-[150px]",
-//     allowWrap: false, // Keep type badges on single line
-//     render: (value: string) => (
-//       <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-//         {value || "Unknown"}
-//       </span>
-//     )
-//   },
-//   {
-//     key: "message",
-//     label: "Message",
-//     sortable: false,
-//     searchable: true,
-//     className: "max-w-[300px]",
-//     allowWrap: true, // Enable text wrapping for messages
-//     render: (value: string) => (
-//       <div className="leading-relaxed" title={value || ""}>
-//         {value || "-"}
-//       </div>
-//     )
-//   }
-// ];
- 
-// Updated table columns with dynamic width expansion
-// Helper function to format notification text (add this at the top of your component)
 const formatNotificationText = (notification: string): string => {
   if(notification=="geo_location"){
     return "GeoLocation"
@@ -270,9 +194,6 @@ const formatNotificationText = (notification: string): string => {
     .replace(/_/g, ' ') // Replace underscores with spaces
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
 };
-
-
-// Updated table columns with formatted notification type
 
 const tableColumns: TableColumn[] = [
   {

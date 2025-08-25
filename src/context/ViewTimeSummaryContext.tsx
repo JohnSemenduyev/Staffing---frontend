@@ -9,6 +9,12 @@ type Shift = {
   hours: number;
 };
 
+const formatToMMDDYYYY = (dateStr: string): string => {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-");
+  return `${month}-${day}-${year}`;
+};
+
 type RawScheduleSession = {
   client: {
     lastName: any; name: string 
@@ -64,7 +70,7 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
     return {
       guardFirst: { name: session.user.name },
       guardLast: { name: session.user.lastName },
-      date: formattedDate,
+      date: formatToMMDDYYYY(formattedDate),
       Client: { name: [session.client.name, session.client.lastName].filter(Boolean).join(' ') },      address: { address: session.address.address },
       time: shift.hours,
     };
