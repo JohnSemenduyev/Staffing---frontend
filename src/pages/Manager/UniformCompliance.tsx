@@ -9,6 +9,7 @@ import { useUniformCompliance } from "../../context/unifromCompliace";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { formatDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
 
 export const UniformCompliance = () => {
@@ -543,25 +544,32 @@ export const UniformCompliance = () => {
                   {errors.userId}
                 </div>
               )}
-              {showUserDropdown && userSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                  {loadingUsers ? (
-                    <div className="p-2 text-sm text-gray-500">Searching users...</div>
-                  ) : searchedUsers.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">No users found</div>
-                  ) : (
-                    searchedUsers.map(user => (
-                      <div
+              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+                {loadingUsers ? (
+                  <div className="p-2 text-sm text-gray-500">Searching users...</div>
+                ) : searchedUsers.length === 0 ? (
+                  <div className="p-2 text-gray-500 text-sm">No users found</div>
+                ) : (
+                  searchedUsers.map((user, idx) => {
+                    const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+                    const fullAddress = [
+                      (user as any)?.address,
+                      (user as any)?.city,
+                      (user as any)?.state,
+                      (user as any)?.zipcode,
+                    ].filter(Boolean).join(", ");
+                    return (
+                      <SearchResultItem
                         key={user.id}
-                        className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                        onMouseDown={() => handleUserSelect(user)}
-                      >
-                        {user.name}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
+                        index={idx}
+                        primaryText={fullName || user.name}
+                        secondaryText={fullAddress}
+                        onSelect={() => handleUserSelect(user)}
+                      />
+                    );
+                  })
+                )}
+              </SearchResultsDropdown>
             </div>
             <div>
               <CustomDatePicker

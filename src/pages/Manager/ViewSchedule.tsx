@@ -9,6 +9,7 @@ import { useToast } from "../../hooks/use-toast";
 import * as XLSX from "xlsx";
 
 import { useSearchUsers } from "../../hooks/useSearchUser";
+import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
 import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
@@ -678,7 +679,8 @@ export const ViewSchedule = () => {
 
   const handleUserSelect = (user: User) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
-    setUserSearch(user.name);
+    const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+    setUserSearch(fullName || user.name);
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
   };
@@ -1861,25 +1863,32 @@ export const ViewSchedule = () => {
                     {errors.userId && (
                       <span className="text-xs text-red-500">{errors.userId}</span>
                     )}
-                    {showUserDropdown && userSearch.length >= 2 && (
-                      <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                        {loadingUsers ? (
-                          <div className="p-2 text-sm text-gray-500">Searching guards...</div>
-                        ) : searchedUsers.length === 0 ? (
-                          <div className="p-2 text-gray-500 text-sm">No guards found</div>
-                        ) : (
-                          searchedUsers.map(user => (
-                            <div
+                    <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+                      {loadingUsers ? (
+                        <div className="p-2 text-sm text-gray-500">Searching guards...</div>
+                      ) : searchedUsers.length === 0 ? (
+                        <div className="p-2 text-gray-500 text-sm">No guards found</div>
+                      ) : (
+                        searchedUsers.map((user, idx) => {
+                          const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+                          const fullAddress = [
+                            (user as any)?.address,
+                            (user as any)?.city,
+                            (user as any)?.state,
+                            (user as any)?.zipcode,
+                          ].filter(Boolean).join(", ");
+                          return (
+                            <SearchResultItem
                               key={user.id}
-                              className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                              onMouseDown={() => handleUserSelect(user)}
-                            >
-                              {user.name}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
+                              index={idx}
+                              primaryText={fullName || user.name}
+                              secondaryText={fullAddress}
+                              onSelect={() => handleUserSelect(user)}
+                            />
+                          );
+                        })
+                      )}
+                    </SearchResultsDropdown>
                   </div>
 
                   {/* Date */}
@@ -2028,13 +2037,7 @@ export const ViewSchedule = () => {
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
               <div className="text-gray-500">
                 <h3 className="text-lg font-medium mb-2">No Schedule Found</h3>
-                <p className="text-sm">
-                  No schedule found for {[selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client"} for week {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', {
-                    month: '2-digit',
-                    day: '2-digit',
-                    year: 'numeric'
-                  }) : ""}.
-                </p>
+               
               </div>
             </div>
           )}

@@ -52,6 +52,10 @@ export const SEARCH_CLIENTS = gql`
       addresses {
         id
         address
+        city
+        state
+        pincode
+        
       }
     }
   }
