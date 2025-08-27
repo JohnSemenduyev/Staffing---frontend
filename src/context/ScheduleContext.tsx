@@ -126,10 +126,12 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
       if (!token) {
         throw new Error('No authentication token found');
       }
-
+      const [year, month, day] = startDate.split("-");
+      const formattedDate = `${month}-${day}-${year}`;
+      console.log(formattedDate);
       const response = await graphQLClient.request<{ checkScheduleSession: WeekScheduleCheckResponse }>(
         CHECK_SCHEDULE_SESSION,
-        { clientId, addressId, userId, startDate },
+        { clientId, addressId, userId, startDate: formattedDate },
         { Authorization: `Bearer ${token}` }
       );
       return response.checkScheduleSession;

@@ -507,6 +507,7 @@ export const GET_NOTIFICATIONS = gql`
     $userId: Int
     $date: String
     $shiftId: Int
+    $notificationType: [String!]
   ) {
     notifications(
       addressId: $addressId
@@ -514,6 +515,7 @@ export const GET_NOTIFICATIONS = gql`
       userId: $userId
       date: $date
       shiftId: $shiftId
+      notificationType: $notificationType
     ) {
       id
       clientId
@@ -523,8 +525,7 @@ export const GET_NOTIFICATIONS = gql`
       scheduleSessionId
       message
       managerId
-      startDate
-      endDate
+      createdAt
       client {
         name
       }
