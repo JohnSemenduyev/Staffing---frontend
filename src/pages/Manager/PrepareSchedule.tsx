@@ -125,6 +125,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { formatDateLocal, formatTimeDisplay, getWeekRangeFromDateUTC, formatUSPhone } from "../../lib/utils";
 import { useToast } from "../../hooks/use-toast";
 
@@ -363,7 +364,8 @@ export const PrepareSchedule = () => {
       clientId: String(client.id),
       addressId: String(addressId),
     }));
-    setClientSearch(client.name);
+    const fullClientName = [client.name, client.lastName].filter(Boolean).join(" ");
+    setClientSearch(fullClientName);
     setShowClientDropdown(false);
     setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
 
@@ -373,11 +375,18 @@ export const PrepareSchedule = () => {
     const selectedAddress = selectedClient?.addresses.find(
       (a) => String(a.id) === String(addressId)
     );
-    setSelectedAddressText(selectedAddress?.address || "");
+    const fullAddress = [
+      selectedAddress?.label || selectedAddress?.address,
+      (selectedAddress as any)?.city,
+      (selectedAddress as any)?.state,
+      (selectedAddress as any)?.pincode,
+    ].filter(Boolean).join(", ");
+    setSelectedAddressText(fullAddress);
   };
   const handleUserSelect = (user: User) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
-    setUserSearch(user.name);
+    const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+    setUserSearch(fullName || user.name);
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
   };
@@ -931,63 +940,31 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 <ErrorMessage message={errors.clientId} />
               )}
 
-              {showClientDropdown && clientSearch.length >= 2 && scheduleData.length === 0 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
-                  {loadingClients ? (
-                    <div className="p-2 text-sm text-gray-500">
-                      Searching clients...
-                    </div>
-                  ) : searchedClients.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">
-                      No clients found
-                    </div>
-                  ) : (
-                    searchedClients.flatMap((client, clientIndex) =>
-                      client.addresses.map((address, addressIndex) => {
-                        const isEven = (clientIndex + addressIndex) % 2 === 0;
-
-                        // Generate initials from first letter of name and lastName
-                        const initials = `${client.name
-                          .charAt(0)
-                          .toUpperCase()}${client.lastName
-                            ? client.lastName.charAt(0).toUpperCase()
-                            : ''}`;
-
-                        return (
-                          <div
-                            key={`${client.id}-${address.id}`}
-                            onMouseDown={() =>
-                              handleClientSelect(
-                                { id: client.id, name: client.name, lastName: client.lastName },
-                                address.id
-                              )
-                            }
-                            className={`p-3 cursor-pointer flex items-center space-x-3 ${isEven ? "bg-white" : "bg-gray-50"
-                              } hover:bg-gray-100 transition-colors duration-150`}
-                          >
-                            {/* Circular Avatar with Initials */}
-                            <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-white text-sm font-medium">
-                                {initials}
-                              </span>
-                            </div>
-
-                            {/* Client Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-blue-800 text-sm truncate">
-                                {[client.name, client.lastName].filter(Boolean).join(' ')}
-                              </div>
-                              <div className="text-xs text-gray-500 truncate">
-                                {address.label || address.address}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )
-                  )}
-                </div>
-              )}
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2 && scheduleData.length === 0}>
+                {loadingClients ? (
+                  <div className="p-2 text-sm text-gray-500">Searching clients...</div>
+                ) : searchedClients.length === 0 ? (
+                  <div className="p-2 text-gray-500 text-sm">No clients found</div>
+                ) : (
+                  searchedClients.flatMap((client, clientIndex) =>
+                    client.addresses.map((address, addressIndex) => (
+                      <SearchResultItem
+                        key={`${client.id}-${address.id}`}
+                        index={clientIndex + addressIndex}
+                        primaryText={[client.name, client.lastName].filter(Boolean).join(' ')}
+                        secondaryText={address.label || address.address}
+                        initials={`${client.name?.[0]?.toUpperCase() ?? ''}${client.lastName ? client.lastName[0]?.toUpperCase() : ''}`}
+                        onSelect={() =>
+                          handleClientSelect(
+                            { id: client.id, name: client.name, lastName: client.lastName },
+                            address.id
+                          )
+                        }
+                      />
+                    ))
+                  )
+                )}
+              </SearchResultsDropdown>
             </div>
             <div>
               <input
@@ -1020,25 +997,33 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
               {errors.userId && (
                 <ErrorMessage message={errors.userId} />
               )}
-              {showUserDropdown && userSearch.length >= 2 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
-                  {loadingUsers ? (
-                    <div className="p-2 text-sm text-gray-500">Searching users...</div>
-                  ) : searchedUsers.length === 0 ? (
-                    <div className="p-2 text-gray-500 text-sm">No users found</div>
-                  ) : (
-                    searchedUsers.map(user => (
-                      <div
+              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+                {loadingUsers ? (
+                  <div className="p-2 text-sm text-gray-500">Searching users...</div>
+                ) : searchedUsers.length === 0 ? (
+                  <div className="p-2 text-gray-500 text-sm">No users found</div>
+                ) : (
+                  searchedUsers.map((user, idx) => {
+                    const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+                    const fullAddressParts = [
+                      (user as any)?.address,
+                      (user as any)?.city,
+                      (user as any)?.state,
+                      (user as any)?.zipcode,
+                    ].filter(Boolean);
+                    const fullAddress = fullAddressParts.join(", ");
+                    return (
+                      <SearchResultItem
                         key={user.id}
-                        className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                        onMouseDown={() => handleUserSelect(user)}
-                      >
-                        {user.name}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
+                        index={idx}
+                        primaryText={fullName || user.name}
+                        secondaryText={fullAddress}
+                        onSelect={() => handleUserSelect(user)}
+                      />
+                    );
+                  })
+                )}
+              </SearchResultsDropdown>
             </div>
             <div className="flex items-center flex-col">
               <div className="flex items-center flex-row w-full ">

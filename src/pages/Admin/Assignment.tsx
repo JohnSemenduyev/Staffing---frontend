@@ -9,6 +9,7 @@ import { useSearchGuards } from "../../hooks/useSearchGuard";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { ErrorMessage } from "../../components/ui/error-message";
+import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 
 const notificationOptions = [
   "Geolocation",
@@ -93,9 +94,10 @@ export default function AssignmentForm() {
     }
   };
 
-  const handleClientSelect = (client: { id: string | number; name: string }) => {
+  const handleClientSelect = (client: { id: string | number; name: string; lastName?: string }) => {
     setForm(f => ({ ...f, clientId: String(client.id), addressId: "" }));
-    setClientSearch(client.name);
+    const fullClientName = [client.name, client.lastName].filter(Boolean).join(" ");
+    setClientSearch(fullClientName || client.name);
     setShowClientDropdown(false);
     // Remove validation error for clientId when it changes
     if (errors.clientId) {
@@ -103,9 +105,10 @@ export default function AssignmentForm() {
     }
   };
 
-  const handleUserSelect = (user: { id: string | number; name: string }) => {
+  const handleUserSelect = (user: { id: string | number; name: string; lastName?: string; address?: string; city?: string; state?: string; zipcode?: string }) => {
     setForm(f => ({ ...f, userId: String(user.id) }));
-    setUserSearch(user.name);
+    const fullName = [user.name, user.lastName].filter(Boolean).join(" ");
+    setUserSearch(fullName || user.name);
     setShowUserDropdown(false);
     // Remove validation error for userId when it changes
     if (errors.userId) {
@@ -182,25 +185,22 @@ export default function AssignmentForm() {
                 {errors.clientId && (
                   <ErrorMessage message={errors.clientId} />
                 )}
-                {showClientDropdown && clientSearch.length >= 2 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
+                <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
                     {loadingClients ? (
                       <div className="p-2 text-sm text-gray-500">Searching clients...</div>
                     ) : searchedClients.length === 0 ? (
                       <div className="p-2 text-gray-500 text-sm">No clients found</div>
                     ) : (
-                      searchedClients.map(client => (
-                        <div
+                    searchedClients.map((client, idx) => (
+                      <SearchResultItem
                           key={client.id}
-                          className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                          onMouseDown={() => handleClientSelect(client)}
-                        >
-                          {client.name}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                        index={idx}
+                        primaryText={client.name}
+                        onSelect={() => handleClientSelect(client)}
+                      />
+                    ))
+                  )}
+                </SearchResultsDropdown>
               </div>
 
               {/* Address select */}
@@ -244,25 +244,32 @@ export default function AssignmentForm() {
                 {errors.userId && (
                   <ErrorMessage message={errors.userId} />
                 )}
-                {showUserDropdown && userSearch.length >= 2 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50 font-sans">
+                <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
                     {loadingUsers ? (
                       <div className="p-2 text-sm text-gray-500">Searching users...</div>
                     ) : searchedUsers.length === 0 ? (
                       <div className="p-2 text-gray-500 text-sm">No users found</div>
                     ) : (
-                      searchedUsers.map(user => (
-                        <div
+                    searchedUsers.map((user, idx) => {
+                      const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+                      const fullAddress = [
+                        (user as any)?.address,
+                        (user as any)?.city,
+                        (user as any)?.state,
+                        (user as any)?.zipcode,
+                      ].filter(Boolean).join(", ");
+                      return (
+                        <SearchResultItem
                           key={user.id}
-                          className="p-2 cursor-pointer text-sm hover:bg-gray-50"
-                          onMouseDown={() => handleUserSelect(user)}
-                        >
-                          {user.name}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                          index={idx}
+                          primaryText={fullName || user.name}
+                          secondaryText={fullAddress}
+                          onSelect={() => handleUserSelect(user)}
+                        />
+                      );
+                    })
+                  )}
+                </SearchResultsDropdown>
               </div>
 
               {/* Guard Search */}

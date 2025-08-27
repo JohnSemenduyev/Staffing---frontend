@@ -216,7 +216,8 @@ export const UniformCompliance = () => {
       clientId: String(client.id),
       addressId: String(addressId),
     }));
-    setClientSearch(client.name);
+    const fullClientName = [client.name, client.lastName].filter(Boolean).join(" ");
+    setClientSearch(fullClientName);
     setShowClientDropdown(false);
     setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
 
@@ -226,12 +227,19 @@ export const UniformCompliance = () => {
     const selectedAddress = selectedClient?.addresses.find(
       (a) => String(a.id) === String(addressId)
     );
-    setSelectedAddressText(selectedAddress?.address || "");
+    const fullAddress = [
+      selectedAddress?.label || selectedAddress?.address,
+      (selectedAddress as any)?.city,
+      (selectedAddress as any)?.state,
+      (selectedAddress as any)?.pincode,
+    ].filter(Boolean).join(", ");
+    setSelectedAddressText(fullAddress);
   };
 
   const handleUserSelect = (user: { id: string | number; name: string }) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
-    setUserSearch(user.name);
+    const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
+    setUserSearch(fullName || user.name);
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined }));
   };

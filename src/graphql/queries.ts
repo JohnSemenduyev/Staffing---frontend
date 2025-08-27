@@ -187,6 +187,12 @@ export const SEARCH_USERS = gql`
       id
       name
       phone
+      lastName
+      address
+      city
+      state
+      zipcode
+      
     }
   }
 `;
