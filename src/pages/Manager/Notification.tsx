@@ -332,7 +332,12 @@ return (
             key={`${client.id}-${address.id}`}
             index={clientIndex + addressIndex}
             primaryText={[client.name, client.lastName].filter(Boolean).join(' ')}
-            secondaryText={address.label || address.address}
+            secondaryText={[
+              address.label || address.address,
+              (address as any)?.city,
+              (address as any)?.state,
+              (address as any)?.pincode || (address as any)?.zipcode,
+            ].filter(Boolean).join(', ')}
             initials={`${client.name?.[0]?.toUpperCase() ?? ''}${client.lastName ? client.lastName[0]?.toUpperCase() : ''}`}
             onSelect={() =>
               handleClientSelect(
