@@ -11,11 +11,11 @@ import {
 } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
-import { toast } from "sonner";
 import { useAssignment } from "../../context/Assignment";
 import { inputClasses } from "./GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
+import { useToast } from "../../hooks/use-toast";
 
 const notificationOptions = [
   "Geolocation",
@@ -47,12 +47,13 @@ export default function AssignmentNew() {
     assignments,
     lastPage,
     loading,
+    submitError,
     fetchAssignments,
     createAssignment,
     updateAssignment,
     deleteAssignment,
   } = useAssignment();
-
+  const {toast} = useToast();
   const [form, setForm] = useState({
     userId: "",
     guardId: "",
@@ -140,10 +141,9 @@ export default function AssignmentNew() {
       const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
       setCurrentPage(1);
       await fetchAssignments(1, filter);
-      toast.success('Search applied successfully!');
     } catch (error) {
       console.error('Search failed:', error);
-      toast.error('Search failed. Please try again.');
+      toast({title:"error",description:'Search failed. Please try again.'});
     } finally {
       setSearchLoading(false);
     }
@@ -152,7 +152,6 @@ export default function AssignmentNew() {
     setShowSearchForm(false);
     setCurrentPage(1);
     fetchAssignments(1, null);
-    toast.success('Search filters cleared!');
   };
 
   const handleChange = (field: string, value: any) => {
@@ -281,15 +280,28 @@ export default function AssignmentNew() {
       setSubmitLoader(true);
       if (isEditing && editId !== null) {
         await updateAssignment(editId, input);
-        toast.success("Assignment updated successfully");
+        toast({
+          title: "success",
+          description: "Assignment updated successfully",
+          variant: "destructive",
+        });
       } else {
         await createAssignment(input);
-        toast.success("Assignment created successfully");
+        toast({
+          title: "success",
+          description: "Assignment created successfully",
+          variant: "destructive",
+        });
       }
-      resetForm();
+      // resetForm();
       fetchAssignments(currentPage);
     } catch (error) {
-      toast.error("Failed to submit assignment");
+      console.log(12,submitError);
+       toast({
+            title: "error",
+            description: submitError,
+            variant: "destructive",
+          });
     } finally {
       setSubmitLoader(false);
     }
@@ -331,11 +343,11 @@ export default function AssignmentNew() {
     try {
       setDeleteLoader(true);
       await deleteAssignment(deleteModal.record.id);
-      toast.success("Assignment deleted successfully");
+      toast({title : "success", description : "Assignment deleted successfully"});
       fetchAssignments(currentPage);
       setDeleteModal({ isOpen: false, record: null });
     } catch (err) {
-      toast.error("Failed to delete assignment");
+      toast({title : "error", description : "Failed to delete assignment"});
     } finally {
       setDeleteLoader(false);
     }

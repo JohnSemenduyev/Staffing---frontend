@@ -91,10 +91,10 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setSubmitLoader(true);
       await graphQLClient.request(CREATE_GEOLOCATION, input);
-      await fetchGeoLocations(currentPage); 
     } catch (err) {
-      console.error(err);
-      setSubmitError('Failed to create geolocation');
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
+  setSubmitError(errorMessage);
       throw new Error('Failed to create geolocation');
     } finally {
       setSubmitLoader(false);
@@ -119,11 +119,13 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setSubmitLoader(true);
       await graphQLClient.request(UPDATE_GEOLOCATION, { id, data: input });
-      await fetchGeoLocations(currentPage);
+      // await fetchGeoLocations(currentPage);
       setSubmitError(null);
     } catch (err) {
       console.error(err);
-      setSubmitError('Failed to update geolocation');
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
+  setSubmitError(errorMessage);
       throw new Error('Failed to update geolocation');
     } finally {
       setSubmitLoader(false);

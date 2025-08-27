@@ -6,9 +6,9 @@ import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
-import { toast } from "sonner";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
+import { useToast } from "../../hooks/use-toast";
 
 export const inputClasses = `
     w-full
@@ -39,6 +39,7 @@ export const GeoLocationSetup = () => {
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const debouncedClientSearch = useDebounce(clientSearch, 300);
+  const {toast} = useToast();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   const {
     fetchGeoLocations,
@@ -84,7 +85,6 @@ export const GeoLocationSetup = () => {
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
-    // Remove all validation errors when any field changes
     setErrors({});
     setShowErrors(false);
   };
@@ -154,15 +154,32 @@ export const GeoLocationSetup = () => {
     try {
       if (isEditing && editId !== null) {
         await updateGeoLocation(editId, input);
-        toast.success("Geolocation updated successfully");
+         toast({
+            title: "success",
+            description: "Geolocation updated successfully",
+            variant: "destructive",
+          });
       } else {
         await createGeoLocation(input);
-        toast.success("Geolocation created successfully");
+        toast({
+            title: "success",
+            description: "Geolocation created successfully",
+            variant: "destructive",
+          });
       }
-      resetForm();
+      // resetForm();
+
       fetchGeoLocations(currentPage);
     } catch (err) {
-      toast.error("Failed to save geolocation");
+
+      console.log(err)
+    toast({
+            title: "error",
+            description: submitError,
+            variant: "destructive",
+          });
+    }finally{
+      console.log(submitError)
     }
   };
 
@@ -190,11 +207,11 @@ export const GeoLocationSetup = () => {
     try {
       setDeleteLoader(true);
       await deleteGeoLocation(deleteModal.record.id);
-      toast.success("Geolocation deleted successfully");
+      // toast.success("Geolocation deleted successfully");
       fetchGeoLocations(currentPage);
       setDeleteModal({ isOpen: false, record: null });
     } catch (err) {
-      toast.error("Failed to delete geolocation");
+      // toast.error("Failed to delete geolocation");
     } finally {
       setDeleteLoader(false);
     }
@@ -390,7 +407,6 @@ export const GeoLocationSetup = () => {
                 value={form.distance}
                 onChange={(e) => handleChange("distance", e.target.value)}
                 placeholder="Enter distance"
-                min="0"
                 className={getFieldClasses('distance')}
               />
               {showErrors && errors.distance && (

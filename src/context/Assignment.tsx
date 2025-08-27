@@ -28,6 +28,7 @@ interface AssignmentContextType {
   assignments: Assignment[];
   lastPage: number;
   loading: boolean;
+  submitError: string | null;
   currentFilter: Record<string, any> | null;
   fetchAssignments: (page?: number, filter?: Record<string, any>) => Promise<void>;
   createAssignment: (data: Omit<Assignment, "id" | "createdAt">) => Promise<void>;
@@ -50,6 +51,7 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [lastPage, setLastPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const fetchAssignments = async (page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
@@ -82,8 +84,12 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const token = localStorage.getItem("token");
       await graphQLClient.request(CREATE_ASSIGNMENT, { ...data }, { Authorization: `Bearer ${token}` });
       await fetchAssignments();
-    } catch (error) {
-      console.error("Error creating assignment:", error);
+    } catch (err) {
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
+  setSubmitError(errorMessage);
+  console.log(errorMessage);
+      console.error("Error creating assignment:", err);
     }
   };
 
@@ -92,8 +98,11 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const token = localStorage.getItem("token");
       await graphQLClient.request(UPDATE_ASSIGNMENT, { id, ...data }, { Authorization: `Bearer ${token}` });
       await fetchAssignments();
-    } catch (error) {
-      console.error("Error updating assignment:", error);
+    } catch (err) {
+      console.error("Error updating assignment:", err);
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
+  setSubmitError(errorMessage);
     }
   };
 
@@ -114,6 +123,7 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         assignments,
         lastPage,
         loading,
+        submitError,
         currentFilter,
         fetchAssignments,
         createAssignment,

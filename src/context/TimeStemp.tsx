@@ -102,7 +102,9 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
       return data.createTimeSetup;
     } catch (err: any) {
       console.error("Error creating time setup:", err);
-      setError(err.message || "Failed to create time setup");
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
+     setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -137,8 +139,9 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
         prev.map(ts => (ts.id === id ? data.updateTimeSetup : ts))
       );
     } catch (err: any) {
-      console.error("Error updating time setup:", err);
-      setError(err.message || "Failed to update time setup");
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
+     setError(errorMessage);
     } finally {
       setLoading(false);
     }
