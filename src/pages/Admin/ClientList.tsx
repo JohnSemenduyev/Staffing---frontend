@@ -56,7 +56,7 @@ function ClientList() {
   const [deleteClientModal, setDeleteClientModal] = useState({ isOpen: false, clientId: null, clientName: "" });
   const [saveEditModal, setSaveEditModal] = useState({ isOpen: false, clientData: null });
   const [cancelEditModal, setCancelEditModal] = useState({ isOpen: false });
-  
+
   // Loading states
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -90,10 +90,10 @@ function ClientList() {
     // TODO:- implement Client List search (could map fields to existing searchTerms if desired)
     // console.log('Client List search:', formData);
     setSearchLoading(false);
-    
+
     // Show search feedback
     if (Object.keys(formData).some(key => formData[key] && formData[key].trim())) {
-     
+
     } else {
       toast({
         title: "No Search Terms",
@@ -106,7 +106,7 @@ function ClientList() {
   const handleReset = () => {
     // setShowSearchForm(false);
     setSearchTerms({});
-  
+
   };
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -122,9 +122,9 @@ function ClientList() {
         await fetchScheduleSessions(currentPage);
       } catch (error: any) {
         console.error("Error loading client data:", error);
-        
+
         let errorMessage = "Failed to load client data. Please try again.";
-        
+
         if (error.message) {
           if (error.message.includes("Network Error") || error.message.includes("fetch")) {
             errorMessage = "Network error. Please check your internet connection and try again.";
@@ -134,7 +134,7 @@ function ClientList() {
             errorMessage = error.message;
           }
         }
-        
+
         toast({
           title: "Error",
           description: errorMessage,
@@ -142,7 +142,7 @@ function ClientList() {
         });
       }
     };
-    
+
     loadData();
   }, [currentPage]);
 
@@ -175,7 +175,7 @@ function ClientList() {
       latitude: "",   // Reset latitude
       longitude: ""   // Reset longitude
     });
-   
+
   };
 
   // Handle delete client
@@ -196,7 +196,7 @@ function ClientList() {
         });
         return;
       }
-      
+
       await graphQLClient.request(
         DELETE_CLIENT,
         { deleteClientId: deleteClientModal.clientId },
@@ -212,10 +212,10 @@ function ClientList() {
       refreshScheduleSessions();
     } catch (error: any) {
       console.error("Error deleting client:", error);
-      
+
       // Handle different types of errors
       let errorMessage = "Failed to delete client. Please try again.";
-      
+
       if (error.message) {
         if (error.message.includes("Network Error") || error.message.includes("fetch")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
@@ -225,7 +225,7 @@ function ClientList() {
           errorMessage = error.message;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -257,12 +257,13 @@ function ClientList() {
       latitude: clientData.latitude || "",
       longitude: clientData.longitute || ""
     });
-    
-   
+
+
   };
 
   const handleSaveEdit = (clientData: any) => {
     console.log("Save edit clicked:", clientData);
+    setCancelEditModal({ isOpen: false });
     setSaveEditModal({ isOpen: true, clientData });
   };
 
@@ -278,7 +279,7 @@ function ClientList() {
         });
         return;
       }
-      
+
       // Build input object, excluding null/empty latitude/longitude
       const input: any = {
         clientId: saveEditModal.clientData?.client?.id,
@@ -331,10 +332,10 @@ function ClientList() {
       refreshScheduleSessions();
     } catch (error: any) {
       console.error("Error updating client:", error);
-      
+
       // Handle different types of errors
       let errorMessage = "Failed to update client. Please try again.";
-      
+
       if (error.message) {
         if (error.message.includes("Network Error") || error.message.includes("fetch")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
@@ -344,13 +345,14 @@ function ClientList() {
           errorMessage = error.message;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
+      console.log("Save edit modal closed");
       setSaveEditModal({ isOpen: false, clientData: null });
       setIsSaving(false);
     }
@@ -362,6 +364,7 @@ function ClientList() {
 
   const handleCancelEdit = () => {
     console.log("Cancel edit clicked");
+    setSaveEditModal({ isOpen: false, clientData: null });
     setCancelEditModal({ isOpen: true });
   };
 
@@ -401,7 +404,7 @@ function ClientList() {
       latitude: "",   // Reset latitude
       longitude: ""   // Reset longitude
     });
-    
+
     // Show feedback that add operation was cancelled
     toast({
       title: "Add Cancelled",
@@ -499,28 +502,28 @@ function ClientList() {
         title: "Success",
         description: "Client created successfully!",
       });
-          } catch (error: any) {
-        console.error("Failed to create client:", error);
-        
-        // Handle different types of errors
-        let errorMessage = "Failed to create client. Please try again.";
-        
-        if (error.message) {
-          if (error.message.includes("Network Error") || error.message.includes("fetch")) {
-            errorMessage = "Network error. Please check your internet connection and try again.";
-          } else if (error.response?.errors && error.response.errors.length > 0) {
-            errorMessage = error.response.errors[0].message || errorMessage;
-          } else {
-            errorMessage = error.message;
-          }
+    } catch (error: any) {
+      console.error("Failed to create client:", error);
+
+      // Handle different types of errors
+      let errorMessage = "Failed to create client. Please try again.";
+
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
         }
-        
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
       setIsCreating(false);
     }
   };
@@ -1050,53 +1053,53 @@ function ClientList() {
                             disabled={isCreating}
                           />
                         </td>
-                                                 <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
-                            <input
-                              placeholder="Enter longitude"
-                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                              type="number"
-                              step="any"
-                              value={newClientData.longitude}
-                              onChange={(e) => handleNewClientInputChange("longitude", e.target.value)}
+                        <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
+                          <input
+                            placeholder="Enter longitude"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            type="number"
+                            step="any"
+                            value={newClientData.longitude}
+                            onChange={(e) => handleNewClientInputChange("longitude", e.target.value)}
+                            disabled={isCreating}
+                          />
+                        </td>
+                        <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleSaveNewClient}
                               disabled={isCreating}
-                            />
-                         </td>
-                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
-                           <div className="flex items-center gap-2">
-                              <button
-                                onClick={handleSaveNewClient}
-                                disabled={isCreating}
-                                className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Save client"
-                              >
-                                {isCreating ? (
-                                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                  <Check className="w-4 h-4" />
-                                )}
-                              </button>
-                              <button
-                                onClick={handleCancelAdd}
-                                disabled={isCreating}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                              className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Save client"
+                            >
+                              {isCreating ? (
+                                <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={handleCancelAdd}
+                              disabled={isCreating}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
                     )}
 
-                                         {filteredAndSortedData.map((record, index) => {
-                       const isEditing = editingClientId === getNestedValue(record, "client.id");
-                       
-                       return (
-                      <tr
-                        key={`client-row-${index}`}
+                    {filteredAndSortedData.map((record, index) => {
+                      const isEditing = editingClientId === getNestedValue(record, "client.id");
+
+                      return (
+                        <tr
+                          key={`client-row-${index}`}
                           className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${isEditing ? 'bg-blue-50' : ''}`}
-                      >
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                        >
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <div className="flex gap-2">
                                 <input
@@ -1116,12 +1119,12 @@ function ClientList() {
                               </div>
                             ) : (
                               [
-                            getNestedValue(record, "client.name"),
-                            getNestedValue(record, "client.lastName")
+                                getNestedValue(record, "client.name"),
+                                getNestedValue(record, "client.lastName")
                               ].filter(Boolean).join(' ') || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1133,8 +1136,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "industry") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1146,8 +1149,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "contractHour") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "250px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "250px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1159,8 +1162,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "address") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "150px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "150px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1172,8 +1175,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "city") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "100px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "100px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1185,8 +1188,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "state") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1198,8 +1201,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "pincode") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1212,8 +1215,8 @@ function ClientList() {
                             ) : (
                               getNestedValue(record, "latitude") || "-"
                             )}
-                        </td>
-                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                          </td>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1223,9 +1226,9 @@ function ClientList() {
                                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
                                 placeholder="Longitude"
                               />
-                                                         ) : (
-                               getNestedValue(record, "longitute") || "-"
-                             )}
+                            ) : (
+                              getNestedValue(record, "longitute") || "-"
+                            )}
                           </td>
                           <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
                             <div className="flex items-center gap-2">
@@ -1248,28 +1251,28 @@ function ClientList() {
                                 </>
                               ) : (
                                 <>
-                                                                     <button
-                                     onClick={() => handleEditClient(record)}
-                                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
-                                     title="Edit client"
-                                   >
+                                  <button
+                                    onClick={() => handleEditClient(record)}
+                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
+                                    title="Edit client"
+                                  >
                                     <Edit className="w-4 h-4" />
                                   </button>
-                                                                     <button
-                                     onClick={() => handleDeleteClient(
-                                       getNestedValue(record, "client.id"),
-                                       [getNestedValue(record, "client.name"), getNestedValue(record, "client.lastName")].filter(Boolean).join(' ')
-                                     )}
-                                     className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
-                                     title="Delete client"
-                                   >
+                                  <button
+                                    onClick={() => handleDeleteClient(
+                                      getNestedValue(record, "client.id"),
+                                      [getNestedValue(record, "client.name"), getNestedValue(record, "client.lastName")].filter(Boolean).join(' ')
+                                    )}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                                    title="Delete client"
+                                  >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </>
                               )}
                             </div>
-                        </td>
-                      </tr>
+                          </td>
+                        </tr>
                       );
                     })}
 
@@ -1338,21 +1341,33 @@ function ClientList() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
               <p className="text-sm text-gray-500">
-                Are you sure you want to save the changes to this client?
+                Are you sure you want to save the changes to this client? in savemodel
               </p>
             </div>
 
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
-                onClick={cancelSaveEdit}
+                onClick={(e) => {
+                  console.log("Cancel save edit button clicked");
+                  e.preventDefault();
+                  e.stopPropagation();
+                  cancelSaveEdit();
+                  setSaveEditModal({ isOpen: false, clientData: null });
+                }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={confirmSaveEdit}
+                onClick={(e) => {
+                  console.log("Save edit button clicked");
+                  e.preventDefault();
+                  e.stopPropagation();
+                  confirmSaveEdit();
+                  setSaveEditModal({ isOpen: false, clientData: null });
+                }}
                 disabled={isSaving}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1381,14 +1396,22 @@ function ClientList() {
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
-                onClick={cancelCancelEdit}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  cancelCancelEdit();
+                }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Continue Editing
               </button>
               <button
                 type="button"
-                onClick={confirmCancelEdit}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  confirmCancelEdit();
+                }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
               >
                 <X className="w-4 h-4 mr-2" />
@@ -1411,9 +1434,9 @@ function ClientList() {
                 await fetchScheduleSessions(page);
               } catch (error: any) {
                 console.error("Error changing page:", error);
-                
+
                 let errorMessage = "Failed to load page data. Please try again.";
-                
+
                 if (error.message) {
                   if (error.message.includes("Network Error") || error.message.includes("fetch")) {
                     errorMessage = "Network error. Please check your internet connection and try again.";
@@ -1423,7 +1446,7 @@ function ClientList() {
                     errorMessage = error.message;
                   }
                 }
-                
+
                 toast({
                   title: "Error",
                   description: errorMessage,
