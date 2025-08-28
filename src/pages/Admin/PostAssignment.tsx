@@ -27,8 +27,6 @@ export const PostAssignment = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-
-  // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
 
@@ -143,11 +141,10 @@ export const PostAssignment = () => {
 
       if (isEditMode && editId !== null) {
         await updatePostAssign(editId, payload);
-        toast.success("Post assignment updated successfully!");
       } else {
         await createPostAssign(payload);
-        toast.success("Post assignment created successfully!");
       }
+
       fetchPostAssigns(currentPage);
       resetForm();
     } catch (error) {

@@ -6,6 +6,7 @@ import {
   DELETE_TIME_SETUP,
   UPDATE_TIME_SETUP,
 } from "../graphql/mutation";
+import { useToast } from "../hooks/use-toast";
 
 interface TimeSetup {
   id: number;
@@ -63,7 +64,7 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [lastPage, setLastPage] = useState<number>(1);
   const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
-
+  const {toast} = useToast();
   const fetchTimeSetups = async (page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
     setError(null);
@@ -87,6 +88,13 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     } catch (err: any) {
       console.error("Error fetching time setups:", err);
       setError(err.message || "Failed to fetch time setups");
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to fetch time setups';
+       toast({
+            title: "ERROR",
+            description: errorMessage,
+            variant: "destructive",
+          });
     } finally {
       setLoading(false);
     }
@@ -98,13 +106,20 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
     try {
       const variables = { ...input };
       const data = await graphQLClient.request<{ createTimeSetup: TimeSetup }>(CREATE_TIME_SETUP, variables);
-      await fetchTimeSetups(currentPage);
+      toast({
+            title: "SUCCESS",
+            description: "Time setup created successfully",
+          });
       return data.createTimeSetup;
+      
     } catch (err: any) {
-      console.error("Error creating time setup:", err);
       const errorMessage =
     err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
-     setError(errorMessage);
+    toast({
+            title: "ERROR",
+            description: errorMessage,
+            variant: "destructive",
+          });
     } finally {
       setLoading(false);
     }
@@ -119,9 +134,20 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
         { id }
       );
       setTimeSetups(prev => prev.filter(ts => ts.id !== data.deleteTimeSetup.id));
+      toast({
+            title: "SUCCESS",
+            description: "Time setup deleted successfully",
+      })
     } catch (err: any) {
       console.error("Error deleting time setup:", err);
       setError(err.message || "Failed to delete time setup");
+      const errorMessage =
+    err?.response?.errors?.[0]?.message || 'Failed to delete geolocation';
+       toast({
+            title: "ERROR",
+            description: errorMessage,
+            variant: "destructive",
+          });
     } finally {
       setLoading(false);
     }
@@ -138,10 +164,18 @@ export const TimeSetupProvider = ({ children }: { children: ReactNode }) => {
       setTimeSetups(prev =>
         prev.map(ts => (ts.id === id ? data.updateTimeSetup : ts))
       );
+      toast({
+            title: "SUCCESS",
+            description: "Time setup updated successfully",
+          });
     } catch (err: any) {
       const errorMessage =
     err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
-     setError(errorMessage);
+     toast({
+            title: "ERROR",
+            description: errorMessage,
+            variant: "destructive",
+          });
     } finally {
       setLoading(false);
     }

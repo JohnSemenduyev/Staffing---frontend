@@ -74,7 +74,6 @@ export const PostAssignProvider = ({ children }: { children: ReactNode }) => {
   const createPostAssign = async (input: PostAssignInput) => {
     try {
       await graphQLClient.request<{ createPostAssign: PostAssign }>(CREATE_POST_ASSIGN, input);
-      await fetchPostAssigns(currentPage); // refresh current page
     } catch (err: any) {
       console.error("Error creating post assign:", err);
       setError(err.message || "Failed to create post assign");

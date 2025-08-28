@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState } from 'react';
 import { GET_GEOLOCATIONS } from '../graphql/queries';
 import { graphQLClient } from '../GraphqlClient';
 import { CREATE_GEOLOCATION, DELETE_GEOLOCATION, UPDATE_GEOLOCATION } from '../graphql/mutation';
+import { useToast } from '../hooks/use-toast';
 
 // TypeScript interfaces
 export interface GeoLocation {
@@ -38,6 +39,7 @@ interface GeoLocationContextType {
   error: string | null;
   submitLoader: boolean;
   submitError: string | null;
+  setSubmitError: React.Dispatch<React.SetStateAction<string | null>>;
   currentFilter: Record<string, any> | null;
   fetchGeoLocations: (page?: number, filter?: Record<string, any> | null) => Promise<void>;
   setCurrentPage: (page: number) => void;
@@ -58,7 +60,7 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [submitLoader, setSubmitLoader] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
-
+  const {toast} = useToast();
   const fetchGeoLocations = async (page: number = 1, filter?: Record<string, any> | null) => {
     setLoading(true);
     try {
@@ -91,11 +93,22 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setSubmitLoader(true);
       await graphQLClient.request(CREATE_GEOLOCATION, input);
+     toast({
+      title: "SUCCESS",
+      description:"Assignment created successfully",
+      duration: 1000,
+    })
+          fetchGeoLocations(currentPage);
+
     } catch (err) {
       const errorMessage =
     err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
-  setSubmitError(errorMessage);
-      throw new Error('Failed to create geolocation');
+    toast({
+            title: "ERROR",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 3000,
+          });
     } finally {
       setSubmitLoader(false);
     }
@@ -106,10 +119,21 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       await graphQLClient.request(DELETE_GEOLOCATION, { id });
       await fetchGeoLocations(currentPage);
+       toast({
+      title: "SUCCESS",
+      description:"Assignment deleted successfully",
+      duration: 1000,
+    })
       setError(null);
     } catch (err) {
       console.error(err);
       setError('Failed to delete geolocation');
+      toast({
+            title: "ERROR",
+            description: "Failed to delete geolocation",
+            variant: "destructive",
+            duration: 3000,
+          });
     } finally {
       setLoading(false);
     }
@@ -119,14 +143,23 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setSubmitLoader(true);
       await graphQLClient.request(UPDATE_GEOLOCATION, { id, data: input });
-      // await fetchGeoLocations(currentPage);
+     toast({
+      title: "SUCCESS",
+      description: "Assignment updated successfully",
+      duration: 1000,
+    })
+          fetchGeoLocations(currentPage)
       setSubmitError(null);
     } catch (err) {
-      console.error(err);
       const errorMessage =
     err?.response?.errors?.[0]?.message || 'Failed to create geolocation';
-  setSubmitError(errorMessage);
-      throw new Error('Failed to update geolocation');
+    toast({
+            title: "ERROR",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 3000,
+          });
+    setSubmitError(errorMessage);
     } finally {
       setSubmitLoader(false);
     }
@@ -143,6 +176,7 @@ export const GeoLocationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         error,
         submitLoader,
         submitError,
+        setSubmitError,
         currentFilter,
         fetchGeoLocations,
         setCurrentPage,

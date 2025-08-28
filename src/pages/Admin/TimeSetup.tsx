@@ -144,34 +144,27 @@ export const TimeSetup = () => {
 
       if (editId) {
         await updateTimeSetup(editId, payload);
-        toast({
-          title: "success",
-          description: "Time setup updated successfully",
-          variant: "destructive",
-        });
       } else {
         await createTimeSetup(payload);
-        toast({
-          title: "success",
-          description: "Time setup created successfully",
-          variant: "destructive",
-        });
       }
-
       resetForm();
       fetchTimeSetups(currentPage);
 
     } catch (error) {
       console.error("Error creating time setup:", error);
-        toast({
-            title: "error",
-            description: error,
-            variant: "destructive",
-          });
     } finally {
       setSubmitLoader(false);
     }
   };
+
+  useEffect(() => {
+  if (error) {
+    console.log("Updated error:", error);
+  }
+}, [error]);
+
+
+  console.log(error)
 
   const resetForm = () => {
     setForm({

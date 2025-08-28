@@ -48,6 +48,7 @@ export const GeoLocationSetup = () => {
     updateGeoLocation,
     setCurrentPage,
     loading,
+    setSubmitError,
     error,
     lastPage,
     deleteGeoLocation,
@@ -57,7 +58,6 @@ export const GeoLocationSetup = () => {
     submitError
   } = useGeoLocation();
 
-  // Search form fields (mirror table columns/interface)
   const searchFields = useMemo<FieldConfig[]>(() => [
     { name: "clientName", type: "text", placeholder: "Client Name" },
     { name: "clientLocation", type: "text", placeholder: "Client Location" },
@@ -141,8 +141,6 @@ export const GeoLocationSetup = () => {
     setErrors({});
     setShowErrors(false);
   };
-
-  // Helper function to get field styling based on error state
   const getFieldClasses = (fieldName: string) => {
     const hasError = showErrors && errors[fieldName];
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
@@ -162,31 +160,15 @@ export const GeoLocationSetup = () => {
     try {
       if (isEditing && editId !== null) {
         await updateGeoLocation(editId, input);
-         toast({
-            title: "success",
-            description: "Geolocation updated successfully",
-            variant: "destructive",
-          });
       } else {
         await createGeoLocation(input);
-        toast({
-            title: "success",
-            description: "Geolocation created successfully",
-            variant: "destructive",
-          });
       }
-      // resetForm();
-
-      fetchGeoLocations(currentPage);
+      resetForm();
+      // fetchGeoLocations(currentPage);
     } catch (err) {
-
-      console.log(err)
-    toast({
-            title: "error",
-            description: submitError,
-            variant: "destructive",
-          });
+     console.log(err)
     }finally{
+      setSubmitError("");
       console.log(submitError)
     }
   };

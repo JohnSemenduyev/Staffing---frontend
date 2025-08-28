@@ -48,9 +48,12 @@ export default function AssignmentNew() {
     assignments,
     lastPage,
     loading,
+    currentPage,
     submitError,
     fetchAssignments,
+    setCurrentPage,
     createAssignment,
+    setSubmitError,
     updateAssignment,
     deleteAssignment,
   } = useAssignment();
@@ -65,7 +68,7 @@ export default function AssignmentNew() {
     notification: [] as NotificationOption[],
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
+ 
   const [editId, setEditId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [submitLoader, setSubmitLoader] = useState(false);
@@ -87,7 +90,6 @@ export default function AssignmentNew() {
   const [showGuardDropdown, setShowGuardDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] =useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
-
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const debouncedGuardSearch = useDebounce(guardSearch, 300);
@@ -144,7 +146,7 @@ export default function AssignmentNew() {
       await fetchAssignments(1, filter);
     } catch (error) {
       console.error('Search failed:', error);
-      toast({title:"error",description:'Search failed. Please try again.'});
+      toast({title:"ERROR",description:'Search failed. Please try again.'});
     } finally {
       setSearchLoading(false);
     }
@@ -274,50 +276,36 @@ export default function AssignmentNew() {
     setEditId(null);
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
+ const onSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validate()) return;
 
-    const input = {
-      userId: Number(form.userId),
-      guardId: Number(form.guardId),
-      clientId: Number(form.clientId),
-      addressId: Number(form.addressId),
-      role: form.role,
-      access: form.access,
-      notification: form.notification,
-    };
-
-    try {
-      setSubmitLoader(true);
-      if (isEditing && editId !== null) {
-        await updateAssignment(editId, input);
-        toast({
-          title: "success",
-          description: "Assignment updated successfully",
-          variant: "destructive",
-        });
-      } else {
-        await createAssignment(input);
-        toast({
-          title: "success",
-          description: "Assignment created successfully",
-          variant: "destructive",
-        });
-      }
-      // resetForm();
-      fetchAssignments(currentPage);
-    } catch (error) {
-      console.log(12,submitError);
-       toast({
-            title: "error",
-            description: submitError,
-            variant: "destructive",
-          });
-    } finally {
-      setSubmitLoader(false);
-    }
+  const input = {
+    userId: Number(form.userId),
+    guardId: Number(form.guardId),
+    clientId: Number(form.clientId),
+    addressId: Number(form.addressId),
+    role: form.role,
+    access: form.access,
+    notification: form.notification,
   };
+
+  try {
+    setSubmitLoader(true);
+    if (isEditing && editId !== null) {
+      await updateAssignment(editId, input);
+    } else {
+      await createAssignment(input);
+    }
+    resetForm();
+    fetchAssignments(currentPage)
+  } catch (error: any) {
+    console.error("Error submitting assignment:", error);
+  } finally {
+    setSubmitError("");
+    setSubmitLoader(false);
+  }
+};
 
   const handleEdit = (record: any) => {
     setIsEditing(true);
@@ -355,11 +343,11 @@ export default function AssignmentNew() {
     try {
       setDeleteLoader(true);
       await deleteAssignment(deleteModal.record.id);
-      toast({title : "success", description : "Assignment deleted successfully"});
+      toast({title : "SUCCESS", description : "Assignment deleted successfully"});
       fetchAssignments(currentPage);
       setDeleteModal({ isOpen: false, record: null });
     } catch (err) {
-      toast({title : "error", description : "Failed to delete assignment"});
+      toast({title : "ERROR", description : "Failed to delete assignment"});
     } finally {
       setDeleteLoader(false);
     }
