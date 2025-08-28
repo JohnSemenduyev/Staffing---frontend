@@ -208,24 +208,7 @@ const calculateGrandTotal = (sessionData: SessionItem[]) => {
   return parseFloat(total.toFixed(2));
 };
 
-// Get grand total cell style
-const getGrandTotalCellStyle = (sessionData: SessionItem[]) => {
-  const total = calculateGrandTotal(sessionData);
-  if (total > 40) return "bg-red-100 text-red-800";
-  if (total > 30) return "bg-yellow-100 text-yellow-800";
-  return "";
-};
 
-// TODO: Implement these functions in the future
-const handleGenerateExcel = () => {
-  // TODO: Implement Excel generation for actual time data
-  console.log("Generate Excel for actual time data");
-};
-
-const handleGeneratePrintableTable = () => {
-  // TODO: Implement printable table generation for actual time data
-  console.log("Generate printable table for actual time data");
-};
 
 const logEditableCells = (sd: ScheduleItem[]) => {
   const fmt = (d: string) => (d ? formatDateStringLocal(d) : '');

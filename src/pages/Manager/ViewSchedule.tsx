@@ -13,7 +13,6 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { useDebounce } from "../../hooks/useDebounce";
 import { CustomDatePicker } from "../../components/CustomDatePicker"; // use shared component
 import { formatDateLocal, getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD, formatUSPhone } from "../../lib/utils";
-import { graphQLClient } from "../../GraphqlClient";
 import {
   generateSchedulePrintableTable,
   generateActualTimePrintableTable,
@@ -23,15 +22,10 @@ import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
 import {
   inputClasses,
   timeToMinutes,
-  doTimesOverlap,
   sortShiftsByTime,
   convertDateFormat,
   validateForm,
-  calculateHours,
-  getUniqueUsers,
-  calculateDayTotal,
-  calculateUserTotal,
-  calculateGrandTotal
+  calculateHours
 } from "./ViewSchedule/utils";
 import {
   FormData,
@@ -205,6 +199,7 @@ export const ViewSchedule = () => {
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Add a state to track if we have data from API
   const [hasApiData, setHasApiData] = useState(false);
@@ -240,6 +235,7 @@ export const ViewSchedule = () => {
             lastName: clientSession.client.lastName,
             address: clientSession.address.address,
             city: clientSession.address.city,
+            state: clientSession.address.state,
             pincode: clientSession.address.pincode,
             addresses: (clientSession.client as any)?.addresses || []
           };
@@ -555,10 +551,10 @@ export const ViewSchedule = () => {
               startDate: date,
               auto: group.auto ?? false,
               shifts: [],
-              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
-              address: selectedClient?.address || "Unknown Address",
-              userName: group.user?.name ?? "",
-              userPhone: group.user?.phone ?? ""
+              clientName: [group.client?.name, (group.client as any)?.lastName].filter(Boolean).join(' ') || "Unknown Client",
+              address: [group.address?.address, group.address?.city, group.address?.state, group.address?.pincode].filter(Boolean).join(", ") || "Unknown Address",
+              userName: [group.user?.name, (group.user as any)?.lastName].filter(Boolean).join(" "),
+              userPhone: (group.user as any)?.phone ?? ""
             };
             keyedByUserDate.set(key, item);
           }
@@ -681,6 +677,7 @@ export const ViewSchedule = () => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
     const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
     setUserSearch(fullName || user.name);
+    setSelectedUser(user);
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
   };
@@ -693,6 +690,7 @@ export const ViewSchedule = () => {
       endtime: ""
     });
     setUserSearch("");
+    setSelectedUser(null);
     setAuto(false);
     setErrors({});
     setApplyAllWeek(false);
@@ -715,10 +713,10 @@ export const ViewSchedule = () => {
     setSubmitLoader(true);
 
     try {
-      // Get user details from the hook data
-      const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
+      // Get user details from state or the search results as fallback
+      const selected = selectedUser ?? searchedUsers.find(u => String(u.id) === form.userId);
 
-      if (!selectedUser) {
+      if (!selected) {
         toast({
           title: "Error",
           description: "Selected user not found.",
@@ -726,7 +724,6 @@ export const ViewSchedule = () => {
         });
         return;
       }
-
       // Create a copy of current schedule data to work with
       const updatedScheduleData = [...scheduleData];
       const newShift = {
@@ -734,7 +731,7 @@ export const ViewSchedule = () => {
         startTime: form.starttime,
         endTime: form.endtime,
         hours: calculateHours(form.starttime, form.endtime),
-        auto: false,
+        auto: auto,
       };
 
       if (applyAllWeek && currentWeekRange) {
@@ -784,9 +781,10 @@ export const ViewSchedule = () => {
                   date: dateStr,
                 },
               ],
-              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client", address: selectedClient?.address || "Unknown Address",
-              userName: selectedUser.name,
-              userPhone: selectedUser.phone || '',
+              clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
+              address: [selectedClient?.address, selectedClient?.city, selectedClient?.state, selectedClient?.pincode].filter(Boolean).join(", ") || "Unknown Address",
+              userName: [selectedUser.name, (selectedUser as any)?.lastName].filter(Boolean).join(" "),
+              userPhone: (selectedUser as any)?.phone || '',
             });
           }
         }
@@ -824,11 +822,13 @@ export const ViewSchedule = () => {
               {
                 ...newShift,
                 date: form.date,
+                auto:auto
               },
             ],
-            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client", address: selectedClient?.address || "Unknown Address",
-            userName: selectedUser.name,
-            userPhone: selectedUser.phone || '',
+            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
+            address: [selectedClient?.address, selectedClient?.city, selectedClient?.state, selectedClient?.pincode].filter(Boolean).join(", ") || "Unknown Address",
+            userName: [selectedUser.name, (selectedUser as any)?.lastName].filter(Boolean).join(" "),
+            userPhone: (selectedUser as any)?.phone || '',
           });
         }
       }
@@ -853,11 +853,6 @@ export const ViewSchedule = () => {
       setSubmitLoader(false);
     }
   };
-
-
-
-
-
 
   // Updated Publish functionality
   const handlePublish = async () => {
@@ -1016,11 +1011,16 @@ export const ViewSchedule = () => {
   };
 
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
-    // Update local state only (no API call)
     setScheduleData(prev => prev.map(item =>
-      item.userId === userId ? { ...item, auto: enabled } : item
+      item.userId === userId
+        ? {
+            ...item,
+            auto: enabled,
+            shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+          }
+        : item
     ));
-
+  
     toast({
       title: "Success",
       description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
@@ -1030,10 +1030,9 @@ export const ViewSchedule = () => {
   const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
     setScheduleData(prev => prev.map(item => {
       if (item.userId === userId && item.startDate === date) {
-        return {
-          ...item,
-          shifts: item.shifts.map(s => s.id === shiftId ? { ...s, auto: enabled } : s)
-        };
+        const updatedShifts = item.shifts.map(s => (s.id === shiftId ? { ...s, auto: enabled } : s));
+        const scheduleAuto = enabled ? true : updatedShifts.some(s => s.auto === true);
+        return { ...item, auto: scheduleAuto, shifts: updatedShifts };
       }
       return item;
     }));
@@ -1856,6 +1855,7 @@ export const ViewSchedule = () => {
                       onChange={e => {
                         setUserSearch(e.target.value);
                         setForm(f => ({ ...f, userId: "" }));
+                        setSelectedUser(null);
                       }}
                       placeholder="Guard Name"
                       className={inputClasses}
@@ -2019,10 +2019,16 @@ export const ViewSchedule = () => {
 
           {/* Removed page-level schedule loader */}
           <div className="flex w-full justify-between items-center  my-0 py-2 px-4 rounded-t-lg bg-gray-50">
-            {selectedClient && (
+          {selectedClient && (
               <div className="text-left">
-                <div className="text-lg font-medium text-gray-800">{selectedClient.name}</div>
-                <div className="text-sm text-gray-500">{selectedClient.address}</div>
+                <div className="text-lg font-medium text-gray-800">
+                  {selectedClient?.lastName && String(selectedClient?.name || "").trim().endsWith(String(selectedClient.lastName))
+                    ? selectedClient.name
+                    : [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(" ")}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {[selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(", ")}
+                </div>
               </div>
             )}
             <DateNavigation

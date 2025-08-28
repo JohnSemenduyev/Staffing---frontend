@@ -160,7 +160,7 @@ export default function AssignmentForm() {
   const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   return (
-  <div className="min-h-screen p-6 font-sans">
+    <div className="min-h-screen p-6 font-sans">
       <div className="w-full px-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-6">
@@ -186,14 +186,14 @@ export default function AssignmentForm() {
                   <ErrorMessage message={errors.clientId} />
                 )}
                 <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
-                    {loadingClients ? (
-                      <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-                    ) : searchedClients.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No clients found</div>
-                    ) : (
+                  {loadingClients ? (
+                    <div className="p-2 text-sm text-gray-500">Searching clients...</div>
+                  ) : searchedClients.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">No clients found</div>
+                  ) : (
                     searchedClients.map((client, idx) => (
                       <SearchResultItem
-                          key={client.id}
+                        key={client.id}
                         index={idx}
                         primaryText={client.name}
                         onSelect={() => handleClientSelect(client)}
@@ -204,27 +204,27 @@ export default function AssignmentForm() {
               </div>
 
               {/* Address select */}
-         <div>
-  <select
-    value={form.addressId}
-    onChange={e => handleChange("addressId", e.target.value)}
-    disabled={!form.clientId || loadingAddresses}
-    className={`${fieldInputClasses} ${form.addressId === "" ? "text-gray-400" : "text-gray-900"}`}
-  >
-    <option value="" disabled>Select Address</option>
-    {addresses?.map(address => (
-      <option key={address.id} value={address.id}>
-        {address.label || address.address}
-      </option>
-    ))}
-  </select>
-  {loadingAddresses && (
-    <span className="text-xs text-blue-500 ml-2">Loading...</span>
-  )}
-  {errors.addressId && (
-    <ErrorMessage message={errors.addressId} />
-  )}
-</div>
+              <div>
+                <select
+                  value={form.addressId}
+                  onChange={e => handleChange("addressId", e.target.value)}
+                  disabled={!form.clientId || loadingAddresses}
+                  className={`${fieldInputClasses} ${form.addressId === "" ? "text-gray-400" : "text-gray-900"}`}
+                >
+                  <option value="" disabled>Select Address</option>
+                  {addresses?.map(address => (
+                    <option key={address.id} value={address.id}>
+                      {address.label || address.address}
+                    </option>
+                  ))}
+                </select>
+                {loadingAddresses && (
+                  <span className="text-xs text-blue-500 ml-2">Loading...</span>
+                )}
+                {errors.addressId && (
+                  <ErrorMessage message={errors.addressId} />
+                )}
+              </div>
 
 
               {/* User Search */}
@@ -245,11 +245,11 @@ export default function AssignmentForm() {
                   <ErrorMessage message={errors.userId} />
                 )}
                 <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
-                    {loadingUsers ? (
-                      <div className="p-2 text-sm text-gray-500">Searching users...</div>
-                    ) : searchedUsers.length === 0 ? (
-                      <div className="p-2 text-gray-500 text-sm">No users found</div>
-                    ) : (
+                  {loadingUsers ? (
+                    <div className="p-2 text-sm text-gray-500">Searching users...</div>
+                  ) : searchedUsers.length === 0 ? (
+                    <div className="p-2 text-gray-500 text-sm">No users found</div>
+                  ) : (
                     searchedUsers.map((user, idx) => {
                       const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
                       const fullAddress = [
@@ -273,7 +273,7 @@ export default function AssignmentForm() {
               </div>
 
               {/* Guard Search */}
-             <div className="relative">
+              <div className="relative">
                 <input
                   type="text"
                   value={guardSearch}
@@ -310,44 +310,44 @@ export default function AssignmentForm() {
                 )}
               </div>
 
-<div>
-  <select
-    value={form.role}
-    onChange={e => handleChange("role", e.target.value)}
-    className={`${fieldInputClasses} ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
-  >
-    <option value="" disabled>Select Role</option>
-    <option value="Admin">Admin</option>
-    <option value="Manager">Manager</option>
-    <option value="Guard">Guard</option>
-    <option value="Client">Client</option>
-  </select>
-  {errors.role && (
-    <ErrorMessage message={errors.role} />
-  )}
-</div>
+              <div>
+                <select
+                  value={form.role}
+                  onChange={e => handleChange("role", e.target.value)}
+                  className={`${fieldInputClasses} ${form.role === "" ? "text-gray-400" : "text-gray-900"}`}
+                >
+                  <option value="" disabled>Select Role</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Guard">Guard</option>
+                  <option value="Client">Client</option>
+                </select>
+                {errors.role && (
+                  <ErrorMessage message={errors.role} />
+                )}
+              </div>
 
-{/* Access select */}
-<div>
-  <select
-    value={form.access}
-    onChange={e => handleChange("access", e.target.value)}
-    className={`${fieldInputClasses} ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
-  >
-    <option value="" disabled>Select Access</option>
-    <option value="View">View</option>
-    <option value="Edit">Edit</option>
-  </select>
-  {errors.access && (
-    <ErrorMessage message={errors.access} />
-  )}
-</div>
+              {/* Access select */}
+              <div>
+                <select
+                  value={form.access}
+                  onChange={e => handleChange("access", e.target.value)}
+                  className={`${fieldInputClasses} ${form.access === "" ? "text-gray-400" : "text-gray-900"}`}
+                >
+                  <option value="" disabled>Select Access</option>
+                  <option value="View">View</option>
+                  <option value="Edit">Edit</option>
+                </select>
+                {errors.access && (
+                  <ErrorMessage message={errors.access} />
+                )}
+              </div>
 
 
               {/* Notification Dropdown */}
               <div className="col-span-1 md:col-span-2 lg:col-span-3 relative" ref={notificationDropdownRef}>
                 <label className="block font-sans mb-2">Notifications</label>
-                <div 
+                <div
                   className={`${fieldInputClasses} cursor-pointer flex items-center justify-between`}
                   onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
                 >
@@ -381,15 +381,14 @@ export default function AssignmentForm() {
                     </svg>
                   </div>
                 </div>
-                
+
                 {showNotificationDropdown && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
                     {notificationOptions.map(option => (
                       <div
                         key={option}
-                        className={`p-2 cursor-pointer text-sm hover:bg-gray-50 ${
-                          form.notification.includes(option) ? 'bg-blue-50 text-blue-800' : ''
-                        }`}
+                        className={`p-2 cursor-pointer text-sm hover:bg-gray-50 ${form.notification.includes(option) ? 'bg-blue-50 text-blue-800' : ''
+                          }`}
                         onClick={() => handleCheckbox(option)}
                       >
                         {option}
@@ -397,7 +396,7 @@ export default function AssignmentForm() {
                     ))}
                   </div>
                 )}
-                
+
                 {errors.notification && (
                   <ErrorMessage message={errors.notification} />
                 )}
@@ -423,8 +422,8 @@ export default function AssignmentForm() {
           </form>
         </div>
         <div className="mt-6"></div>
-          <AssignmentHistory />
-        </div>
+        <AssignmentHistory />
       </div>
+    </div>
   );
 }

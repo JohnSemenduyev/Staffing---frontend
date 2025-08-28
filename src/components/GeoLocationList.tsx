@@ -19,22 +19,6 @@ interface AssignmentRecord {
   notifications: NotificationOption[];
   createdAt: string;
 }
-const searchFields: FieldConfig[] = [
-  { name: "clientName", type: "text", label: "Client Name" },
-  { name: "clientLocation", type: "text", label: "Client Location" },
-  { name: "invoiceName", type: "text", label: "User Name" },
-  { name: "status", type: "text", label: "Role" },
-  { name: "access", type: "text", label: "Access" },
-];
-const handleSearch = (formData: any) => {
-  // TODO:- implement Post Assignment search
-};
-
-const handleReset = () => {
-  // TODO:- reset Post Assignment search
-  console.log("Post Assignment reset");
-};
-
 function getLocationString(location: any) {
   if (!location) return "";
   return [location?.label, location?.address, location?.city].filter(Boolean).join(", ");

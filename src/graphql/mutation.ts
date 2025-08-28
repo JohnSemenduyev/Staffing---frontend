@@ -542,3 +542,11 @@ export const UPDATE_CLIENT_WITH_ADDRESS = gql`
     }
   }
 `;
+
+export const DELETE_SCHEDULE_SESSION = gql`
+  mutation DeleteScheduleSession($deleteScheduleSessionId: Int!) {
+    deleteScheduleSession(id: $deleteScheduleSessionId) {
+      id
+    }
+  }
+`;

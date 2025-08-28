@@ -87,7 +87,6 @@ function ClientList() {
   ];
 
   const handleSearch = (formData: any) => {
-    // TODO:- implement Client List search (could map fields to existing searchTerms if desired)
     // console.log('Client List search:', formData);
     setSearchLoading(false);
     

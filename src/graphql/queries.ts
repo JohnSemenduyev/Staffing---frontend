@@ -400,6 +400,7 @@ export const GET_UNIQUE_CLIENT_ADDRESS_SESSIONS = gql`
       userId
       client {
         name
+        lastName
       }
       address {
         address
@@ -489,11 +490,22 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
         date
         auto
       }
-        user {
-      id
-      name
-      phone
-    }
+      user {
+        id
+        name
+        lastName
+        phone
+      }
+      client {
+        name
+        lastName
+      }
+      address {
+        address
+        city
+        state
+        pincode
+      }
       clientId
       addressId
       weeklyHours

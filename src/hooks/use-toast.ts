@@ -158,6 +158,18 @@ function toast({ ...props }: Toast) {
     },
   })
 
+  // Auto-dismiss duration: allow override via props.duration; default by variant
+  const duration =
+    typeof (props as any)?.duration === "number"
+      ? (props as any).duration
+      : props?.variant === "destructive"
+        ? 3000
+        : 1000
+
+  setTimeout(() => {
+    dismiss()
+  }, Math.max(0, duration || 0))
+
   return {
     id: id,
     dismiss,

@@ -2,10 +2,9 @@ import React, { useState } from "react";
 import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
-import { toast } from "sonner";
-import * as XLSX from "xlsx";
 import { formatDateLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
-
+import { graphQLClient } from "../GraphqlClient";
+import { DELETE_SCHEDULE_SESSION } from "../graphql/mutation";
 interface Shift {
   id: number;
   date: string;
@@ -189,7 +188,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
   const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
   const [editForm, setEditForm] = useState({ starttime: "", endtime: "" });
-
+  const [deletingUser, setDeletingUser] = useState(false);
   // Drag and drop states
   const [draggedShift, setDraggedShift] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null);
@@ -350,11 +349,43 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     setDeleteUserModal({ isOpen: true, userId });
   };
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
+    setDeletingUser(true);
     const { userId } = deleteUserModal;
-    const updatedData = scheduleData.filter(item => item.userId !== userId);
-    onScheduleDataChange(updatedData);
-    setDeleteUserModal({ isOpen: false, userId: null });
+  
+    try {
+      // collect this user's scheduleSessionIds (unique) across the week
+      const sessionIds = new Set<number>();
+      scheduleData.forEach(item => {
+        if (item.userId === userId) {
+          item.shifts.forEach(s => { if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId); });
+        }
+      });
+  
+      const token = localStorage.getItem("token");
+      // delete each schedule session on server
+
+      await Promise.all(
+        Array.from(sessionIds).map(id =>
+          graphQLClient.request(
+            DELETE_SCHEDULE_SESSION,
+            { deleteScheduleSessionId: id },
+            { Authorization: `Bearer ${token}` }
+          )
+        )
+      );
+  
+      // then remove this user's entries locally 
+      
+      const updatedData = scheduleData.filter(item => item.userId !== userId);
+      onScheduleDataChange(updatedData);
+        // go to view mode
+        onToggleEditMode();
+
+      } finally {
+      setDeletingUser(false);
+      setDeleteUserModal({ isOpen: false, userId: null });
+    }
   };
 
   const cancelDeleteUser = () => {
@@ -921,7 +952,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 onClick={confirmDeleteUser}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                {deletingUser ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
                 Delete All
               </button>
             </div>
@@ -931,3 +966,5 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     </div>
   );
 }; 
+
+

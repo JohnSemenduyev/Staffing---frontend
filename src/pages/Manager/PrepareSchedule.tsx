@@ -212,6 +212,7 @@ export const PrepareSchedule = () => {
   const [editingId, setEditingId] = useState(null);
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [isPublished, setIsPublished] = useState(false);
+  const [selectedUserPhone, setSelectedUserPhone] = useState("");
   const [showApplyAllDropdown, setShowApplyAllDropdown] = useState(false);
   const [applyToAllDates, setApplyToAllDates] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
@@ -387,6 +388,7 @@ export const PrepareSchedule = () => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
     const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
     setUserSearch(fullName || user.name);
+    setSelectedUserPhone((user as any)?.phone || "");
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
   };
@@ -405,6 +407,7 @@ export const PrepareSchedule = () => {
     setClientSearch("");
     setSelectedAddressText("");
     setUserSearch("");
+    setSelectedUserPhone("");
     setAuto(false);
     setErrors({});
     setEditingId(null);
@@ -776,13 +779,15 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   auto: auto,
                 },
               ],
-              clientName: scheduleData[0]?.clientName ||
-                [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') ||
-                "Unknown Client",
-              address: scheduleData[0]?.address || selectedAddress?.address || "Unknown Address",
-              userName: selectedUser.name,
-              userPhone: selectedUser.phone || '',
-            });
+              clientName: scheduleData[0]?.clientName
+              || clientSearch
+              || [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ')
+              || "Unknown Client",
+              address: scheduleData[0]?.address || selectedAddressText || selectedAddress?.address || "Unknown Address",
+              userName: userSearch || selectedUser?.name || "Unknown User",
+              userPhone: selectedUserPhone || selectedUser?.phone || '',
+            
+          });
           }
         }
 
@@ -834,10 +839,12 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 auto: auto,
               },
             ],
-            clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
-            address: selectedAddress?.address || "Unknown Address",
-            userName: selectedUser?.name,
-            userPhone: selectedUser?.phone || '',
+            clientName: clientSearch
+            || [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ')
+            || "Unknown Client",
+          address: selectedAddressText || selectedAddress?.address || "Unknown Address",
+          userName: userSearch || selectedUser?.name || "Unknown User",
+          userPhone: selectedUserPhone || selectedUser?.phone || '',
           });
         }
       }
