@@ -985,12 +985,12 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
               {isPublishing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  <span>Publishing...</span>
+                  <span>Saving...</span>
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  Publish
+                  Save
                 </>
               )}
             </button>
@@ -1010,7 +1010,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
             title="Enter edit mode to publish"
           >
             <Send className="w-4 h-4 mr-2" />
-            Publish
+            Save
           </button>
         )}
 
