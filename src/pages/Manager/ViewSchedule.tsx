@@ -1867,7 +1867,7 @@ export const ViewSchedule = () => {
         <div className="w-full">
           {/* Header with reset button and date navigation */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Schedule View</h2>
+            <h2 className="text-xl font-semibold"></h2>
             <div className="flex items-center space-x-4">
               {/* Date Navigation Component */}
 
@@ -2063,7 +2063,6 @@ export const ViewSchedule = () => {
           )}
 
 
-          {/* Removed page-level schedule loader */}
           <div className="flex w-full justify-between items-center  my-0 py-2 px-4 rounded-t-lg bg-gray-50">
           {selectedClient && (
               <div className="text-left">
@@ -2096,24 +2095,27 @@ export const ViewSchedule = () => {
 
           {/* Only render ScheduleTable when we have data */}
           {!scheduleError && hasApiData && scheduleData.length > 0 && (
-            <ScheduleTable
-              key={`schedule-${viewKey}`}
-              scheduleData={scheduleData}
-              sessionData={sessionData}
-              selectedDate={selectedDate}
-              currentWeekRange={currentWeekRange}
-              isEditMode={isScheduleEditMode}
-              onScheduleDataChange={setScheduleData}
-              onPublish={handlePublish}
-              onPrint={handleSchedulePrint}
-              onDownloadExcel={handleScheduleDownloadExcel}
-              onToggleEditMode={toggleScheduleEditMode}
-              isPublishing={isPublishing}
-              isPrinting={isPrinting}
-              loading={scheduleLoading || tableLoading}
-              onUserAutoToggle={handleUserAutoToggle}
-              onShiftAutoToggle={handleShiftAutoToggle}
-            />
+            <div key={`schedule-${viewKey}`} className="mt-8">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Schedule View</h3>
+              <ScheduleTable
+                key={`schedule-${viewKey}`}
+                scheduleData={scheduleData}
+                sessionData={sessionData}
+                selectedDate={selectedDate}
+                currentWeekRange={currentWeekRange}
+                isEditMode={isScheduleEditMode}
+                onScheduleDataChange={setScheduleData}
+                onPublish={handlePublish}
+                onPrint={handleSchedulePrint}
+                onDownloadExcel={handleScheduleDownloadExcel}
+                onToggleEditMode={toggleScheduleEditMode}
+                isPublishing={isPublishing}
+                isPrinting={isPrinting}
+                loading={scheduleLoading || tableLoading}
+                onUserAutoToggle={handleUserAutoToggle}
+                onShiftAutoToggle={handleShiftAutoToggle}
+              />
+            </div>
           )}
 
           {/* Actual Time Table Section - only when we have schedule data */}

@@ -543,6 +543,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
+      
       <div className="w-full overflow-auto custom-scrollbar" style={{ maxHeight: "600px" }}>
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
