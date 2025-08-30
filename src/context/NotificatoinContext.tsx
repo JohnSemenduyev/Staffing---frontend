@@ -19,6 +19,8 @@ type RawNotification = {
   scheduleSessionId: number;
   message: string;
   managerId: number;
+  date: string;
+  time: string;
   startDate: string;
   createdAt: string;
   endDate: string;
@@ -30,6 +32,7 @@ export type NotificationEntry = {
   guardFirst: { name: string };
   guardLast: { name: string };
   date: string;
+  time: string;
   client: { name: string };
   address: { address: string };
   notificationType: string;
@@ -126,7 +129,8 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       const transformed: NotificationEntry[] = rawData.map((n) => ({
         guardFirst: { name: n.user?.name || "" },
         guardLast: { name: n.user?.lastName || "" },
-        date: parseDate(n.createdAt),
+        date: n.date || n.createdAt || "",
+        time: n.time || "-",
         client: { name: n.client?.name || "" },
         address: { address: n.address?.address || "" },
         notificationType: n.notificationType,

@@ -547,7 +547,8 @@ export const GET_NOTIFICATIONS = gql`
       scheduleSessionId
       message
       managerId
-      createdAt
+      date
+      time
       client {
         name
       }

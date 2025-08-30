@@ -32,8 +32,8 @@ export const Notification = () => {
     notification: [] as NotificationOption[],
   });
 
- const { data, loading, error, fetchNotifications } = useNotifications();
-   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const { data, loading, error, fetchNotifications } = useNotifications();
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -60,12 +60,12 @@ export const Notification = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Required";
     if (!form.addressId) e.addressId = "Required";
-    
+
     // Date validation: End date should be after start date
     if (form.Startdate && form.Enddate && new Date(form.Enddate) < new Date(form.Startdate)) {
       e.Enddate = "End date must be after start date";
     }
-    
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -79,7 +79,7 @@ export const Notification = () => {
   };
 
   const handleClientSelect = (
-    client: { id: string | number; name: string; lastName:string },
+    client: { id: string | number; name: string; lastName: string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -157,200 +157,207 @@ export const Notification = () => {
     setShowUserDropdown(false);
     setShowNotificationDropdown(false);
   };
-  useEffect(()=>{
+  useEffect(() => {
     console.log(data);
-    
-  },[data])
+
+  }, [data])
 
   const onSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!validate()) {
-    setShowErrors(true);
-    return;
-  }
+    if (!validate()) {
+      setShowErrors(true);
+      return;
+    }
 
-  setSubmitLoader(true);
-  setErrors({});
+    setSubmitLoader(true);
+    setErrors({});
 
-  try {
-    await fetchNotifications({
-      clientId: Number(form.clientId),
-      addressId: Number(form.addressId),
-      userId: Number(form.userId),
-      notificationType: form.notification.map(n => notificationTypeMap[n]),
-      date: form.Startdate || null,
-    });
+    try {
+      await fetchNotifications({
+        clientId: Number(form.clientId),
+        addressId: Number(form.addressId),
+        userId: Number(form.userId),
+        notificationType: form.notification.map(n => notificationTypeMap[n]),
+        date: form.Startdate || null,
+      });
 
-    toast.success("Notifications fetched successfully!");
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-    toast.error("Failed to fetch notifications. Please try again.");
-  } finally {
-    setSubmitLoader(false);
-  }
-};
+      toast.success("Notifications fetched successfully!");
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      toast.error("Failed to fetch notifications. Please try again.");
+    } finally {
+      setSubmitLoader(false);
+    }
+  };
 
   const getFieldClasses = (fieldName: string) => {
     const hasError = showErrors && errors[fieldName];
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
-const formatNotificationText = (notification: string): string => {
-  if(notification=="geo_location"){
-    return "GeoLocation"
-  }
-  return notification
-    .replace(/_/g, ' ') // Replace underscores with spaces
-    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
-};
-
-const tableColumns: TableColumn[] = [
-  {
-    key: "client.name",
-    label: "Client Name",
-    sortable: true,
-    searchable: true,
-    width: "250px",
-    height: "40px",
-    className: "min-w-[150px]",
-    render: (value: string) => value || "-"
-  },
-  {
-    key: "address.address",
-    label: "Address",
-    sortable: true,
-    searchable: true,
-    width: "250px",
-    className: "min-w-[200px]",
-    render: (value: string) => (
-      <div title={value || ""}>
-        {value || "-"}
-      </div>
-    )
-  },
-  {
-    key: "guardFirst.name",
-    label: "User Name",
-    sortable: true,
-    searchable: true,
-    width: "250px",
-    className: "min-w-[150px]",
-  },
-  {
-    key: "date",
-    label: "Date",
-    sortable: true,
-    width: "250px",
-    searchable: true,
-    className: "min-w-[120px]",
-    render: (value: string) => {
-      if (!value) return "-";
-      try {
-        const date = new Date(value);
-        return isNaN(date.getTime()) ? value : date.toLocaleDateString();
-      } catch {
-        return value || "-";
-      }
+  const formatNotificationText = (notification: string): string => {
+    if (notification == "geo_location") {
+      return "GeoLocation"
     }
-  },
-  {
-  key: "notificationType",
-  label: "Notification",
-  sortable: true,
-  searchable: true,
-  searchType: 'dropdown', // Add this
-  searchOptions: [ // Add this
-    { label: 'Geolocation', value: 'geo_location' },
-    { label: 'Time Clock', value: 'time_clock' },
-    { label: 'Weekly Hours', value: 'weekly_hours' },
-    { label: 'Schedule', value: 'schedule' }
-  ],
-  width: "250px",
-  className: "min-w-[120px]",
-  render: (value: string) => {
-    // Format the notification type using the same helper function
-    const formattedType = value ? formatNotificationText(value) : "Unknown";
-    
-    return (
-      <div>
-        {formattedType}
-      </div>
-    );
-  }
-},
-  {
-    key: "message",
-    label: "Message",
-    sortable: false,
-    searchable: true,
-    className: "min-w-[350px]",
-    width:"200px",
-    render: (value: string) => (
-      <div className="leading-relaxed" title={value || ""}>
-        {value || "-"}
-      </div>
-    )
-  }
-];
-return (
+    return notification
+      .replace(/_/g, ' ') // Replace underscores with spaces
+      .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+  };
+
+  const tableColumns: TableColumn[] = [
+    {
+      key: "client.name",
+      label: "Client Name",
+      sortable: true,
+      searchable: true,
+      width: "250px",
+      height: "40px",
+      className: "min-w-[150px]",
+      render: (value: string) => value || "-"
+    },
+    {
+      key: "address.address",
+      label: "Address",
+      sortable: true,
+      searchable: true,
+      width: "250px",
+      className: "min-w-[200px]",
+      render: (value: string) => (
+        <div title={value || ""}>
+          {value || "-"}
+        </div>
+      )
+    },
+    {
+      key: "guardFirst.name",
+      label: "User Name",
+      sortable: true,
+      searchable: true,
+      width: "250px",
+      className: "min-w-[150px]",
+    },
+    {
+      key: "date",
+      label: "Date",
+      sortable: true,
+      width: "120px",
+      searchable: true,
+      className: "min-w-[120px]",
+      render: (value: string) => {
+        if (!value) return "-";
+        try {
+          
+          return value;
+        } catch {
+          return value || "-";
+        }
+      }
+    },
+    {
+      key: "time",
+      label: "Time",
+      sortable: true,
+      width: "100px",
+      searchable: true,
+      className: "min-w-[100px]",
+      render: (value: string) => value || "-"
+    },
+    {
+      key: "notificationType",
+      label: "Notification",
+      sortable: true,
+      searchable: true,
+      searchType: 'dropdown',
+      searchOptions: [
+        { label: 'Geolocation', value: 'geo_location' },
+        { label: 'Time Clock', value: 'time_clock' },
+        { label: 'Weekly Hours', value: 'weekly_hours' },
+        { label: 'Schedule', value: 'schedule' }
+      ],
+      width: "150px",
+      className: "min-w-[120px]",
+      render: (value: string) => {
+        const formattedType = value ? formatNotificationText(value) : "Unknown";
+        return (
+          <div>
+            {formattedType}
+          </div>
+        );
+      }
+    },
+    {
+      key: "message",
+      label: "Message",
+      sortable: false,
+      searchable: true,
+      className: "min-w-[300px]",
+      width: "200px",
+      render: (value: string) => (
+        <div className="leading-relaxed" title={value || ""}>
+          {value || "-"}
+        </div>
+      )
+    }
+  ];
+  return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
         <h2 className="text-xl font-semibold mb-2">
           Notification
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">   
-           <div className="relative">
-  <input
-    type="text"
-    value={clientSearch}
-    onFocus={() => setShowClientDropdown(true)}
-    onBlur={() =>
-      setTimeout(() => setShowClientDropdown(false), 200)
-    }
-    onChange={(e) => {
-      setClientSearch(e.target.value);
-      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-      setSelectedAddressText("");
-    }}
-    placeholder="Client Name"
-    className={fieldInputClasses}
-  />
-  {errors.clientId && (
-    <ErrorMessage message={errors.clientId} />
-  )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+            <div className="relative">
+              <input
+                type="text"
+                value={clientSearch}
+                onFocus={() => setShowClientDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowClientDropdown(false), 200)
+                }
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                  setSelectedAddressText("");
+                }}
+                placeholder="Client Name"
+                className={fieldInputClasses}
+              />
+              {errors.clientId && (
+                <ErrorMessage message={errors.clientId} />
+              )}
 
-  <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
-    {loadingClients ? (
-      <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-    ) : searchedClients.length === 0 ? (
-      <div className="p-2 text-gray-500 text-sm">No clients found</div>
-    ) : (
-      searchedClients.flatMap((client, clientIndex) =>
-        client.addresses.map((address, addressIndex) => (
-          <SearchResultItem
-            key={`${client.id}-${address.id}`}
-            index={clientIndex + addressIndex}
-            primaryText={[client.name, client.lastName].filter(Boolean).join(' ')}
-            secondaryText={[
-              address.label || address.address,
-              (address as any)?.city,
-              (address as any)?.state,
-              (address as any)?.pincode || (address as any)?.zipcode,
-            ].filter(Boolean).join(', ')}
-            initials={`${client.name?.[0]?.toUpperCase() ?? ''}${client.lastName ? client.lastName[0]?.toUpperCase() : ''}`}
-            onSelect={() =>
-              handleClientSelect(
-                { id: client.id, name: client.name, lastName: client.lastName },
-                address.id
-              )
-            }
-          />
-        ))
-      )
-    )}
-  </SearchResultsDropdown>
-</div>
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
+                {loadingClients ? (
+                  <div className="p-2 text-sm text-gray-500">Searching clients...</div>
+                ) : searchedClients.length === 0 ? (
+                  <div className="p-2 text-gray-500 text-sm">No clients found</div>
+                ) : (
+                  searchedClients.flatMap((client, clientIndex) =>
+                    client.addresses.map((address, addressIndex) => (
+                      <SearchResultItem
+                        key={`${client.id}-${address.id}`}
+                        index={clientIndex + addressIndex}
+                        primaryText={[client.name, client.lastName].filter(Boolean).join(' ')}
+                        secondaryText={[
+                          address.label || address.address,
+                          (address as any)?.city,
+                          (address as any)?.state,
+                          (address as any)?.pincode || (address as any)?.zipcode,
+                        ].filter(Boolean).join(', ')}
+                        initials={`${client.name?.[0]?.toUpperCase() ?? ''}${client.lastName ? client.lastName[0]?.toUpperCase() : ''}`}
+                        onSelect={() =>
+                          handleClientSelect(
+                            { id: client.id, name: client.name, lastName: client.lastName },
+                            address.id
+                          )
+                        }
+                      />
+                    ))
+                  )
+                )}
+              </SearchResultsDropdown>
+            </div>
 
             {/* Address (read-only) */}
             <div>
@@ -432,7 +439,7 @@ return (
               )}
             </div>
 
-            <div>
+            {/* <div>
               <CustomDatePicker
                 value={form.Enddate}
                 onChange={handleChange}
@@ -443,9 +450,9 @@ return (
               {errors.Enddate && (
                 <ErrorMessage message={errors.Enddate} />
               )}
-            </div>
+            </div> */}
 
-            <div className="relative col-span-1 md:col-span-2 " ref={notificationDropdownRef}>
+            <div className="relative col-span-1  " ref={notificationDropdownRef}>
               <div
                 className={`${getFieldClasses('notification')} cursor-pointer flex items-center justify-between`}
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
@@ -527,7 +534,7 @@ return (
               </button>
               {(form.addressId || form.clientId || form.Enddate || form.Startdate || form.notification.length > 0 || form.userId) &&
                 (<ResetButton onClick={handleReset}
-                  disabled={submitLoader}/>)}
+                  disabled={submitLoader} />)}
             </div>
           </div>
         </form>
