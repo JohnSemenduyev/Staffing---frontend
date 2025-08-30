@@ -1471,11 +1471,12 @@ export const ViewSchedule = () => {
       }
 
       const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      colorHeaderRowBlue(worksheet);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Schedule Report");
 
-      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], {
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
+            const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
@@ -1709,15 +1710,60 @@ export const ViewSchedule = () => {
     return excelData;
   };
 
+  // Excel helper: color only the table header row (row whose first cell is "Employee Name")
+  const colorHeaderRowBlue = (ws) => {
+    const ref = ws['!ref']; 
+    if (!ref) return;
+    
+    const range = XLSX.utils.decode_range(ref);
+    
+    // Find header row index by first cell value
+    let headerR = range.s.r;
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const a0 = XLSX.utils.encode_cell({ r, c: range.s.c });
+      const cell = ws[a0];
+      if (cell && String(cell.v).trim().toLowerCase() === 'employee name') { 
+        headerR = r; 
+        break; 
+      }
+    }
+    
+    // Apply styling to each cell in the header row
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r: headerR, c });
+      
+      if (!ws[addr]) continue;
+      
+      ws[addr].s = {
+        fill: { 
+          patternType: 'solid', 
+          fgColor: { rgb: '004175' }
+        },
+        font: { 
+          color: { rgb: 'FFFFFF' }, 
+          bold: true 
+        },
+        alignment: { 
+          horizontal: 'center', 
+          vertical: 'center' 
+        }
+      };
+    }
+    
+    if (!ws['!rows']) ws['!rows'] = [];
+    ws['!rows'][headerR] = { hpt: 22 };
+  };
+
   const handleActualTimeDownloadExcel = () => {
     try {
       const excelData = generateActualTimeExcelData();
 
       const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      colorHeaderRowBlue(worksheet);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Actual Time Report");
 
-      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
       const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });

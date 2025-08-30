@@ -126,7 +126,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
-import { formatDateLocal, formatTimeDisplay, getWeekRangeFromDateUTC, formatUSPhone } from "../../lib/utils";
+import { formatDateLocal, getWeekRangeFromDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
 import { useToast } from "../../hooks/use-toast";
 
 interface FormData {
@@ -286,8 +286,8 @@ export const PrepareSchedule = () => {
         setScheduleData(parsedData);
         if (parsedData.length > 0) {
           // Set the week range based on existing data
-          const firstDate = new Date(parsedData[0].startDate);
-          setCurrentWeekRange(getWeekRangeFromDateUTC(firstDate));
+          const firstDate = parseLocalYMD(parsedData[0].startDate);
+          setCurrentWeekRange(getWeekRangeFromDateLocal(firstDate));
 
           // Restore client name and address from saved data
           const firstScheduleItem = parsedData[0];
@@ -333,8 +333,8 @@ export const PrepareSchedule = () => {
 
     // Check week range when date changes
     if (field === 'date' && value) {
-      const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDateUTC(selectedDate);
+      const selectedDate = parseLocalYMD(value);
+      const weekRange = getWeekRangeFromDateLocal(selectedDate);
 
       // If there's existing data and it's not published, check if the week is different
       if (scheduleData.length > 0 && !isPublished && currentWeekRange) {
@@ -852,8 +852,8 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       setScheduleData(prev => [...prev, ...newScheduleItems]);
 
       if (scheduleData.length === 0) {
-        const selectedDate = new Date(form.date);
-        setCurrentWeekRange(getWeekRangeFromDateUTC(selectedDate));
+        const selectedDate = parseLocalYMD(form.date);
+        setCurrentWeekRange(getWeekRangeFromDateLocal(selectedDate));
       }
       console.log("Schedule Data:", form);
       setForm({
