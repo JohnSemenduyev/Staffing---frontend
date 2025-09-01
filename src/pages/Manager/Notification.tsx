@@ -18,7 +18,7 @@ type NotificationOption = (typeof notificationOptions)[number];
 const notificationTypeMap: Record<NotificationOption, string> = {
   Geolocation: "geo_location",
   "Time Clock": "time_clock",
-  "Weekly Hours": "weekly_hours",
+  "Weekly Hours": "weekly_Hours",
   Scheduling: "schedule",
 };
 
@@ -271,7 +271,7 @@ export const Notification = () => {
       searchOptions: [
         { label: 'Geolocation', value: 'geo_location' },
         { label: 'Time Clock', value: 'time_clock' },
-        { label: 'Weekly Hours', value: 'weekly_hours' },
+        { label: 'Weekly Hours', value: 'weekly_Hours' },
         { label: 'Schedule', value: 'schedule' }
       ],
       width: "150px",
