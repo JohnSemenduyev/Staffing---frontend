@@ -1,0 +1,24 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.time.timesavor",
+      "sha256_cert_fingerprints": [
+        "E9:F4:B0:0B:7E:59:8C:E8:FA:B4:EA:7E:BB:70:19:F3:A3:03:78:B6:59:E3:52:FC:35:FD:98:AB:67:04:9D:5C",
+        "7A:92:90:C3:EF:B0:1C:08:34:6E:DC:C2:F9:F9:75:E3:66:5C:05:47:53:A5:03:C6:43:72:3E:11:11:51:74:13",
+
+        "61:E1:37:A5:12:83:0A:C8:0B:F3:C3:5F:90:3C:E2:BF:29:05:BB:D8:C1:10:78:40:2A:63:05:C1:B0:D4:94:B0",
+        "7A:92:90:C3:EF:B0:1C:08:34:6E:DC:C2:F9:F9:75:E3:66:5C:05:47:53:A5:03:C6:43:72:3E:11:11:51:74:13",
+        "61:E1:37:A5:12:83:0A:C8:0B:F3:C3:5F:90:3C:E2:BF:29:05:BB:D8:C1:10:78:40:2A:63:05:C1:B0:D4:94:B0",
+        "63:3D:84:1D:D7:F5:56:79:20:D5:71:00:B2:9D:57:63:3A:07:2D:F1:E6:40:BC:FD:AB:F0:56:81:F8:73:8F:0C",
+        "7B:E7:75:7A:28:94:35:12:94:D5:3A:C2:95:96:34:F9:90:B6:2F:19:EF:F2:79:6B:4A:84:66:0A:9E:44:BB:CB",
+        "61:E1:37:A5:12:83:0A:C8:0B:F3:C3:5F:90:3C:E2:BF:29:05:BB:D8:C1:10:78:40:2A:63:05:C1:B0:D4:94:B0",
+        "61:E1:37:A5:12:83:0A:C8:0B:F3:C3:5F:90:3C:E2:BF:29:05:BB:D8:C1:10:78:40:2A:63:05:C1:B0:D4:94:B0"
+      ]
+    }
+  }
+]
