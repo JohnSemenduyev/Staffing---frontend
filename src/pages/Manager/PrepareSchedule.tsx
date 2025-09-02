@@ -250,6 +250,7 @@ export const PrepareSchedule = () => {
       }
     }
 
+
     // Check for overlapping shifts
     if (form.userId && form.date && form.starttime && form.endtime) {
       const existingShifts = scheduleData
@@ -261,7 +262,7 @@ export const PrepareSchedule = () => {
 
       for (const shift of existingShifts) {
         // Skip validation for editing since the main component handles it
-        continue;
+        // if (shift.id === editingShiftId) continue; // Only skip if editing this specific shift
 
         const existingStart = shift.startTime;
         const existingEnd = shift.endTime;
@@ -273,6 +274,7 @@ export const PrepareSchedule = () => {
         }
       }
     }
+
 
     setErrors(e);
     return Object.keys(e).length === 0;
