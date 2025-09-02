@@ -489,6 +489,8 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
         scheduleSessionId
         date
         auto
+        confirm
+        reject
       }
       user {
         id
@@ -554,6 +556,9 @@ export const GET_NOTIFICATIONS = gql`
       }
       address {
         address
+        city
+        state
+        pincode
       }
       shift {
         id
