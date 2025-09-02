@@ -3,23 +3,17 @@
     "apps": [],
     "details": [
       {
-        "appIDs": [
-          "M73T43YF5Q.com.timesavor.www"
-        ],
-        "paths": [
-          "*"
-        ],
-        "components": [
-          {
-            "/": "/*"
-          }
-        ]
+        "appID": "GH7H3UCZW6.com.maximalsecurityservices.apps",
+        "paths": ["*"]
       }
     ]
   },
   "webcredentials": {
     "apps": [
-      "M73T43YF5Q.com.timesavor.www"
+      "GH7H3UCZW6.com.maximalsecurityservices.apps"
     ]
+  },
+  "appclips": {
+    "apps": []
   }
 }
