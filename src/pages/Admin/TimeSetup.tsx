@@ -196,7 +196,15 @@ export const TimeSetup = () => {
       reminder: String(record.reminderTime),
     });
     setClientSearch(record.client.name);
-    setSelectedAddressText(record.address.label || record.address.address || "");
+    const fullAddress = [
+      record.address.address,
+      (record.address as any)?.city,
+      (record.address as any)?.state,
+      (record.address as any)?.pincode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    setSelectedAddressText(fullAddress);
     setOverlap(record.overlap);
     setUnscheduledTime(record.unscheduledTime);
     setErrors({});
@@ -233,7 +241,14 @@ export const TimeSetup = () => {
 
   const tableColumns: TableColumn[] = [
     { key: "client.name", label: "Client Name", sortable: true, searchable: true, width: "250px", height: "40px" },
-    { key: "address.address", label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px" },
+    { key: "address.address",
+      label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px",
+      render: (_: any, row: any) => {
+        const a = row.address;
+        const full = [a?.address, a?.city, a?.state, a?.pincode].filter(Boolean).join(", ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
+    },
     { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile`, searchable: true, width: "250px", height: "40px" },
     { key: "actualScheduledTime", label: "Scheduled Time", sortable: true, render: (v) => `${v} Min`, searchable: true, width: "250px", height: "40px" },
     { key: "weeklyHours", label: "Weekly Hours", sortable: true, render: (v) => `${v} Hr`, searchable: true, width: "250px", height: "40px" },

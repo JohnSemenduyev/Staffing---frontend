@@ -170,7 +170,15 @@ export const PostAssignment = () => {
 
     // Set client search and address text directly from the record
     setClientSearch(record.client.name || "");
-    setSelectedAddressText(record.address.address || "");
+    const fullAddress = [
+      record.address.address,
+      (record.address as any)?.city,
+      (record.address as any)?.state,
+      (record.address as any)?.pincode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    setSelectedAddressText(fullAddress);
 
     // Clear errors
     setErrors({});
@@ -229,11 +237,13 @@ export const PostAssignment = () => {
       sortable: true,
       searchable: true,
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-      render: (value: string) => (
-        <div className="truncate" title={value}>
-          {value || "-"}
-        </div>
-      )
+
+      render: (_: any, row: any) => {
+        const a = row.address;
+        const full = [a?.address, a?.city, a?.state, a?.pincode].filter(Boolean).join(", ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
+    
     },
     {
       key: "post",

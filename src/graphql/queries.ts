@@ -281,6 +281,8 @@ export const GET_GEOLOCATIONS = gql`
           label
           address
           city
+          state
+          pincode
         }
       }
       lastPage
@@ -313,6 +315,9 @@ export const GET_TIME_SETUP = gql`
           id
           label
           address
+          city
+          state
+          pincode
         }
       }
       lastPage

@@ -325,10 +325,16 @@ export default function AssignmentNew() {
       notification: mappedNotifications, 
     });
     setClientSearch(record.client?.name || "");
-    setSelectedAddressText(
-      record.address?.address || record.address?.label || ""
-    );
-    setUserSearch(record.user?.name || "");
+    const fullAddress = [
+      record.address?.address || record.address?.label,
+      (record.address as any)?.city,
+      (record.address as any)?.state,
+      (record.address as any)?.pincode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    setSelectedAddressText(fullAddress);
+          setUserSearch(record.user?.name || "");
     setGuardSearch(record.guard?.name || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -381,8 +387,13 @@ export default function AssignmentNew() {
       label: "Location",
       sortable: true,
       searchable: true,
-      searchType: 'text', // Keep as text search
+      searchType: 'text',
       width: "250px",
+      render: (_: any, row: any) => {
+        const a = row.address;
+        const full = [a?.address, a?.city, a?.state, a?.pincode || a?.zipcode].filter(Boolean).join(", ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "guard.name",

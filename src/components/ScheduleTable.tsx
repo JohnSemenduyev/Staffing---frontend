@@ -679,7 +679,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </div>
                                        {/* Confirm/Reject Status - Only show when not in edit mode */}
                                        {!readOnly && !isEditMode && (shift.confirm || shift.reject) && (
-                                     <div className="flex items-center justify-center mt-1 absolute top-0 left-0 ">
+                                     <div className="flex items-center justify-center m-1 absolute bottom-0 right-0 ">
                                        {shift.confirm && (
                                          <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">

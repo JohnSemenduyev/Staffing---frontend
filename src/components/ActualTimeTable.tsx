@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
+import { Eye, Edit, Trash2, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
@@ -290,22 +290,17 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 }) => {
   const { toast: hookToast } = useToast();
 
-  // Modal states for edit/delete functionality
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, sessionId: null, userId: null, date: null });
-  const [editModal, setEditModal] = useState({ isOpen: false, session: null, userId: null, date: null });
+  // Modal states
+  const [deleteAllModal, setDeleteAllModal] = useState({ isOpen: false, shiftId: null as number | null });
   const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
-  const [editForm, setEditForm] = useState({ starttime: "", endtime: "" });
 
-  // Add session modal for adding new sessions
-  const [addSessionModal, setAddSessionModal] = useState({ isOpen: false, userId: null, date: null, shiftId: null });
-  const [addSessionForm, setAddSessionForm] = useState({ starttime: "", endtime: "" });
-
-  // Drag and drop states
-  const [draggedSession, setDraggedSession] = useState(null);
-  const [dragOverCell, setDragOverCell] = useState(null);
-  const hasTimeOverlap = (userId: number, date: string, start: string, end: string) => {
+  // Edit dialog for a shift's sessions
+  const [editShiftModal, setEditShiftModal] = useState({ isOpen: false, userId: null as number | null, date: null as string | null, shiftId: null as number | null });
+  const [editSessions, setEditSessions] = useState<Array<{ id: number | null; clockIn: string; clockOut: string }>>([]);
+  const hasTimeOverlap = (userId: number, date: string, start: string, end: string, excludeIds: Set<number> = new Set()) => {
     return sessionData.some(s => {
-      const d = s.shift?.date || String(s.scheduleSessionId); // Convert to string
+      if (excludeIds.has(s.id)) return false;
+      const d = s.shift?.date || String(s.scheduleSessionId);
       const sDate = d ? formatDateStringLocal(d) : '';
       if (sDate !== date) return false;
       if (!s.clockIn || !s.clockOut) return false;
@@ -352,17 +347,31 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
   const uniqueUsers = getUniqueUsers();
 
-  // Helper function to find session for a specific shift
-  const findSessionForShift = (shiftId: number, scheduleSessionId: number) => {
-    // First try to find by shiftId (new data)
-    let session = sessionData.find(s => s.shiftId === shiftId);
+  // Sessions for a shift (allow multiple)
+  const getSessionsForShift = (
+    shiftId?: number,
+    scheduleSessionId?: number,
+    date?: string,
+    userId?: number
+  ): SessionItem[] => {
+    if (!shiftId && !scheduleSessionId) return [];
+    const byShift = sessionData.filter(s => s.shiftId === shiftId);
+    if (byShift.length > 0) return byShift.slice().sort((a, b) => (a.clockIn || '').localeCompare(b.clockIn || ''));
 
-    // If not found by shiftId, try by scheduleSessionId (for older data)
-    if (!session) {
-      session = sessionData.find(s => s.scheduleSessionId === scheduleSessionId);
+    // Fallback ONLY when there's exactly one shift for this user on this date
+    if (scheduleSessionId && date && typeof userId === 'number') {
+      const shiftsOnDate = buildUserDateShifts.get(userId)?.get(date) || [];
+      if (shiftsOnDate.length === 1) {
+        const bySessionIdAndDate = sessionData.filter(s => {
+          const d = s.shift?.date || s.scheduleSessionId;
+          const sDate = d ? formatDateStringLocal(String(d)) : '';
+          return s.scheduleSessionId === scheduleSessionId && sDate === date;
+        });
+        return bySessionIdAndDate.slice().sort((a, b) => (a.clockIn || '').localeCompare(b.clockIn || ''));
+      }
     }
 
-    return session;
+    return [];
   };
 
   // Helper function to check if session has valid clock-in/clock-out data
@@ -370,75 +379,126 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     return session && session.clockIn && session.clockOut;
   };
 
-  // Delete individual session
-  const handleDeleteSession = (userId: number, date: string, sessionId: number) => {
-    setDeleteModal({ isOpen: true, sessionId, userId, date });
-  };
-
-  const confirmDeleteSession = () => {
-    const { userId, date, sessionId } = deleteModal;
-    const updatedData = sessionData.filter(session => session.id !== sessionId);
-
-    onSessionDataChange(updatedData);
-    setDeleteModal({ isOpen: false, sessionId: null, userId: null, date: null });
-  };
-
-  const cancelDeleteSession = () => {
-    setDeleteModal({ isOpen: false, sessionId: null, userId: null, date: null });
-  };
-
-  // Edit individual session
-  const handleEditSession = (userId: number, date: string, session: SessionItem) => {
-    setEditModal({ isOpen: true, session, userId, date });
-    setEditForm({
-      starttime: session.clockIn || "",
-      endtime: session.clockOut || ""
-    });
-  };
-
-  const confirmEditSession = () => {
-    const { userId, date, session } = editModal;
-
-    // Validate the edit form
-    if (!editForm.starttime || !editForm.endtime) {
-      hookToast({
-        title: "Validation Error",
-        description: "Check In and Check Out are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Enforce minimum session duration of 1 minute
-    const durationMinutes = minutesDiffWithWrap(editForm.starttime, editForm.endtime);
-    if (durationMinutes < 1) {
-      hookToast({
-        title: "Invalid Duration",
-        description: "Check Out must be at least 1 minute after Check In.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const updatedData = sessionData.map(item =>
-      item.id === session.id
-        ? {
-          ...item,
-          clockIn: editForm.starttime,
-          clockOut: editForm.endtime,
-          workedTime: calculateHours(editForm.starttime, editForm.endtime)
-        }
-        : item
+  // Open edit modal for a shift (list all sessions and allow add/delete)
+  const openEditShift = (userId: number, date: string, shiftId: number) => {
+    const sessions = getSessionsForShift(shiftId, undefined, date, userId);
+    setEditSessions(
+      sessions.map(s => ({ id: s.id, clockIn: s.clockIn || "", clockOut: s.clockOut || "" }))
     );
-
-    onSessionDataChange(updatedData);
-    setEditModal({ isOpen: false, session: null, userId: null, date: null });
-    setEditForm({ starttime: "", endtime: "" });
+    setEditShiftModal({ isOpen: true, userId, date, shiftId });
   };
 
-  const cancelEditSession = () => {
-    setEditModal({ isOpen: false, session: null, userId: null, date: null });
-    setEditForm({ starttime: "", endtime: "" });
+  const addEditSessionRow = () => {
+    const hasIncomplete = editSessions.some(r => !r.clockIn || r.clockIn.trim() === "");
+    if (hasIncomplete) {
+      return;
+    }
+    setEditSessions(prev => [...prev, { id: null, clockIn: "", clockOut: "" }]);
+  };
+
+  const removeEditSessionRow = (index: number) => {
+    setEditSessions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const saveEditShiftSessions = () => {
+    if (!editShiftModal.isOpen || editShiftModal.shiftId == null) return;
+
+    // Validate rows: clock-in required; clock-out optional
+    for (let i = 0; i < editSessions.length; i++) {
+      const row = editSessions[i];
+      if (!row.clockIn) {
+        hookToast({ title: "Validation Error", description: "Clock-in is required for every session.", variant: "destructive" });
+        return;
+      }
+      if (row.clockOut) {
+        const durationMinutes = minutesDiffWithWrap(row.clockIn, row.clockOut);
+        if (durationMinutes < 1) {
+          hookToast({ title: "Invalid Duration", description: "When clock-out is provided, it must be at least 1 minute after clock-in.", variant: "destructive" });
+          return;
+        }
+      }
+    }
+
+    // Check overlap between edited rows
+    const sorted = [...editSessions].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        // Only check overlaps when both sessions have clock-out provided
+        if (sorted[i].clockOut && sorted[j].clockOut) {
+          const noOverlap = (sorted[i].clockOut <= sorted[j].clockIn) || (sorted[j].clockOut <= sorted[i].clockIn);
+          if (!noOverlap) {
+            hookToast({ title: "Overlap", description: "Sessions overlap within the same shift.", variant: "destructive" });
+            return;
+          }
+        }
+      }
+    }
+
+    // Check overlaps against ALL other sessions for the same user on the same date (different shifts)
+    const shiftId = editShiftModal.shiftId;
+    const date = editShiftModal.date!;
+    const userId = editShiftModal.userId!;
+    const otherSessionsSameUserDate = sessionData.filter(s => {
+      if (s.shiftId === shiftId) return false; // exclude current shift; will be replaced
+      // Resolve session user and date via scheduleData mapping
+      const scheduleItem = scheduleData.find(si => si.shifts.some(sh => sh.id === s.shiftId));
+      if (!scheduleItem) return false;
+      if (scheduleItem.userId !== userId) return false;
+      const sDateRaw = s.shift?.date || s.scheduleSessionId;
+      const sDate = sDateRaw ? formatDateStringLocal(String(sDateRaw)) : '';
+      return sDate === date;
+    });
+
+    // If there is any existing open session for this user/date, block adding any new sessions until it's closed
+    const existingOpen = otherSessionsSameUserDate.find(s => !!s.clockIn && !s.clockOut);
+    // if (existingOpen) {
+    //   hookToast({ title: "Open Session Exists", description: `An existing session starting at ${existingOpen.clockIn} has no clock-out. Please add a clock-out before adding another session.`, variant: "destructive" });
+    //   return;
+    // }
+
+    // Check edited rows against other closed sessions on the date
+    for (const row of editSessions) {
+      for (const s of otherSessionsSameUserDate) {
+        if (!s.clockIn) continue;
+        if (row.clockOut && s.clockOut) {
+          if (doTimesOverlap(row.clockIn, row.clockOut, s.clockIn, s.clockOut)) {
+            hookToast({ title: "Overlap", description: "Edited sessions overlap with other sessions on this date.", variant: "destructive" });
+            return;
+          }
+        }
+        // If the edited row is open-ended, it overlaps any closed session that ends after its start
+        if (!row.clockOut && s.clockOut) {
+          if (s.clockOut > row.clockIn) {
+            hookToast({ title: "Overlap", description: "Open-ended session overlaps with another session on this date.", variant: "destructive" });
+            return;
+          }
+        }
+      }
+    }
+
+    // Build new list for this shiftId
+    
+    // Remove existing sessions for this shift
+    const remaining = sessionData.filter(s => s.shiftId !== shiftId);
+    // Add new ones
+    const toAdd = editSessions.map(row => ({
+      id: row.id ?? Date.now() + Math.floor(Math.random() * 1000),
+      shiftId,
+      scheduleSessionId: (scheduleData.find(si => si.shifts.some(sh => sh.id === shiftId))?.shifts.find(sh => sh.id === shiftId)?.scheduleSessionId)!,
+      clockIn: row.clockIn,
+      clockOut: row.clockOut || null,
+      workedTime: row.clockOut ? calculateHours(row.clockIn, row.clockOut) : 0,
+      shift: { id: shiftId, date }
+    })) as unknown as SessionItem[];
+
+    onSessionDataChange([...remaining, ...toAdd]);
+    setEditShiftModal({ isOpen: false, userId: null, date: null, shiftId: null });
+    setEditSessions([]);
+  };
+
+  const cancelEditShiftSessions = () => {
+    setEditShiftModal({ isOpen: false, userId: null, date: null, shiftId: null });
+    setEditSessions([]);
   };
 
   // Delete all data for a user
@@ -465,215 +525,16 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     setDeleteUserModal({ isOpen: false, userId: null });
   };
 
-  // Add new session for a specific shift
-  const handleAddSession = (userId: number, date: string, shiftId: number) => {
-    setAddSessionModal({ isOpen: true, userId, date, shiftId });
-    setAddSessionForm({ starttime: "", endtime: "" });
+  // Delete all sessions for a shift
+  const confirmDeleteAllForShift = () => {
+    if (!deleteAllModal.isOpen || deleteAllModal.shiftId == null) return;
+    const updated = sessionData.filter(s => s.shiftId !== deleteAllModal.shiftId);
+    onSessionDataChange(updated);
+    setDeleteAllModal({ isOpen: false, shiftId: null });
   };
+  const cancelDeleteAllForShift = () => setDeleteAllModal({ isOpen: false, shiftId: null });
 
-  const confirmAddSession = () => {
-    const { userId, date, shiftId } = addSessionModal;
-
-    const hasStart = !!addSessionForm.starttime;
-    const hasEnd = !!addSessionForm.endtime;
-
-    if (hasEnd && !hasStart) {
-      hookToast({
-        title: "Error",
-        description: "Clock-out requires clock-in.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (hasStart && hasEnd) {
-      if (addSessionForm.starttime >= addSessionForm.endtime) {
-        hookToast({
-          title: "Error",
-          description: "Start time must be before end time.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (hasTimeOverlap(addSessionModal.userId, addSessionModal.date, addSessionForm.starttime, addSessionForm.endtime)) {
-        hookToast({
-          title: "Error",
-          description: "Time overlap detected! This session overlaps with an existing session.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    const newHours = hasStart && hasEnd ? calculateHours(addSessionForm.starttime, addSessionForm.endtime) : undefined;
-
-    const sid = Number(shiftId);
-    const scheduleItem = scheduleData.find(item =>
-      item.userId === userId && item.shifts?.some(s => s.id === sid)
-    );
-    
-    if (!scheduleItem) {
-      hookToast({ 
-        title: "Error", 
-        description: "Schedule item not found for this shift.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    const shift = scheduleItem.shifts.find(s => s.id === sid);
-    if (!shift) {
-      hookToast({ 
-        title: "Error", 
-        description: "Shift not found.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (!shift.scheduleSessionId) {
-      hookToast({ 
-        title: "Error", 
-        description: "Shift is missing scheduleSessionId.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    // Check if a session already exists for this shiftId
-    const existingSession = sessionData.find(s => s.shiftId === shift.id);
-    if (existingSession) {
-      hookToast({ 
-        title: "Error", 
-        description: "A session already exists for this shift.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    const newSession: SessionItem = {
-      id: Date.now(),
-      shiftId: shift.id,
-      scheduleSessionId: shift.scheduleSessionId,
-      clockIn: hasStart ? addSessionForm.starttime : null,
-      clockOut: hasEnd ? addSessionForm.endtime : null,
-      workedTime: newHours ?? 0,
-      shift: {
-        id: shift.id,
-        date: date,
-      }
-    };
-
-    const updatedData = [...sessionData, newSession];
-    onSessionDataChange(updatedData);
-
-    setAddSessionModal({ isOpen: false, userId: null, date: null, shiftId: null });
-    setAddSessionForm({ starttime: "", endtime: "" });
-  };
-
-  const cancelAddSession = () => {
-    setAddSessionModal({ isOpen: false, userId: null, date: null, shiftId: null });
-    setAddSessionForm({ starttime: "", endtime: "" });
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, session: SessionItem, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
-    setDraggedSession({
-      session,
-      sourceUserId,
-      sourceDate,
-      sourceRowIdx
-    });
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('text/plain', `Copying clock-in/clock-out times: ${session.clockIn} - ${session.clockOut}`);
-  };
-
-  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-    e.preventDefault();
-    setDragOverCell({ userId: targetUserId, date: targetDate, rowIdx: targetRowIdx });
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    setDragOverCell(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
-    e.preventDefault();
-
-    if (!draggedSession) return;
-
-    const { session, sourceUserId, sourceDate, sourceRowIdx } = draggedSession;
-
-    // Don't allow dropping on the same cell
-    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
-      setDraggedSession(null);
-      setDragOverCell(null);
-      return;
-    }
-
-    // Find the target shift for this user and date
-    const targetScheduleItem = scheduleData.find(item =>
-      item.userId === targetUserId && item.startDate === targetDate
-    );
-
-    if (!targetScheduleItem || targetScheduleItem.shifts.length === 0) {
-      hookToast({
-        title: "Error",
-        description: "No shift found for this user and date.",
-        variant: "destructive",
-      });
-      setDraggedSession(null);
-      setDragOverCell(null);
-      return;
-    }
-
-    // Use the shift at the targetRowIdx
-    const targetShift = targetScheduleItem.shifts[targetRowIdx];
-    if (!targetShift?.id) { setDraggedSession(null); setDragOverCell(null); return; }
-
-    // Check if a session already exists for this shiftId
-    const existing = sessionData.find(s => s.shiftId === targetShift.id);
-
-    if (existing) {
-      // Update existing session
-      const updatedData = sessionData.map(item =>
-        item.id === existing.id
-          ? {
-            ...item,
-            clockIn: session.clockIn,
-            clockOut: session.clockOut,
-            workedTime: session.workedTime
-          }
-          : item
-      );
-      onSessionDataChange(updatedData);
-    } else {
-      // Create new session only if none exists for this shiftId
-      const newSession: SessionItem = {
-        id: Date.now(),
-        shiftId: targetShift.id,
-        scheduleSessionId: targetShift.scheduleSessionId,
-        clockIn: session.clockIn,
-        clockOut: session.clockOut,
-        workedTime: session.workedTime,
-        shift: {
-          id: targetShift.id,
-          date: targetDate
-        }
-      };
-
-      const updatedData = [...sessionData, newSession];
-      onSessionDataChange(updatedData);
-    }
-
-    setDraggedSession(null);
-    setDragOverCell(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedSession(null);
-    setDragOverCell(null);
-  };
+  // Drag & drop removed for Actual table per requirements
 
   const getCellKey = (userId: number, date: string, shiftId: number) =>
     `${userId}|${date}|${shiftId}`;
@@ -829,28 +690,19 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
                       {dateColumns.map((dateCol, colIdx) => {
                         const shift = buildUserDateShifts.get(user.id)?.get(dateCol.date)?.[rowIdx] || null;
-                        // Robust lookup: try by exact shiftId, then fallback to scheduleSessionId + date
-                        const session = shift
-                          ? findSessionForCell(
-                              shift.id,
-                              shift.scheduleSessionId,
-                              dateCol.date
-                            )
-                          : null;
-                        const hasSession = Boolean(session);
+                        const sessions = shift ? getSessionsForShift(shift.id, shift.scheduleSessionId, dateCol.date, user.id) : [];
+                        const hasSessions = sessions.length > 0;
                         
-                        // Check for time violations and mismatches
-                        const hasViolation = hasSession && shift ? hasTimeViolation(session!, shift) : false;
-                        const hasMismatch = hasSession && shift ? hasTimeMismatch(shift, session!) : false;
+                        // Check for time violations and mismatches across all sessions in the cell
+                        const hasViolation = shift ? sessions.some(s => hasTimeViolation(s, shift)) : false;
+                        const hasMismatch = shift ? sessions.some(s => hasTimeMismatch(shift, s)) : false;
 
                         return (
                           <td
                             key={`${dateCol.date}-${rowIdx}-${colIdx}`}
                             className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                              dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date && dragOverCell?.rowIdx === rowIdx
-                                ? 'bg-blue-50 border-blue-300'
-                                : hasMismatch
-                                ? 'bg-red-100 border-red-300' // Yellow background for time mismatches
+                                hasMismatch
+                                ? 'bg-red-100 border-red-300'
                                 : hasViolation
                                 ? 'bg-red-100' // Dull red background for time violations
                                 : ''
@@ -862,45 +714,30 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                 ? 'Time violation: Clock-in after shift start or clock-out before shift start' 
                                 : ''
                             }
-                            onDragOver={e => handleDragOver(e, user.id, dateCol.date, rowIdx)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={e => handleDrop(e, user.id, dateCol.date, rowIdx)}
                           >
                             {isEditMode && shift && (
                               <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
-                                {hasSession ? (
-                                  <>
-                                    <div
-                                      className="cursor-grab text-gray-400 hover:text-gray-600"
-                                      draggable
-                                      onDragStart={e => handleDragStart(e, session!, user.id, dateCol.date, rowIdx)}
-                                      onDragEnd={handleDragEnd}
-                                    >
-                                      <GripVertical className="w-4 h-4" />
-                                    </div>
-                                    <button onClick={() => handleEditSession(user.id, dateCol.date, session!)} className="text-blue-600 p-0.5">
-                                      <Edit className="w-4 h-4" />
-                                    </button>
-                                    <button onClick={() => handleDeleteSession(user.id, dateCol.date, session!.id)} className="text-red-600 p-0.5">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      handleAddSession(user.id, dateCol.date, shift!.id);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-700 p-0.5"
-                                    title="Add session"
-                                  >
-                                    <Plus className="w-4 h-4" />
+                                <button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} className="text-blue-600 p-0.5" title="Edit sessions">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                {hasSessions && (
+                                  <button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} className="text-red-600 p-0.5" title="Delete all sessions">
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
                               </div>
                             )}
-                            <span className="text-sm">
-                              {hasSession ? `${session!.clockIn || 'N/A'} - ${formatTimeDisplay(session!.clockOut || 'N/A')}` : <span className="text-gray-400">-</span>}
-                            </span>
+                            {hasSessions ? (
+                              <div className="flex flex-col items-center gap-1">
+                                {sessions.map(s => (
+                                  <span key={s.id} className="text-xs  px-2 py-0.5 rounded-md">
+                                    {(s.clockIn || 'N/A')} - {formatTimeDisplay(s.clockOut || 'N/A')}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
                         );
                       })}
@@ -1053,83 +890,63 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         </div>
       </div>
 
-      {/* Delete Session Confirmation Modal */}
-      {deleteModal.isOpen && (
+      {/* Delete All Sessions for Shift */}
+      {deleteAllModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <p className="text-sm text-gray-500">
-                Are you sure you want to delete this session?
-              </p>
+              <p className="text-sm text-gray-500">Delete all clock-in/clock-out entries for this shift?</p>
             </div>
-
             <div className="flex space-x-3 justify-end">
-              <button
-                type="button"
-                onClick={cancelDeleteSession}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteSession}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
+              <button type="button" onClick={cancelDeleteAllForShift} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]">Cancel</button>
+              <button type="button" onClick={confirmDeleteAllForShift} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center">
+                <Trash2 className="w-4 h-4 mr-2" /> Delete All
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Session Modal */}
-      {editModal.isOpen && (
+      {/* Edit Shift Sessions Modal */}
+      {editShiftModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Edit Session</h3>
+          <div className="bg-white rounded-lg p-6 max-w-xl w-full mx-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Edit Sessions</h3>
+              
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
-                <input
-                  type="time"
-                  value={editForm.starttime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, starttime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
-                <input
-                  type="time"
-                  value={editForm.endtime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, endtime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
-                />
-              </div>
+            {editSessions.length === 0 && (
+              <div className="text-sm text-gray-500 mb-3">No sessions yet. Click "Add Session" to create one.</div>
+            )}
+            <div className="space-y-3 max-h-[50vh] overflow-auto pr-1">
+              {editSessions.map((row, idx) => (
+                <div key={idx} className="grid grid-cols-11 gap-2 items-end">
+                  <div className="col-span-5">
+                    <label className="block text-xs text-gray-600 mb-1">Check In</label>
+                    <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                  </div>
+                  <div className="col-span-5">
+                    <label className="block text-xs text-gray-600 mb-1">Check Out</label>
+                    <input type="time" value={row.clockOut} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOut: e.target.value } : r))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                  </div>
+                  <div className="col-span-1 flex justify-end">
+                    <button onClick={() => removeEditSessionRow(idx)} className="text-red-600 inline-flex items-center px-2 py-2 hover:bg-red-50 rounded-md" title="Delete this session">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-
             <div className="flex space-x-3 justify-end mt-6">
-              <button
-                type="button"
-                onClick={cancelEditSession}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-              >
-                Cancel
+            <button onClick={addEditSessionRow} className="text-blue-600 inline-flex items-center text-sm">
+                <Plus className="w-4 h-4 mr-1" /> Add Session
               </button>
-              <button
-                type="button"
-                onClick={confirmEditSession}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Update
+              <button type="button" onClick={cancelEditShiftSessions} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]">Cancel</button>
+              <button type="button" onClick={saveEditShiftSessions} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center">
+                <Edit className="w-4 h-4 mr-2" /> Save
               </button>
             </div>
+            
           </div>
         </div>
       )}
@@ -1165,59 +982,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         </div>
       )}
 
-      {/* Add Session Modal */}
-      {addSessionModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Add New Session</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Set check-in and check-out times for the selected shift
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check In</label>
-                <input
-                  type="time"
-                  value={addSessionForm.starttime}
-                  onChange={(e) => setAddSessionForm(prev => ({ ...prev, starttime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
-                <input
-                  type="time"
-                  value={addSessionForm.endtime}
-                  onChange={(e) => setAddSessionForm(prev => ({ ...prev, endtime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
-                />
-              </div>
-            </div>
-
-            <div className="flex space-x-3 justify-end mt-6">
-              <button
-                type="button"
-                onClick={cancelAddSession}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmAddSession}
-                disabled={!addSessionForm.starttime}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Session
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Removed separate Add Session modal; handled in Edit Sessions modal */}
     </div>
   );
 };

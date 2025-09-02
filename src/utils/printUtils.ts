@@ -51,7 +51,8 @@ const timeToMinutes = (timeStr: string) => {
 
 export const generateSchedulePrintableTable = (
   scheduleData: ScheduleItem[],
-  currentWeekRange?: { startOfWeek: Date; endOfWeek: Date }
+  currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
+  selectedClient?: { name: string; address: string }
 ) => {
   console.log('PDF Debug - Incoming scheduleData:', scheduleData.slice(0, 2));
   console.log('PDF Debug - Current week range:', currentWeekRange);
@@ -80,7 +81,8 @@ export const generateSchedulePrintableTable = (
   const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   // Table headers
-  const headers = ['Officer Name', '']; // Add empty column after Officer Name
+  const headers = ['Officer Name']; // Add empty column after Officer Name
+  headers.push(''); // Add empty column after Officer Name
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
@@ -99,6 +101,29 @@ export const generateSchedulePrintableTable = (
   const headerRow = headers.map(header => 
     `<th style="background-color: #fff; color: black; font-weight: bold; padding: 4px 6px; text-align: center; border: 2px solid black; font-size: 10px;">${header}</th>`
   ).join('');
+
+  // Client info row - single row spanning all columns
+  const clientInfoRow = `
+    <tr>
+      <td colspan="11" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
+          </div>
+          <div style="flex: 1;">
+            <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
+          </div>
+          <div style="flex: 1;">
+            <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: '2-digit'
+            }) : ''}
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
 
   // Helper functions
   const getMaxShiftsPerDay = (userId: number) => {
@@ -153,7 +178,7 @@ export const generateSchedulePrintableTable = (
   sortedUsers.forEach(user => {
     const maxShifts = getMaxShiftsPerDay(user.id);
     const totalRows = maxShifts + 1; // +1 for Total row
-
+    
     // Data rows for shifts
     for (let rowIdx = 0; rowIdx < maxShifts; rowIdx++) {
       const cells = [];
@@ -168,7 +193,7 @@ export const generateSchedulePrintableTable = (
         
         // Empty column (spans all rows including Total)
         cells.push(`
-          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${totalRows}">
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${totalRows-1}">
             
           </td>
         `);
@@ -221,10 +246,6 @@ export const generateSchedulePrintableTable = (
       <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
         Total
       </td>
-    `, `
-      <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
-        Total
-      </td>
     `];
 
     if (currentWeekRange) {
@@ -267,6 +288,10 @@ export const generateSchedulePrintableTable = (
     <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
       Grand Total
     </td>
+  `, `
+    <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+      
+    </td>
   `];
 
   if (currentWeekRange) {
@@ -296,6 +321,7 @@ export const generateSchedulePrintableTable = (
   return `
     <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid black;">
       <thead>
+        ${clientInfoRow}
         <tr>${headerRow}</tr>
       </thead>
       <tbody>
@@ -308,7 +334,8 @@ export const generateSchedulePrintableTable = (
 export const generateActualTimePrintableTable = (
   sessionData: SessionData[],
   scheduleData: ScheduleItem[],
-  currentWeekRange?: { startOfWeek: Date; endOfWeek: Date }
+  currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
+  selectedClient?: { name: string; address: string }
 ) => {
   console.log('PDF Debug - Session data:', sessionData);
   console.log('PDF Debug - Schedule data:', scheduleData);
@@ -461,6 +488,29 @@ export const generateActualTimePrintableTable = (
     `<th style="background-color: #fff; color: black; font-weight: bold; padding: 4px 6px; text-align: center; border: 2px solid black; font-size: 10px;">${header}</th>`
   ).join('');
 
+  // Client info row - single row spanning all columns
+  const clientInfoRow = `
+    <tr>
+      <td colspan="11" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
+          </div>
+          <div style="flex: 1;">
+            <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
+          </div>
+          <div style="flex: 1;">
+            <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: '2-digit'
+            }) : ''}
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+
   // Build table rows
   const dataRows = [];
 
@@ -482,7 +532,7 @@ export const generateActualTimePrintableTable = (
         
         // Empty column (spans all rows including Total)
         cells.push(`
-          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${totalRows}">
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${totalRows -1 }">
             
           </td>
         `);
@@ -544,10 +594,6 @@ export const generateActualTimePrintableTable = (
     // Total row for this user
     const totalCells = [`
       <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
-        Total
-      </td>
-    `, `
-      <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
         Total
       </td>
     `];
@@ -638,6 +684,7 @@ export const generateActualTimePrintableTable = (
   return `
     <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid black;">
       <thead>
+        ${clientInfoRow}
         <tr>${headerRow}</tr>
       </thead>
       <tbody>
@@ -685,10 +732,8 @@ export const generatePrintContent = (
           }
           
           .header {
-            text-align: center;
+            text-align: left;
             margin-bottom: 12px;
-            border-bottom: 2px solid black;
-            padding-bottom: 8px;
           }
           
           .header h1 { 
@@ -703,19 +748,6 @@ export const generatePrintContent = (
             color: black;
             font-size: 12px;
           }
-          
-          .meta-info {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin: 8px 0;
-            font-size: 11px;
-          }
-
-          .meta-left { text-align: left; }
-          .meta-right { text-align: right; }
-          .meta-info div b { color: black; font-weight: bold; }
           
           table { 
             width: 100%; 
@@ -746,20 +778,6 @@ export const generatePrintContent = (
       <body>
         <div class="header">
           <h1>${title}</h1>
-        </div>
-        
-        <div class="meta-info">
-          <div class="meta-left">
-            <div><b>Client Name:</b> ${selectedClient ? selectedClient.name : 'All Clients'}</div>
-            <div><b>Client Address:</b> ${selectedClient ? selectedClient.address : '-'}</div>
-          </div>
-          <div class="meta-right">
-            <div><b>Week Ending:</b> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: '2-digit'
-            }) : ''}</div>
-          </div>
         </div>
         
         ${tableContent}

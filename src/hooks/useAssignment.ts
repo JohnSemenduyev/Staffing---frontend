@@ -11,7 +11,7 @@ const GET_ASSIGNMENTS = gql`
         id
         clientId
         client { id name lastName }
-        address { id label address city }
+        address { id label address city state pincode }
         userId
         user { id name }
         guardId

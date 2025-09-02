@@ -174,12 +174,18 @@ export const Notification = () => {
     setErrors({});
 
     try {
+      const toMDY = (ymd?: string) => {
+        if (!ymd) return "";
+        const [y,m,d] = ymd.split("-");
+        return `${m}-${d}-${y}`;
+      };
+
       await fetchNotifications({
         clientId: Number(form.clientId),
         addressId: Number(form.addressId),
         userId: Number(form.userId),
         notificationType: form.notification.map(n => notificationTypeMap[n]),
-        date: form.Startdate || null,
+        date: form.Startdate ? toMDY(form.Startdate) : undefined, // omit when empty
       });
 
       toast.success("Notifications fetched successfully!");
@@ -200,7 +206,7 @@ export const Notification = () => {
       return "GeoLocation"
     }
     return notification
-      .replace(/_/g, ' ') // Replace underscores with spaces
+      .replace(/_/g, ' ') 
       .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
   };
 

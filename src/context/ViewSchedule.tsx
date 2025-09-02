@@ -306,13 +306,18 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       }
 
       // Transform the data to match the expected GraphQL input
-      const transformedUpdates = sessionUpdates.map(update => ({
-        sessionId: update.sessionId, // Use sessionId for the input
-        shiftId: update.shiftId,
-        scheduleSessionId: update.scheduleSessionId,
-        clockIn: update.clockIn,
-        clockOut: update.clockOut
-      }));
+      const transformedUpdates = sessionUpdates.map(update => {
+        const base: any = {
+          sessionId: update.sessionId,
+          shiftId: update.shiftId,
+          scheduleSessionId: update.scheduleSessionId,
+          clockIn: update.clockIn,
+        };
+        if (update.clockOut) {
+          base.clockOut = update.clockOut; // omit when null/undefined
+        }
+        return base;
+      });
 
       const response = await graphQLClient.request<{
         updateManySessionTimes: SessionItem[];

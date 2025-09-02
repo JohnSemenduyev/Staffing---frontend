@@ -121,16 +121,29 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     userId?: number;
     date?: string;
     shiftId?: number;
-    notificationType?: string[]; // <-- Make sure implementation also matches
+    notificationType?: string[]; 
   }) => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
 
+      const clean = (v: any) => {
+        const out: any = {};
+        if (v.clientId) out.clientId = v.clientId;
+        if (v.addressId) out.addressId = v.addressId;
+        if (v.userId && v.userId > 0) out.userId = v.userId;
+        if (v.date) out.date = v.date;
+        if (v.shiftId) out.shiftId = v.shiftId;
+        if (Array.isArray(v.notificationType) && v.notificationType.length > 0) {
+          out.notificationType = v.notificationType;
+        }
+        return out;
+      };
+
       const response = await graphQLClient.request<{ notifications: RawNotification[] }>(
         GET_NOTIFICATIONS,
-        variables,
+        clean(variables),
         { Authorization: `Bearer ${token}` }
       );
 

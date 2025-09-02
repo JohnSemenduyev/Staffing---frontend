@@ -4,9 +4,13 @@ import { useDeleteAssignment } from "../hooks/usedeleteassignment";
 import { GenericTable, TableColumn, TableAction } from "../components/GenericTable";
 import { Edit, Trash2 } from "lucide-react";
 
-const getLocationString = (location: any) =>
-  [location?.label, location?.address, location?.city].filter(Boolean).join(", ");
-
+const getLocationString = (location: any) => {
+  const street = location?.address || "";
+  const city = location?.city || "";
+  const state = location?.state || "";
+  const zip = location?.pincode || location?.zipcode || "";
+  return [street, city, state, zip].filter(Boolean).join(", ");
+};
 const AssignmentHistory: React.FC = () => {
   const { data, isLoading, isError } = useAssignments();
   const deleteMutation = useDeleteAssignment();

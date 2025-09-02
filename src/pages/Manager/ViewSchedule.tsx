@@ -1133,16 +1133,19 @@ export const ViewSchedule = () => {
       setIsActualTimePublishing(true);
 
       const items = sessionData
-        .filter(s => s.clockIn) // require clockIn; allow no clockOut
+        .filter(s => s.clockIn)
         .map(s => {
-          const isNew = s.id > 1700000000000; // Check if it's a temporary ID
-          return {
-            sessionId: isNew ? null : s.id, // Send null for new sessions, actual ID for existing ones
+          const isNew = s.id > 1700000000000;
+          const base: any = {
+            sessionId: isNew ? null : s.id,
             shiftId: s.shiftId,
             scheduleSessionId: s.scheduleSessionId,
             clockIn: s.clockIn!,
-            clockOut: s.clockOut ?? null, // always include, null when not entered
           };
+          if (s.clockOut) {
+            base.clockOut = s.clockOut; // omit when missing
+          }
+          return base;
         });
 
       if (items.length === 0) {
@@ -1385,7 +1388,7 @@ export const ViewSchedule = () => {
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange);
+      const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange, selectedClient);
 
       // Compute meta details for header
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
@@ -1555,7 +1558,7 @@ export const ViewSchedule = () => {
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange);
+      const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange, selectedClient);
 
       // Compute meta details for header (Actual Time)
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
@@ -1843,7 +1846,6 @@ export const ViewSchedule = () => {
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
               <div className="text-gray-500">
                 <h3 className="text-lg font-medium mb-2">No Schedule Found</h3>
-               
               </div>
             </div>
           )}
@@ -1851,7 +1853,7 @@ export const ViewSchedule = () => {
           {/* Only render ScheduleTable when we have data */}
           {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <div key={`schedule-${viewKey}`} className="mt-8">
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">Schedule View</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Scheduled Time</h3>
               <ScheduleTable
                 key={`schedule-${viewKey}`}
                 scheduleData={scheduleData}
@@ -1876,7 +1878,7 @@ export const ViewSchedule = () => {
           {/* Actual Time Table Section - only when we have schedule data */}
           {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <div key={`actual-${viewKey}`} className="mt-8">
-              <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time Tracking</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time</h3>
               {!sessionError && (
                 <ActualTimeTable
                   scheduleData={createImmutableScheduleCopy(scheduleData)}

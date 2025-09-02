@@ -442,10 +442,6 @@ export const UPDATE_MANY_SESSION_TIMES = gql`
       clockIn
       clockOut
       workedTime
-      clockInLat
-      clockInLong
-      clockOutLat
-      clockOutLong
     }
   }
 `;

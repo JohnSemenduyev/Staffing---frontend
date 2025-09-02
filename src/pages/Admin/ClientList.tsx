@@ -17,8 +17,8 @@ interface NewClientData {
   city: string;
   state: string;
   pincode: string;
-  latitude: string;  // Add latitude field
-  longitude: string; // Add longitude field
+  latitude: string;  
+  longitude: string; 
 }
 
 function ClientList() {
@@ -43,8 +43,8 @@ function ClientList() {
     city: "",
     state: "",
     pincode: "",
-    latitude: "",   // Initialize latitude
-    longitude: ""   // Initialize longitude
+    latitude: "",  
+    longitude: ""  
   });
 
   // State for search and sort
