@@ -215,19 +215,33 @@ export const Notification = () => {
       className: "min-w-[150px]",
       render: (value: string) => value || "-"
     },
-    {
-      key: "address.address",
-      label: "Address",
-      sortable: true,
-      searchable: true,
-      width: "250px",
-      className: "min-w-[200px]",
-      render: (value: string) => (
-        <div title={value || ""}>
-          {value || "-"}
-        </div>
-      )
-    },
+         {
+       key: "address.address",
+       label: "Address",
+       sortable: true,
+       searchable: true,
+       width: "350px",
+       className: "min-w-[300px]",
+       render: (value: string, row: any) => {
+         console.log('Address render - value:', value, 'row:', row);
+         const address = row.address;
+         if (!address) return "-";
+         
+         const fullAddress = [
+           address.address,
+           address.city,
+           address.state,
+           address.pincode
+         ].filter(Boolean).join(', ');
+         
+         console.log('Full address:', fullAddress);
+         return (
+           <div title={fullAddress} className="truncate">
+             {fullAddress || "-"}
+           </div>
+         );
+       }
+     },
     {
       key: "guardFirst.name",
       label: "User Name",

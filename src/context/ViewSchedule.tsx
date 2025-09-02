@@ -46,6 +46,9 @@ export type Shift = {
   id: number;
   scheduleSessionId: number;
   date: string;
+  auto?: boolean;
+  confirm?: boolean;
+  reject?: boolean;
 };
 
 export type SessionItem = {

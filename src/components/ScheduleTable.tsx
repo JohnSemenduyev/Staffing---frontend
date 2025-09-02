@@ -15,6 +15,8 @@ interface Shift {
   clockIn?: string;
   clockOut?: string;
   auto?: boolean;
+  confirm?: boolean;
+  reject?: boolean;
 }
 
 interface ScheduleItem {
@@ -326,7 +328,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           ...item,
           shifts: item.shifts.map(s =>
             s.id === shift.id
-              ? { ...s, startTime: editForm.starttime, endTime: editForm.endtime, hours: calculateHours(editForm.starttime, editForm.endtime) }
+              ? { ...s, startTime: editForm.starttime, endTime: editForm.endtime, hours: calculateHours(editForm.starttime, editForm.endtime), confirm: false, reject: false }
               : s
           )
         };
@@ -400,7 +402,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     } else {
       // Fallback to local state update
       const updatedData = scheduleData.map(item =>
-        item.userId === userId ? { ...item, auto: enabled } : item
+        item.userId === userId ? { ...item, auto: enabled, shifts: item.shifts.map(s => ({ ...s, confirm: false, reject: false })) } : item
       );
       onScheduleDataChange(updatedData);
     }
@@ -487,10 +489,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           // If dropping to a specific row position, insert at that position
           if (targetRowIdx < currentShifts.length) {
             // Replace the shift at the target row position
-            currentShifts[targetRowIdx] = { ...shift, id: Date.now(), date: targetDate };
+            currentShifts[targetRowIdx] = { ...shift, id: Date.now(), date: targetDate, confirm: false, reject: false };
           } else {
             // Add to the end if target row is beyond current shifts
-            currentShifts.push({ ...shift, id: Date.now(), date: targetDate });
+            currentShifts.push({ ...shift, id: Date.now(), date: targetDate, confirm: false, reject: false });
           }
 
           return {
@@ -517,7 +519,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           userId: targetUserId,
           startDate: targetDate,
           auto: sourceSchedule.auto,
-          shifts: [{ ...shift, id: Date.now(), date: targetDate }],
+          shifts: [{ ...shift, id: Date.now(), date: targetDate, confirm: false, reject: false }],
           clientName: sourceSchedule.clientName,
           address: sourceSchedule.address,
           userName: targetUser?.name || sourceSchedule.userName,
@@ -665,7 +667,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                             if (item.userId === user.id && item.startDate === dateCol.date) {
                                               return {
                                                 ...item,
-                                                shifts: item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled } : s)
+                                                shifts: item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled, confirm: false, reject: false } : s)
                                               };
                                             }
                                             return item;
@@ -675,6 +677,25 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                       }}
                                     />
                                   </div>
+                                       {/* Confirm/Reject Status - Only show when not in edit mode */}
+                                       {!readOnly && !isEditMode && (shift.confirm || shift.reject) && (
+                                     <div className="flex items-center justify-center mt-1 absolute top-0 left-0 ">
+                                       {shift.confirm && (
+                                         <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                           </svg>
+                                         </div>
+                                       )}
+                                       {shift.reject && (
+                                         <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                           </svg>
+                                         </div>
+                                       )}
+                                     </div>
+                                   )}
                                 </div>
                               </div>
                             ) : (

@@ -6,7 +6,8 @@ import { ActualTimeTable } from "../../components/ActualTimeTable";
 import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight, Send, Edit, Trash2 } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
-import * as XLSX from "xlsx";
+import {  ExcelData } from "../../utils/excel";
+import { generateScheduleStyledExcel } from "../../utils/excel/excelGenerators";
 
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
@@ -566,7 +567,9 @@ export const ViewSchedule = () => {
             endTime: shift.endTime,
             hours: shift.hours,
             scheduleSessionId: shift.scheduleSessionId,
-            auto: (shift as any)?.auto ?? false
+            auto: (shift as any)?.auto ?? false,
+            confirm: (shift as any)?.confirm ?? false,
+            reject: (shift as any)?.reject ?? false
           });
         });
       });
@@ -1208,45 +1211,6 @@ export const ViewSchedule = () => {
     }));
   };
 
-  // Fetch session data for actual time tracking
-  const fetchSessionDataForSchedule = async (scheduleData: ScheduleItem[]) => {
-    if (!scheduleData || scheduleData.length === 0) {
-      setSessionData([]);
-      return;
-    }
-
-    try {
-      setSessionLoading(true);
-      setSessionError(null);
-
-      // Extract unique schedule session IDs from the schedule data
-      const scheduleSessionIds = scheduleData
-        .flatMap(item => item.shifts)
-        .map(shift => shift.scheduleSessionId)
-        .filter((id, index, array) => id && array.indexOf(id) === index); // Remove duplicates
-
-      if (scheduleSessionIds.length === 0) {
-        setSessionData([]);
-        return;
-      }
-
-      // Use the context function to fetch session data
-      await fetchSessionData(scheduleSessionIds);
-
-    } catch (error) {
-      console.error("Error fetching session data:", error);
-      setSessionError("Failed to load session data");
-    } finally {
-      setSessionLoading(false);
-    }
-  };
-
-  // Add a new function to handle date navigation
-  const handleDateNavigation = async (newDate: string) => {
-    // This function is now deprecated, use validateAndNavigate instead
-    await validateAndNavigate(newDate);
-  };
-
   // Export functionality for Schedule Table
   const generateScheduleExcelData = () => {
     const excelData = [];
@@ -1461,33 +1425,10 @@ export const ViewSchedule = () => {
     }
   };
 
-  const handleScheduleDownloadExcel = () => {
+  const handleScheduleDownloadExcel = async () => {
     try {
-      const excelData = generateScheduleExcelData();
-
-      // Guard clause: check if excelData is valid
-      if (!excelData || !Array.isArray(excelData) || excelData.length === 0) {
-        throw new Error("No data available to export to Excel.");
-      }
-
-      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-      colorHeaderRowBlue(worksheet);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Schedule Report");
-
-      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
-            const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Schedule_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      if (!currentWeekRange) throw new Error("Missing week range");
+      await generateScheduleStyledExcel(scheduleData, selectedClient, currentWeekRange, 'schedule');
 
       toast({
         title: "Success",
@@ -1503,13 +1444,10 @@ export const ViewSchedule = () => {
     }
   };
 
-
-
-
   // Helper function to calculate worked time with 24-hour logic for clock-in == clock-out
   const calculateWorkedTimeForExcel = (session: any) => {
     if (!session.clockIn || !session.clockOut) {
-      return (session.workedTime || 0) / 60; // Convert minutes to hours
+      return 0; // Return 0 if either time is missing
     }
     
     // If clock-in equals clock-out, return 24 hours
@@ -1521,125 +1459,40 @@ export const ViewSchedule = () => {
     return calculateHours(session.clockIn, session.clockOut);
   };
 
-  // Export functionality for Actual Time Table
-  const generateActualTimeExcelData = () => {
-    const excelData = [];
-
-    // Add header row - match UI table headers exactly (no phone column)
-    const headerRow = ['Employee Name'];
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        // Format date as MM-DD-YYYY for headers
-        const formattedDate = date.toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        });
-        headerRow.push(formattedDate);
-      }
-    }
-    headerRow.push('Total');
-    excelData.push(headerRow);
-
-    // Get unique users from session data
-    const uniqueUsers = new Map();
-    sessionData.forEach(item => {
-      const scheduleItem = scheduleData.find(si =>
-        si.shifts.some(shift => shift.id === item.shiftId)
-      );
-      if (scheduleItem && !uniqueUsers.has(scheduleItem.userId)) {
-        uniqueUsers.set(scheduleItem.userId, {
-          id: scheduleItem.userId,
-          name: scheduleItem.userName,
-          phone: scheduleItem.userPhone
-        });
-      }
-    });
-
-    // Sort users by name to match UI table order
-    const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-    // Add data rows
-    sortedUsers.forEach(user => {
-      const row = [user.name];
-
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = toLocalYMD(date);
-
-          const daySessions = sessionData.filter(item => {
-            const scheduleItem = scheduleData.find(si =>
-              si.shifts.some(shift => shift.id === item.shiftId)
-            );
-            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-
-            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-            if (!shift) return false;
-            
-            // Handle both local date format and ISO date format
-            let shiftDate: string;
-            if (shift.date.includes('T') && shift.date.includes('Z')) {
-              // This is a UTC date, extract just the date part without timezone conversion
-              shiftDate = shift.date.split('T')[0];
-            } else if (shift.date.includes('T')) {
-              shiftDate = toLocalYMD(new Date(shift.date));
-            } else {
-              shiftDate = shift.date;
-            }
-            
-            return shiftDate === dateStr;
+  const handleActualTimeDownloadExcel = async () => {
+    try {
+      if (!currentWeekRange) throw new Error("Missing week range");
+      
+      // Transform actual time data to match schedule data format
+      const transformedData = [];
+      
+      // Get unique users from session data
+      const uniqueUsers = new Map();
+      sessionData.forEach(item => {
+        const scheduleItem = scheduleData.find(si =>
+          si.shifts.some(shift => shift.id === item.shiftId)
+        );
+        if (scheduleItem && !uniqueUsers.has(scheduleItem.userId)) {
+          uniqueUsers.set(scheduleItem.userId, {
+            id: scheduleItem.userId,
+            name: scheduleItem.userName
           });
-
-          if (daySessions.length > 0) {
-            const sessionTimes = daySessions.map(session =>
-              `${session.clockIn} - ${session.clockOut}`
-            ).join(', ');
-            row.push(sessionTimes);
-          } else {
-            row.push('');
-          }
         }
-      }
+      });
 
-      // Add per-row total worked time
-      const userTotal = sessionData
-        .filter(item => {
+      // Transform data for each user
+      uniqueUsers.forEach((user) => {
+        // Group sessions by date for this user
+        const sessionsByDate = new Map();
+        
+        sessionData.forEach(session => {
           const scheduleItem = scheduleData.find(si =>
-            si.shifts.some(shift => shift.id === item.shiftId)
+            si.shifts.some(shift => shift.id === session.shiftId)
           );
-          return scheduleItem && scheduleItem.userId === user.id;
-        })
-        .reduce((total, item) => total + calculateWorkedTimeForExcel(item), 0);
-      row.push(String(parseFloat(userTotal.toFixed(2))));
-
-      excelData.push(row);
-
-      // Add per-guard totals row (same as UI)
-      const userTotalsRow = [` Total`];
-      let userGrandTotal = 0;
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = toLocalYMD(date);
-
-          const dayTotal = sessionData
-            .filter(item => {
-              const scheduleItem = scheduleData.find(si =>
-                si.shifts.some(shift => shift.id === item.shiftId)
-              );
-              if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-
-              const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-              if (!shift) return false;
-              
+          
+          if (scheduleItem && scheduleItem.userId === user.id) {
+            const shift = scheduleItem.shifts.find(s => s.id === session.shiftId);
+            if (shift) {
               // Handle both local date format and ISO date format
               let shiftDate: string;
               if (shift.date.includes('T') && shift.date.includes('Z')) {
@@ -1650,132 +1503,36 @@ export const ViewSchedule = () => {
                 shiftDate = shift.date;
               }
               
-              return shiftDate === dateStr;
-            })
-            .reduce((total, item) => total + calculateWorkedTimeForExcel(item), 0);
-
-          userTotalsRow.push(String(parseFloat(dayTotal.toFixed(2))));
-          userGrandTotal += dayTotal;
-        }
-      }
-      userTotalsRow.push(String(parseFloat(userGrandTotal.toFixed(2))));
-      excelData.push(userTotalsRow);
-    });
-
-    // Add grand totals row
-    const totalsRow = ['GRAND TOTAL'];
-    let grandTotal = 0;
-
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const dateStr = toLocalYMD(date);
-
-        // Calculate total hours for this day across all users
-        const daySessions = sessionData.filter(item => {
-          const scheduleItem = scheduleData.find(si =>
-            si.shifts.some(shift => shift.id === item.shiftId)
-          );
-          if (!scheduleItem) return false;
-
-          const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-          if (!shift) return false;
-          
-          // Handle both local date format and ISO date format
-          let shiftDate: string;
-          if (shift.date.includes('T') && shift.date.includes('Z')) {
-            // This is a UTC date, extract just the date part without timezone conversion
-            shiftDate = shift.date.split('T')[0];
-          } else if (shift.date.includes('T')) {
-            shiftDate = toLocalYMD(new Date(shift.date));
-          } else {
-            shiftDate = shift.date;
+              if (!sessionsByDate.has(shiftDate)) {
+                sessionsByDate.set(shiftDate, []);
+              }
+              sessionsByDate.get(shiftDate).push(session);
+            }
           }
-          
-          return shiftDate === dateStr;
         });
 
-        const dayTotalWorkedTime = daySessions.reduce((total, item) => total + calculateWorkedTimeForExcel(item), 0);
-
-        totalsRow.push(String(parseFloat(dayTotalWorkedTime.toFixed(2))));
-        grandTotal += dayTotalWorkedTime;
-      }
-    }
-
-    totalsRow.push(String(parseFloat(grandTotal.toFixed(2))));
-    excelData.push(totalsRow);
-
-    return excelData;
-  };
-
-  // Excel helper: color only the table header row (row whose first cell is "Employee Name")
-  const colorHeaderRowBlue = (ws) => {
-    const ref = ws['!ref']; 
-    if (!ref) return;
-    
-    const range = XLSX.utils.decode_range(ref);
-    
-    // Find header row index by first cell value
-    let headerR = range.s.r;
-    for (let r = range.s.r; r <= range.e.r; r++) {
-      const a0 = XLSX.utils.encode_cell({ r, c: range.s.c });
-      const cell = ws[a0];
-      if (cell && String(cell.v).trim().toLowerCase() === 'employee name') { 
-        headerR = r; 
-        break; 
-      }
-    }
-    
-    // Apply styling to each cell in the header row
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const addr = XLSX.utils.encode_cell({ r: headerR, c });
-      
-      if (!ws[addr]) continue;
-      
-      ws[addr].s = {
-        fill: { 
-          patternType: 'solid', 
-          fgColor: { rgb: '004175' }
-        },
-        font: { 
-          color: { rgb: 'FFFFFF' }, 
-          bold: true 
-        },
-        alignment: { 
-          horizontal: 'center', 
-          vertical: 'center' 
-        }
-      };
-    }
-    
-    if (!ws['!rows']) ws['!rows'] = [];
-    ws['!rows'][headerR] = { hpt: 22 };
-  };
-
-  const handleActualTimeDownloadExcel = () => {
-    try {
-      const excelData = generateActualTimeExcelData();
-
-      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-      colorHeaderRowBlue(worksheet);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Actual Time Report");
-
-      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
-      const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        // Create transformed data structure
+        sessionsByDate.forEach((sessions, date) => {
+          sessions.forEach(session => {
+            // Check if we have both clock-in and clock-out times
+            const hasCompleteTime = session.clockIn && session.clockOut;
+            
+            transformedData.push({
+              userId: user.id,
+              userName: user.name,
+              startDate: date,
+              shifts: [{
+                startTime: session.clockIn || 'N/A',  // Use clockIn instead of startTime
+                endTime: session.clockOut || 'N/A',   // Use clockOut instead of endTime
+                hours: hasCompleteTime ? calculateWorkedTimeForExcel(session) : 'N/A'
+              }]
+            });
+          });
+        });
       });
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Actual_Time_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Use the same Excel generation function with transformed data
+      await generateScheduleStyledExcel(transformedData, selectedClient, currentWeekRange, 'actual');
 
       toast({
         title: "Success",
@@ -1790,8 +1547,6 @@ export const ViewSchedule = () => {
       });
     }
   };
-
-
 
   const handleActualTimePrint = async () => {
     try {

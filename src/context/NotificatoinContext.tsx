@@ -13,7 +13,12 @@ type NotificationShift = {
 type RawNotification = {
   id: number;
   client: { name: string };
-  address: { address: string };
+  address: { 
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
   user: { name: string; lastName: string };
   notificationType: string;
   scheduleSessionId: number;
@@ -34,7 +39,12 @@ export type NotificationEntry = {
   date: string;
   time: string;
   client: { name: string };
-  address: { address: string };
+  address: { 
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
   notificationType: string;
   message: string;
   shiftTime?: string;
@@ -132,7 +142,12 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         date: n.date || n.createdAt || "",
         time: n.time || "-",
         client: { name: n.client?.name || "" },
-        address: { address: n.address?.address || "" },
+        address: { 
+          address: n.address?.address || "", 
+          city: n.address?.city || "", 
+          state: n.address?.state || "", 
+          pincode: n.address?.pincode || "" 
+        },
         notificationType: n.notificationType,
         message: n.message,
         shiftTime: n.shift?.startTime || undefined,

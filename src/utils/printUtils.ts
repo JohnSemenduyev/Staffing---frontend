@@ -53,9 +53,9 @@ export const generateSchedulePrintableTable = (
   scheduleData: ScheduleItem[],
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date }
 ) => {
-  // Debug: Log the incoming data structure
-  console.log('PDF Debug - Incoming scheduleData:', scheduleData.slice(0, 2)); // Log first 2 items
+  console.log('PDF Debug - Incoming scheduleData:', scheduleData.slice(0, 2));
   console.log('PDF Debug - Current week range:', currentWeekRange);
+  
   if (!scheduleData || scheduleData.length === 0) {
     return `
       <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
@@ -64,7 +64,7 @@ export const generateSchedulePrintableTable = (
     `;
   }
 
-  // Get unique users - handle multiple entries for same user
+  // Get unique users
   const uniqueUsers = new Map();
   scheduleData.forEach(item => {
     if (!uniqueUsers.has(item.userId)) {
@@ -76,18 +76,20 @@ export const generateSchedulePrintableTable = (
     }
   });
 
-  // Table headers - match UI table headers exactly
-  const headers = ['Employee Name'];
+  // Sort users by name
+  const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+  // Table headers
+  const headers = ['Officer Name', '']; // Add empty column after Officer Name
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      // Format date as MM-DD-YYYY for headers
       const formattedDate = date.toLocaleDateString('en-US', {
         month: '2-digit',
         day: '2-digit',
-        year: 'numeric'
+        year: '2-digit'
       });
       headers.push(formattedDate);
     }
@@ -95,87 +97,84 @@ export const generateSchedulePrintableTable = (
   headers.push('Total');
 
   const headerRow = headers.map(header => 
-    `<th style="background-color: #004175; color: white; font-weight: bold; padding: 12px; text-align: center; border: 1px solid #004175; font-size: 12px;">${header}</th>`
+    `<th style="background-color: #fff; color: black; font-weight: bold; padding: 4px 6px; text-align: center; border: 2px solid black; font-size: 10px;">${header}</th>`
   ).join('');
-  
-  // Table rows from data - match UI structure exactly
-  const dataRows = [];
-  
-  // Sort users by name to match UI table order
-  const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
-  
-  // Helper function to get max shifts per day for a user
+
+  // Helper functions
   const getMaxShiftsPerDay = (userId: number) => {
-    const userDays = scheduleData.filter(i => i.userId === userId);
-    let max = 1;
-    for (const d of userDays) max = Math.max(max, d.shifts.length);
-    return max;
-  };
+    let maxShifts = 1;
+    if (!currentWeekRange) return maxShifts;
 
-  // Helper function to format date from ISO string to local format
-  const formatDateFromISO = (isoDate: string) => {
-    try {
-      const date = new Date(isoDate);
-      return toLocalYMD(date);
-    } catch (error) {
-      console.error('Error formatting date:', isoDate, error);
-      return isoDate; // fallback to original if parsing fails
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = toLocalYMD(date);
+      
+      const shiftsForDay = scheduleData
+        .filter(item => item.userId === userId)
+        .flatMap(item => item.shifts)
+        .filter(shift => {
+          const shiftDate = shift.date.includes('T') ? 
+            toLocalYMD(new Date(shift.date)) : shift.date;
+          return shiftDate === dateStr;
+        });
+      
+      maxShifts = Math.max(maxShifts, shiftsForDay.length);
     }
+    return maxShifts;
   };
 
-  // Helper function to normalize date for comparison
-  const normalizeDateForComparison = (dateStr: string) => {
-    // Handle both local date format and ISO date format
-    if (dateStr.includes('T')) {
-      return formatDateFromISO(dateStr);
-    }
-    return dateStr;
-  };
-
-  // Helper function to calculate user total
   const calculateUserTotal = (userId: number) => {
     return scheduleData
       .filter(item => item.userId === userId)
       .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   };
 
-  // Helper function to calculate day total
-  const calculateDayTotal = (date: string) => {
-    const total = scheduleData
+  const calculateDayTotal = (dateStr: string) => {
+    return scheduleData
       .flatMap(item => item.shifts)
       .filter(shift => {
-        const shiftDate = normalizeDateForComparison(shift.date);
-        return shiftDate === date;
+        const shiftDate = shift.date.includes('T') ? 
+          toLocalYMD(new Date(shift.date)) : shift.date;
+        return shiftDate === dateStr;
       })
       .reduce((total, shift) => total + shift.hours, 0);
-    return parseFloat(total.toFixed(2));
   };
 
-  // Helper function to calculate grand total
   const calculateGrandTotal = () => {
     return scheduleData
       .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   };
-  
-  sortedUsers.forEach((user, userIndex) => {
-    const rowCount = getMaxShiftsPerDay(user.id);
 
-    // Create shift rows for this user
-    for (let rowIdx = 0; rowIdx < rowCount; rowIdx++) {
-      const rowStyle = (userIndex + rowIdx) % 2 === 0 ? 'background-color: #f9fafb;' : 'background-color: #ffffff;';
+  // Build table rows
+  const dataRows = [];
+
+  sortedUsers.forEach(user => {
+    const maxShifts = getMaxShiftsPerDay(user.id);
+    const totalRows = maxShifts + 1; // +1 for Total row
+
+    // Data rows for shifts
+    for (let rowIdx = 0; rowIdx < maxShifts; rowIdx++) {
+      const cells = [];
       
-      const row = [];
-      
-      // Employee Name column (only on first row)
+      // Officer name (spans all rows including Total)
       if (rowIdx === 0) {
-        row.push(`
-          <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; vertical-align: middle; font-size: 11px;" rowspan="${rowCount}">
-            <div style="font-weight: 500; color: #1f2937;">${user.name || '-'}</div>
+        cells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: normal;" rowspan="${totalRows}">
+            ${user.name}
+          </td>
+        `);
+        
+        // Empty column (spans all rows including Total)
+        cells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${totalRows}">
+            
           </td>
         `);
       }
-      
-      // Date columns - Updated sorting algorithm
+
+      // Day columns
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
         for (let i = 0; i < 7; i++) {
@@ -183,61 +182,51 @@ export const generateSchedulePrintableTable = (
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
           
-          // Debug: Log the date being processed
-          if (rowIdx === 0) { // Only log once per date
-            console.log(`PDF Debug - Processing date ${i}: ${dateStr}`);
-          }
-          
-          // Find all shifts for this specific date and user
-          const allShiftsForDate = scheduleData
+          // Find shifts for this day and user
+          const dayShifts = scheduleData
             .filter(item => item.userId === user.id)
-            .flatMap(s => s.shifts)
+            .flatMap(item => item.shifts)
             .filter(shift => {
-              const shiftDate = normalizeDateForComparison(shift.date);
-              const matches = shiftDate === dateStr;
-              
-              // Debug logging for troubleshooting
-              console.log(`PDF Debug - Date: ${dateStr}, User: ${user.name}, ShiftDate: ${shiftDate}, Shift: ${shift.startTime}-${shift.endTime}, Matches: ${matches}`);
-              
-              return matches;
-            });
-          
-          const sortedShifts = allShiftsForDate.sort((a, b) => 
-            timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-          );
-          
-          // Get the shift for this specific row index
-          const shift = sortedShifts[rowIdx];
-          
-          row.push(`
-            <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-              ${shift ? `${shift.startTime} - ${shift.endTime}` : '-'}
+              const shiftDate = shift.date.includes('T') ? 
+                toLocalYMD(new Date(shift.date)) : shift.date;
+              return shiftDate === dateStr;
+            })
+            .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+          const shift = dayShifts[rowIdx];
+          const cellContent = shift ? `${shift.startTime} - ${shift.endTime}` : '';
+
+          cells.push(`
+            <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;">
+              ${cellContent}
             </td>
           `);
         }
       }
-      
-      // Total column (only on first row)
+
+      // Total column (spans all data rows, not the Total row)
       if (rowIdx === 0) {
-        row.push(`
-          <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-weight: 500; font-size: 11px;" rowspan="${rowCount}">
-            ${calculateUserTotal(user.id).toFixed(2)}
+        cells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${maxShifts}">
+            ${calculateUserTotal(user.id).toFixed(0)}
           </td>
         `);
       }
-      
 
-      
-      dataRows.push(`
-        <tr style="${rowStyle}">
-          ${row.join('')}
-        </tr>
-      `);
+      dataRows.push(`<tr>${cells.join('')}</tr>`);
     }
 
-    // Add Total row for this user
-    const totalRow = ['<td style="border: 1px solid #d1d5db; padding: 12px; text-sm text-gray-600 text-align: center; font-size: 11px;">Total</td>'];
-    
+    // Total row for this user
+    const totalCells = [`
+      <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
+        Total
+      </td>
+    `, `
+      <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+        Total
+      </td>
+    `];
+
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
@@ -245,47 +234,41 @@ export const generateSchedulePrintableTable = (
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
         
-                 const dayShifts = scheduleData
-           .filter(item => item.userId === user.id)
-           .flatMap(s => s.shifts)
-           .filter(shift => {
-             const shiftDate = normalizeDateForComparison(shift.date);
-             const matches = shiftDate === dateStr;
-             
-             // Debug logging for total row calculation
-             console.log(`PDF Total Debug - Date: ${dateStr}, User: ${user.name}, ShiftDate: ${shiftDate}, Shift: ${shift.startTime}-${shift.endTime}, Matches: ${matches}`);
-             
-             return matches;
-           });
-        const dayTotal = dayShifts.reduce((total, shift) => total + shift.hours, 0);
-        const rounded = parseFloat(dayTotal.toFixed(2));
-        
-        totalRow.push(`
-          <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-weight: 500; font-size: 11px;">
-            ${rounded > 0 ? rounded : '-'}
+        const dayTotal = scheduleData
+          .filter(item => item.userId === user.id)
+          .flatMap(item => item.shifts)
+          .filter(shift => {
+            const shiftDate = shift.date.includes('T') ? 
+              toLocalYMD(new Date(shift.date)) : shift.date;
+            return shiftDate === dateStr;
+          })
+          .reduce((total, shift) => total + shift.hours, 0);
+
+        totalCells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+            ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
           </td>
         `);
       }
     }
-    
-    totalRow.push(`
-      <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-weight: 500; font-size: 11px;">
-        ${calculateUserTotal(user.id).toFixed(2)}
+
+    // Total column for Total row
+    totalCells.push(`
+      <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+        ${calculateUserTotal(user.id).toFixed(0)}
       </td>
     `);
-    
 
-    
-    dataRows.push(`
-      <tr style="background-color: ${userIndex % 2 === 0 ? '#f3f4f6' : '#e5e7eb'};">
-        ${totalRow.join('')}
-      </tr>
-    `);
+    dataRows.push(`<tr>${totalCells.join('')}</tr>`);
   });
 
-  // Add Grand Total Row
-  const grandTotalRow = ['<td style="border: 1px solid #d1d5db; padding: 12px; font-weight: 500; font-size: 11px;">Grand Total</td>'];
-  
+  // Grand Total row
+  const grandTotalCells = [`
+    <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
+      Grand Total
+    </td>
+  `];
+
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
@@ -294,30 +277,24 @@ export const generateSchedulePrintableTable = (
       const dateStr = toLocalYMD(date);
       
       const dayTotal = calculateDayTotal(dateStr);
-      grandTotalRow.push(`
-        <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-          ${dayTotal || '-'}
+      grandTotalCells.push(`
+        <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+          ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
         </td>
       `);
     }
   }
-  
-  grandTotalRow.push(`
-    <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-      ${calculateGrandTotal().toFixed(2)}
+
+  grandTotalCells.push(`
+    <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+      ${calculateGrandTotal().toFixed(0)}
     </td>
   `);
-  
 
-  
-  dataRows.push(`
-    <tr style="background-color: #f9fafb; font-weight: 500;">
-      ${grandTotalRow.join('')}
-    </tr>
-  `);
+  dataRows.push(`<tr>${grandTotalCells.join('')}</tr>`);
 
   return `
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid black;">
       <thead>
         <tr>${headerRow}</tr>
       </thead>
@@ -333,7 +310,6 @@ export const generateActualTimePrintableTable = (
   scheduleData: ScheduleItem[],
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date }
 ) => {
-  // Debug logging
   console.log('PDF Debug - Session data:', sessionData);
   console.log('PDF Debug - Schedule data:', scheduleData);
   console.log('PDF Debug - Current week range:', currentWeekRange);
@@ -346,30 +322,28 @@ export const generateActualTimePrintableTable = (
     `;
   }
 
-  // Helper function to calculate worked time with 24-hour logic for clock-in == clock-out
+  // Helper function to calculate worked time with 24-hour logic
   const calculateWorkedTimeWith24HourLogic = (session: SessionData) => {
     if (!session.clockIn || !session.clockOut) {
-      return (session.workedTime || 0) / 60; // Convert minutes to hours
+      return (session.workedTime || 0) / 60;
     }
     
-    // If clock-in equals clock-out, return 24 hours
     if (session.clockIn === session.clockOut) {
-      return 24.0; // 24 hours
+      return 24.0;
     }
     
-    // Otherwise use the calculated hours directly
     const calculateHours = (start: string, end: string) => {
       const [startH, startM] = start.split(":").map(Number);
       const [endH, endM] = end.split(":").map(Number);
       let hours = endH - startH + (endM - startM) / 60;
-      if (hours <= 0) hours += 24; // equal times => 24h, overnight => +24
+      if (hours <= 0) hours += 24;
       return parseFloat(hours.toFixed(2));
     };
     
     return calculateHours(session.clockIn, session.clockOut);
   };
 
-  // Get unique users from session data (same as UI)
+  // Get unique users from session data
   const uniqueUsers = new Map();
   sessionData.forEach(item => {
     const scheduleItem = scheduleData.find(si =>
@@ -384,10 +358,45 @@ export const generateActualTimePrintableTable = (
     }
   });
 
-  // Sort users by name to match UI table order
   const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-  // Helper function to calculate user total (same as UI)
+  // Helper functions
+  const getMaxSessionsPerDay = (userId: number) => {
+    let maxSessions = 1;
+    if (!currentWeekRange) return maxSessions;
+
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = toLocalYMD(date);
+      
+      const sessionsForDay = sessionData.filter(item => {
+        const scheduleItem = scheduleData.find(si =>
+          si.shifts.some(shift => shift.id === item.shiftId)
+        );
+        if (!scheduleItem || scheduleItem.userId !== userId) return false;
+
+        const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+        if (!shift) return false;
+        
+        let shiftDate: string;
+        if (shift.date.includes('T') && shift.date.includes('Z')) {
+          shiftDate = shift.date.split('T')[0];
+        } else if (shift.date.includes('T')) {
+          shiftDate = toLocalYMD(new Date(shift.date));
+        } else {
+          shiftDate = shift.date;
+        }
+        
+        return shiftDate === dateStr;
+      });
+      
+      maxSessions = Math.max(maxSessions, sessionsForDay.length);
+    }
+    return maxSessions;
+  };
+
   const calculateUserTotal = (userId: number) => {
     const total = sessionData
       .filter(item => {
@@ -400,8 +409,7 @@ export const generateActualTimePrintableTable = (
     return parseFloat(total.toFixed(2));
   };
 
-  // Helper function to calculate day total (same as UI)
-  const calculateDayTotal = (date: string, sessionData: SessionData[]) => {
+  const calculateDayTotal = (dateStr: string) => {
     const total = sessionData
       .filter(item => {
         const scheduleItem = scheduleData.find(si =>
@@ -412,10 +420,8 @@ export const generateActualTimePrintableTable = (
         const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
         if (!shift) return false;
         
-        // Handle both local date format and ISO date format
         let shiftDate: string;
         if (shift.date.includes('T') && shift.date.includes('Z')) {
-          // This is a UTC date, extract just the date part without timezone conversion
           shiftDate = shift.date.split('T')[0];
         } else if (shift.date.includes('T')) {
           shiftDate = toLocalYMD(new Date(shift.date));
@@ -423,30 +429,28 @@ export const generateActualTimePrintableTable = (
           shiftDate = shift.date;
         }
         
-        return shiftDate === date;
+        return shiftDate === dateStr;
       })
       .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
     return parseFloat(total.toFixed(2));
   };
 
-  // Helper function to calculate grand total (same as UI)
-  const calculateGrandTotal = (sessionData: SessionData[]) => {
+  const calculateGrandTotal = () => {
     const total = sessionData.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
     return parseFloat(total.toFixed(2));
   };
 
-  // Table headers - match UI table headers exactly
-  const headers = ['Employee Name'];
+  // Table headers
+  const headers = ['Officer Name', '']; // Add empty column after Officer Name
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      // Format date as MM-DD-YYYY for headers
       const formattedDate = date.toLocaleDateString('en-US', {
         month: '2-digit',
         day: '2-digit',
-        year: 'numeric'
+        year: '2-digit'
       });
       headers.push(formattedDate);
     }
@@ -454,96 +458,100 @@ export const generateActualTimePrintableTable = (
   headers.push('Total');
 
   const headerRow = headers.map(header => 
-    `<th style="background-color: #004175; color: white; font-weight: bold; padding: 12px; text-align: center; border: 1px solid #004175; font-size: 12px;">${header}</th>`
+    `<th style="background-color: #fff; color: black; font-weight: bold; padding: 4px 6px; text-align: center; border: 2px solid black; font-size: 10px;">${header}</th>`
   ).join('');
 
-  // Table rows from data - match UI structure exactly
+  // Build table rows
   const dataRows = [];
-  
-  // Add data rows for each user
-  sortedUsers.forEach((user, userIndex) => {
-    const rowStyle = userIndex % 2 === 0 ? 'background-color: #f9fafb;' : 'background-color: #ffffff;';
-    
-    const row = [`
-      <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; vertical-align: middle; font-size: 11px;">
-        <div style="font-weight: 500; color: #1f2937;">${user.name || '-'}</div>
-      </td>
-    `];
-    
-    // Date columns - match UI structure
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const dateStr = toLocalYMD(date);
+
+  sortedUsers.forEach(user => {
+    const maxSessions = getMaxSessionsPerDay(user.id);
+    const totalRows = maxSessions + 1; // +1 for Total row
+
+    // Data rows for sessions
+    for (let rowIdx = 0; rowIdx < maxSessions; rowIdx++) {
+      const cells = [];
+      
+      // Officer name (spans all rows including Total)
+      if (rowIdx === 0) {
+        cells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: normal;" rowspan="${totalRows}">
+            ${user.name}
+          </td>
+        `);
         
-        // Debug: Log the date we're looking for
-        console.log(`PDF Debug - Looking for date: ${dateStr} for user: ${user.name}`);
-        
-        const daySessions = sessionData.filter(item => {
-          const scheduleItem = scheduleData.find(si =>
-            si.shifts.some(shift => shift.id === item.shiftId)
-          );
-          if (!scheduleItem || scheduleItem.userId !== user.id) return false;
+        // Empty column (spans all rows including Total)
+        cells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${totalRows}">
+            
+          </td>
+        `);
+      }
 
-          const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-          if (!shift) return false;
+      // Day columns
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
           
-          // Debug: Log the shift date we found
-          console.log(`PDF Debug - Found shift date: ${shift.date} for session: ${item.id}`);
-          
-          // Handle both local date format and ISO date format
-          let shiftDate: string;
-          if (shift.date.includes('T') && shift.date.includes('Z')) {
-            // This is a UTC date, extract just the date part without timezone conversion
-            shiftDate = shift.date.split('T')[0];
-          } else if (shift.date.includes('T')) {
-            shiftDate = toLocalYMD(new Date(shift.date));
-          } else {
-            shiftDate = shift.date;
-          }
-          
-          return shiftDate === dateStr;
-        });
+          // Find sessions for this day and user
+          const daySessions = sessionData.filter(item => {
+            const scheduleItem = scheduleData.find(si =>
+              si.shifts.some(shift => shift.id === item.shiftId)
+            );
+            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
 
-        console.log(`PDF Debug - Found ${daySessions.length} sessions for date ${dateStr} and user ${user.name}`);
+            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+            if (!shift) return false;
+            
+            let shiftDate: string;
+            if (shift.date.includes('T') && shift.date.includes('Z')) {
+              shiftDate = shift.date.split('T')[0];
+            } else if (shift.date.includes('T')) {
+              shiftDate = toLocalYMD(new Date(shift.date));
+            } else {
+              shiftDate = shift.date;
+            }
+            
+            return shiftDate === dateStr;
+          });
 
-        if (daySessions.length > 0) {
-          const sessionTimes = daySessions.map(session =>
-            `${session.clockIn} - ${session.clockOut}`
-          ).join(', ');
-          row.push(`
-            <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-              ${sessionTimes}
-            </td>
-          `);
-        } else {
-          row.push(`
-            <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-              -
+          const session = daySessions[rowIdx];
+          const cellContent = session ? `${session.clockIn} - ${session.clockOut}` : '';
+
+          cells.push(`
+            <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;">
+              ${cellContent}
             </td>
           `);
         }
       }
-    }
-    
-    // Total column
-    row.push(`
-      <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-weight: 500; font-size: 11px;">
-        ${calculateUserTotal(user.id).toFixed(2)}
-      </td>
-    `);
-    
-    dataRows.push(`
-      <tr style="${rowStyle}">
-        ${row.join('')}
-      </tr>
-    `);
 
-    // Add Total row for this user (same as UI)
-    const totalRow = ['<td style="border: 1px solid #d1d5db; padding: 12px; text-sm text-gray-600 text-align: center; font-size: 11px;">Total</td>'];
-    
+      // Total column (spans all data rows, not the Total row)
+      if (rowIdx === 0) {
+        cells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${maxSessions}">
+            ${calculateUserTotal(user.id).toFixed(0)}
+          </td>
+        `);
+      }
+
+      dataRows.push(`<tr>${cells.join('')}</tr>`);
+    }
+
+    // Total row for this user
+    const totalCells = [`
+      <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
+        Total
+      </td>
+    `, `
+      <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+        Total
+      </td>
+    `];
+
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
@@ -561,7 +569,6 @@ export const generateActualTimePrintableTable = (
             const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
             if (!shift) return false;
             
-            // Handle both local date format and ISO date format
             let shiftDate: string;
             if (shift.date.includes('T') && shift.date.includes('Z')) {
               shiftDate = shift.date.split('T')[0];
@@ -574,31 +581,36 @@ export const generateActualTimePrintableTable = (
             return shiftDate === dateStr;
           })
           .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
-        
-        totalRow.push(`
-          <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-weight: 500; font-size: 11px;">
-            ${dayTotal > 0 ? dayTotal.toFixed(2) : '-'}
+
+        totalCells.push(`
+          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+            ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
           </td>
         `);
       }
     }
-    
-    totalRow.push(`
-      <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-weight: 500; font-size: 11px;">
-        ${calculateUserTotal(user.id).toFixed(2)}
+
+    // Total column for Total row
+    totalCells.push(`
+      <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+        ${calculateUserTotal(user.id).toFixed(0)}
       </td>
     `);
-    
-    dataRows.push(`
-      <tr style="background-color: ${userIndex % 2 === 0 ? '#f3f4f6' : '#e5e7eb'};">
-        ${totalRow.join('')}
-      </tr>
-    `);
+
+    dataRows.push(`<tr>${totalCells.join('')}</tr>`);
   });
 
-  // Add Grand Total Row
-  const grandTotalRow = ['<td style="border: 1px solid #d1d5db; padding: 12px; font-weight: 500; font-size: 11px;">GRAND TOTAL</td>'];
-  
+  // Grand Total row
+  const grandTotalCells = [`
+    <td style="border: 2px solid black; padding: 4px 6px; text-align: left; font-size: 10px; font-weight: bold;">
+      Grand Total
+    </td>
+  `, `
+    <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+      
+    </td>
+  `];
+
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
@@ -606,32 +618,25 @@ export const generateActualTimePrintableTable = (
       date.setDate(startDate.getDate() + i);
       const dateStr = toLocalYMD(date);
       
-      const dayTotal = calculateDayTotal(dateStr, sessionData);
-      console.log(`PDF Debug - Grand Total Day ${dateStr}: ${dayTotal}`);
-      grandTotalRow.push(`
-        <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-          ${dayTotal > 0 ? dayTotal.toFixed(2) : '-'}
+      const dayTotal = calculateDayTotal(dateStr);
+      grandTotalCells.push(`
+        <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+          ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
         </td>
       `);
     }
   }
-  
-  const grandTotal = calculateGrandTotal(sessionData);
-  console.log(`PDF Debug - Grand Total: ${grandTotal}`);
-  grandTotalRow.push(`
-    <td style="border: 1px solid #d1d5db; padding: 12px; text-align: center; font-size: 11px;">
-      ${grandTotal.toFixed(2)}
+
+  grandTotalCells.push(`
+    <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px; font-weight: bold;">
+      ${calculateGrandTotal().toFixed(0)}
     </td>
   `);
-  
-  dataRows.push(`
-    <tr style="background-color: #f9fafb; font-weight: 500;">
-      ${grandTotalRow.join('')}
-    </tr>
-  `);
+
+  dataRows.push(`<tr>${grandTotalCells.join('')}</tr>`);
 
   return `
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid black;">
       <thead>
         <tr>${headerRow}</tr>
       </thead>
@@ -662,7 +667,7 @@ export const generatePrintContent = (
         <title>${title}</title>
         <style>
           @page {
-            margin: 1in;
+            margin: 0.5in;
             size: landscape;
           }
           
@@ -671,107 +676,90 @@ export const generatePrintContent = (
           }
           
           body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: Arial, sans-serif; 
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             background: white;
-            color: #333;
-            line-height: 1.4;
+            color: black;
+            line-height: 1.2;
           }
           
           .header {
             text-align: center;
-            margin-bottom: 16px;
-            border-bottom: 2px solid #004175;
-            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid black;
+            padding-bottom: 8px;
           }
           
           .header h1 { 
             margin: 0;
-            color: #004175;
-            font-size: 24px;
+            color: black;
+            font-size: 18px;
             font-weight: bold;
           }
           
           .header .subtitle {
-            margin: 5px 0 0 0;
-            color: #666;
-            font-size: 14px;
+            margin: 4px 0 0 0;
+            color: black;
+            font-size: 12px;
           }
           
           .meta-info {
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-            margin: 8px 0 12px 0;
-            font-size: 13px;
-            max-width: 55%;
-          }
-
-          .meta-info div b { color: #000; }
-
-          .print-info {
-            display: flex;
+            flex-direction: row;
             justify-content: space-between;
-            margin-bottom: 20px;
-            font-size: 12px;
-            color: #666;
+            align-items: flex-start;
+            margin: 8px 0;
+            font-size: 11px;
           }
+
+          .meta-left { text-align: left; }
+          .meta-right { text-align: right; }
+          .meta-info div b { color: black; font-weight: bold; }
           
           table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-top: 10px;
+            margin-top: 8px;
             background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 2px solid black;
           }
           
           th { 
-            background-color: #004175 !important;
-            color: white !important;
+            background-color: white !important;
+            color: black !important;
             font-weight: bold;
-            padding: 12px 8px;
-            text-align: left;
-            border: 1px solid #004175;
-            font-size: 12px;
+            padding: 4px 6px;
+            text-align: center;
+            border: 2px solid black;
+            font-size: 10px;
           }
           
           td { 
-            padding: 8px;
-            border: 1px solid #dee2e6;
-            font-size: 11px;
-            vertical-align: top;
-          }
-          
-          tr:nth-child(even) {
-            background-color: #f8f9fa;
+            padding: 4px 6px;
+            border: 2px solid black;
+            font-size: 10px;
+            vertical-align: middle;
           }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>${title}</h1>
-          <div class="subtitle">Generated on: ${generatedDateStr} at ${generatedTimeStr}</div>
         </div>
         
         <div class="meta-info">
-          <div><b>Client:</b> ${selectedClient ? selectedClient.name : 'All Clients'}</div>
-          <div><b>Address:</b> ${selectedClient ? selectedClient.address : '-'}</div>
-          ${typeof totalEmployees === 'number' ? `<div><b>Total Employees:</b> ${totalEmployees}</div>` : ``}
-          ${typeof totalHours === 'number' ? `<div><b>Total Hours:</b> ${Number(totalHours).toFixed(2)}</div>` : ``}
-        </div>
-        
-        <div class="print-info">
-          <span>Week: ${currentWeekRange ? `${new Date(currentWeekRange.startOfWeek).toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-          })} to ${new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-          })}` : ''}</span>
+          <div class="meta-left">
+            <div><b>Client Name:</b> ${selectedClient ? selectedClient.name : 'All Clients'}</div>
+            <div><b>Client Address:</b> ${selectedClient ? selectedClient.address : '-'}</div>
+          </div>
+          <div class="meta-right">
+            <div><b>Week Ending:</b> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: '2-digit'
+            }) : ''}</div>
+          </div>
         </div>
         
         ${tableContent}
@@ -799,7 +787,6 @@ export const handlePrint = async (
     printWindow.document.write(printContent);
     printWindow.document.close();
     
-    // Use setTimeout to ensure content is loaded before printing
     setTimeout(() => {
       try {
         printWindow.print();
@@ -817,4 +804,3 @@ export const handlePrint = async (
     onError?.("Failed to generate print content");
   }
 };
-
