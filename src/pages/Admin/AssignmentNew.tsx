@@ -23,6 +23,8 @@ const notificationOptions = [
   "Time Clock",
   "Weekly Hours",
   "Scheduling",
+    "Shift Updates"
+
 ] as const;
 type NotificationOption = (typeof notificationOptions)[number];
 
@@ -30,17 +32,13 @@ const notificationMapping = {
   'geo_location': 'Geolocation',
   'time_clock': 'Time Clock',
   'weekly_Hours': 'Weekly Hours',
+  'shift_updates': 'Shift Updates',
   'schedule': 'Scheduling',
   'Geolocation': 'Geolocation',
   'Time Clock': 'Time Clock',
   'Weekly Hours': 'Weekly Hours',
-  'Scheduling': 'Scheduling'
-};
-const reverseNotificationMapping = {
-  'Geolocation': 'geo_location',
-  'Time Clock': 'time_clock',
-  'Weekly Hours': 'weekly_Hours',
-  'Scheduling': 'schedule'
+  'Scheduling': 'Scheduling',
+
 };
 
 export default function AssignmentNew() {
@@ -442,13 +440,14 @@ export default function AssignmentNew() {
       label: "Notification",
       sortable: true,
       searchable: true,
-      searchType: 'dropdown', // Change to dropdown - auto-generates from data
+      searchType: 'dropdown',
       width: "400px",
       searchOptions: [ // Add this
         { label: 'Geolocation', value: 'geo_location' },
         { label: 'Time Clock', value: 'time_clock' },
         { label: 'Weekly Hours', value: 'weekly_Hours' },
-        { label: 'Schedule', value: 'schedule' }
+        { label: 'Schedule', value: 'schedule' },
+        { label: 'Shift Updates', value: 'shift_updates' },
       ],
       render: (value: NotificationOption[] | string[] | null | undefined) => {
         if (!value || !Array.isArray(value) || value.length === 0) {
@@ -895,7 +894,7 @@ export default function AssignmentNew() {
       </div>
 
       {/* Search Button */}
-      <div className="my-4 flex justify-end">
+      {/* <div className="my-4 flex justify-end">
         <button
           onClick={() => setShowSearchForm(!showSearchForm)}
           className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -903,10 +902,10 @@ export default function AssignmentNew() {
           <Search className="w-4 h-4 mr-2" />
           {showSearchForm ? 'Hide Search' : 'Search'}
         </button>
-      </div>
+      </div> */}
 
       {/* Generic Search Form */}
-      <GenericSearchForm
+      {/* <GenericSearchForm
         fields={searchFields}
         route="Assignment"
         onSearch={handleSearch}
@@ -914,7 +913,7 @@ export default function AssignmentNew() {
         isVisible={showSearchForm}
         loading={searchLoading}
         resetKey={"Assignment"}
-      />
+      /> */}
 
       <GenericTable
         data={assignments || []}

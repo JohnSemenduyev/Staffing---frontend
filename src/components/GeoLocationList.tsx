@@ -3,7 +3,7 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { useAssignments } from "../hooks/useAssignment";
 import { GenericSearchForm, FieldConfig } from "./GenericFormSearch";
 type RoleOption = "Admin" | "Manager" | "Guard" | "Client";
-type NotificationOption = "Geolocation" | "Time Clock" | "Weekly Hours" | "Scheduling";
+type NotificationOption = "Geolocation" | "Time Clock" | "Weekly Hours" | "Scheduling" | "Shift Updates";
 
 interface AssignmentRecord {
   id: string;

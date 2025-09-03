@@ -134,7 +134,7 @@ if (isLoading) {
 
 // Fix the tabs and portalTitle logic
 const tabs = role === 'manager' ? managerTabs : adminTabs; // ✅ Use role instead of user.role
-const portalTitle = role === 'manager' ? 'Manager Portal' : 'Scheduling - Admin Portal';   const isCollapsed = state === 'collapsed';
+const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral';   const isCollapsed = state === 'collapsed';
 
   const handleLogout = () => {
     logout();

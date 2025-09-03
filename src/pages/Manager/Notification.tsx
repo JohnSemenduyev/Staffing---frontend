@@ -13,13 +13,14 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 
 
-const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
+const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", "Shift Updates"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
 const notificationTypeMap: Record<NotificationOption, string> = {
-  Geolocation: "geo_location",
+  "Geolocation": "geo_location",
   "Time Clock": "time_clock",
   "Weekly Hours": "weekly_Hours",
-  Scheduling: "schedule",
+  "Scheduling": "schedule",
+  "Shift Updates": "shift_updates"
 };
 
 export const Notification = () => {
@@ -292,7 +293,8 @@ export const Notification = () => {
         { label: 'Geolocation', value: 'geo_location' },
         { label: 'Time Clock', value: 'time_clock' },
         { label: 'Weekly Hours', value: 'weekly_Hours' },
-        { label: 'Schedule', value: 'schedule' }
+        { label: 'Schedule', value: 'schedule' },
+         { label: 'Shift Updates', value: 'shift_updates' },
       ],
       width: "150px",
       className: "min-w-[120px]",

@@ -148,7 +148,7 @@ export const Client = () => {
       </div>
 
       {/* Search Button */}
-      <div className="my-4 flex justify-end">
+      {/* <div className="my-4 flex justify-end">
         <button
           onClick={() => setShowSearchForm(!showSearchForm)}
           className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -156,10 +156,10 @@ export const Client = () => {
           <Search className="w-4 h-4 mr-2" />
           {showSearchForm ? 'Hide Search' : 'Search'}
         </button>
-      </div>
+      </div> */}
 
       {/* Generic Search Form */}
-      <GenericSearchForm
+      {/* <GenericSearchForm
         fields={searchFields}
         route="Client"
         onSearch={handleSearch}
@@ -167,7 +167,7 @@ export const Client = () => {
         isVisible={showSearchForm}
         loading={searchLoading}
         resetKey="client"
-      />
+      /> */}
 
       <GenericTable
         data={addresses || []}

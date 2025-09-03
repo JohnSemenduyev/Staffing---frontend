@@ -16,6 +16,8 @@ const notificationOptions = [
   "Time Clock",
   "Weekly Hours",
   "Scheduling",
+    "Shift Updates"
+
 ] as const;
 
 type NotificationOption = (typeof notificationOptions)[number];
