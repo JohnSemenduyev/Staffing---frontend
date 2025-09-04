@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Edit, Plus, RotateCcw, Trash2, Search } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import { Edit, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
@@ -8,30 +8,13 @@ import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item"
-import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
-import { useToast } from "../../hooks/use-toast";
 
-export const inputClasses = `
-    w-full
-  px-3
-  py-1
-  border
-  border-gray-300
-  rounded-md
-  text-black
-  focus:outline-none
-  focus:ring-2
-  focus:ring-[#004175]
-  transition
-
-  `;
+export const inputClasses = ` w-full px-3 py-1 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-[#004175] transition`;
 
 export const GeoLocationSetup = () => {
   const [form, setForm] = useState({ clientId: "", addressId: "", distance: "", time: "" });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showErrors, setShowErrors] = useState(false);
-  const [showSearchForm, setShowSearchForm] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
@@ -40,45 +23,8 @@ export const GeoLocationSetup = () => {
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const debouncedClientSearch = useDebounce(clientSearch, 300);
-  const {toast} = useToast();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const {
-    fetchGeoLocations,
-    createGeoLocation,
-    updateGeoLocation,
-    setCurrentPage,
-    loading,
-    setSubmitError,
-    error,
-    lastPage,
-    deleteGeoLocation,
-    currentPage,
-    geoLocations,
-    submitLoader,
-    submitError
-  } = useGeoLocation();
-
-  const searchFields = useMemo<FieldConfig[]>(() => [
-    { name: "clientName", type: "text", placeholder: "Client Name" },
-    { name: "clientLocation", type: "text", placeholder: "Client Location" },
-    { name: "distance", type: "text", placeholder: "Distance (Miles)" },
-    { name: "time", type: "text", placeholder: "Time (Mins)" },
-  ], []);
-
-  const handleSearch = (formData: { [key: string]: any }) => {
-    setSearchLoading(true);
-    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
-    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
-    setCurrentPage(1);
-    fetchGeoLocations(1, filter).finally(() => setSearchLoading(false));
-  };
-
-  const handleReset = () => {
-    setShowSearchForm(false);
-    setCurrentPage(1);
-    fetchGeoLocations(1, null);
-  };
-
+  const { fetchGeoLocations, createGeoLocation, updateGeoLocation, setCurrentPage,loading,setSubmitError,error, lastPage, deleteGeoLocation,currentPage,geoLocations,submitLoader,submitError} = useGeoLocation();
 
   useEffect(() => {
     fetchGeoLocations(currentPage);
@@ -89,6 +35,7 @@ export const GeoLocationSetup = () => {
     setErrors({});
     setShowErrors(false);
   };
+  
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const handleClientSelect = (
@@ -141,6 +88,7 @@ export const GeoLocationSetup = () => {
     setErrors({});
     setShowErrors(false);
   };
+
   const getFieldClasses = (fieldName: string) => {
     const hasError = showErrors && errors[fieldName];
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
@@ -164,7 +112,6 @@ export const GeoLocationSetup = () => {
         await createGeoLocation(input);
       }
       resetForm();
-      // fetchGeoLocations(currentPage);
     } catch (err) {
      console.log(err)
     }finally{
@@ -205,11 +152,10 @@ export const GeoLocationSetup = () => {
     try {
       setDeleteLoader(true);
       await deleteGeoLocation(deleteModal.record.id);
-      // toast.success("Geolocation deleted successfully");
       fetchGeoLocations(currentPage);
       setDeleteModal({ isOpen: false, record: null });
     } catch (err) {
-      // toast.error("Failed to delete geolocation");
+      console.log("Delete error:", err);
     } finally {
       setDeleteLoader(false);
     }
@@ -274,16 +220,47 @@ export const GeoLocationSetup = () => {
       title: "Delete"
     }
   ];
-  return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">     
 
+  // FIXED: Wrap handleSearch in useCallback to prevent recreating on every render
+  const handleSearch = useCallback((formData: { [key: string]: any }) => {
+    const filterEntries = Object.entries(formData).filter(
+      ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+    );
+
+    if (filterEntries.length === 0) {
+      setCurrentPage(1);
+      fetchGeoLocations(1, null);
+      return;
+    }
+    
+    const keyMapping: Record<string, string> = {
+      "client.name": "clientName",
+      "address.address": "addressText",
+      "distance": "distance",
+      "time": "time"
+    };
+
+    const filter = Object.fromEntries(
+      filterEntries.map(([key, value]) => [
+        keyMapping[key] || key,
+        value
+      ])
+    );
+
+    setCurrentPage(1);
+    fetchGeoLocations(1, filter);
+  }, [setCurrentPage, fetchGeoLocations]); // Add dependencies that handleSearch uses
+
+  return (
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       {/* Form Section */}
       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
-        <h2 className="text-xl font-semibold  mb-2 ">
+        <h2 className="text-xl font-semibold mb-2">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            {/* Client Search Input */}
             <div className="relative">
               <input
                 type="text"
@@ -316,8 +293,6 @@ export const GeoLocationSetup = () => {
                   {errors.clientId}
                 </div>
               )}
-
-
               <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
                 {loadingClients ? (
                   <div className="p-2 text-sm text-gray-500">Searching clients...</div>
@@ -350,6 +325,7 @@ export const GeoLocationSetup = () => {
               </SearchResultsDropdown>
             </div>
 
+            {/* Address Display Input */}
             <div>
               <input
                 type="text"
@@ -376,6 +352,7 @@ export const GeoLocationSetup = () => {
               )}
             </div>
 
+            {/* Distance Input */}
             <div>
               <input
                 type="number"
@@ -389,6 +366,7 @@ export const GeoLocationSetup = () => {
               )}
             </div>
 
+            {/* Time Input */}
             <div>
               <input
                 type="number"
@@ -403,6 +381,7 @@ export const GeoLocationSetup = () => {
               )}
             </div>
 
+            {/* Action Buttons */}
             <div className="flex justify-start gap-2">
               <SubmitButton
                 loading={submitLoader}
@@ -424,28 +403,17 @@ export const GeoLocationSetup = () => {
               )}
             </div>
           </div>
+
+          {/* Display submit error if any */}
+          {submitError && (
+            <div className="mt-4">
+              <ErrorMessage message={submitError} />
+            </div>
+          )}
         </form>
       </div>
-      {/* <div className="my-4 flex justify-end">
-        <button
-          onClick={() => setShowSearchForm(!showSearchForm)}
-          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <Search className="w-4 h-4 mr-2" />
-          {showSearchForm ? 'Hide Search' : 'Search'}
-        </button>
-      </div> */}
 
-      {/* Generic Search Form */}
-      {/* <GenericSearchForm
-        fields={searchFields}
-        route="Geolocation"
-        onSearch={handleSearch}
-        onReset={handleReset}
-        isVisible={showSearchForm}
-        loading={searchLoading || loading}
-        resetKey={"Geolocation"}
-      /> */}
+      {/* Table Section */}
       <GenericTable
         data={geoLocations || []}
         columns={tableColumns}
@@ -453,8 +421,10 @@ export const GeoLocationSetup = () => {
         loading={loading}
         emptyMessage="No records found matching your search criteria."
         searchable={true}
+        onSearch={handleSearch}
       />
 
+      {/* Pagination Section */}
       {lastPage > 1 && (
         <div className="mt-6">
           <Pagination
@@ -469,15 +439,18 @@ export const GeoLocationSetup = () => {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Delete Geolocation Setup
+              </h3>
               <p className="text-sm text-gray-500">
-                Are you sure you want to delete this geolocation setup?
+                Are you sure you want to delete this geolocation setup? This action cannot be undone.
               </p>
             </div>
-
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
@@ -495,9 +468,25 @@ export const GeoLocationSetup = () => {
               >
                 {deleteLoader ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg 
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      fill="none" 
+                      viewBox="0 0 24 24"
+                    >
+                      <circle 
+                        className="opacity-25" 
+                        cx="12" 
+                        cy="12" 
+                        r="10" 
+                        stroke="currentColor" 
+                        strokeWidth="4"
+                      ></circle>
+                      <path 
+                        className="opacity-75" 
+                        fill="currentColor" 
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Deleting...
                   </>

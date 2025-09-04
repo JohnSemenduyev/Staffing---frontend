@@ -29,30 +29,7 @@ export const PostAssignment = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
-
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const [showSearchForm, setShowSearchForm] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-
-  const searchFields = useMemo<FieldConfig[]>(() => [
-    { name: "clientName", type: "text", placeholder: "Client Name" },
-    { name: "clientLocation", type: "text", placeholder: "Client Location" },
-    { name: "post", type: "text", placeholder: "Post Name" },
-  ], []);
-
-  const handleSearch = (formData: { [key: string]: any }) => {
-    setSearchLoading(true);
-    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
-    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
-    setCurrentPage(1);
-    fetchPostAssigns(1, filter).finally(() => setSearchLoading(false));
-  };
-
-  const handleReset = () => {
-    setShowSearchForm(false);
-    setCurrentPage(1);
-    fetchPostAssigns(1, null);
-  };
   const { postAssigns,
     createPostAssign,
     currentPage,
@@ -271,6 +248,29 @@ export const PostAssignment = () => {
       title: "Delete"
     }
   ];
+const handleSearch = (formData: { [key: string]: any }) => {
+  const filterEntries = Object.entries(formData).filter(
+    ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+  );
+
+  if (filterEntries.length === 0) {
+    setCurrentPage(1);
+    fetchPostAssigns(1, null);
+    return;
+  }
+  const keyMapping: Record<string, string> = {
+    "address.address": "addressText",
+    "client.name": "clientName",
+    "post": "post"
+  };
+
+  const filter = Object.fromEntries(
+    filterEntries.map(([key, value]) => [keyMapping[key] || key, value])
+  );
+
+  setCurrentPage(1);
+  fetchPostAssigns(1, filter);
+};
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
@@ -404,28 +404,6 @@ export const PostAssignment = () => {
           </div>
         </form>
       </div>
-      {/* Search Button */}
-      {/* <div className="my-4 flex justify-end">
-        <button
-          onClick={() => setShowSearchForm(!showSearchForm)}
-          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <Search className="w-4 h-4 mr-2" />
-          {showSearchForm ? 'Hide Search' : 'Search'}
-        </button>
-      </div> */}
-
-      {/* Generic Search Form */}
-      {/* <GenericSearchForm
-        fields={searchFields}
-        route="Post Assignment"
-        onSearch={handleSearch}
-        onReset={handleReset}
-        isVisible={showSearchForm}
-        loading={searchLoading || loading}
-        resetKey={"Post Assignment"}
-      /> */}
-      {/* Table Section */}
       <GenericTable
         data={postAssigns || []}
         columns={tableColumns}
@@ -433,6 +411,8 @@ export const PostAssignment = () => {
         loading={loading}
         emptyMessage="No post assignment records found."
         searchable={true}
+        onSearch = {handleSearch}
+
       />
 
       {lastPage > 1 && (

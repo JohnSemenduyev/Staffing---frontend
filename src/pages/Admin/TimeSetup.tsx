@@ -39,32 +39,6 @@ export const TimeSetup = () => {
   const { timeSetups, createTimeSetup,error, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
 
-  const [showSearchForm, setShowSearchForm] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-
-  const searchFields = useMemo<FieldConfig[]>(() => [
-    { name: "clientName", type: "text", placeholder: "Client Name" },
-    { name: "clientLocation", type: "text", placeholder: "Client Location" },
-    { name: "distance", type: "text", placeholder: "Distance (Miles)" },
-    { name: "time", type: "text", placeholder: "Scheduled Time (Min)" },
-    { name: "hours", type: "text", placeholder: "Weekly Hours" },
-    { name: "reminder", type: "text", placeholder: "Reminder Time (Hr)" },
-    { name: "overlap", type: "toggle", label: "Overlap" },
-  ], []);
-
-  const handleSearch = (formData: { [key: string]: any }) => {
-    setSearchLoading(true);
-    const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
-    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
-    setCurrentPage(1);
-    fetchTimeSetups(1, filter).finally(() => setSearchLoading(false));
-  };
-
-  const handleReset = () => {
-    setShowSearchForm(false);
-    setCurrentPage(1);
-    fetchTimeSetups(1, null);
-  };
 
   const getFieldClasses = (fieldName: string) => {
     const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
@@ -156,16 +130,6 @@ export const TimeSetup = () => {
       setSubmitLoader(false);
     }
   };
-
-  useEffect(() => {
-  if (error) {
-    console.log("Updated error:", error);
-  }
-}, [error]);
-
-
-  console.log(error)
-
   const resetForm = () => {
     setForm({
       clientId: "",
@@ -295,6 +259,37 @@ export const TimeSetup = () => {
     { label: "Edit", icon: <Edit className="w-4 h-4" />, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
     { label: "Delete", icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
   ];
+const handleSearch = (formData: { [key: string]: any }) => {
+  const filterEntries = Object.entries(formData).filter(
+    ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+  );
+
+  if (filterEntries.length === 0) {
+    setCurrentPage(1);
+    fetchTimeSetups(1, null);
+    return;
+  }
+  const keyMapping: Record<string, string> = {
+    "client.name": "clientName",
+    "address.address": "addressText",
+  };
+
+  const numericKeys = ["distance", "actualScheduledTime", "weeklyHours", "reminderTime"];
+
+  const filter = Object.fromEntries(
+    filterEntries.map(([key, value]) => {
+      const mappedKey = keyMapping[key] || key;
+      const mappedValue = numericKeys.includes(mappedKey)
+        ? Number(value)
+        : value;
+      return [mappedKey, mappedValue];
+    })
+  );
+
+  setCurrentPage(1);
+  fetchTimeSetups(1, filter);
+};
+
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
@@ -413,28 +408,6 @@ export const TimeSetup = () => {
           </div>
         </form>
       </div>
-      {/* Search Button */}
-      {/* <div className="my-4 flex justify-end">
-        <button
-          onClick={() => setShowSearchForm(!showSearchForm)}
-          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <Search className="w-4 h-4 mr-2" />
-          {showSearchForm ? 'Hide Search' : 'Search'}
-        </button>
-      </div> */}
-
-      {/* Generic Search Form */}
-      {/* <GenericSearchForm
-        fields={searchFields}
-        route="Time Setup"
-        onSearch={handleSearch}
-        onReset={handleReset}
-        isVisible={showSearchForm}
-        loading={searchLoading || loading}
-        resetKey={"Time Setup"}
-      /> */}
-      {/* Table Section */}
       <GenericTable
         data={timeSetups || []}
         columns={tableColumns}
@@ -442,6 +415,8 @@ export const TimeSetup = () => {
         loading={loading}
         emptyMessage="No time setup records found."
         searchable={true}
+        onSearch = {handleSearch}
+
       />
 
       {lastPage > 1 && (

@@ -33,7 +33,6 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
   loading = false,
   resetKey
 }) => {
-  // Initialize form state based on fields
   const initializeForm = () => {
     const initialForm: { [key: string]: any } = {};
     fields.forEach(field => {
@@ -52,7 +51,6 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showErrors, setShowErrors] = useState(false);
 
-  // Reset form when fields change
   useEffect(() => {
     setForm(initializeForm());
     setErrors({});
@@ -101,7 +99,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
       }
       return acc;
     }, {} as { [key: string]: any });
-
+   console.log("Search Data:", searchData);
     onSearch(searchData);
   };
 

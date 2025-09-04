@@ -12,7 +12,6 @@ import { TimeSetup } from "./pages/Admin/TimeSetup";
 import { PostAssignment } from "./pages/Admin/PostAssignment";
 import { GeoLocationProvider } from "./context/GeoLocationContext";
 import { TimeSetupProvider } from "./context/TimeStemp";
-import { Scheduling } from "./pages/Manager/Scheduling";
 import { PrepareSchedule } from "./pages/Manager/PrepareSchedule";
 import { ViewSchedule } from "./pages/Manager/ViewSchedule";
 import { Summary } from "./pages/Manager/Summary";
@@ -38,6 +37,7 @@ import { ViewTimeSummaryProvider } from "./context/ViewTimeSummaryContext";
 import { NotificationsProvider } from "./context/NotificatoinContext";
 import Signup from "./pages/Signup";
 import { UserRegistrationProvider } from "./context/SignupContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -66,24 +66,113 @@ const App = () => (
                   <Route path="/signup" element={<Signup/>}/>
 
                   <Route element={<AppLayout />}>
-                    <Route path="/assign-user-permission" element={<AssignmentNew />} />
-                    <Route path="/geolocation-setup" element={<GeoLocationSetup />} />
-                    <Route path="/time-setup" element={<TimeSetup />} />
-                    <Route path="/post-assignment" element={<PostAssignment />} />
-                    <Route path="/client" element={<Client />} />
-                    <Route path="/manager" element={<Manager />} />
-                    <Route path="/guard" element={<Guard />} />
-                    <Route path="/admin" element={<Admin />} />
-
-
-                    {/* Manager Tabs */}
-                    <Route path="/scheduling" element={<Scheduling />} />
-                    <Route path="/prepare-schedule" element={<PrepareSchedule />} />
-                    <Route path="/view-schedule" element={<ViewSchedule />} />
-                    <Route path="/view-time-summary" element={<Summary />} />
-                    <Route path="/uniform-compliance" element={<UniformCompliance />} />
-                    <Route path="/notification" element={<Notification />} />
-                    <Route path="/clientlist" element={<ClientList />} />
+                      <Route path="/assign-user-permission"  element={   <ProtectedRoute allowedRoles={["admin"]}>  <AssignmentNew /> </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/geolocation-setup"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <GeoLocationSetup />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/time-setup"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <TimeSetup />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/post-assignment"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <PostAssignment />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/client"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <Client />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/manager"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <Manager />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/guard"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <Guard />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/admin"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <Admin />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/clientlist"
+    element={
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <ClientList />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/prepare-schedule"
+    element={
+      <ProtectedRoute allowedRoles={["manager"]}>
+        <PrepareSchedule />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/view-schedule"
+    element={
+      <ProtectedRoute allowedRoles={["manager"]}>
+        <ViewSchedule />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/view-time-summary"
+    element={
+      <ProtectedRoute allowedRoles={["manager"]}>
+        <Summary />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/uniform-compliance"
+    element={
+      <ProtectedRoute allowedRoles={["manager"]}>
+        <UniformCompliance />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/notification"
+    element={
+      <ProtectedRoute allowedRoles={["manager"]}>
+        <Notification />
+      </ProtectedRoute>
+    }
+  />
                   </Route>
 
                   <Route path="*" element={<NotFound />} />

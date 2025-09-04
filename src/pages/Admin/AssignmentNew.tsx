@@ -135,25 +135,36 @@ export default function AssignmentNew() {
     };
   }, []);
 
-  const handleSearch = async (searchData: { [key: string]: any }) => {
-    setSearchLoading(true);
-    try {
-      const filterEntries = Object.entries(searchData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
-      const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
-      setCurrentPage(1);
-      await fetchAssignments(1, filter);
-    } catch (error) {
-      console.error('Search failed:', error);
-      toast({title:"ERROR",description:'Search failed. Please try again.'});
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-  const handleSearchReset = () => {
-    setShowSearchForm(false);
+ const handleSearch = async (searchData: { [key: string]: any }) => {
+  const filterEntries = Object.entries(searchData).filter(
+    ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+  );
+
+  if (filterEntries.length === 0) {
     setCurrentPage(1);
-    fetchAssignments(1, null);
+    await fetchAssignments(1, null);
+    return;
+  }
+
+  // mapping table keys -> API keys
+  const keyMapping: Record<string, string> = {
+    "client.name": "clientName",
+    "user.name": "userName",
+    "guard.name": "guardName",
+    "address.address": "addressText",
+    "notification": "notification",
+    "role": "role",
+    "access": "access",
   };
+
+  const filter = Object.fromEntries(
+    filterEntries.map(([key, value]) => [keyMapping[key] || key, value])
+  );
+
+  setCurrentPage(1);
+  console.log(filter); // 👀 debug
+  await fetchAssignments(1, filter);
+};
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -892,29 +903,6 @@ export default function AssignmentNew() {
           </div>
         </form>
       </div>
-
-      {/* Search Button */}
-      {/* <div className="my-4 flex justify-end">
-        <button
-          onClick={() => setShowSearchForm(!showSearchForm)}
-          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <Search className="w-4 h-4 mr-2" />
-          {showSearchForm ? 'Hide Search' : 'Search'}
-        </button>
-      </div> */}
-
-      {/* Generic Search Form */}
-      {/* <GenericSearchForm
-        fields={searchFields}
-        route="Assignment"
-        onSearch={handleSearch}
-        onReset={handleSearchReset}
-        isVisible={showSearchForm}
-        loading={searchLoading}
-        resetKey={"Assignment"}
-      /> */}
-
       <GenericTable
         data={assignments || []}
         columns={tableColumns}
@@ -922,6 +910,7 @@ export default function AssignmentNew() {
         loading={loading}
         emptyMessage="No records found matching your search criteria."
         searchable={true}
+        onSearch = {handleSearch}
       />
 
       {lastPage > 1 && (
@@ -937,8 +926,6 @@ export default function AssignmentNew() {
           />
         </div>
       )}
-
-      {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">

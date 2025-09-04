@@ -34,26 +34,12 @@ export const Client = () => {
   ], []);
 
   const handleSearch = async (formData: { [key: string]: any }) => {
-    setSearchLoading(true);
-    try {
+
       const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
       const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
       setCurrentPage(1);
       await fetchClientAddresses(1, filter);
-      toast.success('Search applied successfully!');
-    } catch (error) {
-      console.error('Search failed:', error);
-      toast.error('Search failed. Please try again.');
-    } finally {
-      setSearchLoading(false);
-    }
-  };
 
-  const handleReset = () => {
-    setShowSearchForm(false);
-    setCurrentPage(1);
-    fetchClientAddresses(1, null);
-    toast.success('Search filters cleared!');
   };
 
   useEffect(() => {
@@ -146,29 +132,6 @@ export const Client = () => {
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-gray-800">Client List</h2>
       </div>
-
-      {/* Search Button */}
-      {/* <div className="my-4 flex justify-end">
-        <button
-          onClick={() => setShowSearchForm(!showSearchForm)}
-          className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <Search className="w-4 h-4 mr-2" />
-          {showSearchForm ? 'Hide Search' : 'Search'}
-        </button>
-      </div> */}
-
-      {/* Generic Search Form */}
-      {/* <GenericSearchForm
-        fields={searchFields}
-        route="Client"
-        onSearch={handleSearch}
-        onReset={handleReset}
-        isVisible={showSearchForm}
-        loading={searchLoading}
-        resetKey="client"
-      /> */}
-
       <GenericTable
         data={addresses || []}
         columns={tableColumns}
@@ -176,6 +139,8 @@ export const Client = () => {
         loading={loading}
         emptyMessage="No records found matching your search criteria."
         searchable={true}
+        onSearch = {handleSearch}
+
       />
 
       {lastPage > 1 && (
