@@ -204,7 +204,20 @@ export const TimeSetup = () => {
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const tableColumns: TableColumn[] = [
-    { key: "client.name", label: "Client Name", sortable: true, searchable: true, width: "250px", height: "40px" },
+   {
+      key: "client.name",
+      label: "Client Name",
+      sortable: true,
+      searchable: true,
+      searchType: 'text',
+      width: "250px",
+      height:"40px",
+       render: (_: any, row: any) => {
+        const a = row.client;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
+    },
     { key: "address.address",
       label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px",
       render: (_: any, row: any) => {

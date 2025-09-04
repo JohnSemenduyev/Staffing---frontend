@@ -116,17 +116,18 @@ export const UniformCompliance = () => {
 
 
   const transformComplianceData = (uniformCompliances: any[]) => {
+    console.log(uniformCompliances);
     return uniformCompliances.map((item) => ({
       id: `${item.scheduleSessionId}-${item.shiftId}`,
       guardFirst: { name: item.scheduleSession.user.name },
       guardLast: { name: item.scheduleSession.user.lastName },
       date: formatDate(item.shift.date),
       Client: { 
-        name: [item.scheduleSession.client.name, item.scheduleSession.client.lastName]
+        name: [item.scheduleSession?.client?.name??'', item.scheduleSession?.client?.lastName??'']
           .filter(Boolean)
           .join(' ')
       },
-      address: { address: item.scheduleSession.address.address },
+      address: { address: [item.scheduleSession.address.address , item.scheduleSession.address.city , item.scheduleSession.address.state , item.scheduleSession.address.pincode].filter(Boolean).join(', ') },
       images: [item.topUniformImage, item.bottomUniformImage],
     }));
   };
@@ -323,6 +324,7 @@ export const UniformCompliance = () => {
       label: "Client Name",
       sortable: true,
       searchable: true,
+      searchType: 'text',
       className: "whitespace-nowrap max-w-[200px]"
     },
     {

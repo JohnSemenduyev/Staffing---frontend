@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Eye, Plus, Trash2, Printer, Share2, Type, X, RotateCcw } from "lucide-react";
+import {  X} from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
-import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
+import { GenericTable, TableColumn } from "../../components/GenericTable";
 import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useNotifications } from "../../context/NotificatoinContext";
 import { toast } from "sonner";
@@ -54,15 +54,10 @@ export const Notification = () => {
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
-  // Load notifications on component mount
-
-
   const validate = () => {
     const e: any = {};
     if (!form.clientId) e.clientId = "Required";
     if (!form.addressId) e.addressId = "Required";
-
-    // Date validation: End date should be after start date
     if (form.Startdate && form.Enddate && new Date(form.Enddate) < new Date(form.Startdate)) {
       e.Enddate = "End date must be after start date";
     }
@@ -135,7 +130,6 @@ export const Notification = () => {
         ? { ...f, notification: f.notification.filter(n => n !== option) }
         : { ...f, notification: [...f.notification, option] }
     );
-    // Remove notification validation error when notifications change
     setErrors(prev => ({ ...prev, notification: undefined }));
     setShowErrors(false);
   };
@@ -217,10 +211,14 @@ export const Notification = () => {
       label: "Client Name",
       sortable: true,
       searchable: true,
+      searchType: 'text',
       width: "250px",
-      height: "40px",
-      className: "min-w-[150px]",
-      render: (value: string) => value || "-"
+      height:"40px",
+       render: (_: any, row: any) => {
+        const a = row.client;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
          {
        key: "address.address",
@@ -240,9 +238,7 @@ export const Notification = () => {
            address.state,
            address.pincode
          ].filter(Boolean).join(', ');
-         
-         console.log('Full address:', fullAddress);
-         return (
+           return (
            <div title={fullAddress} className="truncate">
              {fullAddress || "-"}
            </div>
@@ -256,6 +252,12 @@ export const Notification = () => {
       searchable: true,
       width: "250px",
       className: "min-w-[150px]",
+       render: (_: any, row: any) => {
+        const a = row;
+        console.log(row)
+        const full = [a?.guardFirst.name??"" , a?.guardLast.name??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "date",
@@ -380,8 +382,6 @@ export const Notification = () => {
                 )}
               </SearchResultsDropdown>
             </div>
-
-            {/* Address (read-only) */}
             <div>
               <input
                 type="text"
@@ -460,20 +460,6 @@ export const Notification = () => {
                 <ErrorMessage message={errors.Startdate} />
               )}
             </div>
-
-            {/* <div>
-              <CustomDatePicker
-                value={form.Enddate}
-                onChange={handleChange}
-                placeholder="Select End Date"
-                fieldName="Enddate"
-                className={`${fieldInputClasses} appearance-none`}
-              />
-              {errors.Enddate && (
-                <ErrorMessage message={errors.Enddate} />
-              )}
-            </div> */}
-
             <div className="relative col-span-1  " ref={notificationDropdownRef}>
               <div
                 className={`${getFieldClasses('notification')} cursor-pointer flex items-center justify-between`}

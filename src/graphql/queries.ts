@@ -121,10 +121,12 @@ export const GET_ASSIGNMENTS = gql`
         user {
           id
           name
+          lastName
         }
         guard {
           id
           name
+          lastName
         }
         client {
           id
@@ -451,6 +453,9 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
         }
         address {
           address
+          city
+          state
+          pincode
         }
       }
       bottomUniformImage
@@ -466,9 +471,13 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
     ScheduleSessionsByClientWeek(clientId: $clientId, date: $date) {
       client {
         name
+        lastName
       }
       address {
         address
+        pincode
+        state
+        city
       }
       user {
         name
@@ -558,6 +567,7 @@ export const GET_NOTIFICATIONS = gql`
       time
       client {
         name
+        lastName
       }
       address {
         address
@@ -572,6 +582,7 @@ export const GET_NOTIFICATIONS = gql`
       }
         user {
       name
+      lastName
     }
     }
   }

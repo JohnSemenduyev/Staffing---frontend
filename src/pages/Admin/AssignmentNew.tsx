@@ -389,7 +389,12 @@ export default function AssignmentNew() {
       searchable: true,
       searchType: 'text',
       width: "250px",
-      height:"40px"
+      height:"40px",
+       render: (_: any, row: any) => {
+        const a = row.client;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "address.address",
@@ -411,6 +416,11 @@ export default function AssignmentNew() {
       searchable: true,
       searchType: 'text', // Keep as text search
       width: "250px",
+       render: (_: any, row: any) => {
+        const a = row.guard;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "role",
@@ -445,6 +455,11 @@ export default function AssignmentNew() {
       searchable: true,
       searchType: 'text', // Keep as text search
       width: "250px",
+      render: (_: any, row: any) => {
+        const a = row.user;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "notification",

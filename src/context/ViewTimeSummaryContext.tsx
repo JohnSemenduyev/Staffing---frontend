@@ -19,7 +19,7 @@ type RawScheduleSession = {
   client: {
     lastName: any; name: string 
 };
-  address: { address: string };
+  address: { address: string , city: string, state: string, pincode: string};
   user: { name: string; lastName: string };
   shifts: Shift[];
 };
@@ -29,8 +29,8 @@ export type TimeSummaryEntry = {
   guardFirst: { name: string };
   guardLast: { name: string };
   date: string;
-  Client: { name: string };
-  address: { address: string };
+  Client: { name: string , lastName: string};
+  address: { address: string , city: string, state: string, pincode: string};
   time: number;
 };
 
@@ -62,20 +62,29 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
       );
 
       const rawData = response.ScheduleSessionsByClientWeek;
-
-      // ✅ Transform backend data into frontend format
-      const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
+    console.log(rawData)
+   const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
   session.shifts.map((shift) => {
     const formattedDate = formatDateStringLocal(shift.date);
     return {
       guardFirst: { name: session.user.name },
       guardLast: { name: session.user.lastName },
       date: formatToMMDDYYYY(formattedDate),
-      Client: { name: [session.client.name, session.client.lastName].filter(Boolean).join(' ') },      address: { address: session.address.address },
+      Client: {
+        name: session.client?.name ?? "",
+        lastName: session.client?.lastName ?? "",
+      },
+      address: {
+        address: session.address?.address ?? "",
+        city: session.address?.city ?? "",
+        state: session.address?.state ?? "",
+        pincode: session.address?.pincode ?? "",
+      },
       time: shift.hours,
     };
   })
 );
+
 
       setData(transformed);
     } catch (err: any) {

@@ -205,8 +205,14 @@ export const PostAssignment = () => {
       label: "Client Name",
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap"
-      , height: "40px"
+      searchType: 'text',
+      width: "250px",
+      height:"40px",
+       render: (_: any, row: any) => {
+        const a = row.client;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "address.address",

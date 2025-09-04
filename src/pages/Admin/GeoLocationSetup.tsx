@@ -172,7 +172,16 @@ export const GeoLocationSetup = () => {
       label: "Client Name",
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap max-w-[200px]"
+      searchType: 'text',
+      className: "whitespace-nowrap max-w-[200px]",
+      width: "250px",
+      height:"40px",
+       render: (_: any, row: any) => {
+        const a = row.client;
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
+    
     },
     {
       key: "address.address",
@@ -240,16 +249,21 @@ export const GeoLocationSetup = () => {
       "time": "time"
     };
 
+     const numericKeys = ["distance", "time"];
+
     const filter = Object.fromEntries(
-      filterEntries.map(([key, value]) => [
-        keyMapping[key] || key,
-        value
-      ])
+      filterEntries.map(([key, value]) => {
+        const mappedKey = keyMapping[key] || key;
+      const mappedValue = numericKeys.includes(mappedKey)
+        ? Number(value)
+        : value;
+      return [mappedKey, mappedValue];
+  })
     );
 
     setCurrentPage(1);
     fetchGeoLocations(1, filter);
-  }, [setCurrentPage, fetchGeoLocations]); // Add dependencies that handleSearch uses
+  }, [setCurrentPage, fetchGeoLocations]); 
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">

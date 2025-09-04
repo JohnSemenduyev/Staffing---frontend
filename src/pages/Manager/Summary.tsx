@@ -140,11 +140,8 @@ const onSubmit = async (e) => {
         new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
       ]);
     } else {
-      console.log("Calling API without date");
-      
-      // Add minimum loading time to ensure user sees the loading state  
       await Promise.all([
-        fetchSummary(clientId), // Call without date parameter
+        fetchSummary(clientId),
         new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
       ]);
     }
@@ -457,6 +454,7 @@ const onSubmit = async (e) => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap max-w-[200px]"
+
     },
     {
       key: "guardLast.name",
@@ -471,18 +469,29 @@ const onSubmit = async (e) => {
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap max-w-[200px]",
-      render: (value) => {
-        if (!value) return '-';
-        const [year, month, day] = value.split('-');
-        return `${month}-${day}-${year}`;
-      }
+     render: (value) => {
+  if (!value) return "-";
+  console.log("raw value:", value);
+
+  const [month, day, year] = value.split("-");
+  const formatted = `${month}-${day}-${year}`;
+  console.log("formatted:", formatted);
+
+  return formatted;
+}
     },
     {
       key: "Client.name",
       label: "Client Name",
       sortable: true,
       searchable: true,
-      className: "whitespace-nowrap max-w-[200px]"
+      className: "whitespace-nowrap max-w-[200px]",
+      render: (_: any, row: any) => {
+        const a = row.Client;
+        console.log(1,a)
+        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "address.address",
@@ -490,7 +499,12 @@ const onSubmit = async (e) => {
       sortable: true,
       searchable: true,
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-      render: (value) => <div className="truncate" title={value}>{value || "-"}</div>
+      render: (_: any, row: any) => {
+        const a = row.address;
+        console.log(1,a)
+        const full = [a?.address??"" , a?.city??"" , a?.state??"" , a?.pincode??""].filter(Boolean).join(", ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
     },
     {
       key: "time",

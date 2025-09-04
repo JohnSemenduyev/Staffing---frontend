@@ -622,7 +622,20 @@ export const ViewSchedule = () => {
   // ... existing code ...
 
   const tableColumns: TableColumn[] = [
-    { key: "clientName", label: "Client Name", sortable: true, searchable: true, width: "225px" },
+    {
+      key: "clientName",
+      label: "Client Name",
+      sortable: true,
+      searchable: true,
+      searchType: 'text',
+      width: "250px",
+      height:"40px",
+       render: (_: any, row: any) => {
+        const a = row;
+        const full = [a?.clientName??"" , a?.clientLastName??""].filter(Boolean).join(" ");
+        return <div className="truncate" title={full}>{full || "-"}</div>;
+      }
+    },
     { key: "address", label: "Street Name", sortable: true, searchable: true, width: "225px" },
     { key: "city", label: "City", sortable: true, searchable: true, width: "225px" },
     { key: "state", label: "State", sortable: true, searchable: true, width: "225px" },

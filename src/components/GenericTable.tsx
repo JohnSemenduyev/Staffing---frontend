@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
 import { useDebounce } from "../hooks/useDebounce";
+import ResetButton from "./ui/ResetButton";
 
 export interface SearchOption {
   label: string;
@@ -180,6 +181,13 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     return filtered;
   }, [data, searchTerms, sortConfig, columns]);
 
+  const resetSearch = () => {
+  setSearchTerms({});
+};
+const hasSearchValues = Object.values(searchTerms).some(
+  (val) => val !== undefined && val !== null && String(val).trim() !== ""
+);
+
   const renderSearchField = (column: TableColumn) => {
     if (!column.searchable) return null;
 
@@ -311,7 +319,18 @@ export const GenericTable: React.FC<GenericTableProps> = ({
                       {renderSearchField(column)}
                     </th>
                   ))}
-                  {actions.length > 0 && <th className="px-4 py-2"></th>}
+                  {actions.length > 0 &&  <th className="px-4 py-2 text-left">
+         {hasSearchValues && (
+          // <button
+          //   type="button"
+          //   onClick={resetSearch}
+          //   className="px-3 py-1 text-sm font-medium text-white bg-gray-500 hover:bg-gray-600 rounded-md transition"
+          // >
+          //   Reset
+          // </button>
+           <ResetButton onClick={resetSearch} disabled={!hasSearchValues} />
+        )}
+      </th>}
                 </tr>
               )}
             </thead>
