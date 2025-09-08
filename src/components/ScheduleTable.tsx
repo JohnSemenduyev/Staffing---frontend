@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { Eye, Edit, Trash2, GripVertical, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
+import { FaFileExport, FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FiEye } from "react-icons/fi";
+import { GoPlus } from "react-icons/go";
+import { IoMdMail } from "react-icons/io";
+import { MdPlusOne } from "react-icons/md";
+import { GripVertical, RotateCcw, Send, Calendar } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { formatDateLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
@@ -630,22 +635,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                     >
                                       <GripVertical className="w-4 h-4" />
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        handleEditShift(user.id, dateCol.date, shift);
-                                      }}
-                                      className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
-                                      title="Edit shift"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
-                                      className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
-                                      title="Delete shift"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
+                                     <button
+                                       onClick={() => {
+                                         handleEditShift(user.id, dateCol.date, shift);
+                                       }}
+                                       className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
+                                       title="Edit shift"
+                                     >
+                                       <FaRegEdit className="w-4 h-4" />
+                                     </button>
+                                     <button
+                                       onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                       className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
+                                       title="Delete shift"
+                                     >
+                                       <FaRegTrashAlt className="w-4 h-4" />
+                                     </button>
                                   </div>
                                 )}
                                 <div className="flex items-center gap-2 justify-center flex-col">
@@ -758,7 +763,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                     <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
                       {isEditMode && (
                         <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
-                          <Trash2 className="w-4 h-4" />
+                          <FaRegTrashAlt  className="w-4 h-4" />
                         </button>
                       )}
                     </td>
@@ -831,41 +836,41 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         {/* Print, Download and Edit buttons - Right side */}
         {!hideActionButtons && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={onPrint}
-              disabled={isPrinting}
-              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              title="Print Report"
-            >
-              {isPrinting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-                  <span className="text-sm">Preparing...</span>
-                </>
-              ) : (
-                <Printer className="w-5 h-5" />
-              )}
-            </button>
+             <button
+               onClick={onPrint}
+               disabled={isPrinting}
+               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+               title="Print Report"
+             >
+               {isPrinting ? (
+                 <>
+                   <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                   <span className="text-sm">Preparing...</span>
+                 </>
+               ) : (
+                 <FaFilePdf className="w-5 h-5" />
+               )}
+             </button>
 
-            <button
-              onClick={onDownloadExcel}
-              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              title="Download Excel"
-            >
-              <Upload className="w-5 h-5" />
-            </button>
+             <button
+               onClick={onDownloadExcel}
+               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+               title="Download Excel"
+             >
+               <FaFileExport className="w-5 h-5" />
+             </button>
 
-            <button
-              onClick={onToggleEditMode}
-              className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                isEditMode 
-                  ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-              }`}
-              title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
-            >
-              <Edit className="w-5 h-5" />
-            </button>
+             <button
+               onClick={onToggleEditMode}
+               className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                 isEditMode 
+                   ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
+                   : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+               }`}
+               title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+             >
+               <FaRegEdit className="w-5 h-5" />
+             </button>
           </div>
         )}
       </div>
@@ -893,7 +898,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 onClick={confirmDeleteShift}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                <FaRegTrashAlt  className="w-4 h-4 mr-2" />
                 Delete
               </button>
             </div>
@@ -938,14 +943,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={confirmEditShift}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Update
-              </button>
+               <button
+                 type="button"
+                 onClick={confirmEditShift}
+                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+               >
+                 <FaRegEdit className="w-4 h-4 mr-2" />
+                 Update
+               </button>
             </div>
           </div>
         </div>
@@ -977,7 +982,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 {deletingUser ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                 ) : (
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <FaRegTrashAlt  className="w-4 h-4 mr-2" />
                 )}
                 Delete All
               </button>

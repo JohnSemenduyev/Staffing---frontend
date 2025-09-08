@@ -1,7 +1,9 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Edit, Trash2, Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { GoPlus } from "react-icons/go";
+import { Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import Pagination from "../../components/Pagination";
@@ -242,14 +244,14 @@ export const PostAssignment = () => {
   const tableActions: TableAction[] = [
     {
       label: "Edit",
-      icon: <Edit className="w-4 h-4" />,
+      icon: <FaRegEdit className="w-4 h-4" />,
       onClick: (record: any) => handleEdit(record),
       className: "text-blue-500 hover:text-green-700",
       title: "Edit"
     },
     {
       label: "Delete",
-      icon: <Trash2 className="w-4 h-4" />,
+      icon: <FaRegTrashAlt className="w-4 h-4" />,
       onClick: (record: any) => handleDelete(record),
       className: "text-red-500 hover:text-red-700",
       title: "Delete"
@@ -393,7 +395,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
-                icon={isEditMode ? <Check className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                icon={isEditMode ? <Check className="w-4 h-4 mr-1" /> : <GoPlus className="w-4 h-4 mr-1" />}
               >
                 {isEditMode ? "Update" : "Add"}
               </SubmitButton>

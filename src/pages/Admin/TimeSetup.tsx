@@ -5,7 +5,7 @@ import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useTimeSetupContext } from "../../context/TimeStemp";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
-import { Edit, Trash2 } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { inputClasses } from "./GeoLocationSetup";
@@ -270,8 +270,8 @@ export const TimeSetup = () => {
   ];
 
   const tableActions: TableAction[] = [
-    { label: "Edit", icon: <Edit className="w-4 h-4" />, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
-    { label: "Delete", icon: <Trash2 className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
+    { label: "Edit", icon: <FaRegEdit className="w-4 h-4" />, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
+    { label: "Delete", icon: <FaRegTrashAlt className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
   ];
 const handleSearch = (formData: { [key: string]: any }) => {
   const filterEntries = Object.entries(formData).filter(

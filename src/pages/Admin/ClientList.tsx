@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ChevronDown, Plus, Check, X, Edit, Trash2 } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { GoPlus } from "react-icons/go";
+import { ChevronDown, Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useScheduleSessionContext } from "../../context/ClientList";
 import { useToast } from '../../hooks/use-toast';
@@ -659,7 +661,7 @@ function ClientList() {
           disabled={showAddRow || isCreating}
           variant="outline"
         >
-          <Plus className="w-4 h-4 mr-1" />
+          <GoPlus className="w-4 h-4 mr-1" />
           Add Client
         </Button>
       </div>
@@ -1231,7 +1233,7 @@ function ClientList() {
                                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
                                      title="Edit client"
                                    >
-                                    <Edit className="w-4 h-4" />
+                                    <FaRegEdit className="w-4 h-4" />
                                   </button>
                                                                      <button
                                      onClick={() => handleDeleteClient(
@@ -1241,7 +1243,7 @@ function ClientList() {
                                      className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
                                      title="Delete client"
                                    >
-                                    <Trash2 className="w-4 h-4" />
+                                    <FaRegTrashAlt className="w-4 h-4" />
                                   </button>
                                 </>
                               )}
@@ -1301,7 +1303,7 @@ function ClientList() {
                 {isDeleting ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                 ) : (
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <FaRegTrashAlt className="w-4 h-4 mr-2" />
                 )}
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>

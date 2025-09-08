@@ -1,5 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { Eye, Edit, Trash2, Plus, RotateCcw, Printer, Upload, Send, Calendar } from "lucide-react";
+import { FaFileExport, FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FiEye } from "react-icons/fi";
+import { GoPlus } from "react-icons/go";
+import { IoMdMail } from "react-icons/io";
+import { MdPlusOne } from "react-icons/md";
+import { RotateCcw, Send, Calendar } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
@@ -717,14 +722,14 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                           >
                             {isEditMode && shift && (
                               <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
-                                <button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} className="text-blue-600 p-0.5" title="Edit sessions">
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                {hasSessions && (
-                                  <button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} className="text-red-600 p-0.5" title="Delete all sessions">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
+                                 <button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} className="text-blue-600 p-0.5" title="Edit sessions">
+                                   <FaRegEdit className="w-4 h-4" />
+                                 </button>
+                                 {hasSessions && (
+                                   <button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} className="text-red-600 p-0.5" title="Delete all sessions">
+                                     <FaRegTrashAlt className="w-4 h-4" />
+                                   </button>
+                                 )}
                               </div>
                             )}
                             {hasSessions ? (
@@ -853,40 +858,40 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
         {/* Print, Download and Edit buttons - Right side */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={onPrint}
-            disabled={isPrinting}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Print Report"
-          >
-            {isPrinting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-                <span className="text-sm">Preparing...</span>
-              </>
-            ) : (
-              <Printer className="w-5 h-5" />
-            )}
-          </button>
+           <button
+             onClick={onPrint}
+             disabled={isPrinting}
+             className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+             title="Print Report"
+           >
+             {isPrinting ? (
+               <>
+                 <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                 <span className="text-sm">Preparing...</span>
+               </>
+             ) : (
+               <FaFilePdf className="w-5 h-5" />
+             )}
+           </button>
 
-          <button
-            onClick={onDownloadExcel}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Download Excel"
-          >
-            <Upload className="w-5 h-5" />
-          </button>
+           <button
+             onClick={onDownloadExcel}
+             className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+             title="Download Excel"
+           >
+             <FaFileExport className="w-5 h-5" />
+           </button>
 
-          <button
-            onClick={() => { logEditableCells(scheduleData); onToggleEditMode(); }}
-            className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
-                ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-              }`}
-            title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
-          >
-            <Edit className="w-5 h-5" />
-          </button>
+           <button
+             onClick={() => { logEditableCells(scheduleData); onToggleEditMode(); }}
+             className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
+                 ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
+                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
+               }`}
+             title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+           >
+             <FaRegEdit className="w-5 h-5" />
+           </button>
         </div>
       </div>
 
@@ -899,9 +904,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
             </div>
             <div className="flex space-x-3 justify-end">
               <button type="button" onClick={cancelDeleteAllForShift} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]">Cancel</button>
-              <button type="button" onClick={confirmDeleteAllForShift} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center">
-                <Trash2 className="w-4 h-4 mr-2" /> Delete All
-              </button>
+               <button type="button" onClick={confirmDeleteAllForShift} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center">
+                 <FaRegTrashAlt className="w-4 h-4 mr-2" /> Delete All
+               </button>
             </div>
           </div>
         </div>
@@ -931,7 +936,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                   </div>
                   <div className="col-span-1 flex justify-end">
                     <button onClick={() => removeEditSessionRow(idx)} className="text-red-600 inline-flex items-center px-2 py-2 hover:bg-red-50 rounded-md" title="Delete this session">
-                      <Trash2 className="w-4 h-4" />
+                      <FaRegTrashAlt className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -939,11 +944,11 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
             </div>
             <div className="flex space-x-3 justify-end mt-6">
             <button onClick={addEditSessionRow} className="text-blue-600 inline-flex items-center text-sm">
-                <Plus className="w-4 h-4 mr-1" /> Add Session
+                <GoPlus className="w-4 h-4 mr-1" /> Add Session
               </button>
               <button type="button" onClick={cancelEditShiftSessions} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]">Cancel</button>
               <button type="button" onClick={saveEditShiftSessions} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center">
-                <Edit className="w-4 h-4 mr-2" /> Save
+                <FaRegEdit className="w-4 h-4 mr-2" /> Save
               </button>
             </div>
             
@@ -974,7 +979,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                 onClick={confirmDeleteUser}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                <FaRegTrashAlt  className="w-4 h-4 mr-2" />
                 Delete All
               </button>
             </div>

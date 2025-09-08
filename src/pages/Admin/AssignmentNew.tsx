@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { Edit, Plus, Trash2, X, RotateCcw, Search } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { GoPlus } from "react-icons/go";
+import { X, RotateCcw, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -493,14 +495,14 @@ export default function AssignmentNew() {
   const tableActions: TableAction[] = [
     {
       label: "Edit",
-      icon: <Edit className="w-4 h-4" />,
+      icon: <FaRegEdit className="w-4 h-4" />,
       onClick: handleEdit,
       className: "text-blue-500 hover:text-green-700",
       title: "Edit",
     },
     {
       label: "Delete",
-      icon: <Trash2 className="w-4 h-4" />,
+      icon: <FaRegTrashAlt className="w-4 h-4" />,
       onClick: handleDelete,
       className: "text-red-500 hover:text-red-700",
       title: "Delete",
@@ -903,9 +905,9 @@ export default function AssignmentNew() {
                 disabled={submitLoader}
                 icon={
                   isEditing ? (
-                    <Edit className="w-4 h-4 mr-1" />
+                    <FaRegEdit className="w-4 h-4 mr-1" />
                   ) : (
-                    <Plus className="w-4 h-4 mr-1" />
+                    <GoPlus className="w-4 h-4 mr-1" />
                   )
                 }
               >
