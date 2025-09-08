@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/use-toast';
-import { Plus } from 'lucide-react';
+import { GoPlus } from 'react-icons/go';
 import AddressComponent, { AddressData } from '../components/Address';
 import { useUserRegistration } from '../context/SignupContext';
 import img from "../assets/images/Logo.webp";

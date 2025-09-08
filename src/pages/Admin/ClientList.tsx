@@ -674,6 +674,9 @@ function ClientList() {
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
                 <tr>
+                  <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
+                    Actions
+                  </th>
                   <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "200px" }}>
                     <div className="flex items-center">
                       Client Name
@@ -827,12 +830,12 @@ function ClientList() {
                       </div>
                     </div>
                   </th>
-                  <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
-                    Actions
-                  </th>
                 </tr>
 
                 <tr className="bg-white text-gray-700 font-sans w-full">
+                  <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
+                    {/* Actions column - no search input */}
+                  </th>
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
                       placeholder="Search client name"
@@ -923,9 +926,6 @@ function ClientList() {
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>
-                  {/* <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
-                    Actions
-                  </th> */}
                 </tr>
               </thead>
 
@@ -949,6 +949,30 @@ function ClientList() {
                   <>
                     {showAddRow && (
                       <tr className="bg-gray-100 border-2 ">
+                        <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
+                          <div className="flex items-center gap-2">
+                             <button
+                               onClick={handleSaveNewClient}
+                               disabled={isCreating}
+                               className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                               title="Save client"
+                             >
+                               {isCreating ? (
+                                 <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                               ) : (
+                                 <Check className="w-4 h-4" />
+                               )}
+                             </button>
+                             <button
+                               onClick={handleCancelAdd}
+                               disabled={isCreating}
+                               className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                               title="Cancel"
+                             >
+                               <X className="w-4 h-4" />
+                             </button>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "200px" }}>
                           <input
                             placeholder="Enter client name"
@@ -1041,30 +1065,6 @@ function ClientList() {
                               disabled={isCreating}
                             />
                          </td>
-                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
-                           <div className="flex items-center gap-2">
-                              <button
-                                onClick={handleSaveNewClient}
-                                disabled={isCreating}
-                                className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Save client"
-                              >
-                                {isCreating ? (
-                                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                  <Check className="w-4 h-4" />
-                                )}
-                              </button>
-                              <button
-                                onClick={handleCancelAdd}
-                                disabled={isCreating}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Cancel"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                          </div>
-                        </td>
                       </tr>
                     )}
 
@@ -1076,6 +1076,48 @@ function ClientList() {
                         key={`client-row-${index}`}
                           className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} ${isEditing ? 'bg-blue-50' : ''}`}
                       >
+                        <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                            <div className="flex items-center gap-2">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSaveEdit(record)}
+                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
+                                    title="Save changes"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                                    title="Cancel editing"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                                                     <button
+                                     onClick={() => handleEditClient(record)}
+                                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
+                                     title="Edit client"
+                                   >
+                                    <FaRegEdit className="w-4 h-4" />
+                                  </button>
+                                                                     <button
+                                     onClick={() => handleDeleteClient(
+                                       getNestedValue(record, "client.id"),
+                                       [getNestedValue(record, "client.name"), getNestedValue(record, "client.lastName")].filter(Boolean).join(' ')
+                                     )}
+                                     className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                                     title="Delete client"
+                                   >
+                                    <FaRegTrashAlt className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                        </td>
                         <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "200px" }}>
                             {isEditing ? (
                               <div className="flex gap-2">
@@ -1207,48 +1249,6 @@ function ClientList() {
                                getNestedValue(record, "longitute") || "-"
                              )}
                           </td>
-                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
-                            <div className="flex items-center gap-2">
-                              {isEditing ? (
-                                <>
-                                  <button
-                                    onClick={() => handleSaveEdit(record)}
-                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
-                                    title="Save changes"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={handleCancelEdit}
-                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
-                                    title="Cancel editing"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                                                     <button
-                                     onClick={() => handleEditClient(record)}
-                                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
-                                     title="Edit client"
-                                   >
-                                    <FaRegEdit className="w-4 h-4" />
-                                  </button>
-                                                                     <button
-                                     onClick={() => handleDeleteClient(
-                                       getNestedValue(record, "client.id"),
-                                       [getNestedValue(record, "client.name"), getNestedValue(record, "client.lastName")].filter(Boolean).join(' ')
-                                     )}
-                                     className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
-                                     title="Delete client"
-                                   >
-                                    <FaRegTrashAlt className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                        </td>
                       </tr>
                       );
                     })}

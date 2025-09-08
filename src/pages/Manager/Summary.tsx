@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {  Printer, RotateCcw, Share2, Upload } from "lucide-react";
+import { FaFilePdf, FaFileExport } from "react-icons/fa";
+import { RotateCcw, Share2 } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { GenericTable, TableColumn } from "../../components/GenericTable";
@@ -650,7 +651,7 @@ const onSubmit = async (e) => {
               <span className="text-sm">Preparing...</span>
             </>
           ) : (
-            <Printer className="w-5 h-5" />
+            <FaFilePdf className="w-5 h-5" />
           )}
         </button>
         
@@ -659,7 +660,7 @@ const onSubmit = async (e) => {
           className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           title="Download Excel"
         >
-          <Upload className="w-5 h-5" />
+          <FaFileExport className="w-5 h-5" />
         </button>
       </div>
     </div>

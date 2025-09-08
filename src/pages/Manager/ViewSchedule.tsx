@@ -3,7 +3,10 @@ import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { ActualTimeTable } from "../../components/ActualTimeTable";
-import { Eye, Plus, RotateCcw, Calendar, ChevronLeft, ChevronRight, Send, Edit, Trash2 } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FiEye } from "react-icons/fi";
+import { GoPlus } from "react-icons/go";
+import { RotateCcw, Calendar, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import {  ExcelData } from "../../utils/excel";
@@ -646,7 +649,7 @@ export const ViewSchedule = () => {
   const tableActions: TableAction[] = [
     {
       label: "View",
-      icon: <Eye className="w-4 h-4" />,
+      icon: <FiEye className="w-4 h-4" />,
       onClick: handleView,
       className: "text-blue-500 hover:text-green-700 ml-4 px-1",
       title: "View"
@@ -1814,7 +1817,7 @@ export const ViewSchedule = () => {
                         </>
                       ) : (
                         <>
-                          <Plus className="w-4 h-4 mr-1" />
+                          <GoPlus className="w-4 h-4 mr-1" />
                           Add
                         </>
                       )}

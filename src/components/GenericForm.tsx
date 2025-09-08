@@ -1,5 +1,6 @@
 import React from "react";
-import { Plus, ChevronDown } from "lucide-react";
+import { GoPlus } from "react-icons/go";
+import { ChevronDown } from "lucide-react";
 import { ErrorMessage } from "./ui/error-message";
 import { Button } from "./ui/button";
 
@@ -42,7 +43,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
   onSubmit,
   submitLabel = "Submit",
   isSubmitting = false,
-  submitIcon = <Plus className="w-4 h-4 mr-2" />,
+  submitIcon = <GoPlus className="w-4 h-4 mr-2" />,
   gridCols = 5
 }) => {
   const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";

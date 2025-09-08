@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Plus, RotateCcw, Edit, Trash2, GripVertical, Calendar, Send } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { GoPlus } from "react-icons/go";
+import { RotateCcw, GripVertical, Calendar, Send } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -1123,7 +1125,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   </>
                 ) : (
                   <>
-                    <Plus className="w-4 h-4 mr-1" />
+                    <GoPlus className="w-4 h-4 mr-1" />
                     Add
                   </>
                 )}

@@ -1,5 +1,5 @@
 // import React from 'react';
-// import { Trash2 } from 'lucide-react';
+// import { FaRegTrashAlt } from 'react-icons/fa';
 
 // interface AddressData {
 //   address: string;
@@ -119,7 +119,7 @@
 // export type { AddressData };
 
 import React from 'react';
-import { Trash2 } from 'lucide-react';
+import { FaRegTrashAlt } from 'react-icons/fa';
 
 interface AddressData {
   address: string;
@@ -217,7 +217,7 @@ const AddressComponent: React.FC<AddressComponentProps> = ({
             className="text-red-500 hover:text-red-700 transition-colors"
             title="Remove Address"
           >
-            <Trash2 size={16} />
+            <FaRegTrashAlt  size={16} />
           </button>
         )}
       </div>

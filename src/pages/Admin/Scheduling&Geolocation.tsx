@@ -1,6 +1,6 @@
 import { useTimeSetupContext } from "../../context/TimeStemp";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
-import { Edit, Trash2 } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { useEffect, useState } from "react";
 
 interface Data {
@@ -134,14 +134,14 @@ const tableColumns: TableColumn[] = [
 const tableActions: TableAction[] = [
   {
     label: "Edit",
-    icon: <Edit className="w-4 h-4" />,
+    icon: <FaRegEdit className="w-4 h-4" />,
     onClick: handleEdit,
     className: "text-blue-500 hover:text-green-700",
     title: "Edit"
   },
   {
     label: "Delete",
-    icon: <Trash2 className="w-4 h-4" />,
+    icon: <FaRegTrashAlt className="w-4 h-4" />,
     onClick: handleDelete,
     className: "text-red-500 hover:text-red-700",
     title: "Delete"

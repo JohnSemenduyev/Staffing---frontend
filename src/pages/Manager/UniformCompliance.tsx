@@ -1,5 +1,7 @@
 import React, { use, useEffect, useState } from "react";
-import { Eye, Plus, X, RotateCcw } from "lucide-react";
+import { FiEye } from "react-icons/fi";
+import { GoPlus } from "react-icons/go";
+import { X, RotateCcw } from "lucide-react";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -352,7 +354,7 @@ export const UniformCompliance = () => {
   const tableActions: TableAction[] = [
     {
       label: "View",
-      icon: <Eye className="w-4 h-4" />,
+      icon: <FiEye className="w-4 h-4" />,
       onClick: handleView,
       className: "text-blue-500 hover:text-green-700",
       title: "View"

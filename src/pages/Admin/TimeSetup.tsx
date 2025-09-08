@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plus, AlertTriangle, RotateCcw, Search } from "lucide-react";
+import { GoPlus } from "react-icons/go";
+import { AlertTriangle, RotateCcw, Search } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -403,7 +404,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
-                icon={<Plus className="w-4 h-4 mr-1" />}
+                icon={<GoPlus className="w-4 h-4 mr-1" />}
               >
                 {editId ? "Update" : "Add"}
               </SubmitButton>

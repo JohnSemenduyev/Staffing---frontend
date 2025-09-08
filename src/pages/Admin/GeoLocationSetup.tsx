@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Edit, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { GoPlus } from "react-icons/go";
+import { RotateCcw } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { GeoLocation, useGeoLocation } from "../../context/GeoLocationContext";
@@ -217,14 +219,14 @@ export const GeoLocationSetup = () => {
   const tableActions: TableAction[] = [
     {
       label: "Edit",
-      icon: <Edit className="w-4 h-4" />,
+      icon: <FaRegEdit className="w-4 h-4" />,
       onClick: handleEdit,
       className: "text-blue-500 hover:text-green-700 max-w-[100px] text-center",
       title: "Edit"
     },
     {
       label: "Delete",
-      icon: <Trash2 className="w-4 h-4" />,
+      icon: <FaRegTrashAlt className="w-4 h-4" />,
       onClick: handleDelete,
       className: "text-red-500 hover:text-red-700",
       title: "Delete"
@@ -401,7 +403,7 @@ export const GeoLocationSetup = () => {
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
-                icon={isEditing ? <Edit className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                icon={isEditing ? <FaRegEdit className="w-4 h-4 mr-1" /> : <GoPlus className="w-4 h-4 mr-1" />}
               >
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>
