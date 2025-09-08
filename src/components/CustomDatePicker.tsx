@@ -67,21 +67,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   }, [isOpen]);
   
   const defaultClasses = `
-    w-full
-    px-3
-    py-1
-    pr-10
-    border
-    border-[#D2D5DAFF]
-    rounded-md
-    
-    font-normal
-    focus:outline-none
-    focus:ring-2
-    focus:ring-[#004175]
-    transition
-    appearance-none
-    ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white cursor-pointer'}
+    w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition
+    ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white cursor-pointer'}
   `;
 
   return (

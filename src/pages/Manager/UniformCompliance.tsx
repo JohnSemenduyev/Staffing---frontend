@@ -432,7 +432,7 @@ export const UniformCompliance = () => {
         <h2 className="text-xl font-semibold mb-2">
           Uniform Compliance</h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">
             {/* Client Search Field */}
             <div className="relative">
               <input

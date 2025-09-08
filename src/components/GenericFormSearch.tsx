@@ -56,8 +56,8 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
     setErrors({});
     setShowErrors(false);
   }, [fields, resetKey]); 
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+  // const fieldInputClasses =
+  //   "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   const inputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
@@ -140,7 +140,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
               onChange={handleChange}
               placeholder={field.placeholder || 'Select Date'}
               fieldName={field.name}
-              className={field.className || `${fieldInputClasses} appearance-none`}
+              className={field.className || `${inputClasses} appearance-none`}
             />
             {showErrors && errors[field.name] && (
               <ErrorMessage message={errors[field.name]} />
@@ -217,7 +217,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} autoComplete="off">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">
           {fields.map(renderField)}
 
           {/* Search and Reset Buttons */}

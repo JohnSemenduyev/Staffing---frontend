@@ -157,21 +157,8 @@ interface Address {
 }
 
 const inputClasses = `
-  w-full
-  px-3
-  py-1
-  border
-  border-[#d0d4d9]
-  rounded-md
-  
-  font-normal
-  focus:outline-none
-  focus:ring-2
-  focus:ring-[#004175]
-  transition
-  appearance-none
+w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition
 `;
-
 
 
 
@@ -891,13 +878,6 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
     }
   };
 
-
-
-
-
-  const toYMD = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
   const formatDateUTC = (d: Date) =>
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 
@@ -919,7 +899,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         </h2>
 
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">
 
             {/* Client Search */}
             <div className="relative">
@@ -943,7 +923,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   }
                 }}
                 placeholder="Client Name"
-                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? '' : ''}`}
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
               />
               {errors.clientId && (
                 <ErrorMessage message={errors.clientId} />
@@ -986,7 +966,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished && selectedAddressText !== scheduleData[0]?.address ? 'bg-gray-100' : ''}`}
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished  ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
               />
               {errors.addressId && (
                 <ErrorMessage message={errors.addressId} />
@@ -1006,7 +986,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   setForm(f => ({ ...f, userId: "" }));
                 }}
                 placeholder="User Name"
-                className={inputClasses}
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
               />
               {errors.userId && (
                 <ErrorMessage message={errors.userId} />
@@ -1066,7 +1046,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   <label
                     htmlFor="applyAllWeek"
                     className={`text-xs whitespace-nowrap ${form.date
-                      ? "text-gray-600 cursor-pointer"
+                      ? "text-sm font-medium text-gray-700"
                       : "text-gray-400 cursor-not-allowed"
                       }`}
                   >

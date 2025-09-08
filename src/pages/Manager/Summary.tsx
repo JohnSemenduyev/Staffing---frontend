@@ -522,7 +522,7 @@ const onSubmit = async (e) => {
           View Time Summary
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">   
+<div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">   
             {/* Client Search Field */}
                         <div className="relative">
   <input

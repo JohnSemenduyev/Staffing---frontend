@@ -514,7 +514,7 @@ export default function AssignmentNew() {
           {isEditing ? "Edit Assignment" : "Add Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             <div className="relative">
               <input
                 type="text"
@@ -798,7 +798,7 @@ export default function AssignmentNew() {
 
             {/* Notification Dropdown */}
             <div
-              className="relative col-span-1 md:col-span-2 "
+              className="relative  sm:col-span-3 lg:col-span-2 "
               ref={notificationDropdownRef}
             >
               <div
