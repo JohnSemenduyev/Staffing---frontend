@@ -6,6 +6,7 @@ import { useClients } from '../hooks/useClients';
 import { useAddressesByClient } from '../hooks/useAddressesByClient';
 import { toast } from 'react-toastify';
 import { useUpdateAssignment } from '../hooks/useupdateassignment';
+import { Button } from './ui/button';
 
 interface EditAssignmentModalProps {
   record: any;
@@ -167,12 +168,12 @@ const EditAssignmentModal: React.FC<EditAssignmentModalProps> = ({ record, onClo
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-300 text-gray-800 rounded">
+            <Button type="button" onClick={onClose} variant="secondary">
               Cancel
-            </button>
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded" disabled={isPending}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={isPending}>
               {isPending ? 'Updating...' : 'Update'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

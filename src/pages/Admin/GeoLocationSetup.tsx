@@ -7,7 +7,8 @@ import { GenericTable, TableAction, TableColumn } from "../../components/Generic
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { ErrorMessage } from "../../components/ui/error-message";
-import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item"
+import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
+import { Button } from "../../components/ui/button";
 
 export const inputClasses = ` w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition`;
 
@@ -405,15 +406,15 @@ export const GeoLocationSetup = () => {
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>
               {hasInput && (
-                <button
+                <Button
                   type="button"
                   onClick={resetForm}
                   disabled={submitLoader}
-                  className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                  variant="outline"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reset
-                </button>
+                </Button>
               )}
             </div>
           </div>

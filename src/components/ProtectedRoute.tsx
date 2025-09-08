@@ -2,6 +2,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/LoginContext";
+import { Button } from "./ui/button";
 
 interface ProtectedRouteProps {
   allowedRoles: string[];
@@ -58,12 +59,12 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
           Redirecting you to your accessable page in{" "}
           <span className="font-semibold">{countdown}</span> seconds...
         </p>
-        <button
+        <Button
           onClick={handleRedirect}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          variant="primary"
         >
           Go Back Now
-        </button>
+        </Button>
       </div>
     );
   }

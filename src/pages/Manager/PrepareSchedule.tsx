@@ -6,6 +6,7 @@ import { useSearchUsers } from "../../hooks/useSearchUser";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
 import { ScheduleTable } from "../../components/ScheduleTable";
+import { Button } from "../../components/ui/button";
 
 // Local utility functions
 const timeToMinutes = (timeStr: string) => {
@@ -1110,10 +1111,10 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             </div>
 
             <div className="flex gap-2 justify-start">
-              <button
+              <Button
                 type="submit"
                 disabled={submitLoader}
-                className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                variant="outline"
               >
                 {submitLoader ? (
                   <>
@@ -1126,16 +1127,16 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                     Add
                   </>
                 )}
-              </button>
+              </Button>
               {(form.date || form.starttime || form.endtime || form.userId || form.addressId || form.clientId || auto) && (
-                <button
+                <Button
                   type="button"
                   onClick={resetForm}
-                  className="inline-flex items-center px-4 py-1 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap"
+                  variant="secondary"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reset
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -1191,18 +1192,19 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             </div>
 
             <div className="flex space-x-3 justify-end">
-              <button
+              <Button
                 type="button"
                 onClick={cancelPublish}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                variant="secondary"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={confirmPublish}
                 disabled={publishLoader}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                className="flex items-center"
               >
                 {publishLoader ? (
                   <>
@@ -1215,7 +1217,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                     Publish Schedule
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

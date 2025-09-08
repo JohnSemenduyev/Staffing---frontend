@@ -260,6 +260,11 @@ const hasSearchValues = Object.values(searchTerms).some(
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans z-[50]">
               <tr className="h-[40px]">
+                {actions.length > 0 && (
+                  <th className="px-4 py-1 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
+                    Actions
+                  </th>
+                )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
@@ -299,26 +304,9 @@ const hasSearchValues = Object.values(searchTerms).some(
                     </div>
                   </th>
                 ))}
-                {actions.length > 0 && (
-                  <th className="px-4 py-1 text-left whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
-                    Actions
-                  </th>
-                )}
               </tr>
               {searchable && (
                 <tr className="bg-white text-gray-700 font-sans w-full">
-                  {columns.map((column) => (
-                    <th
-                      key={`search-${column.key}`}
-                      className="px-4 py-2 text-left"
-                      style={{
-                        width: column.width || 'auto',
-                        minWidth: column.width || 'auto'
-                      }}
-                    >
-                      {renderSearchField(column)}
-                    </th>
-                  ))}
                   {actions.length > 0 &&  <th className="px-4 py-2 text-left">
          {hasSearchValues && (
           // <button
@@ -331,6 +319,18 @@ const hasSearchValues = Object.values(searchTerms).some(
            <ResetButton onClick={resetSearch} disabled={!hasSearchValues} />
         )}
       </th>}
+                  {columns.map((column) => (
+                    <th
+                      key={`search-${column.key}`}
+                      className="px-4 py-2 text-left"
+                      style={{
+                        width: column.width || 'auto',
+                        minWidth: column.width || 'auto'
+                      }}
+                    >
+                      {renderSearchField(column)}
+                    </th>
+                  ))}
                 </tr>
               )}
             </thead>
@@ -343,21 +343,6 @@ const hasSearchValues = Object.values(searchTerms).some(
                       className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                         }`}
                     >
-                      {columns.map((column) => {
-                        const value = getNestedValue(record, column.key);
-                        return (
-                          <td
-                            key={column.key}
-                            className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${column.className || ''}`}
-                            style={{
-                              width: column.width || 'auto',
-                              minWidth: column.width || 'auto'
-                            }}
-                          >
-                            {column.render ? column.render(value, record) : (value || "-")}
-                          </td>
-                        );
-                      })}
                       {actions.length > 0 && (
                         <td className="px-4 py-3 whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
                           <div className="flex items-center gap-2">
@@ -374,6 +359,21 @@ const hasSearchValues = Object.values(searchTerms).some(
                           </div>
                         </td>
                       )}
+                      {columns.map((column) => {
+                        const value = getNestedValue(record, column.key);
+                        return (
+                          <td
+                            key={column.key}
+                            className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${column.className || ''}`}
+                            style={{
+                              width: column.width || 'auto',
+                              minWidth: column.width || 'auto'
+                            }}
+                          >
+                            {column.render ? column.render(value, record) : (value || "-")}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
 

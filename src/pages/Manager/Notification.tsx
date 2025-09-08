@@ -11,6 +11,7 @@ import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
+import { Button } from "../../components/ui/button";
 
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", "Shift Updates"] as const;
@@ -526,10 +527,11 @@ export const Notification = () => {
 
             {/* Submit Button */}
             <div className="flex justify-start gap-2">
-              <button
+              <Button
                 type="submit"
                 disabled={submitLoader}
-                className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap pl-5 pr-5"
+                variant="outline"
+                className="pl-5 pr-5"
               >
                 {submitLoader ? (
                   <>
@@ -539,7 +541,7 @@ export const Notification = () => {
                 ) : (
                   "Run"
                 )}
-              </button>
+              </Button>
               {(form.addressId || form.clientId || form.Enddate || form.Startdate || form.notification.length > 0 || form.userId) &&
                 (<ResetButton onClick={handleReset}
                   disabled={submitLoader} />)}

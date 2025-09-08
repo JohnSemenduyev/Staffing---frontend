@@ -11,6 +11,7 @@ import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { formatDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
+import { Button } from "../../components/ui/button";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -610,10 +611,10 @@ export const UniformCompliance = () => {
             </div>
             {/* Action Buttons */}
             <div className="flex justify-start gap-2">
-              <button
+              <Button
                 type="submit"
                 disabled={submitLoader}
-                className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                variant="outline"
               >
                 {submitLoader ? (
                   <>
@@ -623,7 +624,7 @@ export const UniformCompliance = () => {
                 ) : (
                   "Run"
                 )}
-              </button>
+              </Button>
 
               {(form.addressId || form.clientId || form.endDate || form.startDate || form.userId) &&
                 (<ResetButton onClick={handleReset}

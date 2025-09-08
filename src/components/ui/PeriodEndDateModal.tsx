@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { CustomDatePicker } from "../CustomDatePicker";
+import { Button } from "./button";
 import { PeriodEndDateModalProps } from "../../pages/Manager/ViewSchedule/types";
 
 export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({ 
@@ -47,14 +48,11 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
           className="mb-4"
           disabled={isLoading}
         />
-        <button
+        <Button
           onClick={handleSubmit}
           disabled={!selectedDate || isLoading}
-          className={`w-full py-2 rounded mb-4 text-white transition-colors ${
-            isLoading || !selectedDate 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-[#2563eb] hover:bg-[#1d4ed8]'
-          }`}
+          variant="primary"
+          className="w-full mb-4"
         >
           {isLoading ? (
             <div className="flex items-center justify-center">
@@ -64,31 +62,25 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
           ) : (
             'Enter'
           )}
-        </button>
+        </Button>
 
         <div className="flex justify-between">
-          <button
+          <Button
             onClick={handleCurrentWeek}
             disabled={isLoading}
-            className={`w-[48%] py-2 rounded text-white transition-colors ${
-              isLoading 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-[#2563eb] hover:bg-[#1d4ed8]'
-            }`}
+            variant="primary"
+            className="w-[48%]"
           >
             Current Week
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
             disabled={isLoading}
-            className={`w-[48%] py-2 rounded text-white transition-colors ${
-              isLoading 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-[#2563eb] hover:bg-[#1d4ed8]'
-            }`}
+            variant="primary"
+            className="w-[48%]"
           >
             Return
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { Search, RotateCcw, X } from "lucide-react";
 import { CustomDatePicker } from "./CustomDatePicker";
 import { ErrorMessage } from "./ui/error-message";
 import ResetButton from "./ui/ResetButton";
+import { Button } from "./ui/button";
 
 export interface FieldConfig {
   name: string;
@@ -222,10 +223,11 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
 
           {/* Search and Reset Buttons */}
           <div className="flex justify-start gap-2 col-span-1">
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center px-4 py-1 border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap pl-3 pr-3"
+              variant="outline"
+              className="pl-3 pr-3"
             >
               {loading ? (
                 <>
@@ -238,7 +240,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
                   Search
                 </>
               )}
-            </button>
+            </Button>
 
             {hasAnyInput && (
               <ResetButton onClick={handleReset}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, ChevronDown } from "lucide-react";
 import { ErrorMessage } from "./ui/error-message";
+import { Button } from "./ui/button";
 
 export interface FormField {
   key: string;
@@ -181,10 +182,11 @@ export const GenericForm: React.FC<GenericFormProps> = ({
 
   allItems.push(
     <div key="submit-button" className="flex justify-start">
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex items-center px-6 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap min-w-[160px]"
+        variant="primary"
+        className="min-w-[160px]"
       >
         {isSubmitting ? (
           <>
@@ -197,7 +199,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
             {submitLabel}
           </>
         )}
-      </button>
+      </Button>
     </div>
   );
 

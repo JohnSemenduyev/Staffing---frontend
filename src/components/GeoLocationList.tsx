@@ -115,7 +115,7 @@ const GeoLocationList: React.FC = () => {
         <table className="w-full table-auto text-sm text-gray-800 border-separate border-spacing-0 font-sans">
           <thead className="bg-[#004175] text-white text-xs font-sans">
             <tr>
-              {["Client Name", "Client Location", "User Name", "Role", "Access", "Guard", "Notifications", "Actions"].map((header, index) => (
+              {["Actions", "Client Name", "Client Location", "User Name", "Role", "Access", "Guard", "Notifications"].map((header, index) => (
                 <th key={header} className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap">
                   <div className="flex items-center">
                     {header}
@@ -164,6 +164,16 @@ const GeoLocationList: React.FC = () => {
             {filteredAssignments.map((record) => (
               <tr key={record.id} className="hover:bg-blue-50 transition-colors border-t border-gray-100">
                 <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleEdit(record)} className="text-blue-500 hover:text-green-700" title="Edit">
+                      ✏️
+                    </button>
+                    <button onClick={() => handleDelete(record)} className="text-red-500 hover:text-red-700" title="Delete">
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
                   {record.clientName}
                 </td>
                 <td className="px-2 sm:px-4 py-3 border-b border-gray-100 break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]">
@@ -193,17 +203,6 @@ const GeoLocationList: React.FC = () => {
                         {notif}
                       </span>
                     ))}
-                  </div>
-                </td>
-
-                <td className="px-2 sm:px-4 py-3 border-b border-gray-100 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleEdit(record)} className="text-blue-500 hover:text-green-700" title="Edit">
-                      ✏️
-                    </button>
-                    <button onClick={() => handleDelete(record)} className="text-red-500 hover:text-red-700" title="Delete">
-                      🗑️
-                    </button>
                   </div>
                 </td>
               </tr>

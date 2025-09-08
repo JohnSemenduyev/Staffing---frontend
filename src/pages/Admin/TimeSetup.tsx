@@ -13,6 +13,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 import { useToast } from "../../hooks/use-toast";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
+import { Button } from "../../components/ui/button";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -407,15 +408,15 @@ const handleSearch = (formData: { [key: string]: any }) => {
                 {editId ? "Update" : "Add"}
               </SubmitButton>
               {hasInput && (
-                <button
+                <Button
                   type="button"
                   onClick={resetForm}
                   disabled={submitLoader}
-                  className="inline-flex items-center px-4 py-1 border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
+                  variant="outline"
                 >
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reset
-                </button>
+                </Button>
               )}
             </div>
           </div>

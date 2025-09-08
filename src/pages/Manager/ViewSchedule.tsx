@@ -20,6 +20,7 @@ import {
   handlePrint
 } from "../../utils/printUtils";
 import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
+import { Button } from "../../components/ui/button";
 import {
   inputClasses,
   timeToMinutes,
@@ -1642,13 +1643,14 @@ export const ViewSchedule = () => {
             <div className="flex items-center space-x-4">
               {/* Date Navigation Component */}
 
-              <button
+              <Button
                 onClick={resetScheduleView}
-                className="inline-flex items-center px-4 py-2 border border-gray-400 text-gray-600 hover:bg-gray-50 font-medium rounded-md transition-colors duration-200"
+                variant="outline"
+                className="inline-flex items-center"
               >
                 <RotateCcw className="w-4 h-4 mr-1" />
                 Back to Clients
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -1927,18 +1929,19 @@ export const ViewSchedule = () => {
                 </div>
 
                 <div className="flex space-x-3 justify-end">
-                  <button
+                  <Button
                     type="button"
                     onClick={cancelSchedulePublish}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                    variant="secondary"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={confirmSchedulePublish}
                     disabled={isPublishing}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    variant="primary"
+                    className="flex items-center"
                   >
                     {isPublishing ? (
                       <>
@@ -1951,7 +1954,7 @@ export const ViewSchedule = () => {
                         Publish Schedule
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1970,18 +1973,19 @@ export const ViewSchedule = () => {
                 </div>
 
                 <div className="flex space-x-3 justify-end">
-                  <button
+                  <Button
                     type="button"
                     onClick={cancelActualTimePublish}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                    variant="secondary"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={confirmActualTimePublish}
                     disabled={isActualTimePublishing}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    variant="primary"
+                    className="flex items-center"
                   >
                     {isActualTimePublishing ? (
                       <>
@@ -1994,7 +1998,7 @@ export const ViewSchedule = () => {
                         Publish Actual Time
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
