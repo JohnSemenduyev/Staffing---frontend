@@ -4,6 +4,7 @@ import { useToast } from '../hooks/use-toast';
 import { GoPlus } from 'react-icons/go';
 import AddressComponent, { AddressData } from '../components/Address';
 import { useUserRegistration } from '../context/SignupContext';
+import { Button } from '../components/ui/button';
 import img from "../assets/images/Logo.webp";
 
 interface SignupFormData {
@@ -266,25 +267,28 @@ const Signup = () => {
             {/* Role Buttons */}
             <div className="space-y-4">
               {roleOptions.map((role) => (
-                <button
+                <Button
                   key={role.value}
                   onClick={() => handleRoleSelect(role.value)}
-                  className="w-full py-3 px-6 bg-transparent border border-white text-white rounded-md hover:bg-white hover:text-[#004175] transition-colors duration-200 font-medium"
+                  variant="outline"
+                  size="lg"
+                  className="w-full border-white text-white hover:bg-white hover:text-[#004175]"
                 >
                   {role.label}
-                </button>
+                </Button>
               ))}
             </div>
 
             {/* Back to Login */}
             <div className="mt-8">
-              <button
+              <Button
                 type="button"
                 onClick={handleBackToLogin}
+                variant="link"
                 className="text-white hover:underline font-medium"
               >
                 Back to Login
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -500,34 +504,38 @@ const Signup = () => {
              </div>
 
             {/* Submit Button */}
-            <button 
+            <Button 
               type="submit" 
-              className="w-full py-2 px-4 rounded-md transition cursor-pointer bg-white text-[#004175] hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed mt-6 font-medium"
+              variant="secondary"
+              size="lg"
+              className="w-full mt-6"
               disabled={isLoading || contextLoading}
             >
               {(isLoading || contextLoading) ? 'Creating Account...' : 'Create Account'}
-            </button>
+            </Button>
 
             {/* Back to Role Selection */}
             <div className="text-center text-sm mt-4">
-              <button
+              <Button
                 type="button"
                 onClick={handleBackToRoleSelection}
+                variant="link"
                 className="text-white hover:text-yellow-300 font-medium"
               >
                 ← Back to Role Selection
-              </button>
+              </Button>
             </div>
 
             {/* Back to Login */}
             <div className="text-center text-sm mt-2">
-              <button
+              <Button
                 type="button"
                 onClick={handleBackToLogin}
+                variant="link"
                 className="text-white hover:text-yellow-300 font-medium"
               >
                 Already have an account? <span className="font-semibold">Sign In</span>
-              </button>
+              </Button>
             </div>
           </form>
 

@@ -97,6 +97,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/LoginContext';
 import {toast} from 'sonner'
+import { MdLogin } from "react-icons/md";
+import { Button } from '../components/ui/button';
 import img from "../assets/images/Logo.webp";
 
 const Login = () => {
@@ -151,7 +153,7 @@ const Login = () => {
 
       {/* Right Side - Login Form */}
       <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] min-h-[60vh] md:min-h-screen p-6 overflow-y-auto">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+        <div className="w-full max-w-md bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid">
           {/* Login Header */}
           <h2 className="text-3xl font-bold text-center text-[#004175] mb-2">Login</h2>
           <p className="text-sm text-center text-gray-600 mb-6">Glad you're back!</p>
@@ -191,13 +193,25 @@ const Login = () => {
               </label>
             </div>
 
-            <button 
+            <Button 
               type="submit" 
-              className="w-full py-2 px-4 rounded-md transition cursor-pointer bg-[#004175] text-white hover:bg-[#00325d] disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
+              size="lg"
+              className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? 'Logging in...' : 'Log In'}
-            </button>
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                <>
+                  <MdLogin className="w-4 h-4" />
+                  Log In
+                </>
+              )}
+            </Button>
 
             <div className="text-center">
               <a href="#" className="text-gray-600 hover:text-[#004175] text-sm">

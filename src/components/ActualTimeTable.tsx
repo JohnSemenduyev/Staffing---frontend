@@ -10,6 +10,7 @@ import { useToast } from "../hooks/use-toast";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { formatDateLocal, formatDateStringLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
+import { Button } from "./ui/button";
 
 interface Shift {
   id: number;
@@ -736,13 +737,13 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                           >
                             {isEditMode && shift && (
                               <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
-                                 <button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} className="text-blue-600 p-0.5" title="Edit sessions">
+                                 <Button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} variant="ghost" size="icon-sm" className="text-blue-600 p-0.5" title="Edit sessions">
                                    <FaRegEdit className="w-4 h-4" />
-                                 </button>
+                                 </Button>
                                  {hasSessions && (
-                                   <button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} className="text-red-600 p-0.5" title="Delete all sessions">
+                                   <Button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} variant="ghost" size="icon-sm" className="text-red-600 p-0.5" title="Delete all sessions">
                                      <FaRegTrashAlt className="w-4 h-4" />
-                                   </button>
+                                   </Button>
                                  )}
                               </div>
                             )}

@@ -67,7 +67,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
             {hasError && (
               <ErrorMessage message={hasError} />
             )}
-            {field.showDropdown && field.searchValue && field.searchValue.length >= 2 && (
+            {field.showDropdown && field.searchValue && field.searchValue.length >= 1 && (
               <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
                 {field.isLoading ? (
                   <div className="p-2 text-sm text-gray-500">Loading...</div>
@@ -205,7 +205,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
   );
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100">
+    <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid">
       <form onSubmit={onSubmit} autoComplete="off">
         <div className={`grid grid-cols-${gridCols} gap-4 items-start`}>
           {allItems}

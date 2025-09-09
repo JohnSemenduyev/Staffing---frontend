@@ -309,7 +309,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
 
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-1">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-1">
         <h2 className="text-xl font-semibold mb-2">
           {editId ? "Edit Time Setup" : "Add Time Setup"}
         </h2>
@@ -335,7 +335,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
                 <ErrorMessage message={errors.clientId} />
               )}
 
-              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 1}>
                 {loadingClients ? (
                   <div className="p-2 text-sm text-gray-500">Searching clients...</div>
                 ) : searchedClients.length === 0 ? (

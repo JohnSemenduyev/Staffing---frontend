@@ -90,7 +90,7 @@ const EditAssignmentModal: React.FC<EditAssignmentModalProps> = ({ record, onClo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-lg">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid w-[90%] max-w-lg">
         <h3 className="text-lg font-semibold mb-4">Edit Assignment</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

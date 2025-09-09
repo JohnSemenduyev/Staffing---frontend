@@ -326,12 +326,12 @@ export const Notification = () => {
   ];
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           Notification
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">
+          <div className="grid grid-cols-1  md:grid-cols-3 lg:grid-cols-4 gap-2 items-start w-full" style={{ display: 'grid' }}>
             <div className="relative">
               <input
                 type="text"
@@ -352,7 +352,7 @@ export const Notification = () => {
                 <ErrorMessage message={errors.clientId} />
               )}
 
-              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 1}>
                 {loadingClients ? (
                   <div className="p-2 text-sm text-gray-500">Searching clients...</div>
                 ) : searchedClients.length === 0 ? (
@@ -421,7 +421,7 @@ export const Notification = () => {
                   {errors.userId}
                 </div>
               )}
-              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1}>
                 {loadingUsers ? (
                   <div className="p-2 text-sm text-gray-500">Searching users...</div>
                 ) : searchedUsers.length === 0 ? (
@@ -461,7 +461,30 @@ export const Notification = () => {
                 <ErrorMessage message={errors.Startdate} />
               )}
             </div>
-            <div className="relative col-span-1  " ref={notificationDropdownRef}>
+
+            {/* Buttons for 1-3 column layouts - show before notification dropdown */}
+            <div className="flex justify-start gap-2 lg:hidden">
+              <Button
+                type="submit"
+                disabled={submitLoader}
+                variant="outline"
+                className="pl-5 pr-5"
+              >
+                {submitLoader ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                    Loading...
+                  </>
+                ) : (
+                  "Run"
+                )}
+              </Button>
+              {(form.addressId || form.clientId || form.Enddate || form.Startdate || form.notification.length > 0 || form.userId) &&
+                (<ResetButton onClick={handleReset}
+                  disabled={submitLoader} />)}
+            </div>
+
+            <div className="relative md:col-span-3 lg:col-span-2" ref={notificationDropdownRef}>
               <div
                 className={`${getFieldClasses('notification')} cursor-pointer flex items-center justify-between`}
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
@@ -476,16 +499,18 @@ export const Notification = () => {
                         className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
                       >
                         {option}
-                        <button
+                        <Button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCheckbox(option);
                           }}
+                          variant="ghost"
+                          size="icon-sm"
                           className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
                         >
                           <X className="w-3 h-3" />
-                        </button>
+                        </Button>
                       </span>
                     ))
                   )}
@@ -525,8 +550,8 @@ export const Notification = () => {
               )}
             </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-start gap-2">
+            {/* Submit Button - only show on 4-column layout (lg and above) */}
+            <div className="hidden lg:flex justify-start gap-2">
               <Button
                 type="submit"
                 disabled={submitLoader}

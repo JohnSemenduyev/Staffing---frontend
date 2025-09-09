@@ -431,7 +431,7 @@ export const UniformCompliance = () => {
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           Uniform Compliance</h2>
         <form onSubmit={onSubmit} autoComplete="off">
@@ -457,7 +457,7 @@ export const UniformCompliance = () => {
                 <ErrorMessage message={errors.clientId} />
               )}
 
-              {showClientDropdown && clientSearch.length >= 2 && (
+              {showClientDropdown && clientSearch.length >= 1 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-50 font-sans">
                   {loadingClients ? (
                     <div className="p-2 text-sm text-gray-500">
@@ -555,7 +555,7 @@ export const UniformCompliance = () => {
                   {errors.userId}
                 </div>
               )}
-              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1}>
                 {loadingUsers ? (
                   <div className="p-2 text-sm text-gray-500">Searching users...</div>
                 ) : searchedUsers.length === 0 ? (

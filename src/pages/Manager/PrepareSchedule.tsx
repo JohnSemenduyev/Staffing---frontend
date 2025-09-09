@@ -886,7 +886,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
 
   return (
     <div className="min-h-screen font-sans w-full p-6">
-      <div className="bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid">
         <h2
           style={{
             fontFamily:
@@ -932,7 +932,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 <ErrorMessage message={errors.clientId} />
               )}
 
-              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2 && scheduleData.length === 0}>
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 1 && scheduleData.length === 0}>
                 {loadingClients ? (
                   <div className="p-2 text-sm text-gray-500">Searching clients...</div>
                 ) : searchedClients.length === 0 ? (
@@ -994,7 +994,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
               {errors.userId && (
                 <ErrorMessage message={errors.userId} />
               )}
-              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1}>
                 {loadingUsers ? (
                   <div className="p-2 text-sm text-gray-500">Searching users...</div>
                 ) : searchedUsers.length === 0 ? (

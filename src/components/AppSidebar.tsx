@@ -11,7 +11,6 @@ import {
   Eye,
   BarChart3,
   Menu,
-  LogOut,
   X,
   ChevronDown,
   ChevronRight,
@@ -19,6 +18,7 @@ import {
   Briefcase,
   UserCog,
 } from 'lucide-react';
+import { MdLogout } from "react-icons/md";
 
 import {
   Sidebar,
@@ -165,7 +165,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             onClick={() => toggleGroup(child.id)}
             className={`
               w-full text-left py-2 px-4 rounded-lg
-              flex items-center justify-between text-sm font-normal
+              flex items-center justify-between text-sm font-light
               transition-all duration-200 ${marginLeft}
               text-white/70 hover:text-white hover:bg-[#00325d]
             `}
@@ -189,9 +189,9 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                     }}
                     className={`
                       w-full text-left py-2 px-4 rounded-lg
-                      flex items-center gap-3 text-sm font-normal
+                      flex items-center gap-3 text-sm
                       transition-all duration-200 ml-12
-                      ${nestedIsActive ? 'bg-[#00325d] text-white' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
+                      ${nestedIsActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
                     `}
                   >
                     <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
@@ -214,9 +214,9 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
           }}
           className={`
             w-full text-left py-2 px-4 rounded-lg
-            flex items-center gap-3 text-sm font-normal
+            flex items-center gap-3 text-sm
             transition-all duration-200 ${marginLeft}
-            ${isActive ? 'bg-[#00325d] text-white' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
+            ${isActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
           `}
         >
           <child.icon className="w-4 h-4 flex-shrink-0" />
@@ -241,7 +241,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                 transition-all duration-200
                 py-2 px-4 rounded-lg
                 flex items-center justify-between
-                text-sm font-normal w-full ${marginLeft}
+                text-sm font-light w-full ${marginLeft}
               `}
             >
               <div className="flex items-center gap-3">
@@ -262,11 +262,11 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       isActive={nestedIsActive}
                       className={`
                         text-white text-left w-full ml-8
-                        ${nestedIsActive ? 'bg-[#00325d]' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
+                        ${nestedIsActive ? 'bg-[#00325d] font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
                         transition-all duration-200
                         py-2 px-4 rounded-lg
                         flex items-center gap-3
-                        text-sm font-normal
+                        text-sm
                       `}
                     >
                       <NavLink to={nestedChild.path} className="flex items-center gap-3 w-full">
@@ -290,11 +290,11 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             isActive={isActive}
             className={`
               text-white text-left w-full ${marginLeft}
-              ${isActive ? 'bg-[#00325d]' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
+              ${isActive ? 'bg-[#00325d] font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
               transition-all duration-200
               py-2 px-4 rounded-lg
               flex items-center gap-3
-              text-sm font-normal
+              text-sm
             `}
           >
             <NavLink to={child.path} className="flex items-center gap-3 w-full">
@@ -311,23 +311,26 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
     <>
       {/* Mobile Menu Toggle Button - Always visible on mobile */}
       <div className="fixed top-2 left-4 z-50 md:hidden">
-        <button
+        <Button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 bg-white text-black rounded-md hover:bg-opacity-90 transition-all duration-200 shadow-lg"
+          variant="secondary"
+          size="icon"
+          className="shadow-lg"
         >
           {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-        </button>
+        </Button>
       </div>
 
       {/* Desktop Collapsed Sidebar Toggle Button */}
       {isCollapsed && (
         <div className="fixed top-2 left-4 z-50 hidden md:block">
-          <button
+          <Button
             onClick={toggleSidebar}
-            className="p-2 bg-white text-black rounded-md hover:bg-opacity-90 transition-all duration-200"
+            variant="secondary"
+            size="icon"
           >
             <Menu className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -367,7 +370,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                     <div key={item.id} className="space-y-1">
                       <button
                         onClick={() => toggleGroup(item.id)}
-                        className="w-full text-left py-2 px-4 rounded-lg flex items-center justify-between text-sm font-normal text-white/90 hover:text-white hover:bg-[#00325d] transition-all duration-200"
+                        className="w-full text-left py-2 px-4 rounded-lg flex items-center justify-between text-sm font-light text-white/90 hover:text-white hover:bg-[#00325d] transition-all duration-200"
                       >
                         <div className="flex items-center gap-3">
                           <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -388,9 +391,9 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                                 }}
                                 className={`
                                   w-full text-left py-2 px-4 rounded-lg
-                                  flex items-center gap-3 text-sm font-normal
+                                  flex items-center gap-3 text-sm
                                   transition-all duration-200
-                                  ${isActive ? 'bg-[#00325d] text-white' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
+                                  ${isActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
                                 `}
                               >
                                 <child.icon className="w-4 h-4 flex-shrink-0" />
@@ -414,9 +417,9 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       }}
                       className={`
                         w-full text-left py-2 px-4 rounded-lg
-                        flex items-center gap-3 text-sm font-normal
+                        flex items-center gap-3 text-sm
                         transition-all duration-200
-                        ${isActive ? 'bg-[#00325d] text-white' : 'text-white/90 hover:text-white hover:bg-[#00325d]'}
+                        ${isActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
                       `}
                     >
                       <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -429,21 +432,22 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             
             {/* Logout button */}
             <div className="mt-8">
-              <button
+              <Button
                 onClick={() => {
                   handleLogout();
                   setIsMobileMenuOpen(false);
                 }}
+                variant="ghost"
                 className="
                   w-full text-left py-2 px-4 rounded-lg
-                  flex items-center gap-3 text-sm font-normal
+                  flex items-center gap-3 text-sm font-light
                   text-white/90 hover:text-white hover:bg-[#00325d]
                   transition-all duration-200
                 "
               >
-                <LogOut className="w-5 h-5 flex-shrink-0" />
+                <MdLogout className="w-5 h-5 flex-shrink-0" />
                 <span>Logout</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -475,7 +479,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                               transition-all duration-200
                               py-2 px-4 rounded-lg
                               flex items-center justify-between
-                              text-sm font-normal w-full
+                              text-sm font-light w-full
                             "
                           >
                             <div className="flex items-center gap-3">
@@ -500,7 +504,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                                       transition-all duration-200
                                       py-2 px-4 rounded-lg
                                       flex items-center gap-3
-                                      text-sm font-normal
+                                      text-sm
                                     `}
                                   >
                                     <NavLink to={child.path} className="flex items-center gap-3 w-full">
@@ -525,11 +529,11 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                           isActive={isActive}
                           className={`
                             text-white text-left w-full
-                            ${isActive ? 'bg-[#00325d]' : 'text-white/90 hover:text-white hover:bg-[#00325d]'}
+                            ${isActive ? 'bg-[#00325d] font-semibold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
                             transition-all duration-200
                             py-2 px-4 rounded-lg
                             flex items-center gap-3
-                            text-sm font-normal
+                            text-sm
                           `}
                         >
                           <NavLink to={item.path} className="flex items-center gap-3 w-full">
@@ -557,16 +561,17 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       transition-all duration-200
                       py-2 px-4 rounded-lg
                       flex items-center gap-3
-                      text-sm font-normal w-full
+                      text-sm font-light w-full
                     "
                   >
-                    <button
+                    <Button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 w-full text-left"
+                      variant="ghost"
+                      className="flex items-center justify-start gap-3 w-full text-left"
                     >
-                      <LogOut className="w-5 h-5 flex-shrink-0" />
+                      <MdLogout className="w-5 h-5 flex-shrink-0" />
                       <span>Logout</span>
-                    </button>
+                    </Button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

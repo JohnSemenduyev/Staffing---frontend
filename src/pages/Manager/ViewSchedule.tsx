@@ -79,14 +79,16 @@ const DateNavigation = ({
 
   return (
     <div className="flex items-center space-x-2 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-sm">
-      <button
+      <Button
         type="button"
         onClick={() => navigateWeek('prev')}
-        className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+        variant="ghost"
+        size="icon"
+        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
         title="Previous Week"
       >
         <ChevronLeft className="w-5 h-5" />
-      </button>
+      </Button>
 
       <div className="px-4 py-1 border border-blue-300 rounded-md bg-blue-50">
         <span className="text-blue-700 font-medium text-sm">
@@ -94,14 +96,16 @@ const DateNavigation = ({
         </span>
       </div>
 
-      <button
+      <Button
         type="button"
         onClick={() => navigateWeek('next')}
-        className="flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+        variant="ghost"
+        size="icon"
+        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
         title="Next Week"
       >
         <ChevronRight className="w-5 h-5" />
-      </button>
+      </Button>
     </div>
   );
 };
@@ -1659,7 +1663,7 @@ export const ViewSchedule = () => {
 
           {/* Add New Guard Form */}
           {!scheduleLoading && !scheduleError && isScheduleEditMode && (
-            <div className="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-4">
+            <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-4">
               <h3 className="text-lg font-semibold mb-3 text-gray-800">
                 {scheduleData.length > 0 ? "Edit Schedule" : "Add New Schedule"}
               </h3>
@@ -1685,7 +1689,7 @@ export const ViewSchedule = () => {
                     {errors.userId && (
                       <span className="text-xs text-red-500">{errors.userId}</span>
                     )}
-                    <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+                    <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1}>
                       {loadingUsers ? (
                         <div className="p-2 text-sm text-gray-500">Searching guards...</div>
                       ) : searchedUsers.length === 0 ? (

@@ -88,7 +88,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
           className={`w-4 h-4 ${
             disabled 
               ? 'text-gray-300' 
-              : 'text-black '
+              : 'text-gray-500'
           } transition-colors duration-200`}
           style={{
             fill: 'none',

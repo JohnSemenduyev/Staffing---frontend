@@ -18,6 +18,15 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['var(--font-geist-sans)'],
+				mono: ['var(--font-geist-mono)'],
+			},
+			fontWeight: {
+				medium: 'var(--font-weight-medium)',
+				semibold: 'var(--font-weight-semibold)',
+				bold: 'var(--font-weight-bold)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

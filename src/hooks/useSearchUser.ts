@@ -17,6 +17,6 @@ export function useSearchUsers(search: string) {
       );
       return data.searchUsers;
     },
-    enabled: !!search && search.length >= 2 && !!token,
+    enabled: !!search && search.length >= 1 && !!token,
   });
 }

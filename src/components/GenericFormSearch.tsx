@@ -204,7 +204,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
   }
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+    <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold">Search Filters - {route}</h3>
         <button

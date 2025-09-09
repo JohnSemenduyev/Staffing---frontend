@@ -18,6 +18,7 @@ import { inputClasses } from "./GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 import { useToast } from "../../hooks/use-toast";
+import { Button } from "../../components/ui/button";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 
 const notificationOptions = [
@@ -511,7 +512,7 @@ export default function AssignmentNew() {
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 mb-2">
+      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           {isEditing ? "Edit Assignment" : "Add Assignment"}
         </h2>
@@ -550,7 +551,7 @@ export default function AssignmentNew() {
                 </div>
               )}
 
-              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 2}>
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 1}>
                 {loadingClients ? (
                   <div className="p-2 text-sm text-gray-500">Searching clients...</div>
                 ) : searchedClients.length === 0 ? (
@@ -641,7 +642,7 @@ export default function AssignmentNew() {
                   {errors.guardId}
                 </div>
               )}
-              <SearchResultsDropdown show={showGuardDropdown && guardSearch.length >= 2}>
+              <SearchResultsDropdown show={showGuardDropdown && guardSearch.length >= 1}>
                 {loadingGuards ? (
                   <div className="p-2 text-sm text-gray-500">Searching guards...</div>
                 ) : searchedGuards.length === 0 ? (
@@ -769,7 +770,7 @@ export default function AssignmentNew() {
                   {errors.userId}
                 </div>
               )}
-              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 2}>
+              <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1}>
                 {loadingUsers ? (
                   <div className="p-2 text-sm text-gray-500">Searching users...</div>
                 ) : searchedUsers.length === 0 ? (
@@ -823,16 +824,18 @@ export default function AssignmentNew() {
                         className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
                       >
                         {option}
-                        <button
+                        <Button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCheckbox(option);
                           }}
+                          variant="ghost"
+                          size="icon-sm"
                           className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
                         >
                           <X className="w-3 h-3" />
-                        </button>
+                        </Button>
                       </span>
                     ))
                   )}

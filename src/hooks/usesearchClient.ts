@@ -72,6 +72,6 @@ export const useSearchClient = (search: String) => {
       );
       return searchClients;
     },
-    enabled: !!search && search.length >= 2 && !!token,
+    enabled: !!search && search.length >= 1 && !!token,
   });
 };

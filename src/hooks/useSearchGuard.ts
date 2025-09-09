@@ -13,6 +13,6 @@ export function useSearchGuards(search: string) {
       );
       return data.searchGuards;
     },
-    enabled: !!search && search.length >= 2,
+    enabled: !!search && search.length >= 1,
   });
 }

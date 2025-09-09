@@ -8,6 +8,16 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    /* Font Variables */
+    --font-geist-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+    --font-geist-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    
+    /* Font Weight Variables */
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Color Variables */
     --background: 210 8% 96%;
     --foreground: 0 0% 20%;
 
@@ -113,7 +123,7 @@ All colors MUST be HSL.
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
 
