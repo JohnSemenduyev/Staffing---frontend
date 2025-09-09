@@ -143,19 +143,17 @@ export const Client = () => {
 
       />
 
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchClientAddresses(page);
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            fetchClientAddresses(page);
+          }}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 };

@@ -243,39 +243,56 @@ const calculateHours = (start: string, end: string) => {
 };
 
 // Utility function to check for time violations
-const hasTimeViolation = (session: SessionItem, shift: Shift): boolean => {
-  if (!session.clockIn || !shift.startTime) return false;
+// const hasTimeViolation = (session: SessionItem, shift: Shift): boolean => {
+//   if (!session.clockIn || !shift.startTime) return false;
   
-  // Convert times to minutes for comparison
-  const clockInMinutes = timeToMinutes(session.clockIn);
-  const shiftStartMinutes = timeToMinutes(shift.startTime);
+//   // Convert times to minutes for comparison
+//   const clockInMinutes = timeToMinutes(session.clockIn);
+//   const shiftStartMinutes = timeToMinutes(shift.startTime);
   
-  // Check if clock-in is after shift start time
-  if (clockInMinutes > shiftStartMinutes) {
-    return true;
-  }
+//   // Check if clock-in is after shift start time
+//   if (clockInMinutes > shiftStartMinutes) {
+//     return true;
+//   }
   
-  // Check if clock-out is before shift start time (if clock-out exists)
-  if (session.clockOut) {
-    const clockOutMinutes = timeToMinutes(session.clockOut);
-    if (clockOutMinutes < shiftStartMinutes) {
-      return true;
-    }
-  }
+//   // Check if clock-out is before shift start time (if clock-out exists)
+//   if (session.clockOut) {
+//     const clockOutMinutes = timeToMinutes(session.clockOut);
+//     if (clockOutMinutes < shiftStartMinutes) {
+//       return true;
+//     }
+//   }
   
-  return false;
-};
+//   return false;
+// };
 
 // Check if times don't match exactly (for highlighting)
-const hasTimeMismatch = (shift: Shift, session: SessionItem): boolean => {
-  if (!session) return false;
+const hasTimeMismatch = (shift: Shift, sessions: SessionItem[]): boolean => {
+  if (!shift || sessions.length === 0) return false;
   
-  // Check if start time doesn't match clock-in OR end time doesn't match clock-out
-  const startTimeMismatch = shift.startTime !== session.clockIn;
-  const endTimeMismatch = shift.endTime !== session.clockOut;
+  // Calculate scheduled shift duration in hours
+  const scheduledDuration = calculateHours(shift.startTime, shift.endTime);
   
-  return startTimeMismatch || endTimeMismatch;
+  // Calculate total actual time worked across all sessions
+  const totalActualTime = sessions.reduce((total, session) => {
+    return total + calculateWorkedTimeWith24HourLogic(session);
+  }, 0);
+  
+  // Check if total actual time is not equal to scheduled duration (with small tolerance for rounding)
+  return Math.abs(totalActualTime - scheduledDuration) > 0.01; // 0.01 hour tolerance (36 seconds)
 };
+
+// const hasOvertime = (shift: Shift, sessions: SessionItem[]): boolean => {
+//   if (!shift || sessions.length === 0) return false;
+  
+//   const scheduledDuration = calculateHours(shift.startTime, shift.endTime);
+  
+//   const totalActualTime = sessions.reduce((total, session) => {
+//     return total + calculateWorkedTimeWith24HourLogic(session);
+//   }, 0);
+  
+//   return totalActualTime != scheduledDuration; 
+// };
 
 
 export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
@@ -698,26 +715,23 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                         const sessions = shift ? getSessionsForShift(shift.id, shift.scheduleSessionId, dateCol.date, user.id) : [];
                         const hasSessions = sessions.length > 0;
                         
-                        // Check for time violations and mismatches across all sessions in the cell
-                        const hasViolation = shift ? sessions.some(s => hasTimeViolation(s, shift)) : false;
-                        const hasMismatch = shift ? sessions.some(s => hasTimeMismatch(shift, s)) : false;
+                        // Check for time violations, mismatches, and overtime across all sessions in the cell
+                        // const hasViolation = shift ? sessions.some(s => hasTimeViolation(s, shift)) : false;
+                        const hasMismatch = shift ? hasTimeMismatch(shift, sessions) : false;
+                        // const hasOvertimeWorked = shift ? hasOvertime(shift, sessions) : false;
 
                         return (
                           <td
                             key={`${dateCol.date}-${rowIdx}-${colIdx}`}
                             className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
                                 hasMismatch
-                                ? 'bg-red-100 border-red-300'
-                                : hasViolation
-                                ? 'bg-red-100' // Dull red background for time violations
-                                : ''
+                                 ? 'bg-red-100 border-red-300' // Red background for time mismatch
+                                 : ''
                             }`}
                             title={
-                              hasMismatch 
-                                ? 'Time mismatch: Scheduled time differs from actual clock-in/clock-out time' 
-                                : hasViolation 
-                                ? 'Time violation: Clock-in after shift start or clock-out before shift start' 
-                                : ''
+                               hasMismatch
+                                ? 'Time mismatch: Total actual time does not equal scheduled shift duration'
+                                :  ''
                             }
                           >
                             {isEditMode && shift && (
@@ -987,7 +1001,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         </div>
       )}
 
-      {/* Removed separate Add Session modal; handled in Edit Sessions modal */}
     </div>
   );
 };

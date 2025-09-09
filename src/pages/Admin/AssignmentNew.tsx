@@ -930,19 +930,17 @@ export default function AssignmentNew() {
         onSearch = {handleSearch}
       />
 
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchAssignments(page);
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            fetchAssignments(page);
+          }}
+          loading={loading}
+        />
+      </div>
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">

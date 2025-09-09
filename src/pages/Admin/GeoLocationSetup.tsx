@@ -442,19 +442,17 @@ export const GeoLocationSetup = () => {
       />
 
       {/* Pagination Section */}
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchGeoLocations(page);
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            fetchGeoLocations(page);
+          }}
+          loading={loading}
+        />
+      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (

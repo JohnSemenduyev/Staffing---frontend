@@ -424,19 +424,17 @@ const handleSearch = (formData: { [key: string]: any }) => {
 
       />
 
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchPostAssigns(page);
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            fetchPostAssigns(page);
+          }}
+          loading={loading}
+        />
+      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (

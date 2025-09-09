@@ -161,68 +161,78 @@ const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-center space-x-1 p-4">
-      <button
-        onClick={handlePrevious}
-        disabled={currentPage === 1 || loading}
-        className={`flex items-center justify-center w-8 h-8 rounded-full border transition-colors ${
-          currentPage === 1 || loading
-            ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-            : 'border-black text-black hover:bg-gray-100'
-        }`}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
+    <div className="flex items-center justify-between p-4">
+      {/* Page info on the left */}
+      <div className="text-gray-600 text-sm">
+        Page {currentPage} of {lastPage}
+      </div>
 
-      {visiblePages.map((page: number | string, index: number) => {
-        if (page === '...') {
+      {/* Pagination controls in the center */}
+      <div className="flex items-center space-x-1">
+        <button
+          onClick={handlePrevious}
+          disabled={currentPage === 1 || loading}
+          className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors ${
+            currentPage === 1 || loading
+              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+              : 'border-black text-black hover:bg-gray-100'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {visiblePages.map((page: number | string, index: number) => {
+          if (page === '...') {
+            return (
+              <span key={`ellipsis-${index}`} className="px-2 text-black">
+                ...
+              </span>
+            );
+          }
+
+          const isCurrentPage: boolean = page === currentPage;
+          
           return (
-            <span key={`ellipsis-${index}`} className="px-2 text-black">
-              ...
-            </span>
+            <button
+              key={page}
+              onClick={() => handlePageClick(page)}
+              disabled={loading}
+              className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors ${
+                isCurrentPage
+                  ? 'bg-blue-900 text-white border-blue-900'
+                  : loading
+                  ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                  : 'border-black text-black hover:bg-gray-100'
+              }`}
+              style={isCurrentPage ? { backgroundColor: '#004175' } : {}}
+            >
+              {loading && isCurrentPage ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                page
+              )}
+            </button>
           );
-        }
+        })}
 
-        const isCurrentPage: boolean = page === currentPage;
+        <button
+          onClick={handleNext}
+          disabled={currentPage === lastPage || loading}
+          className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors ${
+            currentPage === lastPage || loading
+              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+              : 'border-black text-black hover:bg-gray-100'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
         
-        return (
-          <button
-            key={page}
-            onClick={() => handlePageClick(page)}
-            disabled={loading}
-            className={`flex items-center justify-center w-8 h-8 rounded-full border transition-colors ${
-              isCurrentPage
-                ? 'bg-blue-900 text-white border-blue-900'
-                : loading
-                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                : 'border-black text-black hover:bg-gray-100'
-            }`}
-            style={isCurrentPage ? { backgroundColor: '#004175' } : {}}
-          >
-            {loading && isCurrentPage ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              page
-            )}
-          </button>
-        );
-      })}
+      </div>
 
-      <button
-        onClick={handleNext}
-        disabled={currentPage === lastPage || loading}
-        className={`flex items-center justify-center w-8 h-8 rounded-full border transition-colors ${
-          currentPage === lastPage || loading
-            ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-            : 'border-black text-black hover:bg-gray-100'
-        }`}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
     </div>
   );
 };

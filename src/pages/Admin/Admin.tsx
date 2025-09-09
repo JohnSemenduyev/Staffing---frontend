@@ -136,19 +136,17 @@ export const Admin = () => {
         onSearch = {handleSearch}
       />
 
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchUsersByRole("admin", page);
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            fetchUsersByRole("admin", page);
+          }}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 };

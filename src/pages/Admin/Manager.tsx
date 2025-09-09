@@ -117,19 +117,17 @@ export const Manager = () => {
 
       />
 
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchUsersByRole("manager", page);
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            fetchUsersByRole("manager", page);
+          }}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 };

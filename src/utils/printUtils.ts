@@ -98,29 +98,38 @@ export const generateSchedulePrintableTable = (
   }
   headers.push('Total');
 
-  const headerRow = headers.map(header => 
-    `<th style="background-color: #fff; color: black; font-weight: bold; padding: 4px 6px; text-align: center; border: 2px solid black; font-size: 10px;">${header}</th>`
+  const columnWidths = [
+    'auto',   // Officer Name
+    '5%',    // Empty column
+    '11%',   // Day 1
+    '11%',   // Day 2
+    '11%',   // Day 3
+    '11%',   // Day 4
+    '11%',   // Day 5
+    '11%',   // Day 6
+    '11%',   // Day 7
+    '5%'    // Total
+  ];
+  
+  const headerRow = headers.map((header, index) => 
+    `<th style="background-color: #fff; color: black; font-weight: bold; padding: 2px 2px; text-align: center; border: 2px solid black; font-size: 10px; width: ${columnWidths[index] || 'auto'};">${header}</th>`
   ).join('');
 
   // Client info row - single row spanning all columns
   const clientInfoRow = `
     <tr>
-      <td colspan="11" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="flex: 1;">
-            <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
-          </div>
-          <div style="flex: 1;">
-            <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
-          </div>
-          <div style="flex: 1;">
-            <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: '2-digit'
-            }) : ''}
-          </div>
-        </div>
+      <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
+      </td>
+      <td colspan="4" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
+      </td>
+      <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: '2-digit'
+        }) : ''}
       </td>
     </tr>
   `;
@@ -220,6 +229,8 @@ export const generateSchedulePrintableTable = (
 
           const shift = dayShifts[rowIdx];
           const cellContent = shift ? `${shift.startTime} - ${shift.endTime}` : '';
+          
+          console.log(`User ${user.id}, Date ${dateStr}, Row ${rowIdx}: ${cellContent || 'Empty'}`);
 
           cells.push(`
             <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;">
@@ -229,14 +240,36 @@ export const generateSchedulePrintableTable = (
         }
       }
 
-      // Total column (spans all data rows, not the Total row)
-      if (rowIdx === 0) {
-        cells.push(`
-          <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;" rowspan="${maxShifts}">
-            ${calculateUserTotal(user.id).toFixed(0)}
-          </td>
-        `);
+      // Calculate total for this specific row (sum of all shifts in this row across all days)
+      let rowTotal = 0;
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
+          
+          const shiftsForDay = scheduleData
+            .filter(item => item.userId === user.id)
+            .flatMap(item => item.shifts)
+            .filter(shift => {
+              const shiftDate = shift.date.includes('T') ? 
+                toLocalYMD(new Date(shift.date)) : shift.date;
+              return shiftDate === dateStr;
+            });
+          
+          if (shiftsForDay[rowIdx]) {
+            rowTotal += shiftsForDay[rowIdx].hours;
+          }
+        }
       }
+      
+      
+      cells.push(`
+        <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;">
+          ${rowTotal > 0 ? rowTotal.toFixed(0) : ''}
+        </td>
+      `);
 
       dataRows.push(`<tr>${cells.join('')}</tr>`);
     }
@@ -488,25 +521,21 @@ export const generateActualTimePrintableTable = (
     `<th style="background-color: #fff; color: black; font-weight: bold; padding: 4px 6px; text-align: center; border: 2px solid black; font-size: 10px;">${header}</th>`
   ).join('');
 
-  // Client info row - single row spanning all columns
+  // Client info row - divided into 3 cells with specific column spans
   const clientInfoRow = `
     <tr>
-      <td colspan="11" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="flex: 1;">
-            <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
-          </div>
-          <div style="flex: 1;">
-            <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
-          </div>
-          <div style="flex: 1;">
-            <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
-              month: '2-digit',
-              day: '2-digit',
-              year: '2-digit'
-            }) : ''}
-          </div>
-        </div>
+      <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
+      </td>
+      <td colspan="4" style="border: 2px solid black; padding: 8px 12px; text-align: center; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
+      </td>
+      <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: right; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: '2-digit'
+        }) : ''}
       </td>
     </tr>
   `;
@@ -715,7 +744,7 @@ export const generatePrintContent = (
         <style>
           @page {
             margin: 0.5in;
-            size: landscape;
+            size: A4 portrait;
           }
           
           * {
@@ -733,7 +762,7 @@ export const generatePrintContent = (
           
           .header {
             text-align: left;
-            margin-bottom: 12px;
+            margin-bottom: 2px;
           }
           
           .header h1 { 
@@ -752,7 +781,6 @@ export const generatePrintContent = (
           table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin-top: 8px;
             background: white;
             border: 2px solid black;
           }
@@ -761,14 +789,14 @@ export const generatePrintContent = (
             background-color: white !important;
             color: black !important;
             font-weight: bold;
-            padding: 4px 6px;
+            padding: 2px 2px;
             text-align: center;
             border: 2px solid black;
             font-size: 10px;
           }
           
           td { 
-            padding: 4px 6px;
+            padding: 2px 2px;
             border: 2px solid black;
             font-size: 10px;
             vertical-align: middle;
@@ -776,7 +804,7 @@ export const generatePrintContent = (
         </style>
       </head>
       <body>
-        <div class="header">
+        <div class="header" style="margin-left: 20px;">
           <h1>${title}</h1>
         </div>
         

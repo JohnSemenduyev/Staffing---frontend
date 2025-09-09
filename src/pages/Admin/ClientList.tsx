@@ -1391,41 +1391,39 @@ function ClientList() {
       )}
 
       {/* Pagination */}
-      {lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={async (page) => {
-              try {
-                setCurrentPage(page);
-                await fetchScheduleSessions(page);
-              } catch (error: any) {
-                console.error("Error changing page:", error);
-                
-                let errorMessage = "Failed to load page data. Please try again.";
-                
-                if (error.message) {
-                  if (error.message.includes("Network Error") || error.message.includes("fetch")) {
-                    errorMessage = "Network error. Please check your internet connection and try again.";
-                  } else if (error.response?.errors && error.response.errors.length > 0) {
-                    errorMessage = error.response.errors[0].message || errorMessage;
-                  } else {
-                    errorMessage = error.message;
-                  }
+      <div className="mt-6">
+        <Pagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          onPageChange={async (page) => {
+            try {
+              setCurrentPage(page);
+              await fetchScheduleSessions(page);
+            } catch (error: any) {
+              console.error("Error changing page:", error);
+              
+              let errorMessage = "Failed to load page data. Please try again.";
+              
+              if (error.message) {
+                if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+                  errorMessage = "Network error. Please check your internet connection and try again.";
+                } else if (error.response?.errors && error.response.errors.length > 0) {
+                  errorMessage = error.response.errors[0].message || errorMessage;
+                } else {
+                  errorMessage = error.message;
                 }
-                
-                toast({
-                  title: "Error",
-                  description: errorMessage,
-                  variant: "destructive",
-                });
               }
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
+              
+              toast({
+                title: "Error",
+                description: errorMessage,
+                variant: "destructive",
+              });
+            }
+          }}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 }
