@@ -34,7 +34,11 @@ interface PrintOptions {
   title: string;
   selectedClient?: {
     name: string;
+    lastName?: string;
     address: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
   };
   currentWeekRange?: {
     startOfWeek: Date;
@@ -52,7 +56,7 @@ const timeToMinutes = (timeStr: string) => {
 export const generateSchedulePrintableTable = (
   scheduleData: ScheduleItem[],
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
-  selectedClient?: { name: string; address: string }
+  selectedClient?: { name: string; lastName?: string; address: string; city?: string; state?: string; pincode?: string }
 ) => {
   console.log('PDF Debug - Incoming scheduleData:', scheduleData.slice(0, 2));
   console.log('PDF Debug - Current week range:', currentWeekRange);
@@ -119,10 +123,10 @@ export const generateSchedulePrintableTable = (
   const clientInfoRow = `
     <tr>
       <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
-        <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
+        <strong>Client Name:</strong> ${selectedClient ? [selectedClient.name, selectedClient.lastName].filter(Boolean).join(' ') : 'All Clients'}
       </td>
       <td colspan="4" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
-        <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
+        <strong>Client Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
       <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
@@ -230,8 +234,6 @@ export const generateSchedulePrintableTable = (
           const shift = dayShifts[rowIdx];
           const cellContent = shift ? `${shift.startTime} - ${shift.endTime}` : '';
           
-          console.log(`User ${user.id}, Date ${dateStr}, Row ${rowIdx}: ${cellContent || 'Empty'}`);
-
           cells.push(`
             <td style="border: 2px solid black; padding: 4px 6px; text-align: center; font-size: 10px;">
               ${cellContent}
@@ -368,7 +370,7 @@ export const generateActualTimePrintableTable = (
   sessionData: SessionData[],
   scheduleData: ScheduleItem[],
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
-  selectedClient?: { name: string; address: string }
+  selectedClient?: { name: string; lastName?: string; address: string; city?: string; state?: string; pincode?: string }
 ) => {
   console.log('PDF Debug - Session data:', sessionData);
   console.log('PDF Debug - Schedule data:', scheduleData);
@@ -525,10 +527,10 @@ export const generateActualTimePrintableTable = (
   const clientInfoRow = `
     <tr>
       <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
-        <strong>Client Name:</strong> ${selectedClient ? selectedClient.name : 'All Clients'}
+        <strong>Client Name:</strong> ${selectedClient ? [selectedClient.name, selectedClient.lastName].filter(Boolean).join(' ') : 'All Clients'}
       </td>
-      <td colspan="4" style="border: 2px solid black; padding: 8px 12px; text-align: center; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
-        <strong>Client Address:</strong> ${selectedClient ? selectedClient.address : '-'}
+      <td colspan="4" style="border: 2px solid black; padding: 8px 12px; text-align: left; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
+        <strong>Client Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
       <td colspan="3" style="border: 2px solid black; padding: 8px 12px; text-align: right; font-size: 11px; background-color: #F0F0F0; line-height: 1.4;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
