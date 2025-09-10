@@ -209,6 +209,50 @@ const calculateUserTotal = (
   return parseFloat(total.toFixed(2));
 };
 
+const calculateRowTotal = (
+  userId: number,
+  rowIdx: number,
+  sessionData: SessionItem[],
+  scheduleData: ScheduleItem[],
+  dateColumns: { date: string }[]
+) => {
+  let rowTotal = 0;
+  
+  dateColumns.forEach(dateCol => {
+    // Get all shifts for this user on this date
+    const userShifts = scheduleData
+      .filter(item => item.userId === userId)
+      .flatMap(item => item.shifts)
+      .filter(shift => {
+        let shiftDate: string;
+        if (shift.date.includes('T') && shift.date.includes('Z')) {
+          shiftDate = shift.date.split('T')[0];
+        } else if (shift.date.includes('T')) {
+          shiftDate = new Date(shift.date).toISOString().split('T')[0];
+        } else {
+          shiftDate = shift.date;
+        }
+        return shiftDate === dateCol.date;
+      });
+
+    // Get unique shifts and find the shift for this row
+    const uniqueShifts = [...new Set(userShifts.map(s => s.id))];
+    const currentShiftId = uniqueShifts[rowIdx];
+    
+    if (currentShiftId) {
+      // Get all sessions for this shift
+      const sessionsForShift = sessionData.filter(item => item.shiftId === currentShiftId);
+      
+      // Add all sessions in this shift to the row total
+      sessionsForShift.forEach(session => {
+        rowTotal += calculateWorkedTimeWith24HourLogic(session);
+      });
+    }
+  });
+  
+  return parseFloat(rowTotal.toFixed(2));
+};
+
 const calculateGrandTotal = (sessionData: SessionItem[]) => {
   const total = sessionData.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
   return parseFloat(total.toFixed(2));
@@ -762,18 +806,16 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                         );
                       })}
 
+                      <td
+                        className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
+                      >
+                        {calculateRowTotal(user.id, rowIdx, sessionData, scheduleData, dateColumns)}
+                      </td>
                       {rowIdx === 0 && (
-                        <>
-                          <td
-                            className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
-                            rowSpan={rowCount}
-                          >
-                            {calculateUserTotal(user.id, sessionData, scheduleData)}
-                          </td>
-                          <td
-                            className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
-                            rowSpan={rowCount}
-                          >
+                        <td
+                          className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
+                          rowSpan={rowCount}
+                        >
                             {/* {isEditMode && (
                               <button
                                 onClick={() => handleDeleteUser(user.id)}
@@ -783,8 +825,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             )} */}
-                          </td>
-                        </>
+                        </td>
                       )}
                     </tr>
                   ))}
@@ -794,7 +835,12 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                       Total
                     </td>
                     {dateColumns.map(dateCol => {
-                      const dayTotal = calculateDayTotal(dateCol.date, sessionData);
+                      const dayTotal = calculateDayTotal(dateCol.date, sessionData.filter(item => {
+                        const scheduleItem = scheduleData.find(si =>
+                          si.shifts.some(shift => shift.id === item.shiftId)
+                        );
+                        return scheduleItem?.userId === user.id;
+                      }));
                       return (
                         <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
                           {dayTotal > 0 ? dayTotal : '-'}
@@ -802,7 +848,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                       );
                     })}
                     <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                      {calculateGrandTotal(sessionData)}
+                      {calculateUserTotal(user.id, sessionData, scheduleData)}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
                       {/* Empty cell for alignment */}
