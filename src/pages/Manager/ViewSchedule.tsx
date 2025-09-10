@@ -1586,7 +1586,7 @@ export const ViewSchedule = () => {
       await handlePrint(
         tableContent,
         {
-          title: "Actual Time Report",
+          title: "Actual",
           selectedClient,
           currentWeekRange,
           totalEmployees,

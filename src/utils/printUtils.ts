@@ -103,35 +103,35 @@ export const generateSchedulePrintableTable = (
   headers.push('Total');
 
   const columnWidths = [
-    'auto',   // Officer Name
-    '15px',   // Empty column
-    '11%',   // Day 1
-    '11%',   // Day 2
-    '11%',   // Day 3
-    '11%',   // Day 4
-    '11%',   // Day 5
-    '11%',   // Day 6
-    '11%',   // Day 7
-    '5%'    // Total
+    '20%',   // Officer Name
+    '3%',   // Empty column
+    '10%',   // Day 1
+    '10%',   // Day 2
+    '10%',   // Day 3
+    '10%',   // Day 4
+    '10%',   // Day 5
+    '10%',   // Day 6
+    '10%',   // Day 7
+    '7%'    // Total
   ];
   
   const headerRow = headers.map((header, index) => {
     const isOfficerName = header === 'Officer Name';
     const textAlign = isOfficerName ? 'left' : 'center';
-    const leftPadding = isOfficerName ? '6px' : '2px';
-    return `<th style="background-color: #FFFEFEFF; color: black; font-weight: bold; padding: 0px 2px 0px ${leftPadding}; text-align: ${textAlign}; border: 2px solid black !important; font-size: 14px; width: ${columnWidths[index] || 'auto'};">${header}</th>`;
+    const leftPadding = isOfficerName ? '12px' : '2px';
+    return `<th style="background-color: #FFFEFEFF; color: black; font-weight: bold; padding: 0px 2px 0px ${leftPadding}; text-align: ${textAlign}; border: 2px solid black !important; font-size: 15px; width: ${columnWidths[index] || 'auto'};">${header}</th>`;
   }).join('');
 
   // Client info row - single row spanning all columns
   const clientInfoRow = `
     <tr>
-      <td colspan="3" style="padding: 0px 12px 0px 6px; text-align: left; font-size: 14px; background-color: #FFFEFEFF; line-height: 1.4; height: 25px; vertical-align: middle; border: 2px solid black !important;">
+      <td colspan="3" style="padding: 0px 12px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 2px solid black !important;">
         <strong>Client Name:</strong> ${selectedClient ? [selectedClient.name, selectedClient.lastName].filter(Boolean).join(' ') : 'All Clients'}
       </td>
-        <td colspan="4" style="border: 2px solid black; padding: 0px 12px; text-align: left; font-size: 14px; background-color: #FFFEFEFF; line-height: 1.4; height: 25px; vertical-align: middle; border: 2px solid black !important;">
+      <td colspan="4" style="border: 2px solid black; padding: 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 2px solid black !important;">
         <strong>Client Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
-      <td colspan="3" style="border: 2px solid black; padding: 0px 12px; text-align: left; font-size: 14px; background-color: #FFFEFEFF; line-height: 1.4; height: 25px; vertical-align: middle; border: 2px solid black !important;">
+      <td colspan="3" style="border: 2px solid black; padding: 0px 15px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 2px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
           month: '2-digit',
           day: '2-digit',
@@ -202,14 +202,14 @@ export const generateSchedulePrintableTable = (
       // Officer name (spans all rows including Total)
       if (rowIdx === 0) {
         cells.push(`
-          <td style="padding: 0px 6px 0px 6px; text-align: left; font-size: 14px; font-weight: normal; border: 2px solid black !important;" rowspan="${totalRows}">
+          <td style="padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: normal; border: 2px solid black !important;" rowspan="${totalRows}">
             ${user.name}
           </td>
         `);
         
         // Empty column (spans all rows including Total)
         cells.push(`
-          <td style="border: 2px solid black; padding: 0px 2px; text-align: center; font-size: 14px;" rowspan="${totalRows-1}">
+          <td style="border: 2px solid black; padding: 0px 2px; text-align: center; font-size: 15px;" rowspan="${totalRows-1}">
             
           </td>
         `);
@@ -238,7 +238,7 @@ export const generateSchedulePrintableTable = (
           const cellContent = shift ? `${shift.startTime} - ${shift.endTime}` : '';
           
           cells.push(`
-            <td style=" padding: 0px 6px; text-align: center; font-size: 14px;">
+            <td style="border-right: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
               ${cellContent}
             </td>
           `);
@@ -271,8 +271,8 @@ export const generateSchedulePrintableTable = (
       
       
       cells.push(`
-        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px;">
-          ${rowTotal > 0 ? rowTotal.toFixed(0) : ''}
+        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
+          ${rowTotal > 0 ? rowTotal.toFixed(2) : ''}
         </td>
       `);
 
@@ -281,7 +281,7 @@ export const generateSchedulePrintableTable = (
 
     // Total row for this user
     const totalCells = [`
-      <td style="border: 2px solid black !important; padding: 0px 6px 0px 6px; text-align: left; font-size: 14px; font-weight: bold;">
+      <td style="border: 2px solid black !important; text-align: left; font-size: 15px; font-weight: bold;">
         Total
       </td>
     `];
@@ -304,8 +304,8 @@ export const generateSchedulePrintableTable = (
           .reduce((total, shift) => total + shift.hours, 0);
 
         totalCells.push(`
-          <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-            ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
+          <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+            ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
           </td>
         `);
       }
@@ -313,8 +313,8 @@ export const generateSchedulePrintableTable = (
 
     // Total column for Total row
     totalCells.push(`
-      <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-        ${calculateUserTotal(user.id).toFixed(0)}
+      <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+        ${calculateUserTotal(user.id).toFixed(2)}
       </td>
     `);
 
@@ -323,11 +323,11 @@ export const generateSchedulePrintableTable = (
 
   // Grand Total row
   const grandTotalCells = [`
-    <td style="border: 2px solid black !important; padding: 0px 6px 0px 6px; text-align: left; font-size: 14px; font-weight: bold;">
+    <td style="border: 2px solid black !important; padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: bold;">
       Grand Total
     </td>
   `, `
-    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
+    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
       
     </td>
   `];
@@ -341,16 +341,16 @@ export const generateSchedulePrintableTable = (
       
       const dayTotal = calculateDayTotal(dateStr);
       grandTotalCells.push(`
-        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-          ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
+        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+          ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
         </td>
       `);
     }
   }
 
   grandTotalCells.push(`
-    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-      ${calculateGrandTotal().toFixed(0)}
+    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+      ${calculateGrandTotal().toFixed(2)}
     </td>
   `);
 
@@ -426,9 +426,9 @@ export const generateActualTimePrintableTable = (
   const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   // Helper functions
-  const getMaxSessionsPerDay = (userId: number) => {
-    let maxSessions = 1;
-    if (!currentWeekRange) return maxSessions;
+  const getMaxShiftsPerDay = (userId: number) => {
+    let maxShifts = 1;
+    if (!currentWeekRange) return maxShifts;
 
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
@@ -457,9 +457,11 @@ export const generateActualTimePrintableTable = (
         return shiftDate === dateStr;
       });
       
-      maxSessions = Math.max(maxSessions, sessionsForDay.length);
+      // Get unique shifts for this day
+      const uniqueShifts = [...new Set(sessionsForDay.map(s => s.shiftId))];
+      maxShifts = Math.max(maxShifts, uniqueShifts.length);
     }
-    return maxSessions;
+    return maxShifts;
   };
 
   const calculateUserTotal = (userId: number) => {
@@ -523,35 +525,35 @@ export const generateActualTimePrintableTable = (
   headers.push('Total');
 
   const columnWidths = [
-    'auto',   // Officer Name
-    '15px',   // Empty column
-    '11%',   // Day 1
-    '11%',   // Day 2
-    '11%',   // Day 3
-    '11%',   // Day 4
-    '11%',   // Day 5
-    '11%',   // Day 6
-    '11%',   // Day 7
+    '20%',   // Officer Name
+    '5%',   // Empty column
+    '10%',   // Day 1
+    '10%',   // Day 2
+    '10%',   // Day 3
+    '10%',   // Day 4
+    '10%',   // Day 5
+    '10%',   // Day 6
+    '10%',   // Day 7
     '5%'    // Total
   ];
 
   const headerRow = headers.map((header, index) => {
     const isOfficerName = header === 'Officer Name';
     const textAlign = isOfficerName ? 'left' : 'center';
-    const leftPadding = isOfficerName ? '6px' : '2px';
-    return `<th style="background-color: #fff; color: black; font-weight: bold; padding: 0px 2px 0px ${leftPadding}; text-align: ${textAlign}; border: 2px solid black !important; font-size: 14px; width: ${columnWidths[index] || 'auto'};">${header}</th>`;
+    const leftPadding = isOfficerName ? '15px' : '2px';
+    return `<th style="background-color: #fff; color: black; font-weight: bold; padding: 0px 2px 0px ${leftPadding}; text-align: ${textAlign}; border: 2px solid black !important; font-size: 15px; width: ${columnWidths[index] || 'auto'};">${header}</th>`;
   }).join('');
 
   // Client info row - divided into 3 cells with specific column spans
   const clientInfoRow = `
     <tr>
-      <td colspan="3" style="padding: 0px 12px 0px 6px; text-align: left; font-size: 14px; background-color: #FFFEFEFF; line-height: 1.4; height: 25px; vertical-align: middle; border: 2px solid black !important;">
+      <td colspan="3" style="padding: 0px 12px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 2px solid black !important;">
         <strong>Client Name:</strong> ${selectedClient ? [selectedClient.name, selectedClient.lastName].filter(Boolean).join(' ') : 'All Clients'}
       </td>
-      <td colspan="4" style="border: 2px solid black; padding: 0px 12px; text-align: left; font-size: 14px; background-color: #FFFEFEFF; line-height: 1.4; height: 25px; vertical-align: middle; border: 2px solid black !important;">
+      <td colspan="4" style="border: 2px solid black; padding: 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 2px solid black !important;">
         <strong>Client Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
-      <td colspan="3" style="border: 2px solid black; padding: 0px 12px; text-align: right; font-size: 14px; background-color: #FFFEFEFF; line-height: 1.4; height: 25px; vertical-align: middle; border: 2px solid black !important;">
+      <td colspan="3" style="border: 2px solid black; padding: 0px 15px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 2px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
           month: '2-digit',
           day: '2-digit',
@@ -565,24 +567,24 @@ export const generateActualTimePrintableTable = (
   const dataRows = [];
 
   sortedUsers.forEach(user => {
-    const maxSessions = getMaxSessionsPerDay(user.id);
-    const totalRows = maxSessions + 1; // +1 for Total row
+    const maxShifts = getMaxShiftsPerDay(user.id);
+    const totalRows = maxShifts + 1; // +1 for Total row
 
-    // Data rows for sessions
-    for (let rowIdx = 0; rowIdx < maxSessions; rowIdx++) {
+    // Data rows for shifts
+    for (let rowIdx = 0; rowIdx < maxShifts; rowIdx++) {
       const cells = [];
       
       // Officer name (spans all rows including Total)
       if (rowIdx === 0) {
         cells.push(`
-          <td style="padding: 0px 6px 0px 6px; text-align: left; font-size: 14px; font-weight: normal; border: 2px solid black !important;" rowspan="${totalRows}">
+          <td style="padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: normal; border: 2px solid black !important;" rowspan="${totalRows}">
             ${user.name}
           </td>
         `);
         
         // Empty column (spans all rows including Total)
         cells.push(`
-          <td style="border-left: 2px solid black !important; border-right: 2px solid black !important; border-top: 2px solid black !important; border-bottom: none !important; padding: 0px 6px; text-align: center; font-size: 14px;" rowspan="${totalRows -1 }">
+          <td style="border-left: 2px solid black !important; border-right: 2px solid black !important; border-top: 2px solid black !important; border-bottom: none !important; padding: 0px 6px; text-align: center; font-size: 15px;" rowspan="${totalRows -1 }">
             
           </td>
         `);
@@ -618,32 +620,80 @@ export const generateActualTimePrintableTable = (
             return shiftDate === dateStr;
           });
 
-          const session = daySessions[rowIdx];
-          const cellContent = session ? `${session.clockIn} - ${session.clockOut}` : '';
+          // Group sessions by shift and get the shift for this row
+          const shiftsForDay = [...new Set(daySessions.map(s => s.shiftId))];
+          const currentShiftId = shiftsForDay[rowIdx];
+          
+          let cellContent = '';
+          if (currentShiftId) {
+            const sessionsForShift = daySessions.filter(s => s.shiftId === currentShiftId);
+            cellContent = sessionsForShift.map(s => `${s.clockIn} - ${s.clockOut}`).join('\n');
+          }
 
           cells.push(`
-            <td style="padding: 0px 6px; text-align: center; font-size: 14px;">
+            <td style="border: 2px solid black !important; padding: 0px; text-align: center; font-size: 15px; ">
               ${cellContent}
             </td>
           `);
         }
       }
 
-      // Total column (spans all data rows, not the Total row)
-      if (rowIdx === 0) {
-        cells.push(`
-          <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px;" rowspan="${maxSessions}">
-            ${calculateUserTotal(user.id).toFixed(0)}
-          </td>
-        `);
+      // Calculate total for this specific row (sum of all sessions in this row across all days)
+      let rowTotal = 0;
+      if (currentWeekRange) {
+        const startDate = new Date(currentWeekRange.startOfWeek);
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startDate);
+          date.setDate(startDate.getDate() + i);
+          const dateStr = toLocalYMD(date);
+          
+          const sessionsForDay = sessionData.filter(item => {
+            const scheduleItem = scheduleData.find(si =>
+              si.shifts.some(shift => shift.id === item.shiftId)
+            );
+            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
+
+            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
+            if (!shift) return false;
+            
+            let shiftDate: string;
+            if (shift.date.includes('T') && shift.date.includes('Z')) {
+              shiftDate = shift.date.split('T')[0];
+            } else if (shift.date.includes('T')) {
+              shiftDate = toLocalYMD(new Date(shift.date));
+            } else {
+              shiftDate = shift.date;
+            }
+            
+            return shiftDate === dateStr;
+          });
+          
+          // Group sessions by shift and get the shift for this row
+          const shiftsForDay = [...new Set(sessionsForDay.map(s => s.shiftId))];
+          const currentShiftId = shiftsForDay[rowIdx];
+          
+          if (currentShiftId) {
+            const sessionsForShift = sessionsForDay.filter(s => s.shiftId === currentShiftId);
+            // Add all sessions in this shift to the row total
+            sessionsForShift.forEach(session => {
+              rowTotal += calculateWorkedTimeWith24HourLogic(session);
+            });
+          }
+        }
       }
+      
+      cells.push(`
+        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
+          ${rowTotal > 0 ? rowTotal.toFixed(2) : ''}
+        </td>
+      `);
 
       dataRows.push(`<tr>${cells.join('')}</tr>`);
     }
 
     // Total row for this user
     const totalCells = [`
-      <td style="border: 2px solid black !important; padding: 0px 6px 0px 6px; text-align: left; font-size: 14px; font-weight: bold;">
+      <td style="border: 2px solid black !important; text-align: left; font-size: 15px; font-weight: bold;">
         Total
       </td>
     `];
@@ -679,8 +729,8 @@ export const generateActualTimePrintableTable = (
           .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
 
         totalCells.push(`
-          <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-            ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
+          <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+            ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
           </td>
         `);
       }
@@ -688,8 +738,8 @@ export const generateActualTimePrintableTable = (
 
     // Total column for Total row
     totalCells.push(`
-      <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-        ${calculateUserTotal(user.id).toFixed(0)}
+      <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+        ${calculateUserTotal(user.id).toFixed(2)}
       </td>
     `);
 
@@ -698,11 +748,11 @@ export const generateActualTimePrintableTable = (
 
   // Grand Total row
   const grandTotalCells = [`
-    <td style="border: 2px solid black !important; padding: 0px 6px 0px 6px; text-align: left; font-size: 14px; font-weight: bold;">
+    <td style="border: 2px solid black !important; padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: bold;">
       Grand Total
     </td>
   `, `
-    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
+    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
       
     </td>
   `];
@@ -716,23 +766,23 @@ export const generateActualTimePrintableTable = (
       
       const dayTotal = calculateDayTotal(dateStr);
       grandTotalCells.push(`
-        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-          ${dayTotal > 0 ? dayTotal.toFixed(0) : ''}
+        <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+          ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
         </td>
       `);
     }
   }
 
   grandTotalCells.push(`
-    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 14px; font-weight: bold;">
-      ${calculateGrandTotal().toFixed(0)}
+    <td style="border: 2px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
+      ${calculateGrandTotal().toFixed(2)}
     </td>
   `);
 
   dataRows.push(`<tr>${grandTotalCells.join('')}</tr>`);
 
   return `
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 2px solid black;">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 0px; border: 2px solid black;">
       <thead>
         ${clientInfoRow}
         <tr>${headerRow}</tr>
@@ -796,7 +846,7 @@ export const generatePrintContent = (
           .header .subtitle {
             margin: 4px 0 0 0;
             color: black;
-            font-size: 12px;
+            font-size: 15px;
           }
           
           table { 
@@ -813,21 +863,21 @@ export const generatePrintContent = (
             padding: 0px 2px;
             text-align: center;
             border: none;
-            font-size: 14px;
-            height: 25px;
+            font-size: 15px;
+            height: 22px;
             vertical-align: middle;
           }
           
           td { 
             padding: 0px 2px;
             border: none;
-            font-size: 14px;
-            height: 25px;
+            font-size: 15px;
+            height: 22px;
             vertical-align: middle;
           }
           
           tr {
-            height: 25px;
+            height: 22px;
           }
         </style>
       </head>
