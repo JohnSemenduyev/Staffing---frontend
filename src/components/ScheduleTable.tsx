@@ -494,10 +494,24 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           // If dropping to a specific row position, insert at that position
           if (targetRowIdx < currentShifts.length) {
             // Replace the shift at the target row position
-            currentShifts[targetRowIdx] = { ...shift, id: Date.now(), date: targetDate, confirm: false, reject: false };
+            currentShifts[targetRowIdx] = { 
+              ...shift, 
+              id: Date.now(), 
+              date: targetDate, 
+              confirm: false, 
+              reject: false,
+              scheduleSessionId: currentShifts[0]?.scheduleSessionId // Inherit from existing shifts
+            };
           } else {
             // Add to the end if target row is beyond current shifts
-            currentShifts.push({ ...shift, id: Date.now(), date: targetDate, confirm: false, reject: false });
+            currentShifts.push({ 
+              ...shift, 
+              id: Date.now(), 
+              date: targetDate, 
+              confirm: false, 
+              reject: false,
+              scheduleSessionId: currentShifts[0]?.scheduleSessionId // Inherit from existing shifts
+            });
           }
 
           return {
@@ -524,7 +538,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           userId: targetUserId,
           startDate: targetDate,
           auto: sourceSchedule.auto,
-          shifts: [{ ...shift, id: Date.now(), date: targetDate, confirm: false, reject: false }],
+          shifts: [{ 
+            ...shift, 
+            id: Date.now(), 
+            date: targetDate, 
+            confirm: false, 
+            reject: false,
+            scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId // Inherit from source schedule
+          }],
           clientName: sourceSchedule.clientName,
           address: sourceSchedule.address,
           userName: targetUser?.name || sourceSchedule.userName,

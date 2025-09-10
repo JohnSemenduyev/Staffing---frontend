@@ -27,6 +27,20 @@ export default {
 				semibold: 'var(--font-weight-semibold)',
 				bold: 'var(--font-weight-bold)',
 			},
+			fontSize: {
+				xs: 'var(--text-xs)',
+				sm: 'var(--text-sm)',
+				base: 'var(--text-base)',
+				lg: 'var(--text-lg)',
+				xl: 'var(--text-xl)',
+				'2xl': 'var(--text-2xl)',
+				'3xl': 'var(--text-3xl)',
+			},
+			lineHeight: {
+				tight: 'var(--leading-tight)',
+				normal: 'var(--leading-normal)',
+				relaxed: 'var(--leading-relaxed)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

@@ -431,7 +431,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             </div>
             
             {/* Logout button */}
-            <div className="mt-8">
+            <div className="">
               <Button
                 onClick={() => {
                   handleLogout();
@@ -439,10 +439,9 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                 }}
                 variant="ghost"
                 className="
-                  w-full text-left py-2 px-4 rounded-lg
-                  flex items-center gap-3 text-sm font-light
+                   py-2 px-4 rounded-lg text-sm font-light
                   text-white/90 hover:text-white hover:bg-[#00325d]
-                  transition-all duration-200
+                  transition-all duration-200 flex items-center justify-start gap-3 w-full text-left
                 "
               >
                 <MdLogout className="w-5 h-5 flex-shrink-0" />

@@ -910,10 +910,8 @@ export const ViewSchedule = () => {
       scheduleData.forEach(item => {
         const userId = item.userId;
 
-        // Get scheduleSessionId from the first shift (all shifts for a user should have the same scheduleSessionId)
-        const scheduleSessionId = item.shifts.length > 0 && item.shifts[0].scheduleSessionId
-          ? item.shifts[0].scheduleSessionId
-          : null;
+        // Get scheduleSessionId from any existing shift (all shifts for a user should have the same scheduleSessionId)
+        const scheduleSessionId = item.shifts.find(shift => shift.scheduleSessionId)?.scheduleSessionId || null;
 
         if (!userScheduleMap.has(userId)) {
           userScheduleMap.set(userId, {
@@ -1420,7 +1418,7 @@ export const ViewSchedule = () => {
       await handlePrint(
         tableContent,
         {
-          title: "Schedule",
+          title: "Scheduled",
           selectedClient,
           currentWeekRange,
           totalEmployees,
