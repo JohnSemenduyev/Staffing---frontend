@@ -191,7 +191,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       w-full text-left py-2 px-4 rounded-lg
                       flex items-center gap-3 text-sm
                       transition-all duration-200 ml-12
-                      ${nestedIsActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+                      ${nestedIsActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
                     `}
                   >
                     <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
@@ -216,7 +216,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             w-full text-left py-2 px-4 rounded-lg
             flex items-center gap-3 text-sm
             transition-all duration-200 ${marginLeft}
-            ${isActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+            ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
           `}
         >
           <child.icon className="w-4 h-4 flex-shrink-0" />
@@ -290,7 +290,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             isActive={isActive}
             className={`
               text-white text-left w-full ${marginLeft}
-              ${isActive ? 'bg-[#00325d] font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+              ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
               transition-all duration-200
               py-2 px-4 rounded-lg
               flex items-center gap-3
@@ -393,7 +393,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                                   w-full text-left py-2 px-4 rounded-lg
                                   flex items-center gap-3 text-sm
                                   transition-all duration-200
-                                  ${isActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+                                  ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
                                 `}
                               >
                                 <child.icon className="w-4 h-4 flex-shrink-0" />
@@ -419,7 +419,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                         w-full text-left py-2 px-4 rounded-lg
                         flex items-center gap-3 text-sm
                         transition-all duration-200
-                        ${isActive ? 'bg-[#00325d] text-white font-semibold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
+                        ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
                       `}
                     >
                       <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -528,7 +528,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                           isActive={isActive}
                           className={`
                             text-white text-left w-full
-                            ${isActive ? 'bg-[#00325d] font-semibold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
+                            ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
                             transition-all duration-200
                             py-2 px-4 rounded-lg
                             flex items-center gap-3
