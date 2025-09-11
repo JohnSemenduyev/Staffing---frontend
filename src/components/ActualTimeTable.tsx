@@ -718,7 +718,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
             <tr>
-              <th className="px-4 py-3 text-left border border-gray-300 whitespace-nowrap">
+              <th className="px-4 py-2 text-left border border-gray-300 whitespace-nowrap">
                 Employee Name
               </th>
               {dateColumns.map(dateCol => (
@@ -726,10 +726,10 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                   <span>{dateCol.display}</span>
                 </th>
               ))}
-              <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap">
+              <th className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap">
                 Total
               </th>
-              <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap w-16">
+              <th className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap w-16">
                 Actions
               </th>
             </tr>

@@ -508,7 +508,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded px-4 py-2 text-left text-sm outline-none transition-all duration-300 ease-in-out hover:bg-[#00325d] focus-visible:ring-2 focus-visible:ring-white/30 active:bg-[#00325d] disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[#00325d] data-[active=true]:font-medium data-[active=true]:text-white data-[state=open]:hover:bg-[#00325d] data-[state=open]:hover:text-white group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0 [&>svg]:text-white text-white",
+  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded px-4 py-2 text-left text-sm outline-none transition-all duration-300 ease-in-out hover:bg-[#00325d] focus-visible:ring-2 focus-visible:ring-white/30 active:bg-[#00325d] disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[#00325d] data-[active=true]:font-semibold data-[active=true]:text-white data-[state=open]:hover:bg-[#00325d] data-[state=open]:hover:text-white group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0 [&>svg]:text-white text-white",
   {
     variants: {
       variant: {

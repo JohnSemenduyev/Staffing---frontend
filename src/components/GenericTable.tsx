@@ -261,14 +261,14 @@ const hasSearchValues = Object.values(searchTerms).some(
               <thead className="bg-[#004175] text-white text-xs font-sans z-[50]">
               <tr className="h-[40px]">
                 {actions.length > 0 && (
-                  <th className="px-4 py-1 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
+                  <th className="px-4 py-3 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
                     Actions
                   </th>
                 )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className={`px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap ${column.headerClassName || ''}`}
+                    className={`px-4 py-2 text-left border-b border-gray-300 whitespace-nowrap ${column.headerClassName || ''}`}
                     style={{
                       width: column.width || 'auto',
                       minWidth: column.width || 'auto',
