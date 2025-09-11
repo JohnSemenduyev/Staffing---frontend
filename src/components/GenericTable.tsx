@@ -272,7 +272,7 @@ const hasSearchValues = Object.values(searchTerms).some(
                     style={{
                       width: column.width || 'auto',
                       minWidth: column.width || 'auto',
-                      height: column.height || 'auto'
+                      height: column.height || 'auto',
                     }}
                   >
                     <div className="flex items-center">

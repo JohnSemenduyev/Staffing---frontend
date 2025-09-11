@@ -219,7 +219,7 @@ export const GeoLocationSetup = () => {
   const tableActions: TableAction[] = [
     {
       label: "Edit",
-      icon: <FaRegEdit className="w-4 h-4" />,
+      icon: <FaRegEdit className="w-4 h-4" color="blue" />,
       onClick: handleEdit,
       className: "text-blue-500 hover:text-green-700 max-w-[100px] text-center",
       title: "Edit"
@@ -403,7 +403,7 @@ export const GeoLocationSetup = () => {
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
-                icon={isEditing ? <FaRegEdit className="w-4 h-4 mr-1" /> : <GoPlus className="w-4 h-4 mr-1" />}
+                icon={isEditing ? <FaRegEdit className="w-4 h-4 mr-1" color="blue" /> : <GoPlus className="w-4 h-4 mr-1" />}
               >
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>

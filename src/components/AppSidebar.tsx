@@ -165,7 +165,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             onClick={() => toggleGroup(child.id)}
             className={`
               w-full text-left py-2 px-4 rounded-lg
-              flex items-center justify-between text-sm font-light
+              flex items-center justify-between text-sm
               transition-all duration-200 ${marginLeft}
               text-white/70 hover:text-white hover:bg-[#00325d]
             `}
@@ -191,7 +191,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       w-full text-left py-2 px-4 rounded-lg
                       flex items-center gap-3 text-sm
                       transition-all duration-200 ml-12
-                      ${nestedIsActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+                      ${nestedIsActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
                     `}
                   >
                     <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
@@ -216,7 +216,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             w-full text-left py-2 px-4 rounded-lg
             flex items-center gap-3 text-sm
             transition-all duration-200 ${marginLeft}
-            ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+            ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
           `}
         >
           <child.icon className="w-4 h-4 flex-shrink-0" />
@@ -241,7 +241,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                 transition-all duration-200
                 py-2 px-4 rounded-lg
                 flex items-center justify-between
-                text-sm font-light w-full ${marginLeft}
+                text-sm w-full ${marginLeft}
               `}
             >
               <div className="flex items-center gap-3">
@@ -262,7 +262,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       isActive={nestedIsActive}
                       className={`
                         text-white text-left w-full ml-8
-                        ${nestedIsActive ? 'bg-[#00325d] font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+                        ${nestedIsActive ? 'bg-[#00325d] font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
                         transition-all duration-200
                         py-2 px-4 rounded-lg
                         flex items-center gap-3
@@ -290,7 +290,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
             isActive={isActive}
             className={`
               text-white text-left w-full ${marginLeft}
-              ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+              ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
               transition-all duration-200
               py-2 px-4 rounded-lg
               flex items-center gap-3
@@ -370,7 +370,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                     <div key={item.id} className="space-y-1">
                       <button
                         onClick={() => toggleGroup(item.id)}
-                        className="w-full text-left py-2 px-4 rounded-lg flex items-center justify-between text-sm font-light text-white/90 hover:text-white hover:bg-[#00325d] transition-all duration-200"
+                        className="w-full text-left py-2 px-4 rounded-lg flex items-center justify-between text-sm  text-white/90 hover:text-white hover:bg-[#00325d] transition-all duration-200"
                       >
                         <div className="flex items-center gap-3">
                           <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -393,7 +393,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                                   w-full text-left py-2 px-4 rounded-lg
                                   flex items-center gap-3 text-sm
                                   transition-all duration-200
-                                  ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d] font-light'}
+                                  ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
                                 `}
                               >
                                 <child.icon className="w-4 h-4 flex-shrink-0" />
@@ -419,7 +419,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                         w-full text-left py-2 px-4 rounded-lg
                         flex items-center gap-3 text-sm
                         transition-all duration-200
-                        ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
+                        ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d]'}
                       `}
                     >
                       <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -439,7 +439,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                 }}
                 variant="ghost"
                 className="
-                   py-2 px-4 rounded-lg text-sm font-light
+                   py-2 px-4 rounded-lg text-sm
                   text-white/90 hover:text-white hover:bg-[#00325d]
                   transition-all duration-200 flex items-center justify-start gap-3 w-full text-left
                 "
@@ -478,7 +478,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                               transition-all duration-200
                               py-2 px-4 rounded-lg
                               flex items-center justify-between
-                              text-sm font-light w-full
+                              text-sm w-full
                             "
                           >
                             <div className="flex items-center gap-3">
@@ -528,7 +528,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                           isActive={isActive}
                           className={`
                             text-white text-left w-full
-                            ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d] font-light'}
+                            ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d]'}
                             transition-all duration-200
                             py-2 px-4 rounded-lg
                             flex items-center gap-3
@@ -560,7 +560,7 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
                       transition-all duration-200
                       py-2 px-4 rounded-lg
                       flex items-center gap-3
-                      text-sm font-light w-full
+                      text-sm w-full
                     "
                   >
                     <Button

@@ -503,6 +503,7 @@ const SidebarMenuItem = React.forwardRef<
     data-sidebar="menu-item"
     className={cn("group/menu-item relative", className)}
     {...props}
+    style={{marginBottom: 8, marginTop: 0}}
   />
 ))
 SidebarMenuItem.displayName = "SidebarMenuItem"

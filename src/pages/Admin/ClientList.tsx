@@ -1102,7 +1102,7 @@ function ClientList() {
                                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
                                      title="Edit client"
                                    >
-                                    <FaRegEdit className="w-4 h-4" />
+                                    <FaRegEdit className="w-4 h-4" color="blue" />
                                   </button>
                                                                      <button
                                      onClick={() => handleDeleteClient(

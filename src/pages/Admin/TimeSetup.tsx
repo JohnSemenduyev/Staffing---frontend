@@ -271,7 +271,7 @@ export const TimeSetup = () => {
   ];
 
   const tableActions: TableAction[] = [
-    { label: "Edit", icon: <FaRegEdit className="w-4 h-4" />, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
+    { label: "Edit", icon: <FaRegEdit className="w-4 h-4" color="blue"/>, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
     { label: "Delete", icon: <FaRegTrashAlt className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
   ];
 const handleSearch = (formData: { [key: string]: any }) => {

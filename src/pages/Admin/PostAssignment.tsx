@@ -244,7 +244,7 @@ export const PostAssignment = () => {
   const tableActions: TableAction[] = [
     {
       label: "Edit",
-      icon: <FaRegEdit className="w-4 h-4" />,
+      icon: <FaRegEdit className="w-4 h-4" color="blue" />,
       onClick: (record: any) => handleEdit(record),
       className: "text-blue-500 hover:text-green-700",
       title: "Edit"

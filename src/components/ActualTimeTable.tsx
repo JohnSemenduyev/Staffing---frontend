@@ -782,7 +782,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                             {isEditMode && shift && (
                               <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
                                  <Button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} variant="ghost" size="icon-sm" className="text-blue-600 p-0.5" title="Edit sessions">
-                                   <FaRegEdit className="w-4 h-4" />
+                                   <FaRegEdit className="w-4 h-4" color="blue" />
                                  </Button>
                                  {hasSessions && (
                                    <Button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} variant="ghost" size="icon-sm" className="text-red-600 p-0.5" title="Delete all sessions">
@@ -951,7 +951,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                }`}
              title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
            >
-             <FaRegEdit className="w-5 h-5" />
+             <FaRegEdit className="w-5 h-5" color="blue" />
            </button>
         </div>
       </div>
@@ -1009,7 +1009,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
               </button>
               <button type="button" onClick={cancelEditShiftSessions} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]">Cancel</button>
               <button type="button" onClick={saveEditShiftSessions} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center">
-                <FaRegEdit className="w-4 h-4 mr-2" /> Save
+                <FaRegEdit className="w-4 h-4 mr-2" color="blue" /> Save
               </button>
             </div>
             

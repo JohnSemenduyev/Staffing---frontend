@@ -565,7 +565,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   };
 
   return (
-    <div className="relative w-full  border border-gray-200 shadow-xl">
+    <div className="relative w-full  border border-gray-200 shadow-xl rounded-2xl overflow-hidden">
       {loading && (
         <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -663,7 +663,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                        className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
                                        title="Edit shift"
                                      >
-                                       <FaRegEdit className="w-4 h-4" />
+                                       <FaRegEdit className="w-4 h-4" color="blue" />
                                      </button>
                                      <button
                                        onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
@@ -890,7 +890,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                }`}
                title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
              >
-               <FaRegEdit className="w-5 h-5" />
+               <FaRegEdit className="w-5 h-5" color="blue" />
              </button>
           </div>
         )}
@@ -969,7 +969,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                  onClick={confirmEditShift}
                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
                >
-                 <FaRegEdit className="w-4 h-4 mr-2" />
+                 <FaRegEdit className="w-4 h-4 mr-2" color="blue" />
                  Update
                </button>
             </div>
