@@ -517,7 +517,7 @@ export default function AssignmentNew() {
           {isEditing ? "Edit Assignment" : "Add Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 sm:grid-cols-3  gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3  lg:grid-cols-4 xxl:grid-cols-3 gap-2">
             <div className="relative">
               <input
                 type="text"
@@ -801,7 +801,7 @@ export default function AssignmentNew() {
 
             {/* Notification Dropdown */}
             <div
-              className="relative  sm:col-span-3  "
+              className="relative  sm:col-span-3 lg:col-span-2 "
               ref={notificationDropdownRef}
             >
               <div
@@ -902,7 +902,7 @@ export default function AssignmentNew() {
             </div>
 
             {/* Submit and Reset Buttons */}
-            <div className="flex justify-start gap-2">
+            <div className="flex justify-start items-start gap-2">
               <SubmitButton
                 loading={submitLoader}
                 disabled={submitLoader}
