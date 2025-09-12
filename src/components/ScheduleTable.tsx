@@ -576,7 +576,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-            <tr className="h-[41px]">
+            <tr className="h-[41px]"  style={{ lineHeight: '16px' }}>
               <th className="px-4 py-2 text-left border border-gray-300 whitespace-nowrap">
                 Employee Name
               </th>

@@ -259,7 +259,7 @@ const hasSearchValues = Object.values(searchTerms).some(
        <div className="w-full h-full overflow-auto bg-white rounded-2xl">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans z-[50]">
-              <tr className="h-[41px]">
+              <tr className="h-[41px]"  style={{ lineHeight: '16px' }}>
                 {actions.length > 0 && (
                   <th className="px-4 py-2 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
                     <div className="flex items-center h-full">
@@ -308,7 +308,7 @@ const hasSearchValues = Object.values(searchTerms).some(
                 ))}
               </tr>
               {searchable && (
-                <tr className="bg-white text-gray-700 font-sans w-full h-[41px]">
+                <tr className="bg-white text-gray-700 font-sans w-full h-[41px]"  style={{ lineHeight: '16px' }}>
                   {actions.length > 0 &&  <th className="px-4 py-2 text-left">
          {hasSearchValues && (
           // <button
