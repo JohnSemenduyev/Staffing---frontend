@@ -262,13 +262,15 @@ const hasSearchValues = Object.values(searchTerms).some(
               <tr className="h-[41px]">
                 {actions.length > 0 && (
                   <th className="px-4 py-2 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
+                    <div className="flex items-center h-full">
                     Actions
+                    </div>
                   </th>
                 )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className={`px-4 py-2 text-left border-b border-gray-300 whitespace-nowrap ${column.headerClassName || ''}`}
+                    className={`px-4 py-2 text-left  whitespace-nowrap ${column.headerClassName || ''}`}
                     style={{
                       width: column.width || 'auto',
                       minWidth: column.width || 'auto',
