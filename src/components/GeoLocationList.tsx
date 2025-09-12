@@ -107,7 +107,7 @@ const GeoLocationList: React.FC = () => {
   return (
     <div className="w-full max-w-full">
       <div className="mb-3 sm:mb-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 font-sans">
+        <h2 className="text-lg sm:text-lg font-semibold text-gray-900 font-sans">
           Assignment History
         </h2>
       </div>

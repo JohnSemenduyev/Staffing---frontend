@@ -310,11 +310,11 @@ const handleSearch = (formData: { [key: string]: any }) => {
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
 
       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-1">
-        <h2 className="text-xl font-semibold mb-2">
+        <h2 className="text-lg font-semibold mb-2">
           {editId ? "Edit Time Setup" : "Add Time Setup"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
             <div className="relative">
               <input
                 type="text"

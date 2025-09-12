@@ -21,13 +21,7 @@ export default {
 			fontFamily: {
 				sans: [
 					"ui-sans-serif",
-					"system-ui",
-					"-apple-system",
-					"Segoe UI",
-					"Roboto",
-					"Helvetica Neue",
-					"Arial",
-					"Noto Sans",
+					"system-ui", 
 					"sans-serif",
 					"Apple Color Emoji",
 					"Segoe UI Emoji",

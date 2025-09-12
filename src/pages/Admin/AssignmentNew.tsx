@@ -513,7 +513,7 @@ export default function AssignmentNew() {
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
-        <h2 className="text-xl font-semibold mb-2">
+        <h2 className="text-lg font-semibold mb-2">
           {isEditing ? "Edit Assignment" : "Add Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">

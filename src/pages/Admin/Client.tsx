@@ -130,7 +130,7 @@ export const Client = () => {
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Client List</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Client List</h2>
       </div>
       <GenericTable
         data={addresses || []}

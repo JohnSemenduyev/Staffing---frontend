@@ -648,7 +648,7 @@ function ClientList() {
 
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">
+          <h2 className="text-lg font-semibold text-gray-800">
             Client  List
           </h2>
 
