@@ -234,7 +234,7 @@ const AddressComponent: React.FC<AddressComponentProps> = ({
             value={address.address}
             onChange={(e) => handleInputChange('address', e.target.value)}
             placeholder="123 Main Street"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-sm"
+            className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition "
             required
           />
         </div>
@@ -250,7 +250,7 @@ const AddressComponent: React.FC<AddressComponentProps> = ({
               value={address.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
               placeholder="New York"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-sm"
+              className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
               required
             />
           </div>
@@ -261,7 +261,7 @@ const AddressComponent: React.FC<AddressComponentProps> = ({
             <select
               value={address.state}
               onChange={(e) => handleInputChange('state', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-sm bg-white"
+              className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition "
               required
             >
               <option value="">Select State</option>
@@ -284,7 +284,7 @@ const AddressComponent: React.FC<AddressComponentProps> = ({
             value={address.zipcode}
             onChange={(e) => handleInputChange('zipcode', e.target.value)}
             placeholder="10001"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-sm"
+            className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition "
             required
           />
         </div>

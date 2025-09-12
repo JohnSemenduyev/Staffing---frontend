@@ -989,11 +989,11 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                 <div key={idx} className="grid grid-cols-11 gap-2 items-end">
                   <div className="col-span-5">
                     <label className="block text-xs text-gray-600 mb-1">Check In</label>
-                    <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                    <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
                   </div>
                   <div className="col-span-5">
                     <label className="block text-xs text-gray-600 mb-1">Check Out</label>
-                    <input type="time" value={row.clockOut} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOut: e.target.value } : r))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                    <input type="time" value={row.clockOut} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOut: e.target.value } : r))} className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
                   </div>
                   <div className="col-span-1 flex justify-end">
                     <button onClick={() => removeEditSessionRow(idx)} className="text-red-600 inline-flex items-center px-2 py-2 hover:bg-red-50 rounded-md" title="Delete this session">
