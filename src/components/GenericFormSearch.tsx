@@ -184,7 +184,7 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
                 onChange={(e) => handleChange(field.name, e.target.checked)}
                 className="mr-3 text-[#004175] focus:ring-[#004175] focus:ring-2"
               />
-              <span className="text-gray-700 text-sm">
+              <span className="text-black text-sm  ">
                 {field.label || field.placeholder}
               </span>
             </label>

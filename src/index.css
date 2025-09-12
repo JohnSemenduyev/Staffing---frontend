@@ -130,6 +130,7 @@ All colors MUST be HSL.
   input[type='number'] {
     -moz-appearance: textfield;
   }
+  
 }
 
 @layer base {

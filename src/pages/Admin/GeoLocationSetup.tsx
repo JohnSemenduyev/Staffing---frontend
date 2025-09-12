@@ -11,9 +11,12 @@ import SubmitButton from "../../components/ui/ButtonUi";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { Button } from "../../components/ui/button";
+import { twMerge } from "tailwind-merge";
 
-export const inputClasses = ` w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition`;
-
+// export const inputClasses = ` w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition`;
+export const inputClasses = twMerge(
+  "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition",
+);
 export const GeoLocationSetup = () => {
   const [form, setForm] = useState({ clientId: "", addressId: "", distance: "", time: "" });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
