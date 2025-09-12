@@ -78,7 +78,7 @@ export const GenericForm: React.FC<GenericFormProps> = ({
                     <div
                       key={index}
                       onMouseDown={() => field.onSelect && field.onSelect(item)}
-                      className={`cursor-pointer ${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-gray-100`}
+                      className={`cursor-pointer bg-white hover:bg-gray-100`}
                     >
                       {field.renderDropdownItem ? field.renderDropdownItem(item, index) : (
                         <div className="p-4 text-sm">{item.name || item.label || item.toString()}</div>

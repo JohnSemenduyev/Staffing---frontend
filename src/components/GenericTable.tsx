@@ -342,7 +342,7 @@ const hasSearchValues = Object.values(searchTerms).some(
                   {filteredAndSortedData.map((record, index) => (
                     <tr
                       key={record.id || index}
-                      className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                      className={`hover:bg-blue-50 transition-colors bg-white
                         }`}
                     >
                       {actions.length > 0 && (
