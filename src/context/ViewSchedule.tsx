@@ -135,8 +135,6 @@ type ClientSessionContextType = {
 
   bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<any>;
   mutationLoading: boolean;
-
-  // Session data for actual time tracking
   sessionData: SessionItem[] | null;
   sessionLoading: boolean;
   sessionError: string | null;

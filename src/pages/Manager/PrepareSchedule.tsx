@@ -650,7 +650,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       );
 
       // message === null -> allowed (same as previous overlap === true)
-      if (result && result.message === null) {
+      if (result ) {
         checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
         return true;
       }
