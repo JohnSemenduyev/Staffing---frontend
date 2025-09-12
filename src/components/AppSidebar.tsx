@@ -166,7 +166,7 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={twMerge(
-          "fixed sm:static top-0 left-0 w-64 h-full bg-[#004175] text-white p-5 z-50 transition-transform duration-300 ease-in-out",
+          "fixed sm:static top-0 left-0 min-w-[250px] h-full bg-[#004175] text-white p-5 z-50 transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "sm:translate-x-0 sm:block"
         )}
@@ -181,14 +181,14 @@ export function AppSidebar() {
               // Item with children
               const isExpanded = expandedGroups.has(item.id);
               return (
-                <div key={item.id}>
+                <div key={item.id} style={{lineHeight: '20px'}} >
                   <button
                     onClick={() => toggleGroup(item.id)}
                     className="flex items-center justify-between gap-3 px-4 py-2 rounded transition hover:bg-[#00325d] w-full text-left"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3" >
                       <item.icon className="text-white w-4 h-4"/>
-                      <span className="text-sm">{item.label}</span>
+                      <span className="text-sm" >{item.label}</span>
                     </div>
                     {isExpanded ? <ChevronDown /> : <ChevronRight />}
                   </button>
@@ -201,7 +201,7 @@ export function AppSidebar() {
                             key={child.id}
                             onClick={() => handleNavigation(child.path)}
                             className={twMerge(
-                              "flex items-center gap-3 px-4 py-2 mt-0 rounded transition hover:bg-[#00325d] w-full text-left ml-6",
+                              "flex w-[calc(100%-25px)] items-center gap-3 px-4 py-2 mt-2 rounded transition hover:bg-[#00325d]  text-left ml-6",
                               isActive ? "bg-[#00325d] font-semibold" : ""
                             )}
                           >
@@ -227,7 +227,7 @@ export function AppSidebar() {
                   )}
                 >
                   <item.icon className="text-white w-4 h-4"/>
-                  <span className="text-sm">{item.label}</span>
+                  <span className="text-sm" style={{lineHeight: '20px'}}>{item.label}</span>
                 </button>
               );
             }

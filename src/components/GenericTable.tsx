@@ -256,7 +256,7 @@ const hasSearchValues = Object.values(searchTerms).some(
             </div>
           )}
 
-       <div className="w-full h-full overflow-auto bg-white rounded-2xl">
+       <div className="w-full h-full overflow-auto bg-white rounded-t-2xl">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans z-[50]">
               <tr className="h-[41px]"  style={{ lineHeight: '16px' }}>
