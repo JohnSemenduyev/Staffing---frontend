@@ -576,19 +576,19 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-            <tr>
-              <th className="px-4 py-3 text-left border border-gray-300 whitespace-nowrap">
+            <tr className="h-[41px]">
+              <th className="px-4 py-2 text-left border border-gray-300 whitespace-nowrap">
                 Employee Name
               </th>
               {dateColumns.map(dateCol => (
-                <th key={dateCol.date} className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
+                <th key={dateCol.date} className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
                   {dateCol.display}
                 </th>
               ))}
-              <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap">
+              <th className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap">
                 Total
               </th>
-              <th className="px-4 py-3 text-center border border-gray-300 whitespace-nowrap w-16">
+              <th className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap w-16">
                 Auto
               </th>
             </tr>

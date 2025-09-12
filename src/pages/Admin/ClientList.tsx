@@ -673,7 +673,7 @@ function ClientList() {
           <div className="w-full h-full overflow-auto bg-white rounded-2xl custom-scrollbar">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
               <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-                <tr>
+                <tr className="h-[41px]">
                   <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
                     Actions
                   </th>

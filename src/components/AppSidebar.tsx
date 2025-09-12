@@ -19,37 +19,23 @@ import {
   UserCog,
 } from 'lucide-react';
 import { MdLogout } from "react-icons/md";
-
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarTrigger,
-  useSidebar,
-} from '../components/ui/sidebar';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Button } from './ui/button';
+import { twMerge } from "tailwind-merge";
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/LoginContext';
-const managerTabs = [
 
-      { id: 'prepare-schedule', label: 'Prepare Schedule', icon: FileText, path: '/prepare-schedule' },
-      { id: 'view-schedule', label: 'View Schedule', icon: Eye, path: '/view-schedule' },
-      { id: 'view-time-summary', label: 'View Time Summary', icon: BarChart3, path: '/view-time-summary' },
-      { id: 'uniform-compliance', label: 'Uniform Compliance', icon: Shield, path: '/uniform-compliance' },
-      { id: 'notification', label: 'Notification', icon: Bell, path: '/notification' },
-    ]
-  
+const managerTabs = [
+  { id: 'prepare-schedule', label: 'Prepare Schedule', icon: FileText, path: '/prepare-schedule' },
+  { id: 'view-schedule', label: 'View Schedule', icon: Eye, path: '/view-schedule' },
+  { id: 'view-time-summary', label: 'View Time Summary', icon: BarChart3, path: '/view-time-summary' },
+  { id: 'uniform-compliance', label: 'Uniform Compliance', icon: Shield, path: '/uniform-compliance' },
+  { id: 'notification', label: 'Notification', icon: Bell, path: '/notification' },
+];
+
 const adminTabs = [
   {
     id: 'assign-user-permission',
     label: 'Assign User Permission',
-    icon: UserCheck, // More specific than Users
+    icon: UserCheck,
     path: '/assign-user-permission',
   },
   {
@@ -73,30 +59,30 @@ const adminTabs = [
   {
     id: 'parent',
     label: 'User List',
-    icon: Users, // Makes sense for grouping users
+    icon: Users,
     children: [
       {
         id: 'parent-dashboard-1',
         label: 'Client',
-        icon: Briefcase, // Represents a business/client
+        icon: Briefcase,
         path: '/client',
       },
       {
         id: 'parent-dashboard-2',
         label: 'Guard',
-        icon: Shield, // Security/guard
+        icon: Shield,
         path: '/guard',
       },
       {
         id: 'parent-dashboard-3',
         label: 'Manager',
-        icon: UserCog, // Manager with settings role
+        icon: UserCog,
         path: '/manager',
       },
       {
         id: 'parent-dashboard-4',
         label: 'Administrator',
-        icon: UserCheck, // Admin/privileged
+        icon: UserCheck,
         path: '/admin',
       },
     ],
@@ -111,38 +97,37 @@ const adminTabs = [
 
 export function AppSidebar() {
   const navigate = useNavigate();
-  const { state, toggleSidebar } = useSidebar();
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-const { logout, role, token ,isLoading} = useAuth(); // ✅ Get role and token from auth context
+  const [isOpen, setIsOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
+  const { logout, role, token, isLoading } = useAuth();
 
-if (isLoading) {
-  return (
-    <div className="flex items-center justify-center h-screen bg-gray-50">
-      <div className="flex items-center space-x-2">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-gray-500">Loading...</span>
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="flex items-center space-x-2">
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-gray-500">Loading...</span>
+        </div>
       </div>
-    </div>
-  );
-}
-    // Replace the user check with role check
-    if (!role || !token) {
-      return null;
-    }
+    );
+  }
 
-// Fix the tabs and portalTitle logic
-const tabs = role === 'manager' ? managerTabs : adminTabs; // ✅ Use role instead of user.role
-const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral';   const isCollapsed = state === 'collapsed';
+  if (!role || !token) {
+    return null;
+  }
+
+  const tabs = role === 'manager' ? managerTabs : adminTabs;
+  const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Portal';
+
+  const onClose = () => setIsOpen(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
-
   };
 
-  const toggleGroup = (groupId: string) => {
+  const toggleGroup = (groupId) => {
     setExpandedGroups(prev => {
       const newSet = new Set(prev);
       if (newSet.has(groupId)) {
@@ -154,430 +139,111 @@ const portalTitle = role === 'manager' ? 'Manager Portal' : 'Administrator Poral
     });
   };
 
-  // Helper function to render nested children
-  const renderNestedChild = (child, isActive, marginLeft = 'ml-6') => {
-    if (child.children) {
-      // This is a nested parent with children
-      const isExpanded = expandedGroups.has(child.id);
-      return (
-        <div key={child.id} className="space-y-1">
-          <button
-            onClick={() => toggleGroup(child.id)}
-            className={`
-              w-full text-left py-2 px-4 rounded-lg
-              flex items-center justify-between text-sm
-              transition-all duration-200 ${marginLeft}
-              text-white/70 hover:text-white hover:bg-[#00325d]
-            `}
-          >
-            <div className="flex items-center gap-3">
-              <child.icon className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">{child.label}</span>
-            </div>
-            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          </button>
-          {isExpanded && (
-            <div className="space-y-1">
-              {child.children.map((nestedChild) => {
-                const nestedIsActive = location.pathname === nestedChild.path;
-                return (
-                  <button
-                    key={nestedChild.id}
-                    onClick={() => {
-                      navigate(nestedChild.path);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`
-                      w-full text-left py-2 px-4 rounded-lg
-                      flex items-center gap-3 text-sm
-                      transition-all duration-200 ml-12
-                      ${nestedIsActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
-                    `}
-                  >
-                    <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{nestedChild.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    } else {
-      // Regular child with path
-      return (
-        <button
-          key={child.id}
-          onClick={() => {
-            navigate(child.path);
-            setIsMobileMenuOpen(false);
-          }}
-          className={`
-            w-full text-left py-2 px-4 rounded-lg
-            flex items-center gap-3 text-sm
-            transition-all duration-200 ${marginLeft}
-            ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
-          `}
-        >
-          <child.icon className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate">{child.label}</span>
-        </button>
-      );
-    }
-  };
-
-  // Helper function for desktop nested children
-  const renderDesktopNestedChild = (child, isActive, marginLeft = 'ml-4') => {
-    if (child.children) {
-      // This is a nested parent with children
-      const isExpanded = expandedGroups.has(child.id);
-      return (
-        <div key={child.id} className="space-y-1">
-          <SidebarMenuItem className="px-4">
-            <SidebarMenuButton
-              onClick={() => toggleGroup(child.id)}
-              className={`
-                text-white/70 hover:text-white hover:bg-[#00325d]
-                transition-all duration-200
-                py-2 px-4 rounded-lg
-                flex items-center justify-between
-                text-sm w-full ${marginLeft}
-              `}
-            >
-              <div className="flex items-center gap-3">
-                <child.icon className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{child.label}</span>
-              </div>
-              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          {isExpanded && (
-            <div className="space-y-1">
-              {child.children.map((nestedChild) => {
-                const nestedIsActive = location.pathname === nestedChild.path;
-                return (
-                  <SidebarMenuItem key={nestedChild.id} className="px-4">
-                    <SidebarMenuButton
-                      asChild
-                      isActive={nestedIsActive}
-                      className={`
-                        text-white text-left w-full ml-8
-                        ${nestedIsActive ? 'bg-[#00325d] font-semibold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
-                        transition-all duration-200
-                        py-2 px-4 rounded-lg
-                        flex items-center gap-3
-                        text-sm
-                      `}
-                    >
-                      <NavLink to={nestedChild.path} className="flex items-center gap-3 w-full">
-                        <nestedChild.icon className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{nestedChild.label}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    } else {
-      // Regular child with path
-      return (
-        <SidebarMenuItem key={child.id} className="px-4 ">
-          <SidebarMenuButton
-            asChild
-            isActive={isActive}
-            className={`
-              text-white text-left w-full ${marginLeft}
-              ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
-              transition-all duration-200
-              py-2 px-4 rounded-lg
-              flex items-center gap-3
-              text-sm
-            `}
-          >
-            <NavLink to={child.path} className="flex items-center gap-3 w-full">
-              <child.icon className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">{child.label}</span>
-            </NavLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      );
-    }
+  const handleNavigation = (path) => {
+    navigate(path);
+    onClose();
   };
 
   return (
     <>
-      {/* Mobile Menu Toggle Button - Always visible on mobile */}
-      <div className="fixed top-2 left-4 z-50 md:hidden">
-        <Button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          variant="secondary"
-          size="icon"
-          className="shadow-lg"
-        >
-          {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-        </Button>
-      </div>
+      {/* Hamburger Button */}
+      <button
+        className="sm:hidden fixed top-2 left-4 z-50 bg-white p-2 rounded shadow-md"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Menu size={18} />
+      </button>
 
-      {/* Desktop Collapsed Sidebar Toggle Button */}
-      {isCollapsed && (
-        <div className="fixed top-2 left-4 z-50 hidden md:block">
-          <Button
-            onClick={toggleSidebar}
-            variant="secondary"
-            size="icon"
-          >
-            <Menu className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
+      {/* Mobile Overlay */}
+      <div
+        className={twMerge(
+          "fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden transition-opacity",
+          isOpen ? "block" : "hidden"
+        )}
+        onClick={onClose}
+      />
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      {/* Sidebar */}
+      <aside
+        className={twMerge(
+          "fixed sm:static top-0 left-0 w-64 h-full bg-[#004175] text-white p-5 z-50 transition-transform duration-300 ease-in-out",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          "sm:translate-x-0 sm:block"
+        )}
+      >
+        <h1 className="text-2xl font-bold mb-6 block text-white">
+          {portalTitle}
+        </h1>
 
-      {/* Mobile Menu Sidebar */}
-      <div className={`
-        fixed top-0 left-0 h-full w-64 bg-[#004175] z-50 transform transition-transform duration-300 ease-in-out md:hidden
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b border-white/20">
-            <h1 className="text-xl font-bold text-white">
-              {portalTitle}
-            </h1>
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-1 text-white hover:bg-[#00325d] rounded"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-1">
-              {tabs.map((item) => {
-                if (item.children) {
-                  // Item with children (like Parent Dashboard)
-                  const isExpanded = expandedGroups.has(item.id);
-                  return (
-                    <div key={item.id} className="space-y-1">
-                      <button
-                        onClick={() => toggleGroup(item.id)}
-                        className="w-full text-left py-2 px-4 rounded-lg flex items-center justify-between text-sm  text-white/90 hover:text-white hover:bg-[#00325d] transition-all duration-200"
-                      >
-                        <div className="flex items-center gap-3">
-                          <item.icon className="w-5 h-5 flex-shrink-0" />
-                          <span className="truncate">{item.label}</span>
-                        </div>
-                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                      {isExpanded && (
-                        <div className="ml-6 space-y-1">
-                          {item.children.map((child) => {
-                            const isActive = location.pathname === child.path;
-                            return (
-                              <button
-                                key={child.id}
-                                onClick={() => {
-                                  navigate(child.path);
-                                  setIsMobileMenuOpen(false);
-                                }}
-                                className={`
-                                  w-full text-left py-2 px-4 rounded-lg
-                                  flex items-center gap-3 text-sm
-                                  transition-all duration-200
-                                  ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
-                                `}
-                              >
-                                <child.icon className="w-4 h-4 flex-shrink-0" />
-                                <span className="truncate">{child.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else {
-                  // Regular item with path
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        navigate(item.path);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`
-                        w-full text-left py-2 px-4 rounded-lg
-                        flex items-center gap-3 text-sm
-                        transition-all duration-200
-                        ${isActive ? 'bg-[#00325d] text-white font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d]'}
-                      `}
-                    >
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                    </button>
-                  );
-                }
-              })}
-            </div>
-            
-            {/* Logout button */}
-            <div className="">
-              <Button
-                onClick={() => {
-                  handleLogout();
-                  setIsMobileMenuOpen(false);
-                }}
-                variant="ghost"
-                className="
-                   py-2 px-4 rounded-lg text-sm
-                  text-white/90 hover:text-white hover:bg-[#00325d]
-                  transition-all duration-200 flex items-center justify-start gap-3 w-full text-left
-                "
-              >
-                <MdLogout className="w-5 h-5 flex-shrink-0" />
-                <span>Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop Sidebar */}
-      <Sidebar collapsible="icon" className="w-64 hidden md:block">
-        <SidebarHeader className="px-0 py-6 relative">
-          <h1 className="text-xl font-bold block text-white text-center">
-            {portalTitle}
-          </h1>
-        </SidebarHeader>
-
-        <SidebarContent className="px-0">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {tabs.map((item) => {
-                  if (item.children) {
-                    // Item with children (like Parent Dashboard)
-                    const isExpanded = expandedGroups.has(item.id);
-                    return (
-                      <div key={item.id} className="space-y-1">
-                        <SidebarMenuItem className="px-4">
-                          <SidebarMenuButton
-                            onClick={() => toggleGroup(item.id)}
-                            className="
-                              text-white/90 hover:text-white hover:bg-[#00325d]
-                              transition-all duration-200
-                              py-2 px-4 rounded-lg
-                              flex items-center justify-between
-                              text-sm w-full
-                            "
-                          >
-                            <div className="flex items-center gap-3">
-                              <item.icon className="w-5 h-5 flex-shrink-0" />
-                              <span className="truncate">{item.label}</span>
-                            </div>
-                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        {isExpanded && (
-                          <div className="ml-4 space-y-1">
-                            {item.children.map((child) => {
-                              const isActive = location.pathname === child.path;
-                              return (
-                                <SidebarMenuItem key={child.id} className="px-4">
-                                  <SidebarMenuButton
-                                    asChild
-                                    isActive={isActive}
-                                    className={`
-                                      text-white text-left w-full
-                                      ${isActive ? 'bg-[#00325d]' : 'text-white/70 hover:text-white hover:bg-[#00325d]'}
-                                      transition-all duration-200
-                                      py-2 px-4 rounded-lg
-                                      flex items-center gap-3
-                                      text-sm
-                                    `}
-                                  >
-                                    <NavLink to={child.path} className="flex items-center gap-3 w-full">
-                                      <child.icon className="w-4 h-4 flex-shrink-0" />
-                                      <span className="truncate">{child.label}</span>
-                                    </NavLink>
-                                  </SidebarMenuButton>
-                                </SidebarMenuItem>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  } else {
-                    // Regular item with path
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <SidebarMenuItem key={item.id} className="px-4">
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          className={`
-                            text-white text-left w-full
-                            ${isActive ? 'bg-[#00325d] font-bold' : 'text-white/90 hover:text-white hover:bg-[#00325d]'}
-                            transition-all duration-200
-                            py-2 px-4 rounded-lg
-                            flex items-center gap-3
-                            text-sm
-                          `}
-                        >
-                          <NavLink to={item.path} className="flex items-center gap-3 w-full">
-                            <item.icon className="w-5 h-5 flex-shrink-0" />
-                            <span className="truncate">{item.label}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  }
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {/* Logout button aligned like tabs */}
-          <SidebarGroup>
-            <SidebarGroupContent className="px-4">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    className="
-                      text-white/90 hover:text-white hover:bg-[#00325d]
-                      transition-all duration-200
-                      py-2 px-4 rounded-lg
-                      flex items-center gap-3
-                      text-sm w-full
-                    "
+        <nav className="space-y-2">
+          {tabs.map((item) => {
+            if (item.children) {
+              // Item with children
+              const isExpanded = expandedGroups.has(item.id);
+              return (
+                <div key={item.id}>
+                  <button
+                    onClick={() => toggleGroup(item.id)}
+                    className="flex items-center justify-between gap-3 px-4 py-2 rounded transition hover:bg-[#00325d] w-full text-left"
                   >
-                    <Button
-                      onClick={handleLogout}
-                      variant="ghost"
-                      className="flex items-center justify-start gap-3 w-full text-left"
-                    >
-                      <MdLogout className="w-5 h-5 flex-shrink-0" />
-                      <span>Logout</span>
-                    </Button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
+                    <div className="flex items-center gap-3">
+                      <item.icon className="text-white w-4 h-4"/>
+                      <span className="text-sm">{item.label}</span>
+                    </div>
+                    {isExpanded ? <ChevronDown /> : <ChevronRight />}
+                  </button>
+                  {isExpanded && (
+                    <div>
+                      {item.children.map((child) => {
+                        const isActive = location.pathname === child.path;
+                        return (
+                          <button
+                            key={child.id}
+                            onClick={() => handleNavigation(child.path)}
+                            className={twMerge(
+                              "flex items-center gap-3 px-4 py-2 mt-0 rounded transition hover:bg-[#00325d] w-full text-left ml-6",
+                              isActive ? "bg-[#00325d] font-semibold" : ""
+                            )}
+                          >
+                            <child.icon className="text-white w-4 h-4"/>
+                            <span className="text-sm">{child.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            } else {
+              // Regular item with path
+              const isActive = location.pathname === item.path;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavigation(item.path)}
+                  className={twMerge(
+                    "flex items-center gap-3 px-4 py-2 rounded transition hover:bg-[#00325d] w-full text-left",
+                    isActive ? "bg-[#00325d] font-semibold" : ""
+                  )}
+                >
+                  <item.icon className="text-white w-4 h-4"/>
+                  <span className="text-sm">{item.label}</span>
+                </button>
+              );
+            }
+          })}
+          <button
+            onClick={() => {
+              handleLogout();
+              onClose();
+            }}
+            className="flex items-center gap-3 px-4 py-2 rounded transition hover:bg-[#00325d] w-full text-left"
+          >
+            <MdLogout size={18} />
+            <span className="text-sm">Logout</span>
+          </button>
+        </nav>
+      </aside>
     </>
   );
 }

@@ -114,9 +114,9 @@ const GeoLocationList: React.FC = () => {
       <div className="relative w-full overflow-x-auto rounded-2xl border border-gray-200 shadow-xl bg-white">
         <table className="w-full table-auto text-sm text-gray-800 border-separate border-spacing-0 font-sans">
           <thead className="bg-[#004175] text-white text-xs font-sans">
-            <tr>
+            <tr className="h-[41px]">
               {["Actions", "Client Name", "Client Location", "User Name", "Role", "Access", "Guard", "Notifications"].map((header, index) => (
-                <th key={header} className="px-3 sm:px-4 py-3 text-left border-b border-gray-300 whitespace-nowrap">
+                <th key={header} className="px-3 sm:px-4 py-2 text-left border-b border-gray-300 whitespace-nowrap">
                   <div className="flex items-center">
                     {header}
                     {index < 5 && (
@@ -139,7 +139,7 @@ const GeoLocationList: React.FC = () => {
                 </th>
               ))}
             </tr>
-            <tr className="bg-white text-gray-700 font-sans">
+            <tr className="bg-white text-gray-700 font-sans h-[41px]">
               {["clientName", "clientLocation", "invoiceName", "status", "access", "manager"].map((term, idx) => (
                 <th key={term} className="px-2 sm:px-4 py-2 border-b text-left">
                   <input
