@@ -194,6 +194,7 @@ export const validateForm = (formData: FormData, scheduleData: ScheduleItem[], e
 
   // Check for overlapping shifts
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
+    console.log("existing data", scheduleData);
     const existingShifts = scheduleData
       .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
       .flatMap(item => item.shifts);
@@ -207,7 +208,6 @@ export const validateForm = (formData: FormData, scheduleData: ScheduleItem[], e
       }
     }
   }
-
   return e;
 };
 

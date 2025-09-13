@@ -30,7 +30,9 @@ import {
   sortShiftsByTime,
   convertDateFormat,
   validateForm,
-  calculateHours
+  calculateHours,
+  doTimesOverlap,
+  minutesDiffWithWrap
 } from "./ViewSchedule/utils";
 import {
   FormData,
@@ -729,10 +731,34 @@ export const ViewSchedule = () => {
 
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
-    const formErrors = validateForm(form, scheduleData);
-    setErrors(formErrors);
-
-    if (Object.keys(formErrors).length > 0) return;
+    
+    // For "Apply All Week", we need custom validation
+    if (applyAllWeek && currentWeekRange) {
+      const weekErrors: { [key: string]: string } = {};
+      
+      // Basic field validation
+      if (!form.userId) weekErrors.userId = "Required";
+      if (!form.starttime) weekErrors.starttime = "Required";
+      if (!form.endtime) weekErrors.endtime = "Required";
+      
+      // Time duration validation
+      if (form.starttime && form.endtime) {
+        const minutes = minutesDiffWithWrap(form.starttime, form.endtime);
+        if (minutes < 1) {
+          weekErrors.endtime = "End time must be at least 1 minute after start time";
+        }
+      }
+      
+      // For "Apply All Week", we don't block submission if there are overlaps
+      // Instead, we'll skip overlapping days during the actual shift addition
+      setErrors(weekErrors);
+      if (Object.keys(weekErrors).length > 0) return;
+    } else {
+      // Single date validation
+      const formErrors = validateForm(form, scheduleData);
+      setErrors(formErrors);
+      if (Object.keys(formErrors).length > 0) return;
+    }
 
     setSubmitLoader(true);
 
@@ -758,6 +784,10 @@ export const ViewSchedule = () => {
         auto: auto,
       };
 
+      // Initialize counters for tracking added/skipped days
+      let addedDays = 0;
+      let skippedDays = 0;
+
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
@@ -767,6 +797,21 @@ export const ViewSchedule = () => {
           dateObj.setDate(startDate.getDate() + i);
           // Use local timezone formatting
           const dateStr = toLocalYMD(dateObj);
+
+          // Check for overlap before adding shift
+          const existingShiftsForDate = updatedScheduleData
+            .filter(item => item.userId === Number(form.userId) && item.startDate === dateStr)
+            .flatMap(item => item.shifts);
+
+          const hasOverlap = existingShiftsForDate.some(existingShift => {
+            return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
+          });
+
+          if (hasOverlap) {
+            skippedDays++;
+            console.log(`Skipping ${dateStr} due to overlap`);
+            continue; // Skip this day and move to next
+          }
 
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -789,6 +834,7 @@ export const ViewSchedule = () => {
               ...updatedScheduleData[existingScheduleIndex],
               shifts: sortShiftsByTime(newShifts)
             };
+            addedDays++;
           } else {
             // Create new schedule for this day
             updatedScheduleData.push({
@@ -810,6 +856,7 @@ export const ViewSchedule = () => {
               userName: [selectedUser.name, (selectedUser as any)?.lastName].filter(Boolean).join(" "),
               userPhone: (selectedUser as any)?.phone || '',
             });
+            addedDays++;
           }
         }
       } else {
@@ -833,6 +880,7 @@ export const ViewSchedule = () => {
             ...updatedScheduleData[existingScheduleIndex],
             shifts: sortShiftsByTime(newShifts)
           };
+          addedDays = 1; // Single day added
         } else {
           // Create new schedule
           updatedScheduleData.push({
@@ -854,6 +902,7 @@ export const ViewSchedule = () => {
             userName: [selectedUser.name, (selectedUser as any)?.lastName].filter(Boolean).join(" "),
             userPhone: (selectedUser as any)?.phone || '',
           });
+          addedDays = 1; // Single day added
         }
       }
 
@@ -862,10 +911,31 @@ export const ViewSchedule = () => {
 
       resetAddGuardForm();
 
-      toast({
-        title: "Success",
-        description: "New guard shift added successfully!",
-      });
+      // Show appropriate success message based on Apply All Week or single date
+      if (applyAllWeek && currentWeekRange) {
+        if (addedDays > 0 && skippedDays > 0) {
+          toast({
+            title: "Partial Success",
+            description: `Shifts added to ${addedDays} days. Skipped ${skippedDays} days due to overlapping shifts.`,
+          });
+        } else if (addedDays > 0) {
+          toast({
+            title: "Success",
+            description: `Shifts added successfully to all ${addedDays} days!`,
+          });
+        } else {
+          toast({
+            title: "No Shifts Added",
+            description: "All days had overlapping shifts. No shifts were added.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: "New guard shift added successfully!",
+        });
+      }
     } catch (err) {
       console.error("Error adding guard shift:", err);
       toast({

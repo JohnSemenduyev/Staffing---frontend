@@ -615,7 +615,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       }
     } else {
       // Create new schedule - check backend overlap first
-      if (checkBackendOverlap(false)) {
+      if (checkBackendOverlap()) {
         handleOverlapError("Backend overlap detected in new schedule creation, blocking drop");
         return;
       }
