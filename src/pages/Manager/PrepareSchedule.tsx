@@ -640,7 +640,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
     addressId: string,
     userId: string,
     startDate: string
-  ): Promise<boolean> => {
+  ): Promise<any> => {
     try {
       const result = await checkClientWeekSchedule(
         Number(clientId),
@@ -652,9 +652,9 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       // message === null -> allowed (same as previous overlap === true)
       if (result ) {
         checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
-          setExistingShifts(result.shifts);
-          console.log("Existing Shifts:", JSON.stringify(existingShifts));
-        return true;
+        setExistingShifts(result.shifts);
+        console.log("Existing Shifts:", JSON.stringify(result.shifts));
+        return result; // Return the full result object
       }
     
       // message present -> blocked; show server message
@@ -673,9 +673,9 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             variant: "destructive",
           });
         }
-        return false;
+        return null;
       }
-      return false;
+      return null;
     } catch (error: any) {
       // Handle GraphQL error response format
       if (error.response?.errors && error.response.errors.length > 0) {
@@ -695,7 +695,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           variant: "destructive",
         });
       }
-      return false;
+      return null;
     }
   };
 
@@ -716,9 +716,33 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         setSubmitLoader(false);
         return;
       }
+      
+      // Get existing shifts from the results
+      const currentExistingShifts = results?.shifts || [];
       console.log("Results from handleCheck:", JSON.stringify(results));
+      console.log("Current existing shifts:", JSON.stringify(currentExistingShifts));
+      
       // OK → proceed
       setHasOverlapError(false);
+      
+      // Check for local overlap before proceeding
+      const localOverlap = scheduleData
+        .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
+        .flatMap(item => item.shifts)
+        .some(shift => {
+          return doTimesOverlap(form.starttime, form.endtime, shift.startTime, shift.endTime);
+        });
+      
+      if (localOverlap) {
+        toast({
+          title: "Overlapping Shift",
+          description: "Shift time overlaps with existing local shift for this user and date",
+          variant: "destructive",
+        });
+        setSubmitLoader(false);
+        return;
+      }
+      
       let newScheduleItems = [];
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
@@ -730,15 +754,30 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);
           
-          // Check if shift overlaps with existing shifts
-          const hasOverlap = existingShifts.some(shift => {
+          // Check if shift overlaps with server-side existing shifts
+          const serverOverlap = currentExistingShifts.some(shift => {
             const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
             const dateMatch = shiftDateStr === dateStr;
             const timeOverlap = form.starttime < shift.endTime && form.endtime > shift.startTime;
             return dateMatch && timeOverlap;
           });
           
-          if (hasOverlap) continue; // Skip overlapping shifts
+          // Check if shift overlaps with local existing shifts
+          const localOverlap = scheduleData
+            .filter(item => item.userId === Number(form.userId) && item.startDate === dateStr)
+            .flatMap(item => item.shifts)
+            .some(shift => {
+              return doTimesOverlap(form.starttime, form.endtime, shift.startTime, shift.endTime);
+            });
+          
+          if (serverOverlap || localOverlap){
+            toast({
+              title: "Overlapping Shift",
+              description: "Shift time overlaps with existing shift for this user and date",
+              variant: "destructive",
+            });
+            continue; // Skip overlapping shifts
+          }
           
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -798,15 +837,28 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         // Update the schedule data with merged shifts
         setScheduleData(updatedScheduleData);
       } else {
-        // Check if shift overlaps with existing shifts
-        const hasOverlap = existingShifts.some(shift => {
+        // Check if shift overlaps with server-side existing shifts
+        const serverOverlap = currentExistingShifts.some(shift => {
           const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
           const dateMatch = shiftDateStr === form.date;
           const timeOverlap = form.starttime < shift.endTime && form.endtime > shift.startTime;
           return dateMatch && timeOverlap;
         });
         
-        if (hasOverlap) {
+        // Check if shift overlaps with local existing shifts
+        const localOverlap = scheduleData
+          .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
+          .flatMap(item => item.shifts)
+          .some(shift => {
+            return doTimesOverlap(form.starttime, form.endtime, shift.startTime, shift.endTime);
+          });
+        
+        if (serverOverlap || localOverlap) {
+          toast({
+            title: "Overlapping Shift",
+            description: "Shift time overlaps with existing shift for this user and date",
+            variant: "destructive",
+          });
           setSubmitLoader(false);
           return; // Skip if overlapping
         }
