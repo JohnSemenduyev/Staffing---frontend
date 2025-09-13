@@ -648,7 +648,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         Number(addressId),
         Number(userId)
       );
-      console.log("Result from after checkClientWeekSchedule:", result.shifts[0]);
+      // console.log("Result from after checkClientWeekSchedule:", result.shifts[0]);
       // message === null -> allowed (same as previous overlap === true)
       if (result ) {
         checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
