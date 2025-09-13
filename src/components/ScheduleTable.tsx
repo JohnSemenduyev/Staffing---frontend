@@ -76,6 +76,7 @@ interface ScheduleTableProps {
   onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
   onScheduleAutoToggle?: (enabled: boolean) => void;
   hideActionButtons?: boolean; // Hide cancel, edit, download buttons
+  existingShifts?: Shift[]; // Existing shifts from backend for overlap checking
 }
 
 // Utility functions
@@ -186,7 +187,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onUserAutoToggle,
   onShiftAutoToggle,
   onScheduleAutoToggle,
-  hideActionButtons = false
+  hideActionButtons = false,
+  existingShifts = [] // Default empty array for existing shifts
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -475,6 +477,35 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         );
       });
 
+      // Also check against existingShifts from backend
+      if (!hasOverlap) {
+        const hasBackendOverlap = existingShifts.some(existingShift => {
+          // Extract date part from ISO string for comparison
+          const shiftDateStr = existingShift.date.includes('T') ? existingShift.date.split('T')[0] : existingShift.date;
+          const dateMatch = shiftDateStr === targetDate;
+          
+          if (!dateMatch) return false;
+          
+          return doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          );
+        });
+        
+        if (hasBackendOverlap) {
+          hookToast({
+            title: "Overlapping Shift",
+            description: "Cannot drop shift here - it overlaps with existing shifts from backend.",
+            variant: "destructive",
+          });
+          setDraggedShift(null);
+          setDragOverCell(null);
+          return;
+        }
+      }
+
       if (hasOverlap) {
         hookToast({
           title: "Overlapping Shift",
@@ -485,45 +516,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         setDragOverCell(null);
         return;
       }
-
-      // Handle the specific row position
-      const updatedData = scheduleData.map(item => {
-        if (item.userId === targetUserId && item.startDate === targetDate) {
-          const currentShifts = [...item.shifts];
-
-          // If dropping to a specific row position, insert at that position
-          if (targetRowIdx < currentShifts.length) {
-            // Replace the shift at the target row position
-            currentShifts[targetRowIdx] = { 
-              ...shift, 
-              id: Date.now(), 
-              date: targetDate, 
-              confirm: false, 
-              reject: false,
-              scheduleSessionId: currentShifts[0]?.scheduleSessionId // Inherit from existing shifts
-            };
-          } else {
-            // Add to the end if target row is beyond current shifts
-            currentShifts.push({ 
-              ...shift, 
-              id: Date.now(), 
-              date: targetDate, 
-              confirm: false, 
-              reject: false,
-              scheduleSessionId: currentShifts[0]?.scheduleSessionId // Inherit from existing shifts
-            });
-          }
-
-          return {
-            ...item,
-            shifts: sortShiftsByTime(currentShifts)
-          };
-        }
-        return item;
-      });
-
-      onScheduleDataChange(updatedData);
-    } else {
+   } else {
       // Create new schedule for target user/date
       const sourceSchedule = scheduleData.find(
         item => item.userId === sourceUserId && item.startDate === sourceDate
