@@ -66,6 +66,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
   const debouncedSearchTerms = useDebounce(searchTerms, 500);
+  const [showNotificationDropdown, setShowNotificationDropdown] =
+    useState(false);
 
   // Memoize the onSearch callback to prevent unnecessary re-renders
   const memoizedOnSearch = useCallback(onSearch, []);
@@ -115,6 +117,52 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     return [];
   };
 
+//   if (column.searchOptions) {
+//     return column.searchOptions;
+//   }
+
+//   if (column.getSearchOptions) {
+//     return column.getSearchOptions(data);
+//   }
+
+//   if (column.searchType === "dropdown") {
+//     const uniqueValues = new Set<string>();
+
+//     data.forEach((record) => {
+//       const value = getNestedValue(record, column.key);
+
+//       if (value !== null && value !== undefined) {
+//         if (Array.isArray(value)) {
+//           value.forEach((item) => {
+//             if (item !== null && item !== undefined) {
+//               uniqueValues.add(String(item).trim());
+//             }
+//           });
+//         } else if (typeof value === "string" && value.includes(",")) {
+//           // ✅ handle comma-separated multi-select values
+//           value
+//             .split(",")
+//             .map((v) => v.trim())
+//             .filter(Boolean)
+//             .forEach((v) => uniqueValues.add(v));
+//         } else {
+//           uniqueValues.add(String(value).trim());
+//         }
+//       }
+//     });
+
+//     return Array.from(uniqueValues)
+//       .sort((a, b) => a.localeCompare(b)) // ✅ case-insensitive sorting
+//       .map((value) => ({
+//         label: value,
+//         value: value,
+//       }));
+//   }
+
+//   return [];
+// };
+
+
   // FIXED: Use memoizedOnSearch and add proper dependency array
   useEffect(() => {
     if (memoizedOnSearch) {
@@ -125,30 +173,65 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     }
   }, [debouncedSearchTerms, memoizedOnSearch]);
 
+  // const filteredAndSortedData = useMemo(() => {
+  //   // let filtered = data.filter((record) => {
+  //   //   return columns.every((column) => {
+  //   //     if (!column.searchable || !searchTerms[column.key]) return true;
+  //   //     const value = getNestedValue(record, column.key);
+  //   //     const searchTerm = searchTerms[column.key];
+  //   //     if (value === null || value === undefined) return false;
+  //   //     if (column.searchType === 'dropdown') {
+  //   //       if (Array.isArray(value)) {
+  //   //         return value.some(item => String(item) === searchTerm);
+  //   //       } else {
+  //   //         return String(value) === searchTerm;
+  //   //       }
+  //   //     }
+  //   //     const searchTermLower = searchTerm.toLowerCase();
+  //   //     if (Array.isArray(value)) {
+  //   //       return value.some(item =>
+  //   //         String(item).toLowerCase().includes(searchTermLower)
+  //   //       );
+  //   //     } else {
+  //   //       return String(value).toLowerCase().includes(searchTermLower);
+  //   //     }
+  //   //   });
+  //   // });
+
+  //   let filtered = data.filt
+  //   if (sortConfig.key) {
+  //     filtered.sort((a, b) => {
+  //       const aValue = getNestedValue(a, sortConfig.key!);
+  //       const bValue = getNestedValue(b, sortConfig.key!);
+  //       if (aValue === null || aValue === undefined) return 1;
+  //       if (bValue === null || bValue === undefined) return -1;
+  //       let aCompare: any = aValue;
+  //       let bCompare: any = bValue;
+  //       if (Array.isArray(aValue)) aCompare = aValue.length > 0 ? aValue[0] : "";
+  //       if (Array.isArray(bValue)) bCompare = bValue.length > 0 ? bValue[0] : "";
+  //       if (typeof aCompare === "string" && typeof bCompare === "string") {
+  //         aCompare = aCompare.toLowerCase();
+  //         bCompare = bCompare.toLowerCase();
+  //       } else if (!isNaN(Number(aCompare)) && !isNaN(Number(bCompare))) {
+  //         aCompare = Number(aCompare);
+  //         bCompare = Number(bCompare);
+  //       }
+
+  //       if (aCompare < bCompare) {
+  //         return sortConfig.direction === "asc" ? -1 : 1;
+  //       }
+  //       if (aCompare > bCompare) {
+  //         return sortConfig.direction === "asc" ? 1 : -1;
+  //       }
+  //       return 0;
+  //     });
+  //   }
+
+  //   return filtered;
+  // }, [data, searchTerms, sortConfig, columns]);
+
   const filteredAndSortedData = useMemo(() => {
-    let filtered = data.filter((record) => {
-      return columns.every((column) => {
-        if (!column.searchable || !searchTerms[column.key]) return true;
-        const value = getNestedValue(record, column.key);
-        const searchTerm = searchTerms[column.key];
-        if (value === null || value === undefined) return false;
-        if (column.searchType === 'dropdown') {
-          if (Array.isArray(value)) {
-            return value.some(item => String(item) === searchTerm);
-          } else {
-            return String(value) === searchTerm;
-          }
-        }
-        const searchTermLower = searchTerm.toLowerCase();
-        if (Array.isArray(value)) {
-          return value.some(item =>
-            String(item).toLowerCase().includes(searchTermLower)
-          );
-        } else {
-          return String(value).toLowerCase().includes(searchTermLower);
-        }
-      });
-    });
+    let filtered = data;
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
@@ -179,7 +262,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     }
 
     return filtered;
-  }, [data, searchTerms, sortConfig, columns]);
+  }, [data, sortConfig]);
 
   const resetSearch = () => {
   setSearchTerms({});
@@ -191,7 +274,72 @@ const hasSearchValues = Object.values(searchTerms).some(
   const renderSearchField = (column: TableColumn) => {
     if (!column.searchable) return null;
 
-    if (column.searchType === 'dropdown') {
+    if (column.searchType === "dropdown" && column.key === "notification") {
+      const options = column.searchOptions || getColumnSearchOptions(column);
+      const selectedValues = searchTerms[column.key]
+        ? searchTerms[column.key].split(",")
+        : [];
+
+      const handleCheckbox = (optionValue: string) => {
+        let updatedValues: string[];
+        if (selectedValues.includes(optionValue)) {
+          updatedValues = selectedValues.filter((v) => v !== optionValue);
+        } else {
+          updatedValues = [...selectedValues, optionValue];
+        }
+
+        setSearchTerms((prev) => ({
+          ...prev,
+          [column.key]: updatedValues.join(","), // store as comma-separated string
+        }));
+      };
+
+      return (
+        <div className="relative">
+          <div
+            className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
+            onClick={() =>
+              setShowNotificationDropdown(!showNotificationDropdown)
+            }
+          >
+            <div className="flex flex-wrap gap-1 flex-1">
+              <span className="text-gray-400">All {column.label}</span>
+            </div>
+            <ChevronDown className="w-4 h-4 text-gray-400" />
+          </div>
+
+          {/* Dropdown with checkboxes */}
+          {showNotificationDropdown && (
+            <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+              {options.map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex items-center p-2 font-medium hover:bg-gray-50 cursor-pointer text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(opt.value)}
+                    onChange={() => handleCheckbox(opt.value)}
+                    className="mr-3 text-[#004175] focus:ring-[#004175] focus:ring-2"
+                  />
+                  <span
+                    className={
+                      selectedValues.includes(opt.value)
+                        ? "text-blue-800"
+                        : "text-gray-600"
+                    }
+                  >
+                    {opt.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (column.searchType === "dropdown") {
       const options = getColumnSearchOptions(column);
 
       return (
@@ -337,34 +485,35 @@ const hasSearchValues = Object.values(searchTerms).some(
               )}
             </thead>
             <tbody className="relative">
-              {!loading && (
-                <>
-                  {filteredAndSortedData.map((record, index) => (
-                    <tr
-                      key={record.id || index}
-                      className={`hover:bg-blue-50 transition-colors bg-white
+              {/* {!loading && (
+                <> */}
+              {!loading &&
+                filteredAndSortedData.map((record, index) => (
+                  <tr
+                    key={record.id || index}
+                    className={`hover:bg-blue-50 transition-colors bg-white
                         }`}
-                    >
-                      {actions.length > 0 && (
-                        <td className="px-4 py-3 whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
-                          <div className="flex items-center gap-2">
-                            {actions.map((action, actionIndex) => (
-                              <button
-                                key={actionIndex}
-                                onClick={() => action.onClick(record)}
-                                className={action.className || "text-blue-500 hover:text-blue-700"}
-                                title={action.title || action.label}
-                              >
-                                {action.icon}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-                      )}
-                      {columns.map((column) => {
-                        const value = getNestedValue(record, column.key);
-                        return (
-                          <td
+                  >
+                    {actions.length > 0 && (
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
+                        <div className="flex items-center gap-2">
+                          {actions.map((action, actionIndex) => (
+                            <button
+                              key={actionIndex}
+                              onClick={() => action.onClick(record)}
+                              className={action.className || "text-blue-500 hover:text-blue-700"}
+                              title={action.title || action.label}
+                            >
+                              {action.icon}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                    {columns.map((column) => {
+                      const value = getNestedValue(record, column.key);
+                      return (
+                       <td
                             key={column.key}
                             className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${column.className || ''}`}
                             style={{
@@ -394,8 +543,8 @@ const hasSearchValues = Object.values(searchTerms).some(
                       </td>
                     </tr>
                   )}
-                </>
-              )}
+              {/* </>
+              )} */}
             </tbody>
           </table>
         </div>
