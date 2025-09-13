@@ -312,6 +312,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       .flatMap(item => item.shifts);
 
     for (const existingShift of existingShifts) {
+      console.log("Existing shift:", existingShift);
       if (existingShift.id === shift.id) continue; // Skip current shift when editing
 
       if (doTimesOverlap(editForm.starttime, editForm.endtime, existingShift.startTime, existingShift.endTime)) {
@@ -468,199 +469,188 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
     e.preventDefault();
     console.log("handleDrop called:", { targetUserId, targetDate, targetRowIdx, draggedShift });
-
+  
     if (!draggedShift) {
       console.log("No draggedShift found");
       return;
     }
-
+  
     const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
     console.log("Drop details:", { shift, sourceUserId, sourceDate, sourceRowIdx, targetUserId, targetDate, targetRowIdx });
-
-    // Don't allow dropping on the same cell
-    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
+  
+    // Cleanup function to reset drag state
+    const cleanupDragState = () => {
       setDraggedShift(null);
       setDragOverCell(null);
+    };
+  
+    // Don't allow dropping on the same cell
+    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
+      cleanupDragState();
       return;
     }
-
+  
+    // Check for backend overlap (common logic)
+    const checkBackendOverlap = () => {
+      return existingShifts.some(existingShift => {
+        const shiftDateStr = existingShift.date.includes('T') 
+          ? existingShift.date.split('T')[0] 
+          : existingShift.date;
+        
+        return shiftDateStr === targetDate && 
+               doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
+      });
+    };
+  
+    // Handle overlap error
+    const handleOverlapError = (message: string) => {
+      console.log(message);
+      hookToast({
+        title: "Overlapping Shift",
+        description: `Cannot drop shift here - it overlaps with existing shifts${message.includes('backend') ? ' from backend' : ' for this user and date'}.`,
+        variant: "destructive",
+      });
+      cleanupDragState();
+    };
+  
+    // Check for backend overlap first (applies to both scenarios)
+    if (checkBackendOverlap()) {
+      handleOverlapError("Backend overlap detected, blocking drop");
+      return;
+    }
+  
     const existingSchedule = scheduleData.find(
       item => item.userId === targetUserId && item.startDate === targetDate
     );
-
+  
+    const sourceSchedule = scheduleData.find(
+      item => item.userId === sourceUserId && item.startDate === sourceDate
+    );
+  
+    if (!sourceSchedule) {
+      console.error("Source schedule not found");
+      cleanupDragState();
+      return;
+    }
+  
+    // Create copied shift object (common logic)
+    const createCopiedShift = (scheduleSessionId?: string) => ({
+      ...shift,
+      id: Date.now(),
+      date: targetDate,
+      confirm: false,
+      reject: false,
+      scheduleSessionId: scheduleSessionId || sourceSchedule.shifts[0]?.scheduleSessionId
+    });
+  
     if (existingSchedule) {
-      // Check for overlap with local shifts, but exclude the shift at the target position (it will be replaced)
       const sortedShifts = sortShiftsByTime(existingSchedule.shifts);
-      const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
-        // Skip overlap check for the shift at the target row position (it will be replaced)
-        if (index === targetRowIdx) {
-          return false;
-        }
-        
-        // Skip overlap check if this is the same shift being dragged from the same user/date
-        if (sourceUserId === targetUserId && sourceDate === targetDate && 
-            existingShift.startTime === shift.startTime && existingShift.endTime === shift.endTime) {
-          return false;
-        }
-        
-        return doTimesOverlap(
-          shift.startTime,
-          shift.endTime,
-          existingShift.startTime,
-          existingShift.endTime
-        );
-      });
-
-      // Check against existingShifts from backend
-      const hasBackendOverlap = existingShifts.some(existingShift => {
-        // Extract date part from ISO string for comparison
-        const shiftDateStr = existingShift.date.includes('T') ? existingShift.date.split('T')[0] : existingShift.date;
-        const dateMatch = shiftDateStr === targetDate;
-        
-        if (!dateMatch) return false;
-        
-        // Use the same overlap checking logic as in PrepareSchedule onSubmit
-        return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
-      });
       
-      if (hasBackendOverlap) {
-        console.log("Backend overlap detected, blocking drop");
-        hookToast({
-          title: "Overlapping Shift",
-          description: "Cannot drop shift here - it overlaps with existing shifts from backend.",
-          variant: "destructive",
+      // Check if target cell has existing data
+      const targetCellHasData = targetRowIdx < sortedShifts.length;
+      
+      if (targetCellHasData) {
+        // Dropping on cell with data - replace it, but check overlap with all OTHER shifts
+        const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
+          // Skip the target position that will be replaced
+          if (index === targetRowIdx) return false;
+          
+          // For same column drops, check overlap with ALL other shifts (including source)
+          return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
         });
-        setDraggedShift(null);
-        setDragOverCell(null);
-        return;
-      }
-
-      if (hasLocalOverlap) {
-        console.log("Local overlap detected, blocking drop");
-        hookToast({
-          title: "Overlapping Shift",
-          description: "Cannot drop shift here - it overlaps with existing shifts for this user and date.",
-          variant: "destructive",
-        });
-        setDraggedShift(null);
-        setDragOverCell(null);
-        return;
-      }
-
-      console.log("No overlaps detected, proceeding with drop");
-      // If no overlaps, proceed with the drop
-      const sourceSchedule = scheduleData.find(
-        item => item.userId === sourceUserId && item.startDate === sourceDate
-      );
-
-      console.log("Source schedule found:", sourceSchedule);
-      console.log("Shift being moved:", shift);
-      console.log("Source userId:", sourceUserId, "Source date:", sourceDate);
-
-      if (sourceSchedule) {
-        // Copy the shift (add to target, keep original in source)
+  
+        if (hasLocalOverlap) {
+          handleOverlapError("Local overlap detected, blocking drop");
+          return;
+        }
+  
+        // Replace the shift at target position, keeping the original ID
+        console.log("Replacing shift at target position");
+        const originalShiftId = sortedShifts[targetRowIdx].id;
+        const replacementShift = createCopiedShift();
+        replacementShift.id = originalShiftId; // Keep original ID
+        
         const updatedScheduleData = scheduleData.map(item => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
-            // Add the shift to the target schedule
-            const copiedShift = {
-              ...shift,
-              id: Date.now(), // Generate new ID for copy
-              date: targetDate,
-              confirm: false,
-              reject: false,
-              scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId
-            };
-
-            const updatedShifts = [...item.shifts, copiedShift];
-            const sortedShifts = sortShiftsByTime(updatedShifts);
-
+            const updatedShifts = [...item.shifts];
+            updatedShifts[targetRowIdx] = replacementShift;
             return {
               ...item,
-              shifts: sortedShifts
+              shifts: sortShiftsByTime(updatedShifts)
             };
           }
-          return item; // Don't modify source schedule
+          return item;
         });
-
-        console.log("Final updated schedule data:", updatedScheduleData);
+  
+        console.log("Final updated schedule data (replacement):", updatedScheduleData);
         onScheduleDataChange(updatedScheduleData);
-
-        hookToast({
-          title: "Success",
-          description: "Shift copied successfully!",
+      } else {
+        // Dropping on empty cell - add new shift, check overlap with all shifts
+        const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
+          // For same column drops, check overlap with ALL shifts (including source)
+          return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
         });
+  
+        if (hasLocalOverlap) {
+          handleOverlapError("Local overlap detected, blocking drop");
+          return;
+        }
+  
+        // Add new shift to existing schedule
+        console.log("No overlaps detected, adding new shift");
+        const copiedShift = createCopiedShift();
+        const updatedScheduleData = scheduleData.map(item => {
+          if (item.userId === targetUserId && item.startDate === targetDate) {
+            const updatedShifts = [...item.shifts, copiedShift];
+            return {
+              ...item,
+              shifts: sortShiftsByTime(updatedShifts)
+            };
+          }
+          return item;
+        });
+  
+        console.log("Final updated schedule data (addition):", updatedScheduleData);
+        onScheduleDataChange(updatedScheduleData);
       }
-   } else {
-      // Check against existingShifts from backend when creating new schedule
-      const hasBackendOverlap = existingShifts.some(existingShift => {
-        // Extract date part from ISO string for comparison
-        const shiftDateStr = existingShift.date.includes('T') ? existingShift.date.split('T')[0] : existingShift.date;
-        const dateMatch = shiftDateStr === targetDate;
-        
-        if (!dateMatch) return false;
-        
-        // Use the same overlap checking logic as in PrepareSchedule onSubmit
-        return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
-      });
-      
-      if (hasBackendOverlap) {
-        console.log("Backend overlap detected in else block, blocking drop");
-        hookToast({
-          title: "Overlapping Shift",
-          description: "Cannot drop shift here - it overlaps with existing shifts from backend.",
-          variant: "destructive",
-        });
-        setDraggedShift(null);
-        setDragOverCell(null);
+    } else {
+      // Create new schedule - check backend overlap first
+      if (checkBackendOverlap(false)) {
+        handleOverlapError("Backend overlap detected in new schedule creation, blocking drop");
         return;
       }
-
-      console.log("No overlaps detected in else block, creating new schedule");
-      // Create new schedule for target user/date
-      const sourceSchedule = scheduleData.find(
-        item => item.userId === sourceUserId && item.startDate === sourceDate
-      );
-
-      console.log("Source schedule found in else block:", sourceSchedule);
-      console.log("Shift being moved in else block:", shift);
-
-      if (sourceSchedule) {
-        const targetUser = uniqueUsers.find(u => u.id === targetUserId);
-        const newSchedule = {
-          id: Date.now(),
-          clientId: sourceSchedule.clientId,
-          addressId: sourceSchedule.addressId,
-          userId: targetUserId,
-          startDate: targetDate,
-          auto: sourceSchedule.auto,
-          shifts: [{ 
-            ...shift, 
-            id: Date.now(), // Generate new ID for copy
-            date: targetDate, 
-            confirm: false, 
-            reject: false,
-            scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId // Inherit from source schedule
-          }],
-          clientName: sourceSchedule.clientName,
-          address: sourceSchedule.address,
-          userName: targetUser?.name || sourceSchedule.userName,
-          userPhone: targetUser?.phone || sourceSchedule.userPhone,
-        };
-
-        // Copy the shift: add to new schedule, keep original in source
-        console.log("New schedule being added:", newSchedule);
-        onScheduleDataChange([...scheduleData, newSchedule]);
-
-        hookToast({
-          title: "Success",
-          description: "Shift copied successfully!",
-        });
-      }
+      
+      // Create new schedule
+      console.log("No overlaps detected, creating new schedule");
+      const targetUser = uniqueUsers.find(u => u.id === targetUserId);
+      const copiedShift = createCopiedShift();
+      
+      const newSchedule = {
+        id: Date.now(),
+        clientId: sourceSchedule.clientId,
+        addressId: sourceSchedule.addressId,
+        userId: targetUserId,
+        startDate: targetDate,
+        auto: sourceSchedule.auto,
+        shifts: [copiedShift],
+        clientName: sourceSchedule.clientName,
+        address: sourceSchedule.address,
+        userName: targetUser?.name || sourceSchedule.userName,
+        userPhone: targetUser?.phone || sourceSchedule.userPhone,
+      };
+  
+      console.log("New schedule being added:", newSchedule);
+      onScheduleDataChange([...scheduleData, newSchedule]);
     }
-    setDraggedShift(null);
-    setDragOverCell(null);
+  
+    // Success message
+    hookToast({
+      title: "Success",
+      description: "Shift copied successfully!",
+    });
+  
+    cleanupDragState();
   };
-
   const handleDragEnd = () => {
     setDraggedShift(null);
     setDragOverCell(null);
