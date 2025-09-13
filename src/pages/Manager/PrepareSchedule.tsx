@@ -648,7 +648,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         Number(addressId),
         Number(userId)
       );
-
+      console.log("Result from after checkClientWeekSchedule:", result.shifts[0]);
       // message === null -> allowed (same as previous overlap === true)
       if (result ) {
         checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
@@ -714,6 +714,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         setSubmitLoader(false);
         return;
       }
+      console.log("Results from handleCheck:", results);
       // OK → proceed
       setHasOverlapError(false);
       let newScheduleItems = [];
@@ -723,6 +724,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         const updatedScheduleData = [...scheduleData];
 
         for (let i = 0; i < 7; i++) {
+
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);

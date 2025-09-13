@@ -55,13 +55,18 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
       const token = localStorage.getItem("token");
 
       const variables = { clientId, date };
-      const response = await graphQLClient.request<{ ScheduleSessionsByClientWeek: RawScheduleSession[] }>(
+      const response = await graphQLClient.request<{ 
+        ScheduleSessionsByClientWeek: {
+          lastPage: number;
+          data: RawScheduleSession[];
+        };
+      }>(
         GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
         variables,
         { Authorization: `Bearer ${token}` }
       );
 
-      const rawData = response.ScheduleSessionsByClientWeek;
+      const rawData = response.ScheduleSessionsByClientWeek.data;
     console.log(rawData)
    const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
   session.shifts.map((shift) => {

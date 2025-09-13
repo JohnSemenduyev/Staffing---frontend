@@ -202,13 +202,16 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     try {
       const token = localStorage.getItem("token");
       const response = await graphQLClient.request<{
-        ScheduleSessionsByClientWeek: ScheduleData;
+        ScheduleSessionsByClientWeek: {
+          lastPage: number;
+          data: ScheduleData;
+        };
       }>(
         SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
         { clientId, addressId, date },
         { Authorization: `Bearer ${token}` }
       );
-      setScheduleData(response.ScheduleSessionsByClientWeek);
+      setScheduleData(response.ScheduleSessionsByClientWeek.data);
     } catch (err) {
       console.error('fetchScheduleData:', err);
       setScheduleError(genericError('fetchSchedule', err));
