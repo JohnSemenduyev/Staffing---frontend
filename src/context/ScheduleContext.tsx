@@ -35,6 +35,7 @@ type ScheduleSession = {
 };
 
 type WeekScheduleCheckResponse = {
+  shifts: any;
   message: string | null;
   id: number | null;
 };

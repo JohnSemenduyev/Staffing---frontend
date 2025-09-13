@@ -211,7 +211,7 @@ export const PrepareSchedule = () => {
   // Publish confirmation modal
   const [publishModal, setPublishModal] = useState({ isOpen: false });
   const checkScheduleSessionIdRef = useRef<number | null>(null);
-
+  
 
 
   // Client search hook
@@ -640,7 +640,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
     addressId: string,
     userId: string,
     startDate: string
-  ): Promise<boolean> => {
+  ): Promise<Shift[]> => {
     try {
       const result = await checkClientWeekSchedule(
         Number(clientId),
@@ -648,13 +648,15 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         Number(addressId),
         Number(userId)
       );
-      // console.log("Result from after checkClientWeekSchedule:", result.shifts[0]);
+
       // message === null -> allowed (same as previous overlap === true)
       if (result ) {
         checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
-        return true;
+        // console.log("Result from handleCheck:", JSON.stringify(result));
+        // console.log("Result from handleCheck:", );
+        return result.shifts;
       }
-
+    
       // message present -> blocked; show server message
       if (result?.message) {
         // Check if it's an assignment not found error
@@ -671,9 +673,9 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             variant: "destructive",
           });
         }
-        return false;
+        return null;
       }
-      return false;
+      return null;
     } catch (error: any) {
       // Handle GraphQL error response format
       if (error.response?.errors && error.response.errors.length > 0) {
@@ -693,7 +695,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           variant: "destructive",
         });
       }
-      return false;
+      return null;
     }
   };
 
@@ -709,12 +711,12 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       const selectedUser = searchedUsers.find(u => String(u.id) === form.userId);
       const formatedDate = formatDateUTC(new Date(form.date));
       const results = await handleCheck(form.clientId, form.addressId, form.userId, formatedDate);
-      if (!results) {
+      if (results === null) {
         setHasOverlapError(true);
         setSubmitLoader(false);
         return;
       }
-      console.log("Results from handleCheck:", results);
+      console.log("Results from handleCheck:", JSON.stringify(results));
       // OK → proceed
       setHasOverlapError(false);
       let newScheduleItems = [];
@@ -722,13 +724,30 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
         const updatedScheduleData = [...scheduleData];
-
         for (let i = 0; i < 7; i++) {
-
+        
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);
-
+            // for current day and time( overlaping) we need to check if the shift is already present in the result
+          
+          // Check if shift overlaps with results
+          const hasOverlap = results.some(shift => {
+            // Extract date part from ISO string for comparison
+            const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
+            const dateMatch = shiftDateStr === dateStr;
+            const timeOverlap = form.starttime < shift.endTime && form.endtime > shift.startTime;
+            return dateMatch && timeOverlap;
+          });
+          
+          if (hasOverlap) {
+            toast({
+              title: "Error",
+              description: "Shift time overlaps with existing shift for this user and date",
+              variant: "destructive",
+            });
+            continue;
+          } // Skip overlapping shifts
 
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
@@ -788,6 +807,20 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         // Update the schedule data with merged shifts
         setScheduleData(updatedScheduleData);
       } else {
+        // Check if shift overlaps with results
+        const hasOverlap = results.some(shift => {
+          // Extract date part from ISO string for comparison
+          const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
+          const dateMatch = shiftDateStr === form.date;
+          const timeOverlap = form.starttime < shift.endTime && form.endtime > shift.startTime;
+          return dateMatch && timeOverlap;
+        });
+        
+        if (hasOverlap) {
+          setSubmitLoader(false);
+          return; // Skip if overlapping
+        }
+
         // Check if user already has a schedule for this date
         const existingScheduleIndex = scheduleData.findIndex(
           item => item.userId === Number(form.userId) && item.startDate === form.date
