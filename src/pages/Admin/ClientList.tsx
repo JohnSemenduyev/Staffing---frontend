@@ -668,7 +668,7 @@ function ClientList() {
       <div className="w-full mt-3">
         <div
           className="relative w-full rounded-2xl border border-gray-200 shadow-xl bg-white"
-          style={{ height: "400px", minHeight: "400px" }}
+          style={{ height: "580px", minHeight: "400px" }}
         >
           <div className="w-full h-full overflow-auto bg-white rounded-t-2xl custom-scrollbar">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
