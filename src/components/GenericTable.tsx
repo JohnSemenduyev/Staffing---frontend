@@ -390,9 +390,9 @@ const hasSearchValues = Object.values(searchTerms).some(
   };
 
   return (
-    <div className={`w-full mt-2 ${className}`}>
+    <div className={`w-full mt-2 h-full ${className}`}>
       <div
-        className="relative w-full rounded-t-2xl border border-gray-200 shadow-xl mb-[50px] overflow-hidden"
+        className="relative w-full rounded-t-2xl border border-gray-200 shadow-xl  overflow-hidden"
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
          {loading && (

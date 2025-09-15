@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { RotateCcw } from "lucide-react";
@@ -28,6 +28,8 @@ export const GeoLocationSetup = () => {
   const [clientSearch, setClientSearch] = useState("");
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [tableHeight, setTableHeight] = useState<string>("400px");
+  const formRef = useRef<HTMLDivElement>(null);
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
   const { fetchGeoLocations, createGeoLocation, updateGeoLocation, setCurrentPage,loading,setSubmitError,error, lastPage, deleteGeoLocation,currentPage,geoLocations,submitLoader,submitError} = useGeoLocation();
@@ -35,6 +37,41 @@ export const GeoLocationSetup = () => {
   useEffect(() => {
     fetchGeoLocations(currentPage);
   }, [currentPage]);
+
+  // Calculate table height dynamically
+  useEffect(() => {
+    const calculateTableHeight = () => {
+      if (formRef.current) {
+        const formHeight = formRef.current.offsetHeight;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        setTableHeight(calculatedHeight);
+      }
+    };
+
+    // Calculate on mount and when form content changes
+    calculateTableHeight();
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      calculateTableHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to detect form height changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTableHeight();
+    });
+
+    if (formRef.current) {
+      resizeObserver.observe(formRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [form, errors, showErrors, submitError, isEditing]);
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -274,7 +311,7 @@ export const GeoLocationSetup = () => {
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
       {/* Form Section */}
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
+      <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
         </h2>
@@ -442,6 +479,7 @@ export const GeoLocationSetup = () => {
         emptyMessage="No records found matching your search criteria."
         searchable={true}
         onSearch={handleSearch}
+        tableHeight={tableHeight}
       />
 
       {/* Pagination Section */}
