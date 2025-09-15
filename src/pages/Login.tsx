@@ -1,98 +1,3 @@
-// import { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { Button } from '../components/ui/button';
-// import { Input } from '../components/ui/input';
-// import { Label } from '../components/ui/label';
-// import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-// import { useAuth } from '../hooks/useAuth';
-// import { useToast } from '../hooks/use-toast';
-
-// const Login = () => {
-//   const [username, setUsername] = useState('');
-//   const [password, setPassword] = useState('');
-//   const [isLoading, setIsLoading] = useState(false);
-//   const { login } = useAuth();
-//   const navigate = useNavigate();
-//   const { toast } = useToast();
-
-// const handleSubmit = async (e: React.FormEvent) => {
-//   e.preventDefault();
-//   setIsLoading(true);
-
-//   const success = login(username, password);
-
-//   if (success) {
-//     const storedUser = localStorage.getItem('admin_portal_user');
-//     let redirectPath = '/';
-//     if (storedUser) {
-//       const user = JSON.parse(storedUser);
-//       if (user.role === 'admin') {
-//         redirectPath = '/assign-user-permission';
-//       } else if (user.role === 'manager') {
-//         redirectPath = '/prepare-schedule';
-//       }
-//     }
-
-//     toast({
-//       title: "Login successful",
-//       description: "Welcome to the portal",
-//     });
-
-//     navigate(redirectPath);
-//   } else {
-//     toast({
-//       title: "Login failed",
-//       description: "Invalid credentials or user not authorized",
-//       variant: "destructive",
-//     });
-//   }
-
-//   setIsLoading(false);
-// };
-
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-//       <Card className="w-full max-w-md">
-//         <CardHeader className="text-center">
-//           <CardTitle className="text-2xl font-bold">Admin Portal Login</CardTitle>
-//         </CardHeader>
-//         <CardContent>
-//           <form onSubmit={handleSubmit} className="space-y-4">
-//             <div className="space-y-2">
-//               <Label htmlFor="username">Username</Label>
-//               <Input
-//                 id="username"
-//                 type="text"
-//                 value={username}
-//                 onChange={(e) => setUsername(e.target.value)}
-//                 placeholder="Enter your username"
-//                 required
-//               />
-//             </div>
-//             <div className="space-y-2">
-//               <Label htmlFor="password">Password</Label>
-//               <Input
-//                 id="password"
-//                 type="password"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//                 placeholder="Enter your password"
-//                 required
-//               />
-//             </div>
-//             <Button type="submit" className="w-full" disabled={isLoading}>
-//               {isLoading ? 'Logging in...' : 'Login'}
-//             </Button>
-//           </form>
-//         </CardContent>
-//       </Card>
-//     </div>
-//   );
-// };
-
-// export default Login;
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/LoginContext';
@@ -101,12 +6,37 @@ import { MdLogin } from "react-icons/md";
 import { Button } from '../components/ui/button';
 import img from "../assets/images/Logo.webp";
 
+type RoleType = 'client' | 'admin' | 'manager' | 'guard';
+
+interface RoleOption {
+  value: RoleType;
+  label: string;
+}
+
+const roleOptions: RoleOption[] = [
+  { value: 'client', label: 'Client' },
+  { value: 'admin', label: 'Administrator' },
+  { value: 'manager', label: 'Management' },
+  { value: 'guard', label: 'Security Officer' }
+];
+
 const Login = () => {
+  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { token, role, login, logout } = useAuth();
+
+  const handleRoleSelect = (role: RoleType) => {
+    setSelectedRole(role);
+  };
+
+  const handleBackToRoleSelection = () => {
+    setSelectedRole(null);
+    setUsername('');
+    setPassword('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +68,63 @@ const Login = () => {
     navigate('/signup'); // Redirect to signup page
   };
 
+  // Role Selection Screen
+  if (!selectedRole) {
+    return (
+      <div className="h-screen flex flex-col md:flex-row overflow-hidden">
+        {/* Left Side - Logo (Fixed) */}
+        <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
+          <div className="flex items-center justify-center w-full h-full">
+            <img 
+              src={img}
+              alt="Maximal Security - Complete Logo" 
+              className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
+            />
+          </div>
+        </div>
+
+        {/* Right Side - Role Selection */}
+        <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] h-[60vh] md:h-full p-6">
+          <div className="w-full max-w-md text-center">
+            {/* Role Selection Header */}
+            <h2 className="text-3xl font-bold text-white mb-8"> Select User </h2>
+            
+            {/* Role Buttons */}
+            <div className="space-y-4">
+              {roleOptions.map((role) => (
+                <Button
+                  key={role.value}
+                  onClick={() => handleRoleSelect(role.value)}
+                  variant="outline"
+                  size="lg"
+                  className="w-full border-white text-white hover:bg-white hover:text-[#004175]"
+                >
+                  {role.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="mt-8">
+              <p className="text-white text-sm mb-2">
+                Don't have an account?
+              </p>
+              <Button
+                type="button"
+                onClick={handleSignupRedirect}
+                variant="link"
+                className="text-white hover:underline font-medium"
+              >
+                Sign Up
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Login Form Screen
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left Side - Logo */}
@@ -155,7 +142,9 @@ const Login = () => {
       <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] min-h-[60vh] md:min-h-screen p-6 overflow-y-auto">
         <div className="w-full max-w-md bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid">
           {/* Login Header */}
-          <h2 className="text-3xl font-bold text-center text-[#004175] mb-2">Login</h2>
+          <h2 className="text-3xl font-bold text-center text-[#004175] mb-2">
+            {roleOptions.find(r => r.value === selectedRole)?.label} Login
+          </h2>
           <p className="text-sm text-center text-gray-600 mb-6">Glad you're back!</p>
 
           {/* Login Form */}
@@ -219,6 +208,18 @@ const Login = () => {
               </a>
             </div>
           </form>
+
+          {/* Back to Role Selection */}
+          <div className="text-center text-sm mt-4">
+            <Button
+              type="button"
+              onClick={handleBackToRoleSelection}
+              variant="link"
+              className="text-[#004175] hover:text-blue-600 font-medium"
+            >
+              ← Back to Role Selection
+            </Button>
+          </div>
 
           {/* Alternative: Signup Section at Bottom */}
           <div className="mt-6 pt-6 border-t border-gray-200">
