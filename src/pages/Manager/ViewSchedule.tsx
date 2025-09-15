@@ -1065,7 +1065,19 @@ export const ViewSchedule = () => {
         title: "Success",
         description: "Schedule published successfully!",
       });
-
+      try {
+        const clientId = selectedClient?.clientId;
+        const addressId = selectedClient?.addressId;
+        const formattedDate = convertDateFormat(selectedDate);
+        
+        if (clientId && addressId) {
+          await fetchScheduleData(clientId, addressId, formattedDate);
+        }
+        setIsPublishing(false);
+      } catch (refreshError) {
+        console.error("Error refreshing schedule data after publish:", refreshError);
+        // Don't show error toast for refresh failure as publish was successful
+      }
       // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
       setSchedulePublishModal({ isOpen: false });
@@ -1094,6 +1106,7 @@ export const ViewSchedule = () => {
         variant: "destructive",
       });
     } finally {
+
       setIsPublishing(false);
     }
   };
