@@ -332,6 +332,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       
       if (!dateMatch) return false;
       
+      // Skip the current shift being edited
+      if (backendShift.id === shift.id) return false;
+      
       // Use the same overlap checking logic as in PrepareSchedule onSubmit
       return doTimesOverlap(editForm.starttime, editForm.endtime, backendShift.startTime, backendShift.endTime);
     });
