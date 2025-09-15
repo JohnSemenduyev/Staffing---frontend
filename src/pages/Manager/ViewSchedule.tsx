@@ -224,7 +224,7 @@ export const ViewSchedule = () => {
   const hasRestoredState = useRef(false);
   
   // Dynamic table height state and ref
-  const [tableHeight, setTableHeight] = useState<string>("400px");
+  // const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
 
   // Initialize state from URL parameters on component mount
@@ -441,41 +441,6 @@ export const ViewSchedule = () => {
   useEffect(() => {
     fetchClientSessions(); // Fetch only when needed
   }, []);
-
-  // Calculate table height dynamically
-  useEffect(() => {
-    const calculateTableHeight = () => {
-      if (formRef.current) {
-        const formHeight = formRef.current.offsetHeight;
-        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
-        setTableHeight(calculatedHeight);
-      }
-    };
-
-    // Calculate on mount and when form content changes
-    calculateTableHeight();
-
-    // Recalculate on window resize
-    const handleResize = () => {
-      calculateTableHeight();
-    };
-
-    window.addEventListener('resize', handleResize);
-    
-    // Use ResizeObserver to detect form height changes
-    const resizeObserver = new ResizeObserver(() => {
-      calculateTableHeight();
-    });
-
-    if (formRef.current) {
-      resizeObserver.observe(formRef.current);
-    }
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      resizeObserver.disconnect();
-    };
-  }, [form, errors, submitLoader, isScheduleEditMode]);
 
   const [tableData, setTableData] = useState([]);
 
@@ -1751,7 +1716,7 @@ export const ViewSchedule = () => {
               loading={loading}
               emptyMessage="No records found."
               searchable={true}
-              tableHeight={tableHeight}
+              // tableHeight={tableHeight}
             />
           )}
 
