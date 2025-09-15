@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { GoPlus } from "react-icons/go";
 import { AlertTriangle, RotateCcw, Search } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
@@ -38,6 +38,8 @@ export const TimeSetup = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; record: any }>({ isOpen: false, record: null });
   const [deleteLoader, setDeleteLoader] = useState(false);
+  const [tableHeight, setTableHeight] = useState<string>("400px");
+  const formRef = useRef<HTMLDivElement>(null);
   const { timeSetups, createTimeSetup,error, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
 
@@ -66,6 +68,41 @@ export const TimeSetup = () => {
   useEffect(() => {
     fetchTimeSetups(currentPage);
   }, [currentPage]);
+
+  // Calculate table height dynamically
+  useEffect(() => {
+    const calculateTableHeight = () => {
+      if (formRef.current) {
+        const formHeight = formRef.current.offsetHeight;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        setTableHeight(calculatedHeight);
+      }
+    };
+
+    // Calculate on mount and when form content changes
+    calculateTableHeight();
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      calculateTableHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to detect form height changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTableHeight();
+    });
+
+    if (formRef.current) {
+      resizeObserver.observe(formRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [form, errors, showErrors, submitLoader, editId]);
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -309,7 +346,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
 
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-1">
+      <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-1">
         <h2 className="text-lg font-semibold mb-2">
           {editId ? "Edit Time Setup" : "Add Time Setup"}
         </h2>
@@ -431,7 +468,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
         emptyMessage="No time setup records found."
         searchable={true}
         onSearch = {handleSearch}
-
+        tableHeight={tableHeight}
       />
 
       <div className="mt-6">

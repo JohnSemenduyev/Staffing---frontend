@@ -1,4 +1,4 @@
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useRef } from "react";
 import { FiEye } from "react-icons/fi";
 import { GoPlus } from "react-icons/go";
 import { X, RotateCcw } from "lucide-react";
@@ -49,9 +49,46 @@ export const UniformCompliance = () => {
     useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [tableHeight, setTableHeight] = useState<string>("400px");
+  const formRef = useRef<HTMLDivElement>(null);
   const { uniformCompliances, error, fetchUniformCompliances } = useUniformCompliance();
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+
+  // Calculate table height dynamically
+  useEffect(() => {
+    const calculateTableHeight = () => {
+      if (formRef.current) {
+        const formHeight = formRef.current.offsetHeight;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        setTableHeight(calculatedHeight);
+      }
+    };
+
+    // Calculate on mount and when form content changes
+    calculateTableHeight();
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      calculateTableHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to detect form height changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTableHeight();
+    });
+
+    if (formRef.current) {
+      resizeObserver.observe(formRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [form, errors, showErrors, submitLoader]);
 
   // Week range function (Thursday to Wednesday)
 
@@ -431,7 +468,7 @@ export const UniformCompliance = () => {
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
+      <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           Uniform Compliance</h2>
         <form onSubmit={onSubmit} autoComplete="off">
@@ -643,6 +680,7 @@ export const UniformCompliance = () => {
         actions={tableActions}
         emptyMessage="No records found matching your search criteria."
         searchable={true}
+        tableHeight={tableHeight}
       />
 
       {/* Image Modal */}

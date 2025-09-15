@@ -51,9 +51,46 @@ export const Notification = () => {
   const [showErrors, setShowErrors] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
+  const [tableHeight, setTableHeight] = useState<string>("400px");
+  const formRef = useRef<HTMLDivElement>(null);
 
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+
+  // Calculate table height dynamically
+  useEffect(() => {
+    const calculateTableHeight = () => {
+      if (formRef.current) {
+        const formHeight = formRef.current.offsetHeight;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        setTableHeight(calculatedHeight);
+      }
+    };
+
+    // Calculate on mount and when form content changes
+    calculateTableHeight();
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      calculateTableHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to detect form height changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTableHeight();
+    });
+
+    if (formRef.current) {
+      resizeObserver.observe(formRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [form, errors, showErrors, submitLoader]);
 
   const validate = () => {
     const e: any = {};
@@ -326,7 +363,7 @@ export const Notification = () => {
   ];
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-      <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
+      <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           Notification
         </h2>
@@ -588,6 +625,7 @@ export const Notification = () => {
         loading={loading}
         emptyMessage="No notifications found matching your search criteria."
         searchable={true}
+        tableHeight={tableHeight}
       />
     </div>
   );

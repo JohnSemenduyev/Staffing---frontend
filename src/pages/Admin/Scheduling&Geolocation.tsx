@@ -1,7 +1,7 @@
 import { useTimeSetupContext } from "../../context/TimeStemp";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface Data {
     id: number;
@@ -22,6 +22,8 @@ interface Data {
 
 export const SchedulingAndGeolocation = () => {
     const [loading , setLoading] = useState(false);
+    const [tableHeight, setTableHeight] = useState<string>("400px");
+    const formRef = useRef<HTMLDivElement>(null);
     const { timeSetups } = useTimeSetupContext();
 
     useEffect(() => {
@@ -29,6 +31,41 @@ export const SchedulingAndGeolocation = () => {
       setTimeout(() => {
         setLoading(false);
       }, 2000);
+    }, []);
+
+    // Calculate table height dynamically
+    useEffect(() => {
+      const calculateTableHeight = () => {
+        if (formRef.current) {
+          const formHeight = formRef.current.offsetHeight;
+          const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+          setTableHeight(calculatedHeight);
+        }
+      };
+
+      // Calculate on mount and when form content changes
+      calculateTableHeight();
+
+      // Recalculate on window resize
+      const handleResize = () => {
+        calculateTableHeight();
+      };
+
+      window.addEventListener('resize', handleResize);
+      
+      // Use ResizeObserver to detect form height changes
+      const resizeObserver = new ResizeObserver(() => {
+        calculateTableHeight();
+      });
+
+      if (formRef.current) {
+        resizeObserver.observe(formRef.current);
+      }
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        resizeObserver.disconnect();
+      };
     }, []);
     
     const handleEdit = (record: any) => {
@@ -151,17 +188,18 @@ const tableActions: TableAction[] = [
 
     return (
         <div>
-
+            <div ref={formRef} className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">Scheduling & Geolocation</h2>
+            </div>
             <GenericTable
-  data={timeSetups || []}
-  columns={tableColumns}
-  actions={tableActions}
-  loading={loading}
-  emptyMessage="No time setup records found."
-  searchable={true}
-/>
-
-
+              data={timeSetups || []}
+              columns={tableColumns}
+              actions={tableActions}
+              loading={loading}
+              emptyMessage="No time setup records found."
+              searchable={true}
+              tableHeight={tableHeight}
+            />
         </div>
     )
 }

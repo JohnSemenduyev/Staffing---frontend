@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { GenericTable, TableColumn } from "../../components/GenericTable";
 import { useAddresses } from "../../context/AddressContext";
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
@@ -19,6 +19,8 @@ export const Client = () => {
 
   const [showSearchForm, setShowSearchForm] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [tableHeight, setTableHeight] = useState<string>("400px");
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Fields that match the backend's ClientRegistrationFilter structure
   const searchFields = useMemo<FieldConfig[]>(() => [
@@ -45,6 +47,41 @@ export const Client = () => {
   useEffect(() => {
     fetchClientAddresses(currentPage);
   }, [currentPage]);
+
+  // Calculate table height dynamically
+  useEffect(() => {
+    const calculateTableHeight = () => {
+      if (formRef.current) {
+        const formHeight = formRef.current.offsetHeight;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        setTableHeight(calculatedHeight);
+      }
+    };
+
+    // Calculate on mount and when form content changes
+    calculateTableHeight();
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      calculateTableHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to detect form height changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTableHeight();
+    });
+
+    if (formRef.current) {
+      resizeObserver.observe(formRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [showSearchForm]);
 
   const tableColumns: TableColumn[] = [
     {
@@ -129,7 +166,7 @@ export const Client = () => {
 
   return (
     <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
-      <div className="mb-4">
+      <div ref={formRef} className="mb-4">
         <h2 className="text-lg font-semibold text-gray-800">Client List</h2>
       </div>
       <GenericTable
@@ -140,7 +177,7 @@ export const Client = () => {
         emptyMessage="No records found matching your search criteria."
         searchable={true}
         onSearch = {handleSearch}
-
+        tableHeight={tableHeight}
       />
 
       <div className="mt-6">

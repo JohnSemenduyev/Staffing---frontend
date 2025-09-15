@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { ChevronDown, Check, X } from "lucide-react";
@@ -54,6 +54,8 @@ function ClientList() {
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
   const [showSearchForm, setShowSearchForm] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [tableHeight, setTableHeight] = useState<string>("400px");
+  const formRef = useRef<HTMLDivElement>(null);
 
   // Client edit/delete modals
   const [deleteClientModal, setDeleteClientModal] = useState({ isOpen: false, clientId: null, clientName: "" });
@@ -147,6 +149,41 @@ function ClientList() {
 
     loadData();
   }, [currentPage]);
+
+  // Calculate table height dynamically
+  useEffect(() => {
+    const calculateTableHeight = () => {
+      if (formRef.current) {
+        const formHeight = formRef.current.offsetHeight;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        setTableHeight(calculatedHeight);
+      }
+    };
+
+    // Calculate on mount and when form content changes
+    calculateTableHeight();
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      calculateTableHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver to detect form height changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateTableHeight();
+    });
+
+    if (formRef.current) {
+      resizeObserver.observe(formRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Helper function to get nested values
   const getNestedValue = (obj: any, path: string) => {
@@ -646,7 +683,7 @@ function ClientList() {
   return (
     <div className="min-h-screen p-6 font-sans">
 
-      <div className="flex justify-between items-center">
+      <div ref={formRef} className="flex justify-between items-center">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">
             Client  List
@@ -668,7 +705,7 @@ function ClientList() {
       <div className="w-full mt-3">
         <div
           className="relative w-full rounded-2xl border border-gray-200 shadow-xl bg-white"
-          style={{ height: "580px", minHeight: "400px" }}
+          style={{ height: tableHeight, minHeight: "400px" }}
         >
           <div className="w-full h-full overflow-auto bg-white rounded-t-2xl custom-scrollbar">
             <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
