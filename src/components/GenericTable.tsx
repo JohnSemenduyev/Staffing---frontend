@@ -390,35 +390,36 @@ const hasSearchValues = Object.values(searchTerms).some(
   };
 
   return (
-    <div className={`w-full mt-2 h-full ${className}`}>
+    <div className={`w-full mt-2 ${className}`}>
       <div
-        className="relative w-full rounded-t-2xl border border-gray-200 shadow-xl  overflow-hidden"
+        className="relative w-full rounded-t-2xl border border-gray-200 shadow-xl overflow-hidden"
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
-         {loading && (
-            <div className="absolute inset-0 bg-white bg-opacity-10 flex items-center justify-center z-30 rounded-2xl">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-gray-500">Loading...</span>
-              </div>
+        {loading && (
+          <div className="absolute inset-0 bg-white bg-opacity-10 flex items-center justify-center z-30 rounded-2xl">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-gray-500">Loading...</span>
             </div>
-          )}
+          </div>
+        )}
 
-       <div className="w-full h-full overflow-auto bg-white rounded-t-2xl">
-            <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
-              <thead className="bg-[#004175] text-white text-xs font-sans z-[50]">
-              <tr className="h-[41px]"  style={{ lineHeight: '16px' }}>
+        {/* Fixed Header */}
+        <div className="bg-white rounded-t-2xl">
+          <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
+            <thead className="bg-[#004175] text-white text-xs font-sans">
+              <tr className="h-[41px]" style={{ lineHeight: '16px' }}>
                 {actions.length > 0 && (
                   <th className="px-4 py-2 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
                     <div className="flex items-center h-full">
-                    Actions
+                      Actions
                     </div>
                   </th>
                 )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className={`px-4 py-2 text-left  whitespace-nowrap ${column.headerClassName || ''}`}
+                    className={`px-4 py-2 text-left whitespace-nowrap ${column.headerClassName || ''}`}
                     style={{
                       width: column.width || 'auto',
                       minWidth: column.width || 'auto',
@@ -456,19 +457,14 @@ const hasSearchValues = Object.values(searchTerms).some(
                 ))}
               </tr>
               {searchable && (
-                <tr className="bg-white text-gray-700 font-sans w-full h-[41px]"  style={{ lineHeight: '16px' }}>
-                  {actions.length > 0 &&  <th className="px-4 py-2 text-left">
-         {hasSearchValues && (
-          // <button
-          //   type="button"
-          //   onClick={resetSearch}
-          //   className="px-3 py-1 text-sm font-medium text-white bg-gray-500 hover:bg-gray-600 rounded-md transition"
-          // >
-          //   Reset
-          // </button>
-           <ResetButton onClick={resetSearch} disabled={!hasSearchValues} />
-        )}
-      </th>}
+                <tr className="bg-white text-gray-700 font-sans w-full h-[41px]" style={{ lineHeight: '16px' }}>
+                  {actions.length > 0 && (
+                    <th className="px-4 py-2 text-left">
+                      {hasSearchValues && (
+                        <ResetButton onClick={resetSearch} disabled={!hasSearchValues} />
+                      )}
+                    </th>
+                  )}
                   {columns.map((column) => (
                     <th
                       key={`search-${column.key}`}
@@ -484,18 +480,27 @@ const hasSearchValues = Object.values(searchTerms).some(
                 </tr>
               )}
             </thead>
+          </table>
+        </div>
+
+        {/* Scrollable Body */}
+        <div 
+          className="overflow-auto bg-white"
+          style={{ 
+            height: `calc(${tableHeight} - ${searchable ? '82px' : '41px'})`,
+            maxHeight: `calc(${tableHeight} - ${searchable ? '82px' : '41px'})`
+          }}
+        >
+          <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
             <tbody className="relative">
-              {/* {!loading && (
-                <> */}
               {!loading &&
                 filteredAndSortedData.map((record, index) => (
                   <tr
                     key={record.id || index}
-                    className={`hover:bg-blue-50 transition-colors bg-white
-                        }`}
+                    className="hover:bg-blue-50 transition-colors bg-white"
                   >
                     {actions.length > 0 && (
-                      <td className="px-4 py-3 whitespace-nowrap" style={{ width: 'auto', minWidth: 'auto' }}>
+                      <td className="px-4 py-3 whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
                         <div className="flex items-center gap-2">
                           {actions.map((action, actionIndex) => (
                             <button
@@ -513,38 +518,36 @@ const hasSearchValues = Object.values(searchTerms).some(
                     {columns.map((column) => {
                       const value = getNestedValue(record, column.key);
                       return (
-                       <td
-                            key={column.key}
-                            className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${column.className || ''}`}
-                            style={{
-                              width: column.width || 'auto',
-                              minWidth: column.width || 'auto'
-                            }}
-                          >
-                            {column.render ? column.render(value, record) : (value || "-")}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                        <td
+                          key={column.key}
+                          className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${column.className || ''}`}
+                          style={{
+                            width: column.width || 'auto',
+                            minWidth: column.width || 'auto'
+                          }}
+                        >
+                          {column.render ? column.render(value, record) : (value || "-")}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
 
-                  {filteredAndSortedData.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
-                        className="relative p-0"
-                        style={{ height: `calc(${tableHeight} - ${searchable ? '150px' : '100px'})` }}
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center bg-white">
-                          <span className="text-gray-500 text-center">
-                            {emptyMessage}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-              {/* </>
-              )} */}
+              {filteredAndSortedData.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
+                    className="relative p-0"
+                    style={{ height: `calc(${tableHeight} - ${searchable ? '150px' : '100px'})` }}
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center bg-white">
+                      <span className="text-gray-500 text-center">
+                        {emptyMessage}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

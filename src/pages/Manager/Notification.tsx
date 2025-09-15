@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import {  X} from "lucide-react";
+import { X } from "lucide-react";
+import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -8,10 +9,12 @@ import { inputClasses } from "../Admin/GeoLocationSetup";
 import { useNotifications } from "../../context/NotificatoinContext";
 import { toast } from "sonner";
 import ResetButton from "../../components/ui/ResetButton";
+import { exportNotificationToExcel, exportNotificationToPDF } from "../../utils/exportNotificationUtils";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { Button } from "../../components/ui/button";
+import Pagination from "../../components/Pagination";
 
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", "Shift Updates"] as const;
@@ -34,7 +37,7 @@ export const Notification = () => {
     notification: [] as NotificationOption[],
   });
 
-  const { data, loading, error, fetchNotifications } = useNotifications();
+  const { data, loading, error, lastPage, currentPage, setCurrentPage, fetchNotifications } = useNotifications();
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
@@ -218,7 +221,7 @@ export const Notification = () => {
         addressId: Number(form.addressId),
         userId: Number(form.userId),
         notificationType: form.notification.map(n => notificationTypeMap[n]),
-        date: form.Startdate ? toMDY(form.Startdate) : undefined, // omit when empty
+        page: currentPage,
       });
 
       toast.success("Notifications fetched successfully!");
@@ -227,6 +230,35 @@ export const Notification = () => {
       toast.error("Failed to fetch notifications. Please try again.");
     } finally {
       setSubmitLoader(false);
+    }
+  };
+
+  // Export functions using utility
+  const handleExportToExcel = () => {
+    if (!data || data.length === 0) {
+      toast.error("No data to export. Please fetch data first.");
+      return;
+    }
+
+    const result = exportNotificationToExcel(data, 'notifications');
+    if (result.success) {
+      toast.success(`Excel file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(`Failed to export Excel: ${result.error}`);
+    }
+  };
+
+  const handleExportToPDF = () => {
+    if (!data || data.length === 0) {
+      toast.error("No data to export. Please fetch data first.");
+      return;
+    }
+
+    const result = exportNotificationToPDF(data, 'notifications');
+    if (result.success) {
+      toast.success(`PDF file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(`Failed to export PDF: ${result.error}`);
     }
   };
 
@@ -362,7 +394,7 @@ export const Notification = () => {
     }
   ];
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10 pb-6">
       <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           Notification
@@ -627,6 +659,48 @@ export const Notification = () => {
         searchable={true}
         tableHeight={tableHeight}
       />
+      
+      {/* Export Buttons */}
+      {data && data.length > 0 && (
+        <div className="flex justify-end items-center gap-2 mt-4 mb-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+      
+      {/* Pagination */}
+      {data && data.length > 0 && lastPage && lastPage > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              fetchNotifications({
+                clientId: Number(form.clientId),
+                addressId: Number(form.addressId),
+                userId: Number(form.userId),
+                notificationType: form.notification.map(n => notificationTypeMap[n]),
+                page: page,
+              });
+            }}
+            loading={loading}
+          />
+        </div>
+      )}
     </div>
   );
 };

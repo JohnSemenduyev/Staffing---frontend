@@ -8,10 +8,12 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useViewTimeSummary } from "../../context/ViewTimeSummaryContext";
+import { exportSummaryToExcel, exportSummaryToPDF } from "../../utils/exportSummaryUtils";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
+import Pagination from "../../components/Pagination";
 import { Button } from "../../components/ui/button";
 
 export const Summary = () => {
@@ -20,7 +22,7 @@ export const Summary = () => {
     addressId: "",
     date: "",
   });
-const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -34,14 +36,15 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
     useSearchClient(debouncedClientSearch);
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
- const { data, loading, error, fetchSummary } = useViewTimeSummary();
+  const { data, loading, error, lastPage, currentPage, setCurrentPage, fetchSummary } = useViewTimeSummary();
+  
 
   // Calculate table height dynamically
   useEffect(() => {
     const calculateTableHeight = () => {
       if (formRef.current) {
         const formHeight = formRef.current.offsetHeight;
-        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 200px)`;
         setTableHeight(calculatedHeight);
       }
     };
@@ -55,7 +58,7 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
     };
 
     window.addEventListener('resize', handleResize);
-    
+
     // Use ResizeObserver to detect form height changes
     const resizeObserver = new ResizeObserver(() => {
       calculateTableHeight();
@@ -86,8 +89,8 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
     setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
- const handleClientSelect = (
-    client: { id: string | number; name: string; lastName:string },
+  const handleClientSelect = (
+    client: { id: string | number; name: string; lastName: string },
     addressId: number | string
   ) => {
     setForm((f) => ({
@@ -116,120 +119,121 @@ const [errors, setErrors] = useState<{ [key: string]: string }>({});
   };
 
   const formatDateForAPI = (rawDate: string | Date): string => {
-  if (typeof rawDate === 'string') {
-    // Convert to MM-DD-YYYY for API
-    const yyyyMMdd = formatDateStringLocal(rawDate);
+    if (typeof rawDate === 'string') {
+      // Convert to MM-DD-YYYY for API
+      const yyyyMMdd = formatDateStringLocal(rawDate);
+      const [year, month, day] = yyyyMMdd.split('-');
+      return `${month}-${day}-${year}`;
+    }
+    // Convert Date object to MM-DD-YYYY for API
+    const yyyyMMdd = formatDateLocal(rawDate);
     const [year, month, day] = yyyyMMdd.split('-');
     return `${month}-${day}-${year}`;
-  }
-  // Convert Date object to MM-DD-YYYY for API
-  const yyyyMMdd = formatDateLocal(rawDate);
-  const [year, month, day] = yyyyMMdd.split('-');
-  return `${month}-${day}-${year}`;
-};
+  };
 
-const formatDateForDisplay = (rawDate: string | Date): string => {
-  if (typeof rawDate === 'string') {
-    // Convert YYYY-MM-DD to MM-DD-YYYY for display
-    const [year, month, day] = rawDate.split('-');
+  const formatDateForDisplay = (rawDate: string | Date): string => {
+    if (typeof rawDate === 'string') {
+      // Convert YYYY-MM-DD to MM-DD-YYYY for display
+      const [year, month, day] = rawDate.split('-');
+      return `${month}-${day}-${year}`;
+    }
+    // Convert Date object to MM-DD-YYYY for display
+    const yyyyMMdd = formatDateLocal(rawDate);
+    const [year, month, day] = yyyyMMdd.split('-');
     return `${month}-${day}-${year}`;
-  }
-  // Convert Date object to MM-DD-YYYY for display
-  const yyyyMMdd = formatDateLocal(rawDate);
-  const [year, month, day] = yyyyMMdd.split('-');
-  return `${month}-${day}-${year}`;
-};
-const handleReset = () => {
+  };
+  const handleReset = () => {
     setForm({
-       clientId: "",
-    addressId: "",  
-    date: "",
+      clientId: "",
+      addressId: "",
+      date: "",
     });
     setClientSearch("");
-    
+
     setSelectedAddressText("");
     setErrors({});
-   
+
     setShowClientDropdown(false);
-    
+
   };
-const onSubmit = async (e) => {
-  e.preventDefault();
-  if (!validate()) {
-    toast.error("Please fill in all required fields");
-    return;
-  }
-
-  setSubmitLoader(true);
-  
-  try {
-    console.log("Submitting form with data:", form);
-
-    const clientId = Number(form.clientId);
-    const rawDate = form.date;
-
-    // Call API with or without date
-    if (rawDate) {
-      const formattedDate = formatDateForAPI(rawDate);  // Use utility function
-      console.log("Formatted Date for API:", formattedDate);
-      
-      // Add minimum loading time to ensure user sees the loading state
-      await Promise.all([
-        fetchSummary(clientId, formattedDate),
-        new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
-      ]);
-    } else {
-      await Promise.all([
-        fetchSummary(clientId),
-        new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
-      ]);
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) {
+      toast.error("Please fill in all required fields");
+      return;
     }
-    
-    
-    toast.success("Time summary loaded successfully!");
 
-    console.log("Time summary fetched:", data);  
-  } catch (err) {
-    console.error("Failed to fetch time summary:", err);
-    toast.error("Failed to fetch time summary");
-  } finally {
-    setSubmitLoader(false);
-  }
-};
+    setSubmitLoader(true);
+
+    try {
+      console.log("Submitting form with data:", form);
+
+      const clientId = Number(form.clientId);
+      const rawDate = form.date;
+
+      // Call API with or without date
+      if (rawDate) {
+        const formattedDate = formatDateForAPI(rawDate);  // Use utility function
+        console.log("Formatted Date for API:", formattedDate);
+
+        // Add minimum loading time to ensure user sees the loading state
+        await Promise.all([
+          fetchSummary(clientId, formattedDate, currentPage),
+          new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
+        ]);
+      } else {
+        await Promise.all([
+          fetchSummary(clientId, undefined, currentPage),
+          new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
+        ]);
+      }
 
 
-  const generateExcelFile = () => {
-    const formattedData = data.map((item) => ({
-      "First Name": item.guardFirst.name,
-      "Last Name": item.guardLast.name,
-      "Date": item.date,
-      "Client Name": item.Client.name,
-      "Location": item.address.address,
-      "Hours ": item.time,
-    }));
+      toast.success("Time summary loaded successfully!");
 
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
-
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    return blob;
+      console.log("Time summary fetched:", data);
+    } catch (err) {
+      console.error("Failed to fetch time summary:", err);
+      toast.error("Failed to fetch time summary");
+    } finally {
+      setSubmitLoader(false);
+    }
   };
 
-  const handleDownloadExcel = () => {
-    const blob = generateExcelFile();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "SummaryReport.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    toast.success("Excel downloaded!");
+
+  // Export functions using utility
+  const handleExportToExcel = () => {
+    if (!data || data.length === 0) {
+      toast.error("No data to export. Please fetch data first.");
+      return;
+    }
+
+    const result = exportSummaryToExcel(data, 'time_summary');
+    if (result.success) {
+      toast.success(`Excel file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(`Failed to export Excel: ${result.error}`);
+    }
+  };
+
+  const handleExportToPDF = () => {
+    if (!data || data.length === 0) {
+      toast.error("No data to export. Please fetch data first.");
+      return;
+    }
+
+    try {
+      const result = exportSummaryToPDF(data, 'time_summary');
+      
+      if (result.success) {
+        toast.success(`PDF file exported successfully: ${result.filename}`);
+      } else {
+        toast.error(`Failed to export PDF: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("PDF Export - Unexpected error:", error);
+      toast.error(`Unexpected error during PDF export: ${error.message}`);
+    }
   };
 
   const generatePrintableTable = () => {
@@ -245,17 +249,17 @@ const onSubmit = async (e) => {
     // Table headers
     const headers = [
       'First Name',
-      'Last Name', 
+      'Last Name',
       'Date',
       'Client Name',
       'Client Location',
       'Hours (Minutes)'
     ];
 
-    const headerRow = headers.map(header => 
+    const headerRow = headers.map(header =>
       `<th style="background-color: #f8f9fa; font-weight: bold; padding: 12px; text-align: left; border: 1px solid #dee2e6;">${header}</th>`
     ).join('');
-    
+
     // Table rows from data
     const dataRows = data.map((item, index) => {
       const rowStyle = index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f8f9fa;';
@@ -299,15 +303,15 @@ const onSubmit = async (e) => {
 
     try {
       setIsPrinting(true);
-      
+
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       const tableContent = generatePrintableTable();
       const currentDate = new Date();
       const currentDateFormatted = formatDateForDisplay(currentDate); // Use utility function
       const currentTime = new Date().toLocaleTimeString();
-      
+
       const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
 
       if (!printWindow) {
@@ -466,7 +470,7 @@ const onSubmit = async (e) => {
 
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
+
       // Wait for content to load, then focus and print
       printWindow.onload = () => {
         printWindow.focus();
@@ -475,9 +479,9 @@ const onSubmit = async (e) => {
           // Don't close automatically - let user choose
         }, 500);
       };
-      
+
       toast.success("Print preview opened successfully!");
-      
+
     } catch (error) {
       console.error("Print error:", error);
       toast.error("Failed to generate print preview");
@@ -504,20 +508,20 @@ const onSubmit = async (e) => {
     },
     {
       key: "date",
-      label: "Date",  
+      label: "Date",
       sortable: true,
       searchable: true,
       className: "whitespace-nowrap max-w-[200px]",
-     render: (value) => {
-  if (!value) return "-";
-  console.log("raw value:", value);
+      render: (value) => {
+        if (!value) return "-";
+        console.log("raw value:", value);
 
-  const [month, day, year] = value.split("-");
-  const formatted = `${month}-${day}-${year}`;
-  console.log("formatted:", formatted);
+        const [month, day, year] = value.split("-");
+        const formatted = `${month}-${day}-${year}`;
+        console.log("formatted:", formatted);
 
-  return formatted;
-}
+        return formatted;
+      }
     },
     {
       key: "Client.name",
@@ -527,8 +531,8 @@ const onSubmit = async (e) => {
       className: "whitespace-nowrap max-w-[200px]",
       render: (_: any, row: any) => {
         const a = row.Client;
-        console.log(1,a)
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        console.log(1, a)
+        const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -540,8 +544,8 @@ const onSubmit = async (e) => {
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
       render: (_: any, row: any) => {
         const a = row.address;
-        console.log(1,a)
-        const full = [a?.address??"" , a?.city??"" , a?.state??"" , a?.pincode??""].filter(Boolean).join(", ");
+        console.log(1, a)
+        const full = [a?.address ?? "", a?.city ?? "", a?.state ?? "", a?.pincode ?? ""].filter(Boolean).join(", ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -553,67 +557,67 @@ const onSubmit = async (e) => {
       className: "whitespace-nowrap max-w-[200px]",
     }
   ];
-  
+
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10 pb-6">
       <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
         <h2 className="text-xl font-semibold mb-2">
           View Time Summary
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-<div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">   
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">
             {/* Client Search Field */}
-                        <div className="relative">
-  <input
-    type="text"
-    value={clientSearch}
-    onFocus={() => setShowClientDropdown(true)}
-    onBlur={() =>
-      setTimeout(() => setShowClientDropdown(false), 200)
-    }
-    onChange={(e) => {
-      setClientSearch(e.target.value);
-      setForm((f) => ({ ...f, clientId: "", addressId: "" }));
-      setSelectedAddressText("");
-    }}
-    placeholder="Client Name"
-    className={fieldInputClasses}
-  />
-  {errors.clientId && (
-    <ErrorMessage message={errors.clientId} />
-  )}
+            <div className="relative">
+              <input
+                type="text"
+                value={clientSearch}
+                onFocus={() => setShowClientDropdown(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowClientDropdown(false), 200)
+                }
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setForm((f) => ({ ...f, clientId: "", addressId: "" }));
+                  setSelectedAddressText("");
+                }}
+                placeholder="Client Name"
+                className={fieldInputClasses}
+              />
+              {errors.clientId && (
+                <ErrorMessage message={errors.clientId} />
+              )}
 
-  <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 1}>
-    {loadingClients ? (
-      <div className="p-2 text-sm text-gray-500">Searching clients...</div>
-    ) : searchedClients.length === 0 ? (
-      <div className="p-2 text-gray-500 text-sm">No clients found</div>
-    ) : (
-      searchedClients.flatMap((client, clientIndex) =>
-        client.addresses.map((address, addressIndex) => (
-          <SearchResultItem
-            key={`${client.id}-${address.id}`}
-            index={clientIndex + addressIndex}
-            primaryText={[client.name, client.lastName].filter(Boolean).join(' ')}
-            secondaryText={[
-              address.label || address.address,
-              (address as any)?.city,
-              (address as any)?.state,
-              (address as any)?.pincode,
-            ].filter(Boolean).join(', ')}
-            initials={`${client.name?.[0]?.toUpperCase() ?? ''}${client.lastName ? client.lastName[0]?.toUpperCase() : ''}`}
-            onSelect={() =>
-              handleClientSelect(
-                { id: client.id, name: client.name, lastName: client.lastName },
-                address.id
-              )
-            }
-          />
-        ))
-      )
-    )}
-  </SearchResultsDropdown>
-</div>
+              <SearchResultsDropdown show={showClientDropdown && clientSearch.length >= 1}>
+                {loadingClients ? (
+                  <div className="p-2 text-sm text-gray-500">Searching clients...</div>
+                ) : searchedClients.length === 0 ? (
+                  <div className="p-2 text-gray-500 text-sm">No clients found</div>
+                ) : (
+                  searchedClients.flatMap((client, clientIndex) =>
+                    client.addresses.map((address, addressIndex) => (
+                      <SearchResultItem
+                        key={`${client.id}-${address.id}`}
+                        index={clientIndex + addressIndex}
+                        primaryText={[client.name, client.lastName].filter(Boolean).join(' ')}
+                        secondaryText={[
+                          address.label || address.address,
+                          (address as any)?.city,
+                          (address as any)?.state,
+                          (address as any)?.pincode,
+                        ].filter(Boolean).join(', ')}
+                        initials={`${client.name?.[0]?.toUpperCase() ?? ''}${client.lastName ? client.lastName[0]?.toUpperCase() : ''}`}
+                        onSelect={() =>
+                          handleClientSelect(
+                            { id: client.id, name: client.name, lastName: client.lastName },
+                            address.id
+                          )
+                        }
+                      />
+                    ))
+                  )
+                )}
+              </SearchResultsDropdown>
+            </div>
 
             {/* Address (read-only) */}
             <div>
@@ -625,7 +629,7 @@ const onSubmit = async (e) => {
                 className={`${fieldInputClasses} appearance-none `}
               />
             </div>
-            
+
             <div>
               <CustomDatePicker
                 value={form.date}
@@ -641,32 +645,32 @@ const onSubmit = async (e) => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-start gap-2">               
-              <Button                 
-                type="submit"                 
-                disabled={submitLoader}                 
+            <div className="flex justify-start gap-2">
+              <Button
+                type="submit"
+                disabled={submitLoader}
                 variant="outline"
-                className="pl-5 pr-5"               
-              >                 
-                {submitLoader ? (                   
-                  <>                     
-                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />                     
-                    Loading...                   
-                  </>                 
-                ) : (                   
-                  "Run"                 
-                )}               
-              </Button> 
-              { (form.addressId || form.clientId || form.date)&&
+                className="pl-5 pr-5"
+              >
+                {submitLoader ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                    Loading...
+                  </>
+                ) : (
+                  "Run"
+                )}
+              </Button>
+              {(form.addressId || form.clientId || form.date) &&
                 (<ResetButton onClick={handleReset}
-                disabled={submitLoader}/>) }            
+                  disabled={submitLoader} />)}
             </div>
           </div>
         </form>
       </div>
-      
+
       {/* Table Header with Print and Share Icons */}
-      
+
 
       <GenericTable
         data={data || []}
@@ -678,29 +682,43 @@ const onSubmit = async (e) => {
       />
       <div className="flex justify-end items-center gap-2 mt-4 mb-2">
         <button
-          onClick={handlePrint}
-          disabled={isPrinting}
-          className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          title="Print Report"
-        >
-          {isPrinting ? (
-            <>
-              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-              <span className="text-sm">Preparing...</span>
-            </>
-          ) : (
-            <FaFilePdf className="w-5 h-5" />
-          )}
-        </button>
-        
-        <button
-          onClick={handleDownloadExcel}
+          onClick={handleExportToPDF}
           className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          title="Download Excel"
+          title="Export to PDF"
+        >
+          <FaFilePdf className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={handleExportToExcel}
+          className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          title="Export to Excel"
         >
           <FaFileExport className="w-5 h-5" />
         </button>
       </div>
+      
+      {/* Pagination */}
+      {data && data.length > 0 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage || 1}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              const clientId = Number(form.clientId);
+              if (form.date) {
+                const rawDate = form.date;
+                const formattedDate = formatDateForAPI(rawDate);
+                fetchSummary(clientId, formattedDate, page);
+              } else {
+                fetchSummary(clientId, undefined, page);
+              }
+            }}
+            loading={loading}
+          />
+        </div>
+      )}
     </div>
   );
 };

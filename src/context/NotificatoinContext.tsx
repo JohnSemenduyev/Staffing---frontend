@@ -54,14 +54,17 @@ type NotificationsContextType = {
   data: NotificationEntry[] | null;
   loading: boolean;
   error: string | null;
+  lastPage: number | null;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
   fetchNotifications: (
     variables: {
       addressId?: number;
       clientId?: number;
       userId?: number;
-      date?: string;
       shiftId?: number;
-      notificationType?: string[]; // <-- Added this missing property
+      notificationType?: string[];
+      page?: number;
     }
   ) => Promise<void>;
 };
@@ -114,14 +117,16 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const [data, setData] = useState<NotificationEntry[] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastPage, setLastPage] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const fetchNotifications = async (variables: {
     addressId?: number;
     clientId?: number;
     userId?: number;
-    date?: string;
     shiftId?: number;
-    notificationType?: string[]; 
+    notificationType?: string[];
+    page?: number;
   }) => {
     setLoading(true);
     setError(null);
@@ -133,22 +138,32 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         if (v.clientId) out.clientId = v.clientId;
         if (v.addressId) out.addressId = v.addressId;
         if (v.userId && v.userId > 0) out.userId = v.userId;
-        if (v.date) out.date = v.date;
         if (v.shiftId) out.shiftId = v.shiftId;
         if (Array.isArray(v.notificationType) && v.notificationType.length > 0) {
           out.notificationType = v.notificationType;
         }
+        if (v.page) out.page = v.page;
         return out;
       };
 
-      const response = await graphQLClient.request<{ notifications: RawNotification[] }>(
+      const response = await graphQLClient.request<{ 
+        notifications: { 
+          lastPage: number; 
+          data: RawNotification[] 
+        } 
+      }>(
         GET_NOTIFICATIONS,
         clean(variables),
         { Authorization: `Bearer ${token}` }
       );
 
-      const rawData = response.notifications || [];
-      console.log("response" , response);
+      const paginatedData = response.notifications;
+      const rawData = paginatedData?.data || [];
+      
+      console.log("response", response);
+      
+      setLastPage(paginatedData?.lastPage || null);
+      
       const transformed: NotificationEntry[] = rawData.map((n) => ({
         guardFirst: { name: n.user?.name || "" },
         guardLast: { name: n.user?.lastName || "" },
@@ -176,7 +191,15 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   };
 
   return (
-    <NotificationsContext.Provider value={{ data, loading, error, fetchNotifications }}>
+    <NotificationsContext.Provider value={{ 
+      data, 
+      loading, 
+      error, 
+      lastPage, 
+      currentPage, 
+      setCurrentPage, 
+      fetchNotifications 
+    }}>
       {children}
     </NotificationsContext.Provider>
   );

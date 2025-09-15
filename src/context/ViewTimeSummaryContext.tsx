@@ -38,7 +38,10 @@ type ViewTimeSummaryContextType = {
   data: TimeSummaryEntry[] | null;
   loading: boolean;
   error: string | null;
-  fetchSummary: (clientId: number, date?: string) => Promise<void>;
+  lastPage: number | null;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  fetchSummary: (clientId: number, date?: string, page?: number) => Promise<void>;
 };
 
 const ViewTimeSummaryContext = createContext<ViewTimeSummaryContextType | undefined>(undefined);
@@ -47,14 +50,16 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
   const [data, setData] = useState<TimeSummaryEntry[] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastPage, setLastPage] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const fetchSummary = async (clientId: number, date?: string) => {
+  const fetchSummary = async (clientId: number, date?: string, page?: number) => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
 
-      const variables = { clientId, date };
+      const variables = { clientId, date, page };
       const response = await graphQLClient.request<{ 
         ScheduleSessionsByClientWeek: {
           lastPage: number;
@@ -66,8 +71,9 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
         { Authorization: `Bearer ${token}` }
       );
 
-      const rawData = response.ScheduleSessionsByClientWeek.data;
-    console.log(rawData)
+      const paginatedData = response.ScheduleSessionsByClientWeek;
+      const rawData = paginatedData.data;
+      setLastPage(paginatedData.lastPage);
    const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
   session.shifts.map((shift) => {
     const formattedDate = formatDateStringLocal(shift.date);
@@ -101,7 +107,15 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
   };
 
   return (
-    <ViewTimeSummaryContext.Provider value={{ data, loading, error, fetchSummary }}>
+    <ViewTimeSummaryContext.Provider value={{ 
+      data, 
+      loading, 
+      error, 
+      lastPage, 
+      currentPage, 
+      setCurrentPage, 
+      fetchSummary 
+    }}>
       {children}
     </ViewTimeSummaryContext.Provider>
   );

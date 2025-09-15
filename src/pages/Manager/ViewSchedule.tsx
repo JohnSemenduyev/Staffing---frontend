@@ -668,7 +668,6 @@ export const ViewSchedule = () => {
     console.log('Loading states:', { scheduleLoading, tableLoading, sessionLoading });
   }, [scheduleLoading, tableLoading, sessionLoading]);
 
-  // ... existing code ...
 
   const tableColumns: TableColumn[] = [
     {
@@ -1738,7 +1737,7 @@ export const ViewSchedule = () => {
   };
 
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10 pb-6">
       {!showScheduleTable ? (
         <>
           {error ? (
@@ -2118,12 +2117,12 @@ export const ViewSchedule = () => {
                     {isActualTimePublishing ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Publishing...
+                        Saving...
                       </>
                     ) : (
                       <>
                         <Send className="w-4 h-4 mr-2" />
-                        Publish Actual Time
+                        Save
                       </>
                     )}
                   </Button>

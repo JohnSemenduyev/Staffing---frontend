@@ -467,8 +467,8 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
 `;
 
 export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
-  query GetScheduleSessionsByClientWeek($clientId: Int!, $date: String) {
-    ScheduleSessionsByClientWeek(clientId: $clientId, date: $date) {
+  query GetScheduleSessionsByClientWeek($clientId: Int!, $date: String, $page: Int) {
+    ScheduleSessionsByClientWeek(clientId: $clientId, date: $date, page: $page) {
       lastPage
       data {
         client {
@@ -551,47 +551,50 @@ export const GET_NOTIFICATIONS = gql`
     $addressId: Int
     $clientId: Int
     $userId: Int
-    $date: String
     $shiftId: Int
     $notificationType: [String!]
+    $page: Int
   ) {
     notifications(
       addressId: $addressId
       clientId: $clientId
       userId: $userId
-      date: $date
       shiftId: $shiftId
       notificationType: $notificationType
+      page: $page
     ) {
-      id
-      clientId
-      addressId
-      userId
-      notificationType
-      scheduleSessionId
-      message
-      managerId
-      date
-      time
-      client {
-        name
-        lastName
-      }
-      address {
-        address
-        city
-        state
-        pincode
-      }
-      shift {
+      lastPage
+      data {
         id
-        startTime
+        clientId
+        addressId
+        userId
+        notificationType
+        scheduleSessionId
+        message
+        managerId
         date
-      }
+        time
+        client {
+          name
+          lastName
+        }
+        address {
+          address
+          city
+          state
+          pincode
+        }
+        shift {
+          id
+          startTime
+          date
+        }
         user {
-      name
-      lastName
-    }
+          name
+          lastName
+        }
+      }
     }
   }
 `;
