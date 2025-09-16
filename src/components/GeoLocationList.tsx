@@ -144,7 +144,7 @@ const GeoLocationList: React.FC = () => {
                 <th key={term} className="px-2 sm:px-4 py-2 border-b text-left">
                   <input
                     placeholder={`Search ${term.replace(/([A-Z])/g, " $1").toLowerCase()}`}
-                    className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-700 placeholder:text-gray-400"
+                    className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] text-gray-700 placeholder:text-gray-400"
                     type="text"
                     value={searchTerms[term as keyof typeof searchTerms]}
                     onChange={(e) =>

@@ -20,7 +20,6 @@ export interface NotificationData {
   time: string;
   [key: string]: any;
 }
-
 export const exportNotificationToExcel = (data: NotificationData[], filename: string = 'notifications') => {
   try {
     // Transform data for Excel export
@@ -37,91 +36,164 @@ export const exportNotificationToExcel = (data: NotificationData[], filename: st
       'Time': row.time || '-'
     }));
 
+    // Calculate dynamic column widths based on content length
+    const calculateColumnWidths = () => {
+      if (!excelData || excelData.length === 0) {
+        return [{ wch: 2 }]; // Just empty first column if no data
+      }
+      
+      const headers = Object.keys(excelData[0]);
+      const columnWidths = [{ wch: 2 }]; // Empty first column (small width)
+      
+      headers.forEach((header, colIndex) => {
+        let maxLength = header.length; // Start with header length
+        
+        // Check all data rows for this column
+        excelData.forEach(row => {
+          const values = Object.values(row);
+          const cellValue = String(values[colIndex] || '');
+          maxLength = Math.max(maxLength, cellValue.length);
+        });
+        
+        // Add extra padding and set limits
+        const minWidth = 10;
+        const maxWidth = 60;
+        const calculatedWidth = Math.min(Math.max(maxLength + 3, minWidth), maxWidth);
+        
+        columnWidths.push({ wch: calculatedWidth });
+      });
+      
+      return columnWidths;
+    };
+
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
     
     // Create data structure with empty first row and column
-    const titleRow = ['', 'Notifications']; // Empty first cell, then title
-    const headerRow = ['', ...Object.keys(excelData[0] || {})]; // Empty first cell, then headers
-    const dataRows = excelData.map(row => ['', ...Object.values(row)]); // Empty first cell, then data
+    const headers = Object.keys(excelData[0] || {});
+    const numCols = headers.length;
+    
+    const emptyRow = Array(numCols + 1).fill(''); // First row completely empty
+    const titleRow = ['', 'Notifications', ...Array(numCols - 1).fill('')]; // Title in B2
+    const headerRow = ['', ...headers]; // Headers starting from B3
+    const dataRows = excelData.map(row => ['', ...Object.values(row)]); // Data starting from B4
     
     const dataWithStructure = [
-      titleRow,      // Row 0: Empty first cell, then title
-      headerRow,     // Row 1: Empty first cell, then headers
-      ...dataRows    // Row 2+: Empty first cell, then data
+      emptyRow,      // Row 1: Completely empty
+      titleRow,      // Row 2: Title in B2
+      headerRow,     // Row 3: Headers starting from B3
+      ...dataRows    // Row 4+: Data starting from B4
     ];
     
     const worksheet = XLSX.utils.aoa_to_sheet(dataWithStructure);
 
-    // Set column widths - matching summary proportions
-    const columnWidths = [
-      { wch: 5 },   // Empty first column
-      { wch: 8 },   // S.No
-      { wch: 20 },  // Client Name
-      { wch: 35 },  // Address
-      { wch: 20 },  // User Name
-      { wch: 18 },  // Notification Type
-      { wch: 40 },  // Message
-      { wch: 15 },  // Date
-      { wch: 12 }   // Time
-    ];
-    worksheet['!cols'] = columnWidths;
+    // Set dynamic column widths
+    worksheet['!cols'] = calculateColumnWidths();
 
-    // Add styling to match summary exports
+    // Add styling
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     
-    // Style title cell (B1 - row 0, col 1)
-    const titleCellAddress = XLSX.utils.encode_cell({ r: 0, c: 1 });
-    worksheet[titleCellAddress].s = {
-      font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
-      fill: { fgColor: { rgb: 'FFFFFF' } },
-      alignment: { horizontal: 'center', vertical: 'middle' }
+    // First, remove all borders from the entire worksheet
+    for (let row = 0; row <= range.e.r; row++) {
+      for (let col = 0; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (worksheet[cellAddress]) {
+          worksheet[cellAddress].s = {
+            ...worksheet[cellAddress].s,
+            border: {
+              top: { style: 'none' },
+              bottom: { style: 'none' },
+              left: { style: 'none' },
+              right: { style: 'none' }
+            }
+          };
+        }
+      }
+    }
+    
+    // Define table border style
+    const tableBorder = {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } }
     };
     
-    // Merge title cell across all data columns (B1 to last column)
-    if (!worksheet['!merges']) worksheet['!merges'] = [];
-    worksheet['!merges'].push({
-      s: { r: 0, c: 1 },  // B1
-      e: { r: 0, c: range.e.c }  // Last column, row 0
-    });
-    
-    // Style header row (row 1, starting from col 1)
-    for (let col = 1; col <= range.e.c; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 1, c: col });
-      if (!worksheet[cellAddress]) continue;
-      
-      worksheet[cellAddress].s = {
-        font: { name: 'Arial', sz: 15, bold: true, color: { rgb: '000000' } },
+    // Style title cell (B2 - row 1, col 1) - NO BORDER
+    const titleCellAddress = XLSX.utils.encode_cell({ r: 1, c: 1 });
+    if (worksheet[titleCellAddress]) {
+      worksheet[titleCellAddress].s = {
+        font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
         fill: { fgColor: { rgb: 'FFFFFF' } },
-        border: {
-          top: { style: 'hairline', color: { rgb: '000000' } },
-          bottom: { style: 'hairline', color: { rgb: '000000' } },
-          left: { style: 'hairline', color: { rgb: '000000' } },
-          right: { style: 'hairline', color: { rgb: '000000' } }
-        },
         alignment: { horizontal: 'center', vertical: 'middle' },
-        numFmt: '@' // Force text format to prevent Excel's default number alignment
+        border: {
+          top: { style: 'none' },
+          bottom: { style: 'none' },
+          left: { style: 'none' },
+          right: { style: 'none' }
+        }
       };
     }
-
-    // Style data rows (starting from row 2, starting from col 1)
-    for (let row = 2; row <= range.e.r; row++) {
-      for (let col = 1; col <= range.e.c; col++) {
+    
+    // Merge title cell across all data columns (B2 to last column of row 2)
+    if (!worksheet['!merges']) worksheet['!merges'] = [];
+    worksheet['!merges'].push({
+      s: { r: 1, c: 1 },  // B2
+      e: { r: 1, c: range.e.c }  // Last column, row 2
+    });
+    
+    // Apply borders ONLY to table area (headers and data rows)
+    // Table starts from row 2 (headers) and goes to the last row with data
+    const tableStartRow = 2; // Headers row
+    const tableEndRow = range.e.r; // Last data row
+    const tableStartCol = 1; // Column B
+    const tableEndCol = range.e.c; // Last data column
+    
+    for (let row = tableStartRow; row <= tableEndRow; row++) {
+      for (let col = tableStartCol; col <= tableEndCol; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        
+        // Skip if cell doesn't exist
         if (!worksheet[cellAddress]) continue;
         
-        // All text center-aligned with explicit number formatting
+        // Header row styling (row 2) - WITH BORDERS AND BOLD
+        if (row === tableStartRow) {
+          worksheet[cellAddress].s = {
+            font: { name: 'Arial', sz: 15, bold: true, color: { rgb: '000000' } },
+            fill: { fgColor: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'middle' },
+            numFmt: '@',
+            border: tableBorder
+          };
+        }
+        // Data rows styling (row 3+) - WITH BORDERS
+        else {
+          worksheet[cellAddress].s = {
+            font: { name: 'Arial', sz: 12, color: { rgb: '000000' } },
+            fill: { fgColor: { rgb: 'FFFFFF' } },
+            alignment: { horizontal: 'center', vertical: 'middle' },
+            numFmt: '@',
+            border: tableBorder
+          };
+        }
+      }
+    }
+    
+    // Ensure title merged cells have no borders
+    for (let col = tableStartCol; col <= tableEndCol; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 1, c: col });
+      if (worksheet[cellAddress]) {
         worksheet[cellAddress].s = {
-          font: { name: 'Arial', sz: 15, color: { rgb: '000000' } },
+          ...worksheet[cellAddress].s,
+          font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
           fill: { fgColor: { rgb: 'FFFFFF' } },
-          border: {
-            top: { style: 'hairline', color: { rgb: '000000' } },
-            bottom: { style: 'hairline', color: { rgb: '000000' } },
-            left: { style: 'hairline', color: { rgb: '000000' } },
-            right: { style: 'hairline', color: { rgb: '000000' } }
-          },
           alignment: { horizontal: 'center', vertical: 'middle' },
-          numFmt: '@' // Force text format to prevent Excel's default number alignment
+          border: {
+            top: { style: 'none' },
+            bottom: { style: 'none' },
+            left: { style: 'none' },
+            right: { style: 'none' }
+          }
         };
       }
     }

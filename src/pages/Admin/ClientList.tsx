@@ -876,7 +876,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
                       placeholder="Search client name"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["client.name"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "client.name": e.target.value }))}
@@ -886,7 +886,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
                       placeholder="Search industry"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["industry"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "industry": e.target.value }))}
@@ -896,7 +896,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
                       placeholder="Search contract hours"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["contractHour"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "contractHour": e.target.value }))}
@@ -906,7 +906,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "250px" }}>
                     <input
                       placeholder="Search street address"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["address"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "address": e.target.value }))}
@@ -916,7 +916,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "150px" }}>
                     <input
                       placeholder="Search city"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["city"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "city": e.target.value }))}
@@ -926,7 +926,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "100px" }}>
                     <input
                       placeholder="Search state"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["state"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "state": e.target.value }))}
@@ -936,7 +936,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "250px" }}>
                     <input
                       placeholder="Search zip code"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["pincode"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "pincode": e.target.value }))}
@@ -946,7 +946,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
                     <input
                       placeholder="Search latitude"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["latitude"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "latitude": e.target.value }))}
@@ -956,7 +956,7 @@ function ClientList() {
                   <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
                     <input
                       placeholder="Search longitude"
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["longitude"] || ''}
                       onChange={(e) => setSearchTerms(prev => ({ ...prev, "longitude": e.target.value }))}
@@ -1013,7 +1013,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "200px" }}>
                           <input
                             placeholder="Enter client name"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="text"
                             value={newClientData.clientName}
                             onChange={(e) => handleNewClientInputChange("clientName", e.target.value)}
@@ -1023,7 +1023,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "200px" }}>
                           <input
                             placeholder="Enter industry"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="text"
                             value={newClientData.industry}
                             onChange={(e) => handleNewClientInputChange("industry", e.target.value)}
@@ -1033,7 +1033,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "200px" }}>
                           <input
                             placeholder="Enter contract hours"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="number"
                             value={newClientData.contractHour}
                             onChange={(e) => handleNewClientInputChange("contractHour", e.target.value)}
@@ -1043,7 +1043,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "250px" }}>
                           <input
                             placeholder="Enter street address"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="text"
                             value={newClientData.address}
                             onChange={(e) => handleNewClientInputChange("address", e.target.value)}
@@ -1053,7 +1053,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "150px" }}>
                           <input
                             placeholder="Enter city"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="text"
                             value={newClientData.city}
                             onChange={(e) => handleNewClientInputChange("city", e.target.value)}
@@ -1063,7 +1063,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "100px" }}>
                           <input
                             placeholder="Enter state"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="text"
                             value={newClientData.state}
                             onChange={(e) => handleNewClientInputChange("state", e.target.value)}
@@ -1073,7 +1073,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
                           <input
                             placeholder="Enter zip"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="text"
                             value={newClientData.pincode}
                             onChange={(e) => handleNewClientInputChange("pincode", e.target.value)}
@@ -1083,7 +1083,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
                           <input
                             placeholder="Enter latitude"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="number"
                             step="any"
                             value={newClientData.latitude}
@@ -1094,7 +1094,7 @@ function ClientList() {
                         <td className="px-4 py-3 border-b border-gray-100" style={{ width: "120px" }}>
                           <input
                             placeholder="Enter longitude"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                             type="number"
                             step="any"
                             value={newClientData.longitude}
@@ -1162,14 +1162,14 @@ function ClientList() {
                                   type="text"
                                   value={editClientForm.name}
                                   onChange={(e) => setEditClientForm(prev => ({ ...prev, name: e.target.value }))}
-                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                   placeholder="First name"
                                 />
                                 <input
                                   type="text"
                                   value={editClientForm.lastName}
                                   onChange={(e) => setEditClientForm(prev => ({ ...prev, lastName: e.target.value }))}
-                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                   placeholder="Last name"
                                 />
                               </div>
@@ -1186,7 +1186,7 @@ function ClientList() {
                                 type="text"
                                 value={editClientForm.industry}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, industry: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="Industry"
                               />
                             ) : (
@@ -1199,7 +1199,7 @@ function ClientList() {
                                 type="number"
                                 value={editClientForm.contractHour}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, contractHour: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="Contract hours"
                               />
                             ) : (
@@ -1212,7 +1212,7 @@ function ClientList() {
                                 type="text"
                                 value={editClientForm.address}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, address: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="Address"
                               />
                             ) : (
@@ -1225,7 +1225,7 @@ function ClientList() {
                                 type="text"
                                 value={editClientForm.city}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, city: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="City"
                               />
                             ) : (
@@ -1238,7 +1238,7 @@ function ClientList() {
                                 type="text"
                                 value={editClientForm.state}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, state: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="State"
                               />
                             ) : (
@@ -1251,7 +1251,7 @@ function ClientList() {
                                 type="text"
                                 value={editClientForm.pincode}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, pincode: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="Zip code"
                               />
                             ) : (
@@ -1265,7 +1265,7 @@ function ClientList() {
                                 step="any"
                                 value={editClientForm.latitude}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, latitude: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="Latitude"
                               />
                             ) : (
@@ -1279,7 +1279,7 @@ function ClientList() {
                                 step="any"
                                 value={editClientForm.longitude}
                                 onChange={(e) => setEditClientForm(prev => ({ ...prev, longitude: e.target.value }))}
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                 placeholder="Longitude"
                               />
                             ) : (

@@ -352,7 +352,7 @@ const hasSearchValues = Object.values(searchTerms).some(
                 [column.key]: e.target.value,
               }))
             }
-            className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none bg-white pr-8"
+            className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] appearance-none bg-white pr-8"
             style={{
               maxWidth: '100%',
               minWidth: column.width ? `calc(${column.width} - 32px)` : 'auto'
@@ -372,7 +372,7 @@ const hasSearchValues = Object.values(searchTerms).some(
     return (
       <input
         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
-        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
         type="text"
         value={searchTerms[column.key] || ''}
         onChange={(e) =>
