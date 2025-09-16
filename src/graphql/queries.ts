@@ -548,20 +548,24 @@ export const CHECK_CLIENT_WEEK_SCHEDULE = gql`
 `;
 export const GET_NOTIFICATIONS = gql`
   query Notifications(
-    $addressId: Int
-    $clientId: Int
-    $userId: Int
-    $shiftId: Int
-    $notificationType: [String!]
+    $startDate: String
+    $endDate: String
     $page: Int
+    $limit: Int
+    $clientId: Int
+    $addressId: Int
+    $userId: Int
+    $notificationType: [String!]
   ) {
     notifications(
-      addressId: $addressId
-      clientId: $clientId
-      userId: $userId
-      shiftId: $shiftId
-      notificationType: $notificationType
+      startDate: $startDate
+      endDate: $endDate
       page: $page
+      limit: $limit
+      clientId: $clientId
+      addressId: $addressId
+      userId: $userId
+      notificationType: $notificationType
     ) {
       lastPage
       data {

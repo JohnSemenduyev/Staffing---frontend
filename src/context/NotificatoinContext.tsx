@@ -59,12 +59,15 @@ type NotificationsContextType = {
   setCurrentPage: (page: number) => void;
   fetchNotifications: (
     variables: {
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
       addressId?: number;
       clientId?: number;
       userId?: number;
       shiftId?: number;
       notificationType?: string[];
-      page?: number;
     }
   ) => Promise<void>;
 };
@@ -121,12 +124,15 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const fetchNotifications = async (variables: {
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
     addressId?: number;
     clientId?: number;
     userId?: number;
     shiftId?: number;
     notificationType?: string[];
-    page?: number;
   }) => {
     setLoading(true);
     setError(null);
@@ -135,6 +141,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
       const clean = (v: any) => {
         const out: any = {};
+        if (v.startDate) out.startDate = v.startDate;
+        if (v.endDate) out.endDate = v.endDate;
+        if (v.page) out.page = v.page;
+        if (v.limit) out.limit = v.limit;
         if (v.clientId) out.clientId = v.clientId;
         if (v.addressId) out.addressId = v.addressId;
         if (v.userId && v.userId > 0) out.userId = v.userId;
@@ -142,7 +152,6 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         if (Array.isArray(v.notificationType) && v.notificationType.length > 0) {
           out.notificationType = v.notificationType;
         }
-        if (v.page) out.page = v.page;
         return out;
       };
 

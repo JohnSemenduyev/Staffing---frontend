@@ -1,9 +1,5 @@
 import React, { useState } from "react";
 import { FaFileExport, FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
-import { FiEye } from "react-icons/fi";
-import { GoPlus } from "react-icons/go";
-import { IoMdMail } from "react-icons/io";
-import { MdPlusOne } from "react-icons/md";
 import { GripVertical, RotateCcw, Send, Calendar } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";

@@ -60,12 +60,19 @@ export const Notification = () => {
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
+  // Date format conversion utility
+  const toMDY = (ymd?: string) => {
+    if (!ymd) return "";
+    const [y,m,d] = ymd.split("-");
+    return `${m}-${d}-${y}`;
+  };
+
   // Calculate table height dynamically
   useEffect(() => {
     const calculateTableHeight = () => {
       if (formRef.current) {
         const formHeight = formRef.current.offsetHeight;
-        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 200px)`;
         setTableHeight(calculatedHeight);
       }
     };
@@ -194,9 +201,10 @@ export const Notification = () => {
     setShowNotificationDropdown(false);
   };
   useEffect(() => {
-    console.log(data);
-
-  }, [data])
+    console.log("Notification data:", data);
+    console.log("Last page:", lastPage);
+    console.log("Current page:", currentPage);
+  }, [data, lastPage, currentPage])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,13 +218,9 @@ export const Notification = () => {
     setErrors({});
 
     try {
-      const toMDY = (ymd?: string) => {
-        if (!ymd) return "";
-        const [y,m,d] = ymd.split("-");
-        return `${m}-${d}-${y}`;
-      };
-
       await fetchNotifications({
+        startDate: toMDY(form.Startdate),
+        endDate: toMDY(form.Enddate),
         clientId: Number(form.clientId),
         addressId: Number(form.addressId),
         userId: Number(form.userId),
@@ -531,6 +535,19 @@ export const Notification = () => {
               )}
             </div>
 
+            <div>
+              <CustomDatePicker
+                value={form.Enddate}
+                onChange={handleChange}
+                placeholder="Select End Date"
+                fieldName="Enddate"
+                className={`${fieldInputClasses} appearance-none`}
+              />
+              {errors.Enddate && (
+                <ErrorMessage message={errors.Enddate} />
+              )}
+            </div>
+
             {/* Buttons for 1-3 column layouts - show before notification dropdown */}
             <div className="flex justify-start gap-2 lg:hidden">
               <Button
@@ -662,7 +679,7 @@ export const Notification = () => {
       
       {/* Export Buttons */}
       {data && data.length > 0 && (
-        <div className="flex justify-end items-center gap-2 mt-4 mb-2">
+        <div className="flex justify-end items-center gap-2 mt-2 mb-2">
           <button
             onClick={handleExportToPDF}
             className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -682,23 +699,31 @@ export const Notification = () => {
       )}
       
       {/* Pagination */}
-      {data && data.length > 0 && lastPage && lastPage > 1 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              fetchNotifications({
-                clientId: Number(form.clientId),
-                addressId: Number(form.addressId),
-                userId: Number(form.userId),
-                notificationType: form.notification.map(n => notificationTypeMap[n]),
-                page: page,
-              });
-            }}
-            loading={loading}
-          />
+      {data && data.length > 0 && (
+        <div className="mt-3">
+          {lastPage && lastPage > 0 ? (
+            <Pagination
+              currentPage={currentPage}
+              lastPage={lastPage}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                fetchNotifications({
+                  startDate: toMDY(form.Startdate),
+                  endDate: toMDY(form.Enddate),
+                  clientId: Number(form.clientId),
+                  addressId: Number(form.addressId),
+                  userId: Number(form.userId),
+                  notificationType: form.notification.map(n => notificationTypeMap[n]),
+                  page: page,
+                });
+              }}
+              loading={loading}
+            />
+          ) : (
+            <div className="text-center text-gray-500 py-4">
+              No pagination data available
+            </div>
+          )}
         </div>
       )}
     </div>

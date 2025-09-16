@@ -389,6 +389,7 @@ const hasSearchValues = Object.values(searchTerms).some(
     );
   };
 
+
   return (
     <div className={`w-full mt-2 ${className}`}>
       <div
@@ -397,24 +398,31 @@ const hasSearchValues = Object.values(searchTerms).some(
       >
         {loading && (
           <div 
-    className="absolute bg-white bg-opacity-10 flex items-center justify-center z-30 rounded-2xl"
-    style={{
-      top: searchable ? '82px' : '41px', // Start below the header
-      left: 0,
-      right: 0,
-      bottom: 0
-    }}
-  >            <div className="flex items-center space-x-2">
+            className="absolute bg-white bg-opacity-10 flex items-center justify-center z-30 rounded-2xl"
+            style={{
+              top: searchable ? '82px' : '41px', // Start below the header
+              left: 0,
+              right: 0,
+              bottom: 0
+            }}
+          >
+            <div className="flex items-center space-x-2">
               <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               <span className="text-gray-500">Loading...</span>
             </div>
           </div>
         )}
 
-        {/* Fixed Header */}
-        <div className="bg-white rounded-t-2xl">
+        {/* Single Table with Sticky Header */}
+        <div 
+          className="overflow-auto bg-white rounded-t-2xl"
+          style={{ 
+            height: tableHeight,
+            maxHeight: tableHeight
+          }}
+        >
           <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
-            <thead className="bg-[#004175] text-white text-xs font-sans">
+            <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-20">
               <tr className="h-[41px]" style={{ lineHeight: '16px' }}>
                 {actions.length > 0 && (
                   <th className="px-4 py-2 text-left whitespace-nowrap" style={{ width: '100px', minWidth: '100px' }}>
@@ -464,7 +472,7 @@ const hasSearchValues = Object.values(searchTerms).some(
                 ))}
               </tr>
               {searchable && (
-                <tr className="bg-white text-gray-700 font-sans w-full h-[41px]" style={{ lineHeight: '16px' }}>
+                <tr className="bg-white text-gray-700 font-sans w-full h-[41px] sticky top-[41px] z-20" style={{ lineHeight: '16px' }}>
                   {actions.length > 0 && (
                     <th className="px-4 py-2 text-left">
                       {hasSearchValues && (
@@ -487,18 +495,6 @@ const hasSearchValues = Object.values(searchTerms).some(
                 </tr>
               )}
             </thead>
-          </table>
-        </div>
-
-        {/* Scrollable Body */}
-        <div 
-          className="overflow-auto bg-white"
-          style={{ 
-            height: `calc(${tableHeight} - ${searchable ? '82px' : '41px'})`,
-            maxHeight: `calc(${tableHeight} - ${searchable ? '82px' : '41px'})`
-          }}
-        >
-          <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
             <tbody className="relative">
               {!loading &&
                 filteredAndSortedData.map((record, index) => (
