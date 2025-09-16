@@ -68,61 +68,61 @@ const Login = () => {
     navigate('/signup'); // Redirect to signup page
   };
 
-  // Role Selection Screen
-  if (!selectedRole) {
-    return (
-      <div className="h-screen flex flex-col md:flex-row overflow-hidden">
-        {/* Left Side - Logo (Fixed) */}
-        <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
-          <div className="flex items-center justify-center w-full h-full">
-            <img 
-              src={img}
-              alt="Maximal Security - Complete Logo" 
-              className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
-            />
-          </div>
-        </div>
+  // Role Selection Screen - COMMENTED OUT FOR NOW
+  // if (!selectedRole) {
+  //   return (
+  //     <div className="h-screen flex flex-col md:flex-row overflow-hidden">
+  //       {/* Left Side - Logo (Fixed) */}
+  //       <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
+  //         <div className="flex items-center justify-center w-full h-full">
+  //           <img 
+  //             src={img}
+  //             alt="Maximal Security - Complete Logo" 
+  //             className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
+  //           />
+  //         </div>
+  //       </div>
 
-        {/* Right Side - Role Selection */}
-        <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] h-[60vh] md:h-full p-6">
-          <div className="w-full max-w-md text-center">
-            {/* Role Selection Header */}
-            <h2 className="text-3xl font-bold text-white mb-8"> Select User </h2>
-            
-            {/* Role Buttons */}
-            <div className="space-y-4">
-              {roleOptions.map((role) => (
-                <Button
-                  key={role.value}
-                  onClick={() => handleRoleSelect(role.value)}
-                  variant="outline"
-                  size="lg"
-                  className="w-full border-white text-white hover:bg-white hover:text-[#004175]"
-                >
-                  {role.label}
-                </Button>
-              ))}
-            </div>
+  //       {/* Right Side - Role Selection */}
+  //       <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] h-[60vh] md:h-full p-6">
+  //         <div className="w-full max-w-md text-center">
+  //           {/* Role Selection Header */}
+  //           <h2 className="text-3xl font-bold text-white mb-8"> Select User </h2>
+  //           
+  //           {/* Role Buttons */}
+  //           <div className="space-y-4">
+  //             {roleOptions.map((role) => (
+  //               <Button
+  //                 key={role.value}
+  //                 onClick={() => handleRoleSelect(role.value)}
+  //                 variant="outline"
+  //                 size="lg"
+  //                 className="w-full border-white text-white hover:bg-white hover:text-[#004175]"
+  //               >
+  //                 {role.label}
+  //               </Button>
+  //             ))}
+  //           </div>
 
-            {/* Sign Up Link */}
-            <div className="mt-8">
-              <p className="text-white text-sm mb-2">
-                Don't have an account?
-              </p>
-              <Button
-                type="button"
-                onClick={handleSignupRedirect}
-                variant="link"
-                className="text-white hover:underline font-medium"
-              >
-                Sign Up
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  //           {/* Sign Up Link */}
+  //           <div className="mt-8">
+  //             <p className="text-white text-sm mb-2">
+  //               Don't have an account?
+  //             </p>
+  //             <Button
+  //               type="button"
+  //               onClick={handleSignupRedirect}
+  //               variant="link"
+  //               className="text-white hover:underline font-medium"
+  //             >
+  //               Sign Up
+  //             </Button>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Login Form Screen
   return (
@@ -209,8 +209,8 @@ const Login = () => {
             </div>
           </form>
 
-          {/* Back to Role Selection */}
-          <div className="text-center text-sm mt-4">
+          {/* Back to Role Selection - COMMENTED OUT FOR NOW */}
+          {/* <div className="text-center text-sm mt-4">
             <Button
               type="button"
               onClick={handleBackToRoleSelection}
@@ -219,7 +219,7 @@ const Login = () => {
             >
               ← Back to Role Selection
             </Button>
-          </div>
+          </div> */}
 
           {/* Alternative: Signup Section at Bottom */}
           <div className="mt-6 pt-6 border-t border-gray-200">
