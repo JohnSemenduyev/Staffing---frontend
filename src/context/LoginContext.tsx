@@ -69,7 +69,20 @@ const login = async (email: string, password: string): Promise<{ success: boolea
     return { success: true };
   } catch (error: any) {
     console.error("Login failed:", error);
-    return { success: false, error: "Invalid credentials or server error" };
+    
+    // Extract specific error message from GraphQL response
+    let errorMessage = "Invalid credentials or server error";
+    
+    if (error.response?.errors && error.response.errors.length > 0) {
+      const graphqlError = error.response.errors[0];
+      if (graphqlError.message) {
+        errorMessage = graphqlError.message;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    return { success: false, error: errorMessage };
   }
 };
 

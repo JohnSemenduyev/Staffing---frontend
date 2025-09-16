@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/LoginContext';
-import {toast} from 'sonner'
+import { useToast } from '../hooks/use-toast';
 import { MdLogin } from "react-icons/md";
 import { Button } from '../components/ui/button';
 import img from "../assets/images/Logo.webp";
@@ -27,6 +27,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { token, role, login, logout } = useAuth();
+  const { toast } = useToast();
 
   const handleRoleSelect = (role: RoleType) => {
     setSelectedRole(role);
@@ -53,12 +54,20 @@ const Login = () => {
         redirectPath = '/prepare-schedule';
       }
 
-      toast.success("login Successfull")
+      toast({
+        title: "Success",
+        description: "Login successful",
+        variant: "default"
+      });
 
       navigate(redirectPath);
     } else {
-      
-      toast.error("Failed To login");
+      // Show specific error message from GraphQL response
+      toast({
+        title: "Error",
+        description: result.error || "Failed to login",
+        variant: "destructive"
+      });
     }
 
     setIsLoading(false);
