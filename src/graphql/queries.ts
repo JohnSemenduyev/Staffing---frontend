@@ -423,6 +423,8 @@ export const GET_UNIQUE_CLIENT_ADDRESS_SESSIONS = gql`
 
 export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
   query UniformCompliancesByScheduleFilter(
+    $page: Int,
+    $limit: Int,
     $startDate: String,
     $endDate: String,
     $addressId: Int,
@@ -430,6 +432,8 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
     $userId: Int
   ) {
     uniformCompliancesByScheduleFilter(
+      page: $page,
+      limit: $limit,
       startDate: $startDate,
       endDate: $endDate,
       addressId: $addressId,
@@ -464,6 +468,7 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
         shiftId
         scheduleSessionId
       }
+      lastPage
     }
   }
 `;

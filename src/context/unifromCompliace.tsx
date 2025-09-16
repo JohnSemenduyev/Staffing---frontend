@@ -43,10 +43,13 @@ export interface UniformCompliance {
 interface UniformComplianceQueryResponse {
   uniformCompliancesByScheduleFilter: {
     data: UniformCompliance[];
+    lastPage: number;
   };
 }
 
 interface FetchVariables {
+  page?: number;
+  limit?: number;
   startDate?: string;
   endDate?: string;
   addressId?: number;
@@ -56,6 +59,7 @@ interface FetchVariables {
 
 interface UniformComplianceContextType {
   uniformCompliances: UniformCompliance[];
+  lastPage: number;
   loading: boolean;
   error: string | null;
   fetchUniformCompliances: (variables: FetchVariables) => Promise<void>;
@@ -66,6 +70,7 @@ const UniformComplianceContext = createContext<UniformComplianceContextType | un
 // === Provider ===
 export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [uniformCompliances, setUniformCompliances] = useState<UniformCompliance[]>([]);
+  const [lastPage, setLastPage] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +91,7 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
         }
       );
       setUniformCompliances(data.uniformCompliancesByScheduleFilter.data);
+      setLastPage(data.uniformCompliancesByScheduleFilter.lastPage);
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Error fetching uniform compliances");
@@ -96,7 +102,7 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
 
   return (
     <UniformComplianceContext.Provider
-      value={{ uniformCompliances, loading, error, fetchUniformCompliances }}
+      value={{ uniformCompliances, lastPage, loading, error, fetchUniformCompliances }}
     >
       {children}
     </UniformComplianceContext.Provider>

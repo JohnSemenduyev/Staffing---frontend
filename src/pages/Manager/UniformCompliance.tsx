@@ -14,6 +14,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { formatDateLocal, parseLocalYMD } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
+import Pagination from "../../components/Pagination";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -48,8 +49,9 @@ export const UniformCompliance = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [tableHeight, setTableHeight] = useState<string>("400px");
+  const [currentPage, setCurrentPage] = useState(1);
   const formRef = useRef<HTMLDivElement>(null);
-  const { uniformCompliances, error, fetchUniformCompliances } = useUniformCompliance();
+  const { uniformCompliances, lastPage, error, fetchUniformCompliances } = useUniformCompliance();
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
@@ -256,6 +258,7 @@ export const UniformCompliance = () => {
     e.preventDefault();
     if (!validate()) return;
     setSubmitLoader(true);
+    setCurrentPage(1); // Reset to first page on new search
 
     // Use exact dates selected by user (no week range calculation)
     const backendStartDate = form.startDate;
@@ -263,6 +266,8 @@ export const UniformCompliance = () => {
 
     try {
       await fetchUniformCompliances({
+        page: 1,
+        limit: 10,
         startDate: toMDY(backendStartDate),
         endDate: toMDY(backendEndDate),
         ...(form.addressId && { addressId: Number(form.addressId) }),
@@ -289,6 +294,28 @@ export const UniformCompliance = () => {
       }
     } finally {
       setSubmitLoader(false);
+    }
+  };
+
+  const handlePageChange = async (page: number) => {
+    setCurrentPage(page);
+    
+    // Use exact dates selected by user (no week range calculation)
+    const backendStartDate = form.startDate;
+    const backendEndDate = form.endDate;
+
+    try {
+      await fetchUniformCompliances({
+        page: page,
+        limit: 10,
+        startDate: toMDY(backendStartDate),
+        endDate: toMDY(backendEndDate),
+        ...(form.addressId && { addressId: Number(form.addressId) }),
+        ...(form.clientId && { clientId: Number(form.clientId) }),
+        ...(form.userId && { userId: Number(form.userId) }),
+      });
+    } catch (error) {
+      console.error('Error fetching page:', error);
     }
   };
 
@@ -643,6 +670,17 @@ export const UniformCompliance = () => {
         searchable={true}
         tableHeight={tableHeight}
       />
+
+      {/* Pagination */}
+      {lastPage > 0 && (
+        <div className="mt-4">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
 
       {/* Image Modal */}
       <ImageModal />
