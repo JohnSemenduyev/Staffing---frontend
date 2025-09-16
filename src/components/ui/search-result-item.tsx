@@ -46,7 +46,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = ({
       <div className="flex-1 min-w-0">
         <div className="font-medium text-blue-800 text-sm truncate">{primaryText || "-"}</div>
         {secondaryText ? (
-          <div className="text-xs text-gray-500 truncate">{secondaryText}</div>
+          <div className="text-xs text-gray-500 break-words whitespace-normal">{secondaryText}</div>
         ) : null}
       </div>
     </div>
