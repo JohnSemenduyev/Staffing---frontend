@@ -41,7 +41,7 @@ type ViewTimeSummaryContextType = {
   lastPage: number | null;
   currentPage: number;
   setCurrentPage: (page: number) => void;
-  fetchSummary: (clientId: number, date?: string, page?: number) => Promise<void>;
+  fetchSummary: (clientId?: number, date?: string, page?: number) => Promise<void>;
 };
 
 const ViewTimeSummaryContext = createContext<ViewTimeSummaryContextType | undefined>(undefined);
@@ -53,13 +53,14 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
   const [lastPage, setLastPage] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const fetchSummary = async (clientId: number, date?: string, page?: number) => {
+  const fetchSummary = async (clientId?: number, date?: string, page?: number) => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
 
-      const variables = { clientId, date, page };
+      const variables: any = { date, page };
+      if (clientId) variables.clientId = clientId;
       const response = await graphQLClient.request<{ 
         ScheduleSessionsByClientWeek: {
           lastPage: number;

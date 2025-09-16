@@ -75,8 +75,7 @@ export const Summary = () => {
   }, [form, errors, submitLoader]);
   const validate = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.addressId) e.addressId = "Required";
+    // Client and address are now optional - no validation required
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -168,7 +167,7 @@ export const Summary = () => {
     try {
       console.log("Submitting form with data:", form);
 
-      const clientId = Number(form.clientId);
+      const clientId = form.clientId ? Number(form.clientId) : undefined;
       const rawDate = form.date;
 
       // Call API with or without date

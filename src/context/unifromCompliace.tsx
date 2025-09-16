@@ -41,7 +41,9 @@ export interface UniformCompliance {
 }
 
 interface UniformComplianceQueryResponse {
-  uniformCompliancesByScheduleFilter: UniformCompliance[];
+  uniformCompliancesByScheduleFilter: {
+    data: UniformCompliance[];
+  };
 }
 
 interface FetchVariables {
@@ -83,7 +85,7 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
           Authorization: `Bearer ${token}` // Headers
         }
       );
-      setUniformCompliances(data.uniformCompliancesByScheduleFilter);
+      setUniformCompliances(data.uniformCompliancesByScheduleFilter.data);
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Error fetching uniform compliances");

@@ -436,32 +436,34 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
       clientId: $clientId,
       userId: $userId
     ) {
-      shift {
-        id
-        date
-        startTime
-        endTime
+      data {
+        shift {
+          id
+          date
+          startTime
+          endTime
+        }
+        scheduleSession {
+          client {
+            name
+            lastName
+          }
+          user {
+            name
+            lastName
+          }
+          address {
+            address
+            city
+            state
+            pincode
+          }
+        }
+        bottomUniformImage
+        topUniformImage
+        shiftId
+        scheduleSessionId
       }
-      scheduleSession {
-        client {
-          name
-          lastName
-        }
-        user {
-          name
-          lastName
-        }
-        address {
-          address
-          city
-          state
-          pincode
-        }
-      }
-      bottomUniformImage
-      topUniformImage
-      shiftId
-      scheduleSessionId
     }
   }
 `;

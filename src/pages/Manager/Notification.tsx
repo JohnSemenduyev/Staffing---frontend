@@ -104,8 +104,7 @@ export const Notification = () => {
 
   const validate = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.addressId) e.addressId = "Required";
+    // Client and address are now optional - no validation required
     if (form.Startdate && form.Enddate && new Date(form.Enddate) < new Date(form.Startdate)) {
       e.Enddate = "End date must be after start date";
     }
@@ -221,8 +220,8 @@ export const Notification = () => {
       await fetchNotifications({
         startDate: toMDY(form.Startdate),
         endDate: toMDY(form.Enddate),
-        clientId: Number(form.clientId),
-        addressId: Number(form.addressId),
+        ...(form.clientId && { clientId: Number(form.clientId) }),
+        ...(form.addressId && { addressId: Number(form.addressId) }),
         userId: Number(form.userId),
         notificationType: form.notification.map(n => notificationTypeMap[n]),
         page: currentPage,
@@ -724,8 +723,8 @@ export const Notification = () => {
                 fetchNotifications({
                   startDate: toMDY(form.Startdate),
                   endDate: toMDY(form.Enddate),
-                  clientId: Number(form.clientId),
-                  addressId: Number(form.addressId),
+                  ...(form.clientId && { clientId: Number(form.clientId) }),
+                  ...(form.addressId && { addressId: Number(form.addressId) }),
                   userId: Number(form.userId),
                   notificationType: form.notification.map(n => notificationTypeMap[n]),
                   page: page,

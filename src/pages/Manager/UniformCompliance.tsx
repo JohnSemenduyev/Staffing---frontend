@@ -12,7 +12,7 @@ import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
-import { formatDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
+import { formatDateLocal, parseLocalYMD } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 
 export const UniformCompliance = () => {
@@ -24,9 +24,7 @@ export const UniformCompliance = () => {
     endDate: "",
   });
 
-  // Date constraints state
-  const [startDateConstraints, setStartDateConstraints] = useState({ min: "", max: "" });
-  const [endDateConstraints, setEndDateConstraints] = useState({ min: "", max: "" });
+  // Date constraints removed - using simple date selection
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
@@ -90,12 +88,13 @@ export const UniformCompliance = () => {
     };
   }, [form, errors, showErrors, submitLoader]);
 
-  // Week range function (Thursday to Wednesday)
+  // Simple date handling - no special formatting needed
 
-
-  // Format date to YYYY-MM-DD for input fields
-  const formatDateForInput = (date) => {
-    return formatDateLocal(date);
+  // Date format conversion utility for backend (MM-DD-YYYY)
+  const toMDY = (ymd?: string) => {
+    if (!ymd) return "";
+    const [y,m,d] = ymd.split("-");
+    return `${m}-${d}-${y}`;
   };
 
 
@@ -176,48 +175,17 @@ export const UniformCompliance = () => {
 
   const validate = () => {
     const e: any = {};
-    if (!form.clientId) e.clientId = "Required";
-    if (!form.addressId) e.addressId = "Required";
+    // Client and address are now optional - no validation required
 
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleChange = (field: string, value: any) => {
-    if (field === 'startDate' && value) {
-      const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDateUTC(selectedDate);
-
-      // Set constraints for end date picker - from start date to end of week (future dates)
-      setEndDateConstraints({
-        min: value, // Start from the selected start date
-        max: formatDateForInput(weekRange.endOfWeek)
-      });
-
-      setForm((f) => ({
-        ...f,
-        [field]: value,
-      }));
-    } else if (field === 'endDate' && value) {
-      const selectedDate = new Date(value);
-      const weekRange = getWeekRangeFromDateUTC(selectedDate);
-
-      // Set constraints for start date picker - from beginning of week to end date (past dates)
-      setStartDateConstraints({
-        min: formatDateForInput(weekRange.startOfWeek),
-        max: value // End at the selected end date
-      });
-
-      setForm((f) => ({
-        ...f,
-        [field]: value,
-      }));
-    } else {
-      setForm((f) => ({
-        ...f,
-        [field]: value,
-      }));
-    }
+    setForm((f) => ({
+      ...f,
+      [field]: value,
+    }));
     setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
@@ -239,9 +207,7 @@ export const UniformCompliance = () => {
     setUserSearch("");
     setSelectedAddressText("");
 
-    // Reset date constraints
-    setStartDateConstraints({ min: "", max: "" });
-    setEndDateConstraints({ min: "", max: "" });
+    // Date constraints removed - no reset needed
 
     // Hide dropdowns
     setShowClientDropdown(false);
@@ -291,30 +257,25 @@ export const UniformCompliance = () => {
     if (!validate()) return;
     setSubmitLoader(true);
 
-    // Calculate full week range from either start or end date
-    let weekRange;
-    if (form.startDate) {
-      weekRange = getWeekRangeFromDateUTC(new Date(form.startDate));
-    } else if (form.endDate) {
-      weekRange = getWeekRangeFromDateUTC(new Date(form.endDate));
-    }
-
-    // Always send full week range to backend (Thursday to Wednesday)
-    const backendStartDate = weekRange ? formatDateForInput(weekRange.startOfWeek) : form.startDate;
-    const backendEndDate = weekRange ? formatDateForInput(weekRange.endOfWeek) : form.endDate;
+    // Use exact dates selected by user (no week range calculation)
+    const backendStartDate = form.startDate;
+    const backendEndDate = form.endDate;
 
     try {
       await fetchUniformCompliances({
-        startDate: backendStartDate,
-        endDate: backendEndDate,
-        addressId: Number(form.addressId),
-        clientId: Number(form.clientId),
-        userId: Number(form.userId),
+        startDate: toMDY(backendStartDate),
+        endDate: toMDY(backendEndDate),
+        ...(form.addressId && { addressId: Number(form.addressId) }),
+        ...(form.clientId && { clientId: Number(form.clientId) }),
+        ...(form.userId && { userId: Number(form.userId) }),
       });
 
       console.log('Sent to backend:', {
-        startDate: backendStartDate, // Always Thursday
-        endDate: backendEndDate,     // Always Wednesday
+        startDate: toMDY(backendStartDate), // Always Thursday (MM-DD-YYYY)
+        endDate: toMDY(backendEndDate),     // Always Wednesday (MM-DD-YYYY)
+        ...(form.addressId && { addressId: Number(form.addressId) }),
+        ...(form.clientId && { clientId: Number(form.clientId) }),
+        ...(form.userId && { userId: Number(form.userId) }),
         originalUserSelection: { startDate: form.startDate, endDate: form.endDate }
       });
     } catch (error) {
@@ -625,8 +586,8 @@ export const UniformCompliance = () => {
                 onChange={handleChange}
                 placeholder="Select Start Date"
                 fieldName="startDate"
-                minDate={startDateConstraints.min}
-                maxDate={startDateConstraints.max}
+                // minDate={startDateConstraints.min}
+                // maxDate={startDateConstraints.max}
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.startDate && (
@@ -640,8 +601,8 @@ export const UniformCompliance = () => {
                 onChange={handleChange}
                 placeholder="Select End Date"
                 fieldName="endDate"
-                minDate={endDateConstraints.min}
-                maxDate={endDateConstraints.max}
+                // minDate={endDateConstraints.min}
+                // maxDate={endDateConstraints.max}
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.endDate && (
