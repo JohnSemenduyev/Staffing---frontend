@@ -536,7 +536,7 @@ const hasSearchValues = Object.values(searchTerms).some(
                   </tr>
                 ))}
 
-              {filteredAndSortedData.length === 0 && (
+              {!loading && filteredAndSortedData.length === 0 && (
                 <tr>
                   <td
                     colSpan={columns.length + (actions.length > 0 ? 1 : 0)}

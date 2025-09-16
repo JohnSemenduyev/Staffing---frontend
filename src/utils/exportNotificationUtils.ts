@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -39,10 +39,23 @@ export const exportNotificationToExcel = (data: NotificationData[], filename: st
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // Create data structure with empty first row and column
+    const titleRow = ['', 'Notifications']; // Empty first cell, then title
+    const headerRow = ['', ...Object.keys(excelData[0] || {})]; // Empty first cell, then headers
+    const dataRows = excelData.map(row => ['', ...Object.values(row)]); // Empty first cell, then data
+    
+    const dataWithStructure = [
+      titleRow,      // Row 0: Empty first cell, then title
+      headerRow,     // Row 1: Empty first cell, then headers
+      ...dataRows    // Row 2+: Empty first cell, then data
+    ];
+    
+    const worksheet = XLSX.utils.aoa_to_sheet(dataWithStructure);
 
-    // Set column widths
+    // Set column widths - matching summary proportions
     const columnWidths = [
+      { wch: 5 },   // Empty first column
       { wch: 8 },   // S.No
       { wch: 20 },  // Client Name
       { wch: 35 },  // Address
@@ -53,6 +66,65 @@ export const exportNotificationToExcel = (data: NotificationData[], filename: st
       { wch: 12 }   // Time
     ];
     worksheet['!cols'] = columnWidths;
+
+    // Add styling to match summary exports
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    
+    // Style title cell (B1 - row 0, col 1)
+    const titleCellAddress = XLSX.utils.encode_cell({ r: 0, c: 1 });
+    worksheet[titleCellAddress].s = {
+      font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'middle' }
+    };
+    
+    // Merge title cell across all data columns (B1 to last column)
+    if (!worksheet['!merges']) worksheet['!merges'] = [];
+    worksheet['!merges'].push({
+      s: { r: 0, c: 1 },  // B1
+      e: { r: 0, c: range.e.c }  // Last column, row 0
+    });
+    
+    // Style header row (row 1, starting from col 1)
+    for (let col = 1; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 1, c: col });
+      if (!worksheet[cellAddress]) continue;
+      
+      worksheet[cellAddress].s = {
+        font: { name: 'Arial', sz: 15, bold: true, color: { rgb: '000000' } },
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        border: {
+          top: { style: 'hairline', color: { rgb: '000000' } },
+          bottom: { style: 'hairline', color: { rgb: '000000' } },
+          left: { style: 'hairline', color: { rgb: '000000' } },
+          right: { style: 'hairline', color: { rgb: '000000' } }
+        },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+        numFmt: '@' // Force text format to prevent Excel's default number alignment
+      };
+    }
+
+    // Style data rows (starting from row 2, starting from col 1)
+    for (let row = 2; row <= range.e.r; row++) {
+      for (let col = 1; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!worksheet[cellAddress]) continue;
+        
+        // All text center-aligned with explicit number formatting
+        worksheet[cellAddress].s = {
+          font: { name: 'Arial', sz: 15, color: { rgb: '000000' } },
+          fill: { fgColor: { rgb: 'FFFFFF' } },
+          border: {
+            top: { style: 'hairline', color: { rgb: '000000' } },
+            bottom: { style: 'hairline', color: { rgb: '000000' } },
+            left: { style: 'hairline', color: { rgb: '000000' } },
+            right: { style: 'hairline', color: { rgb: '000000' } }
+          },
+          alignment: { horizontal: 'center', vertical: 'middle' },
+          numFmt: '@' // Force text format to prevent Excel's default number alignment
+        };
+      }
+    }
 
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Notifications');
@@ -75,26 +147,21 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
   try {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     
-    // Add title
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Notifications Report', 14, 15);
-
-    // Add date
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 25);
+    // Add title - matching summary styling with italic
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bolditalic');
+    doc.text('Notifications', 5, 15); // Reduced margin to match 0.1in
 
     // Prepare table data
     const tableData = data.map((row, index) => [
       index + 1,
       row.client?.name || '-',
       row.address ? 
-        `${row.address.address || ''}, ${row.address.city || ''}, ${row.address.state || ''}`.trim() : '-',
+        `${row.address.address || ''}, ${row.address.city || ''}, ${row.address.state || ''} ${row.address.pincode || ''}`.trim() : '-',
       row.guardFirst && row.guardLast ? 
         `${row.guardFirst.name || ''} ${row.guardLast.name || ''}`.trim() : '-',
       row.notificationType || '-',
-      row.message ? truncateText(row.message, 50) : '-',
+      row.message || '-',
       row.date || '-',
       row.time || '-'
     ]);
@@ -111,58 +178,83 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
       'Time'
     ];
 
-    // Generate table
-    doc.autoTable({
+    // Generate table - matching summary styling
+    autoTable(doc, {
       head: [headers],
       body: tableData,
-      startY: 35,
+      startY: 20,
       styles: {
-        fontSize: 8,
-        cellPadding: 2,
+        fontSize: 15, // Match summary font size
+        cellPadding: { top: 2, right: 2, bottom: 2, left: 3 }, // Match summary padding
         overflow: 'linebreak',
-        halign: 'center'
+        halign: 'center',
+        lineWidth: 0.5, // Thinner border for table cells
+        lineColor: [0, 0, 0], // Black color for cell borders
+        minCellHeight: 5.5, // Match summary height (22px ≈ 5.5mm)
+        font: 'helvetica', // Match summary Arial/helvetica
+        textColor: [0, 0, 0], // Black text
+        fillColor: [255, 255, 255] // Pure white background for all rows
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255] // Ensure alternate rows are also white
       },
       headStyles: {
-        fillColor: [0, 65, 117], // #004175
-        textColor: 255,
-        fontStyle: 'bold'
+        fillColor: [255, 255, 255], // White background like summary
+        textColor: [0, 0, 0], // Black text
+        fontStyle: 'bold',
+        lineWidth: 0.5, // Thinner border for table header
+        lineColor: [0, 0, 0], // Black color for header borders
+        minCellHeight: 5.5, // Match summary height
+        fontSize: 15, // Match summary font size
+        font: 'helvetica' // Match summary font
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 10 }, // S.No
-        1: { halign: 'left', cellWidth: 25 },   // Client Name
-        2: { halign: 'left', cellWidth: 40 },   // Address
-        3: { halign: 'left', cellWidth: 25 },   // User Name
-        4: { halign: 'center', cellWidth: 20 }, // Notification Type
-        5: { halign: 'left', cellWidth: 50 },   // Message
-        6: { halign: 'center', cellWidth: 15 }, // Date
-        7: { halign: 'center', cellWidth: 12 }  // Time
+        0: { 
+          halign: 'center', 
+          fontStyle: 'bold',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          fillColor: [255, 255, 255] // Explicit white background
+        }, // S.No
+        1: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          fillColor: [255, 255, 255] // Explicit white background
+        },   // Client Name
+        2: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          fillColor: [255, 255, 255] // Explicit white background
+        },   // Address
+        3: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          fillColor: [255, 255, 255] // Explicit white background
+        }, // User Name
+        4: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          fillColor: [255, 255, 255] // Explicit white background
+        },   // Notification Type
+        5: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          fillColor: [255, 255, 255] // Explicit white background
+        },   // Message
+        6: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          fillColor: [255, 255, 255] // Explicit white background
+        }, // Date
+        7: { 
+          halign: 'center',
+          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          fillColor: [255, 255, 255] // Explicit white background
+        }  // Time
       },
-      margin: { left: 14, right: 14 }
-    });
-
-    // Add summary statistics
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Summary Statistics:', 14, finalY);
-
-    const totalRecords = data.length;
-    const notificationTypes = data.reduce((acc, row) => {
-      const type = row.notificationType || 'Unknown';
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Notifications: ${totalRecords}`, 14, finalY + 8);
-    
-    let yOffset = finalY + 16;
-    doc.text('Notification Types:', 14, yOffset);
-    yOffset += 8;
-    
-    Object.entries(notificationTypes).forEach(([type, count]) => {
-      doc.text(`  • ${type}: ${count}`, 14, yOffset);
-      yOffset += 6;
+      margin: { left: 2.5, right: 2.5, top: 0, bottom: 0 }, // Match 0.1in margins
+      tableLineWidth: 0.5, // Thinner border for outer table border
+      tableLineColor: [0, 0, 0], // Black color for outer table border
+      theme: 'grid' // Ensure all borders are visible
     });
 
     // Generate filename with timestamp

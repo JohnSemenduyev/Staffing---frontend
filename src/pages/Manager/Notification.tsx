@@ -244,11 +244,18 @@ export const Notification = () => {
       return;
     }
 
-    const result = exportNotificationToExcel(data, 'notifications');
-    if (result.success) {
-      toast.success(`Excel file exported successfully: ${result.filename}`);
-    } else {
-      toast.error(`Failed to export Excel: ${result.error}`);
+    console.log("Exporting Excel with data:", data);
+    try {
+      const result = exportNotificationToExcel(data, 'notifications');
+      console.log("Excel export result:", result);
+      if (result.success) {
+        toast.success(`Excel file exported successfully: ${result.filename}`);
+      } else {
+        toast.error(`Failed to export Excel: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Excel Export - Unexpected error:", error);
+      toast.error(`Unexpected error during Excel export: ${error.message}`);
     }
   };
 
@@ -258,11 +265,18 @@ export const Notification = () => {
       return;
     }
 
-    const result = exportNotificationToPDF(data, 'notifications');
-    if (result.success) {
-      toast.success(`PDF file exported successfully: ${result.filename}`);
-    } else {
-      toast.error(`Failed to export PDF: ${result.error}`);
+    console.log("Exporting PDF with data:", data);
+    try {
+      const result = exportNotificationToPDF(data, 'notifications');
+      console.log("PDF export result:", result);
+      if (result.success) {
+        toast.success(`PDF file exported successfully: ${result.filename}`);
+      } else {
+        toast.error(`Failed to export PDF: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("PDF Export - Unexpected error:", error);
+      toast.error(`Unexpected error during PDF export: ${error.message}`);
     }
   };
 
