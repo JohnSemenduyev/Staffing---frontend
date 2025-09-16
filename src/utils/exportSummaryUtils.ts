@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -19,7 +19,7 @@ export interface SummaryData {
   [key: string]: any;
 }
 
-export const exportSummaryToExcel = (data: SummaryData[], filename: string = 'time_summary') => {
+export const exportSummaryToExcel = async (data: SummaryData[], filename: string = 'time_summary') => {
   try {
     // Transform data for Excel export
     const excelData = data.map((row, index) => ({
@@ -34,104 +34,179 @@ export const exportSummaryToExcel = (data: SummaryData[], filename: string = 'ti
     }));
 
     // Create workbook and worksheet
-    const workbook = XLSX.utils.book_new();
-    
-    // Create data structure with empty first row and column
-    const titleRow = ['', 'View Time Summary']; // Empty first cell, then title
-    const headerRow = ['', ...Object.keys(excelData[0] || {})]; // Empty first cell, then headers
-    const dataRows = excelData.map(row => ['', ...Object.values(row)]); // Empty first cell, then data
-    
-    const dataWithStructure = [
-      titleRow,      // Row 0: Empty first cell, then title
-      headerRow,     // Row 1: Empty first cell, then headers
-      ...dataRows    // Row 2+: Empty first cell, then data
-    ];
-    
-    const worksheet = XLSX.utils.aoa_to_sheet(dataWithStructure);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Time Summary');
 
-    // Set column widths - matching printUtils proportions
-    const columnWidths = [
-      { wch: 5 },   // Empty first column
-      { wch: 8 },   // S.No
-      { wch: 18 },  // First Name (increased to match printUtils)
-      { wch: 18 },  // Last Name (increased to match printUtils)
-      { wch: 12 },  // Date
-      { wch: 25 },  // Client Name (increased to match printUtils)
-      { wch: 35 },  // Client Location (increased to match printUtils)
-      { wch: 12 }   // Hours
-    ];
-    worksheet['!cols'] = columnWidths;
-
-    // Add styling to match printUtils
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-    
-    // Style title cell (B1 - row 0, col 1)
-    const titleCellAddress = XLSX.utils.encode_cell({ r: 0, c: 1 });
-    worksheet[titleCellAddress].s = {
-      font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
-      fill: { fgColor: { rgb: 'FFFFFF' } },
-      alignment: { horizontal: 'center', vertical: 'middle' }
-    };
-    
-    // Merge title cell across all data columns (B1 to last column)
-    if (!worksheet['!merges']) worksheet['!merges'] = [];
-    worksheet['!merges'].push({
-      s: { r: 0, c: 1 },  // B1
-      e: { r: 0, c: range.e.c }  // Last column, row 0
-    });
-    
-    // Style header row (row 1, starting from col 1)
-    for (let col = 1; col <= range.e.c; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 1, c: col });
-      if (!worksheet[cellAddress]) continue;
+    // Calculate dynamic column widths based on content length
+    const calculateColumnWidths = () => {
+      if (!excelData || excelData.length === 0) {
+        return [5]; // Just empty first column if no data
+      }
       
-      worksheet[cellAddress].s = {
-        font: { name: 'Arial', sz: 15, bold: true, color: { rgb: '000000' } },
-        fill: { fgColor: { rgb: 'FFFFFF' } },
-        border: {
-          top: { style: 'hairline', color: { rgb: '000000' } },
-          bottom: { style: 'hairline', color: { rgb: '000000' } },
-          left: { style: 'hairline', color: { rgb: '000000' } },
-          right: { style: 'hairline', color: { rgb: '000000' } }
-        },
-        alignment: { horizontal: 'center', vertical: 'middle' },
-        numFmt: '@' // Force text format to prevent Excel's default number alignment
-      };
-    }
-
-    // Style data rows (starting from row 2, starting from col 1)
-    for (let row = 2; row <= range.e.r; row++) {
-      for (let col = 1; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!worksheet[cellAddress]) continue;
+      const headers = Object.keys(excelData[0]);
+      const columnWidths = [5]; // Empty first column (small width)
+      
+      headers.forEach((header, colIndex) => {
+        let maxLength = header.length; // Start with header length
         
-        // All text center-aligned with explicit number formatting
-        worksheet[cellAddress].s = {
-          font: { name: 'Arial', sz: 15, color: { rgb: '000000' } },
-          fill: { fgColor: { rgb: 'FFFFFF' } },
-          border: {
-            top: { style: 'hairline', color: { rgb: '000000' } },
-            bottom: { style: 'hairline', color: { rgb: '000000' } },
-            left: { style: 'hairline', color: { rgb: '000000' } },
-            right: { style: 'hairline', color: { rgb: '000000' } }
-          },
-          alignment: { horizontal: 'center', vertical: 'middle' },
-          numFmt: '@' // Force text format to prevent Excel's default number alignment
-        };
+        // Check all data rows for this column
+        excelData.forEach(row => {
+          const values = Object.values(row);
+          const cellValue = String(values[colIndex] || '');
+          
+          // Handle multi-line content (like addresses) by finding the longest line
+          const lines = cellValue.split('\n');
+          const longestLine = lines.reduce((max, line) => 
+            line.length > max.length ? line : max, ''
+          );
+          
+          maxLength = Math.max(maxLength, longestLine.length);
+        });
+        
+        // More generous padding and better limits for full content visibility
+        const minWidth = 12; // Increased minimum width
+        const maxWidth = 80; // Increased maximum width for better readability
+        
+        // Add more padding (5 characters) to ensure content is fully visible
+        // Also multiply by 1.2 to account for font width variations
+        const calculatedWidth = Math.min(
+          Math.max(Math.ceil(maxLength * 1.2) + 5, minWidth), 
+          maxWidth
+        );
+        
+        columnWidths.push(calculatedWidth);
+      });
+      
+      return columnWidths;
+    };
+
+    // Set column widths
+    const columnWidths = calculateColumnWidths();
+    columnWidths.forEach((width, index) => {
+      const column = worksheet.getColumn(index + 1);
+      column.width = width;
+    });
+
+    // First, remove all default borders from the entire worksheet
+    // This ensures no cell shows any border unless explicitly set
+    const maxRow = Math.max(100, excelData.length + 10); // Ensure we cover enough area
+    const headers = Object.keys(excelData[0] || {});
+    const maxCol = headers.length + 10;
+    
+    for (let row = 1; row <= maxRow; row++) {
+      for (let col = 1; col <= maxCol; col++) {
+        const cell = worksheet.getCell(row, col);
       }
     }
 
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Time Summary');
+    // Add title in B1 (row 1, column 2)
+    const titleCell = worksheet.getCell('B1');
+    titleCell.value = 'View Time Summary';
+    titleCell.font = {
+      name: 'Arial',
+      size: 18,
+      bold: true,
+      italic: true,
+      color: { argb: 'FF000000' }
+    };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFFFF' }
+    };
+    titleCell.alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
+
+    // Merge title cell across all data columns
+    const lastColumn = String.fromCharCode(66 + headers.length - 1); // B + number of headers
+    worksheet.mergeCells(`B1:${lastColumn}1`);
+
+    // Add headers in row 2 starting from column B
+    if (headers.length > 0) {
+      headers.forEach((header, index) => {
+        const cell = worksheet.getCell(2, index + 2); // Row 2, column B onwards
+        cell.value = header;
+        cell.font = {
+          name: 'Arial',
+          size: 15,
+          bold: true,
+          color: { argb: 'FF000000' }
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFFFF' }
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+      });
+    }
+
+    // Add data starting from row 3, column B
+    excelData.forEach((row, rowIndex) => {
+      const values = Object.values(row);
+      values.forEach((value, colIndex) => {
+        const cell = worksheet.getCell(rowIndex + 3, colIndex + 2); // Row 3+, column B onwards
+        cell.value = value;
+        cell.font = {
+          name: 'Arial',
+          size: 15,
+          color: { argb: 'FF000000' }
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFFFF' }
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+        
+        // Ensure all cells are formatted as text
+        cell.numFmt = '@';
+      });
+    });
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().split('T')[0];
     const finalFilename = `${filename}_${timestamp}.xlsx`;
 
-    // Save file
-    XLSX.writeFile(workbook, finalFilename);
+    // Write file
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    // Create blob and download (for browser environment)
+    if (typeof window !== 'undefined') {
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = finalFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
 
-    return { success: true, filename: finalFilename };
+    return { success: true, filename: finalFilename, buffer };
   } catch (error) {
     console.error('Error exporting to Excel:', error);
     return { success: false, error: error.message };
@@ -142,7 +217,7 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
   try {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     
-    // Add title - matching printUtils styling with italic
+    // Add title - matching summary styling with italic
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bolditalic');
     doc.text('View Time Summary', 5, 15); // Reduced margin to match 0.1in
@@ -170,20 +245,20 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
       'Hours'
     ];
 
-    // Generate table - matching printUtils styling
+    // Generate table - with smaller font sizes for better fit
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 20,
       styles: {
-        fontSize: 15, // Match printUtils font size
-        cellPadding: { top: 2, right: 2, bottom: 2, left: 3 }, // Match printUtils padding
+        fontSize: 10, // Reduced from 15 to 10
+        cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, // Slightly reduced padding
         overflow: 'linebreak',
         halign: 'center',
         lineWidth: 0.5, // Thinner border for table cells
         lineColor: [0, 0, 0], // Black color for cell borders
-        minCellHeight: 5.5, // Match printUtils height (22px ≈ 5.5mm)
-        font: 'helvetica', // Match printUtils Arial/helvetica
+        minCellHeight: 4, // Reduced from 5.5 to 4
+        font: 'helvetica', // Match summary Arial/helvetica
         textColor: [0, 0, 0], // Black text
         fillColor: [255, 255, 255] // Pure white background for all rows
       },
@@ -191,50 +266,50 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
         fillColor: [255, 255, 255] // Ensure alternate rows are also white
       },
       headStyles: {
-        fillColor: [255, 255, 255], // White background like printUtils
+        fillColor: [255, 255, 255], // White background like summary
         textColor: [0, 0, 0], // Black text
         fontStyle: 'bold',
         lineWidth: 0.5, // Thinner border for table header
         lineColor: [0, 0, 0], // Black color for header borders
-        minCellHeight: 5.5, // Match printUtils height
-        fontSize: 15, // Match printUtils font size
-        font: 'helvetica' // Match printUtils font
+        minCellHeight: 4.5, // Reduced from 5.5 to 4.5
+        fontSize: 11, // Reduced from 15 to 11 (slightly larger than data for hierarchy)
+        font: 'helvetica' // Match summary font
       },
       columnStyles: {
         0: { 
           halign: 'center', 
           fontStyle: 'bold',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // S.No
         1: { 
           halign: 'left',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // First Name
         2: { 
           halign: 'left',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Last Name
         3: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // Date
         4: { 
           halign: 'left',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Client Name
         5: { 
           halign: 'left',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Location
         6: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }  // Hours
       },

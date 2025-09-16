@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -20,7 +20,8 @@ export interface NotificationData {
   time: string;
   [key: string]: any;
 }
-export const exportNotificationToExcel = (data: NotificationData[], filename: string = 'notifications') => {
+
+export const exportNotificationToExcel = async (data: NotificationData[], filename: string = 'notifications') => {
   try {
     // Transform data for Excel export
     const excelData = data.map((row, index) => ({
@@ -36,14 +37,18 @@ export const exportNotificationToExcel = (data: NotificationData[], filename: st
       'Time': row.time || '-'
     }));
 
+    // Create workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Notifications');
+
     // Calculate dynamic column widths based on content length
     const calculateColumnWidths = () => {
       if (!excelData || excelData.length === 0) {
-        return [{ wch: 2 }]; // Just empty first column if no data
+        return [5]; // Just empty first column if no data
       }
       
       const headers = Object.keys(excelData[0]);
-      const columnWidths = [{ wch: 2 }]; // Empty first column (small width)
+      const columnWidths = [5]; // Empty first column (small width)
       
       headers.forEach((header, colIndex) => {
         let maxLength = header.length; // Start with header length
@@ -52,163 +57,166 @@ export const exportNotificationToExcel = (data: NotificationData[], filename: st
         excelData.forEach(row => {
           const values = Object.values(row);
           const cellValue = String(values[colIndex] || '');
-          maxLength = Math.max(maxLength, cellValue.length);
+          
+          // Handle multi-line content (like addresses) by finding the longest line
+          const lines = cellValue.split('\n');
+          const longestLine = lines.reduce((max, line) => 
+            line.length > max.length ? line : max, ''
+          );
+          
+          maxLength = Math.max(maxLength, longestLine.length);
         });
         
-        // Add extra padding and set limits
-        const minWidth = 10;
-        const maxWidth = 60;
-        const calculatedWidth = Math.min(Math.max(maxLength + 3, minWidth), maxWidth);
+        // More generous padding and better limits for full content visibility
+        const minWidth = 12; // Increased minimum width
+        const maxWidth = 80; // Increased maximum width for better readability
         
-        columnWidths.push({ wch: calculatedWidth });
+        // Add more padding (5 characters) to ensure content is fully visible
+        // Also multiply by 1.2 to account for font width variations
+        const calculatedWidth = Math.min(
+          Math.max(Math.ceil(maxLength * 1.2) + 5, minWidth), 
+          maxWidth
+        );
+        
+        columnWidths.push(calculatedWidth);
       });
       
       return columnWidths;
     };
 
-    // Create workbook and worksheet
-    const workbook = XLSX.utils.book_new();
-    
-    // Create data structure with empty first row and column
-    const headers = Object.keys(excelData[0] || {});
-    const numCols = headers.length;
-    
-    const emptyRow = Array(numCols + 1).fill(''); // First row completely empty
-    const titleRow = ['', 'Notifications', ...Array(numCols - 1).fill('')]; // Title in B2
-    const headerRow = ['', ...headers]; // Headers starting from B3
-    const dataRows = excelData.map(row => ['', ...Object.values(row)]); // Data starting from B4
-    
-    const dataWithStructure = [
-      emptyRow,      // Row 1: Completely empty
-      titleRow,      // Row 2: Title in B2
-      headerRow,     // Row 3: Headers starting from B3
-      ...dataRows    // Row 4+: Data starting from B4
-    ];
-    
-    const worksheet = XLSX.utils.aoa_to_sheet(dataWithStructure);
-
-    // Set dynamic column widths
-    worksheet['!cols'] = calculateColumnWidths();
-
-    // Add styling
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-    
-    // First, remove all borders from the entire worksheet
-    for (let row = 0; row <= range.e.r; row++) {
-      for (let col = 0; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (worksheet[cellAddress]) {
-          worksheet[cellAddress].s = {
-            ...worksheet[cellAddress].s,
-            border: {
-              top: { style: 'none' },
-              bottom: { style: 'none' },
-              left: { style: 'none' },
-              right: { style: 'none' }
-            }
-          };
-        }
-      }
-    }
-    
-    // Define table border style
-    const tableBorder = {
-      top: { style: 'thin', color: { rgb: '000000' } },
-      bottom: { style: 'thin', color: { rgb: '000000' } },
-      left: { style: 'thin', color: { rgb: '000000' } },
-      right: { style: 'thin', color: { rgb: '000000' } }
-    };
-    
-    // Style title cell (B2 - row 1, col 1) - NO BORDER
-    const titleCellAddress = XLSX.utils.encode_cell({ r: 1, c: 1 });
-    if (worksheet[titleCellAddress]) {
-      worksheet[titleCellAddress].s = {
-        font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
-        fill: { fgColor: { rgb: 'FFFFFF' } },
-        alignment: { horizontal: 'center', vertical: 'middle' },
-        border: {
-          top: { style: 'none' },
-          bottom: { style: 'none' },
-          left: { style: 'none' },
-          right: { style: 'none' }
-        }
-      };
-    }
-    
-    // Merge title cell across all data columns (B2 to last column of row 2)
-    if (!worksheet['!merges']) worksheet['!merges'] = [];
-    worksheet['!merges'].push({
-      s: { r: 1, c: 1 },  // B2
-      e: { r: 1, c: range.e.c }  // Last column, row 2
+    // Set column widths
+    const columnWidths = calculateColumnWidths();
+    columnWidths.forEach((width, index) => {
+      const column = worksheet.getColumn(index + 1);
+      column.width = width;
     });
+
+    // Add title in B2 (row 2, column 2)
+    const titleCell = worksheet.getCell('B2');
+    titleCell.value = 'Notifications';
+    titleCell.font = {
+      name: 'Arial',
+      size: 18,
+      bold: true,
+      italic: true,
+      color: { argb: 'FF000000' }
+    };
+    titleCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFFFF' }
+    };
+    titleCell.alignment = {
+      horizontal: 'center',
+      vertical: 'middle'
+    };
+
+    // Merge title cell across all data columns
+    const headers = Object.keys(excelData[0] || {});
+    const lastColumn = String.fromCharCode(66 + headers.length - 1); // B + number of headers
+    worksheet.mergeCells(`B2:${lastColumn}2`);
+
+    // First, remove all default borders from the entire worksheet
+    // This ensures no cell shows any border unless explicitly set
+    const maxRow = Math.max(100, excelData.length + 10); // Ensure we cover enough area
+    const maxCol = headers.length + 10;
     
-    // Apply borders ONLY to table area (headers and data rows)
-    // Table starts from row 2 (headers) and goes to the last row with data
-    const tableStartRow = 2; // Headers row
-    const tableEndRow = range.e.r; // Last data row
-    const tableStartCol = 1; // Column B
-    const tableEndCol = range.e.c; // Last data column
-    
-    for (let row = tableStartRow; row <= tableEndRow; row++) {
-      for (let col = tableStartCol; col <= tableEndCol; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        
-        // Skip if cell doesn't exist
-        if (!worksheet[cellAddress]) continue;
-        
-        // Header row styling (row 2) - WITH BORDERS AND BOLD
-        if (row === tableStartRow) {
-          worksheet[cellAddress].s = {
-            font: { name: 'Arial', sz: 15, bold: true, color: { rgb: '000000' } },
-            fill: { fgColor: { rgb: 'FFFFFF' } },
-            alignment: { horizontal: 'center', vertical: 'middle' },
-            numFmt: '@',
-            border: tableBorder
-          };
-        }
-        // Data rows styling (row 3+) - WITH BORDERS
-        else {
-          worksheet[cellAddress].s = {
-            font: { name: 'Arial', sz: 12, color: { rgb: '000000' } },
-            fill: { fgColor: { rgb: 'FFFFFF' } },
-            alignment: { horizontal: 'center', vertical: 'middle' },
-            numFmt: '@',
-            border: tableBorder
-          };
-        }
-      }
-    }
-    
-    // Ensure title merged cells have no borders
-    for (let col = tableStartCol; col <= tableEndCol; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 1, c: col });
-      if (worksheet[cellAddress]) {
-        worksheet[cellAddress].s = {
-          ...worksheet[cellAddress].s,
-          font: { name: 'Arial', sz: 18, bold: true, italic: true, color: { rgb: '000000' } },
-          fill: { fgColor: { rgb: 'FFFFFF' } },
-          alignment: { horizontal: 'center', vertical: 'middle' },
-          border: {
-            top: { style: 'none' },
-            bottom: { style: 'none' },
-            left: { style: 'none' },
-            right: { style: 'none' }
-          }
-        };
+    for (let row = 1; row <= maxRow; row++) {
+      for (let col = 1; col <= maxCol; col++) {
+        const cell = worksheet.getCell(row, col);
+        // cell.border = {
+        //   top: { style: 'none' },
+        //   bottom: { style: 'none' },
+        //   left: { style: 'none' },
+        //   right: { style: 'none' }
+        // };
       }
     }
 
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Notifications');
+    // Add headers in row 3 starting from column B
+    if (headers.length > 0) {
+      headers.forEach((header, index) => {
+        const cell = worksheet.getCell(3, index + 2); // Row 3, column B onwards
+        cell.value = header;
+        cell.font = {
+          name: 'Arial',
+          size: 15,
+          bold: true,
+          color: { argb: 'FF000000' }
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFFFF' }
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+      });
+    }
+
+    // Add data starting from row 4, column B
+    excelData.forEach((row, rowIndex) => {
+      const values = Object.values(row);
+      values.forEach((value, colIndex) => {
+        const cell = worksheet.getCell(rowIndex + 4, colIndex + 2); // Row 4+, column B onwards
+        cell.value = value;
+        cell.font = {
+          name: 'Arial',
+          size: 12,
+          color: { argb: 'FF000000' }
+        };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFFFF' }
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+        
+        // Ensure all cells are formatted as text
+        cell.numFmt = '@';
+      });
+    });
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().split('T')[0];
     const finalFilename = `${filename}_${timestamp}.xlsx`;
 
-    // Save file
-    XLSX.writeFile(workbook, finalFilename);
+    // Write file
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    // Create blob and download (for browser environment)
+    if (typeof window !== 'undefined') {
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = finalFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
 
-    return { success: true, filename: finalFilename };
+    return { success: true, filename: finalFilename, buffer };
   } catch (error) {
     console.error('Error exporting to Excel:', error);
     return { success: false, error: error.message };
@@ -250,19 +258,19 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
       'Time'
     ];
 
-    // Generate table - matching summary styling
+    // Generate table - with smaller font sizes for better fit
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 20,
       styles: {
-        fontSize: 15, // Match summary font size
-        cellPadding: { top: 2, right: 2, bottom: 2, left: 3 }, // Match summary padding
+        fontSize: 10, // Reduced from 15 to 10
+        cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, // Slightly reduced padding
         overflow: 'linebreak',
         halign: 'center',
         lineWidth: 0.5, // Thinner border for table cells
         lineColor: [0, 0, 0], // Black color for cell borders
-        minCellHeight: 5.5, // Match summary height (22px ≈ 5.5mm)
+        minCellHeight: 4, // Reduced from 5.5 to 4
         font: 'helvetica', // Match summary Arial/helvetica
         textColor: [0, 0, 0], // Black text
         fillColor: [255, 255, 255] // Pure white background for all rows
@@ -276,50 +284,50 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
         fontStyle: 'bold',
         lineWidth: 0.5, // Thinner border for table header
         lineColor: [0, 0, 0], // Black color for header borders
-        minCellHeight: 5.5, // Match summary height
-        fontSize: 15, // Match summary font size
+        minCellHeight: 4.5, // Reduced from 5.5 to 4.5
+        fontSize: 11, // Reduced from 15 to 11 (slightly larger than data for hierarchy)
         font: 'helvetica' // Match summary font
       },
       columnStyles: {
         0: { 
           halign: 'center', 
           fontStyle: 'bold',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // S.No
         1: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Client Name
         2: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Address
         3: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // User Name
         4: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Notification Type
         5: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 3 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Message
         6: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // Date
         7: { 
           halign: 'center',
-          cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }  // Time
       },
