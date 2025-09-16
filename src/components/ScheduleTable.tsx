@@ -1060,7 +1060,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                  onClick={confirmEditShift}
                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
                >
-                 <FaRegEdit className="w-4 h-4 mr-2" color="blue" />
+                 <FaRegEdit className="w-4 h-4 mr-2" color="white" />
                  Update
                </button>
             </div>

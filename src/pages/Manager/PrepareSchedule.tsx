@@ -620,6 +620,9 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Close modal on error
+      setPublishModal({ isOpen: false });
     }
     finally {
       setPublishLoader(false);

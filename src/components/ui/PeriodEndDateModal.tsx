@@ -14,7 +14,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
   const handleSubmit = () => {
     if (selectedDate && !isLoading) {
       onSubmit(selectedDate);
-      // Remove the onClose() call here - let the parent component control when to close
+      // Modal will remain open while loading, parent component will close it on success/error
     }
   };
 

@@ -420,8 +420,11 @@ export const ViewSchedule = () => {
       showSchedule: true
     });
 
-    // Reset UI for navigation
-    resetUIForWeekNavigation();
+    // Reset UI for navigation (but don't close modal yet)
+    setIsScheduleEditMode(false);
+    setIsActualTimeEditMode(false);
+    setOriginalScheduleData([]);
+    setOriginalSessionData([]);
     setTableLoading(true);
 
     const formattedDate = convertDateFormat(weekStartStr);
@@ -435,6 +438,8 @@ export const ViewSchedule = () => {
       toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
     } finally {
       setTableLoading(false);
+      // Close modal after loading is complete (success or error)
+      setModalOpen(false);
     }
   };
 
@@ -1108,6 +1113,9 @@ export const ViewSchedule = () => {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Close modal on error
+      setSchedulePublishModal({ isOpen: false });
     } finally {
 
       setIsPublishing(false);
@@ -1301,6 +1309,9 @@ export const ViewSchedule = () => {
         description: errorMessage,
         variant: "destructive",
       });
+
+      // Close modal on error
+      setActualTimePublishModal({ isOpen: false });
     } finally {
       setIsActualTimePublishing(false);
     }
@@ -1986,25 +1997,23 @@ export const ViewSchedule = () => {
           {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <div key={`actual-${viewKey}`} className="mt-8">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time</h3>
-              {!sessionError && (
-                <ActualTimeTable
-                  scheduleData={createImmutableScheduleCopy(scheduleData)}
-                  sessionData={sessionData}
-                  selectedDate={selectedDate}
-                  currentWeekRange={currentWeekRange}
-                  isEditMode={isActualTimeEditMode}
-                  onSessionDataChange={(newData) => {
-                    setSessionData(newData);
-                  }}
-                  onPublish={handleActualTimePublish}
-                  onPrint={handleActualTimePrint}
-                  onDownloadExcel={handleActualTimeDownloadExcel}
-                  onToggleEditMode={toggleActualTimeEditMode}
-                  isPublishing={isActualTimePublishing}
-                  isPrinting={isPrinting}
-                  loading={sessionLoading}
-                />
-              )}
+              <ActualTimeTable
+                scheduleData={createImmutableScheduleCopy(scheduleData)}
+                sessionData={sessionData}
+                selectedDate={selectedDate}
+                currentWeekRange={currentWeekRange}
+                isEditMode={isActualTimeEditMode}
+                onSessionDataChange={(newData) => {
+                  setSessionData(newData);
+                }}
+                onPublish={handleActualTimePublish}
+                onPrint={handleActualTimePrint}
+                onDownloadExcel={handleActualTimeDownloadExcel}
+                onToggleEditMode={toggleActualTimeEditMode}
+                isPublishing={isActualTimePublishing}
+                isPrinting={isPrinting}
+                loading={sessionLoading}
+              />
             </div>
           )}
 
