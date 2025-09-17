@@ -48,7 +48,8 @@ type ScheduleSessionContextType = {
     clientId: number,
     startDate: string,
     addressId: number,
-    userId: number
+    userId: number,
+    type?: string
   ) => Promise<WeekScheduleCheckResponse | null>;
 };
 
@@ -119,7 +120,8 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
     clientId: number,
     startDate: string,
     addressId: number,
-    userId: number
+    userId: number,
+    type?: string
   ): Promise<WeekScheduleCheckResponse | null> => {
     try {
       // Get fresh token for each request
@@ -132,7 +134,7 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
       console.log(formattedDate);
       const response = await graphQLClient.request<{ checkScheduleSession: WeekScheduleCheckResponse }>(
         CHECK_SCHEDULE_SESSION,
-        { clientId, addressId, userId, startDate: formattedDate },
+        { clientId, addressId, userId, startDate: formattedDate, type },
         { Authorization: `Bearer ${token}` }
       );
       return response.checkScheduleSession;

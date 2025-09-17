@@ -7,7 +7,7 @@ import {
   GET_ALL_SESSIONS,
   GET_SESSIONS_BY_SCHEDULE_SESSION,
 } from "../graphql/queries";
-import { BULK_UPSERT_SCHEDULE_SESSION, UPDATE_MANY_SESSION_TIMES } from "../graphql/mutation";
+import { BULK_UPSERT_SCHEDULE_SESSION, UPDATE_MANY_SESSION_TIMES, CHECK_SCHEDULE_SESSION } from "../graphql/mutation";
 import { toast as toasted } from "sonner";
 
 // Types
@@ -147,6 +147,7 @@ type ClientSessionContextType = {
     clockIn: string;
     clockOut?: string | null;
   }>) => Promise<SessionItem[]>;
+  checkScheduleSession: (clientId: number, addressId: number, userId: number, startDate: string) => Promise<any>;
 };
  
 const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
@@ -353,6 +354,28 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     }
   };
 
+  const checkScheduleSession = async (clientId: number, addressId: number, userId: number, startDate: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await graphQLClient.request<{
+        checkScheduleSession: any;
+      }>(
+        CHECK_SCHEDULE_SESSION,
+        { clientId, addressId, userId, startDate },
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.checkScheduleSession;
+    } catch (error) {
+      console.error('checkScheduleSession:', error);
+      throw error;
+    }
+  };
+
   return (
     <ClientSessionContext.Provider
       value={{
@@ -372,7 +395,8 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         sessionError,
         fetchSessionData,
         clearSessionData,
-        updateSessionTimes
+        updateSessionTimes,
+        checkScheduleSession
       }}
     >
       {children}

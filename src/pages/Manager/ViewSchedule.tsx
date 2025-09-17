@@ -32,7 +32,8 @@ import {
   validateForm,
   calculateHours,
   doTimesOverlap,
-  minutesDiffWithWrap
+  minutesDiffWithWrap,
+  checkApiOverlap
 } from "./ViewSchedule/utils";
 import {
   FormData,
@@ -157,7 +158,8 @@ export const ViewSchedule = () => {
     sessionError: apiSessionError,
     fetchSessionData,
     clearSessionData,
-    updateSessionTimes
+    updateSessionTimes,
+    checkScheduleSession
   } = useClientSessions();
 
   const [isModalOpen, setModalOpen] = useState(false);
@@ -186,6 +188,76 @@ export const ViewSchedule = () => {
   const [sessionData, setSessionData] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState(null);
+
+  // State to store API existing shifts for overlap checking
+  const [apiExistingShifts, setApiExistingShifts] = useState<Map<string, any[]>>(new Map());
+
+  // Function to fetch existing shifts from API for overlap checking
+  const fetchApiExistingShifts = async (userId?: number) => {
+    if (!currentWeekRange || !selectedClient) return;
+
+    try {
+      const startDate = formatDateLocal(new Date(currentWeekRange.startOfWeek));
+      const [year, month, day] = startDate.split("-");
+      const formattedStartDate = `${month}-${day}-${year}`;
+
+      const newApiShifts = new Map<string, any[]>();
+
+      if (userId) {
+        // Fetch for specific user only
+        const combination = `${selectedClient.clientId}-${selectedClient.addressId}-${userId}`;
+        
+        try {
+          const result = await checkScheduleSession(
+            selectedClient.clientId,
+            selectedClient.addressId,
+            userId,
+            formattedStartDate
+          );
+          
+          if (result?.shifts) {
+            newApiShifts.set(combination, result.shifts);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch shifts for user ${userId}:`, error);
+        }
+      } else {
+        // Fetch for all users in schedule data (for edit mode)
+      const uniqueCombinations = new Set<string>();
+      scheduleData.forEach(item => {
+        const key = `${item.clientId}-${item.addressId}-${item.userId}`;
+        uniqueCombinations.add(key);
+      });
+
+      // Fetch existing shifts for each combination
+      await Promise.all(
+        Array.from(uniqueCombinations).map(async (combination) => {
+          const [clientId, addressId, userId] = combination.split('-').map(Number);
+          
+          try {
+              const result = await checkScheduleSession(
+                  clientId,
+                  addressId,
+                  userId,
+                formattedStartDate
+              );
+              
+              if (result?.shifts) {
+                newApiShifts.set(combination, result.shifts);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch shifts for user ${userId}:`, error);
+          }
+        })
+      );
+      }
+
+      setApiExistingShifts(newApiShifts);
+      console.log("Fetched API existing shifts:", newApiShifts);
+    } catch (error) {
+      console.error("Failed to fetch API existing shifts:", error);
+    }
+  };
 
   // Add local loading state for table navigation
   const [tableLoading, setTableLoading] = useState(false);
@@ -740,6 +812,14 @@ export const ViewSchedule = () => {
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
     
+    // Check if the guard is already in the schedule table
+    const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
+    
+    // If guard is not in schedule table, fetch their existing shifts from API
+    if (!guardExistsInSchedule && form.userId) {
+      await fetchApiExistingShifts(Number(form.userId));
+    }
+    
     // For "Apply All Week", we need custom validation
     if (applyAllWeek && currentWeekRange) {
       const weekErrors: { [key: string]: string } = {};
@@ -763,7 +843,7 @@ export const ViewSchedule = () => {
       if (Object.keys(weekErrors).length > 0) return;
     } else {
       // Single date validation
-      const formErrors = validateForm(form, scheduleData);
+      const formErrors = validateForm(form, scheduleData, undefined, apiExistingShifts);
       setErrors(formErrors);
       if (Object.keys(formErrors).length > 0) return;
     }
@@ -806,18 +886,32 @@ export const ViewSchedule = () => {
           // Use local timezone formatting
           const dateStr = toLocalYMD(dateObj);
 
-          // Check for overlap before adding shift
+          // Check for overlap before adding shift (both local and API data)
           const existingShiftsForDate = updatedScheduleData
             .filter(item => item.userId === Number(form.userId) && item.startDate === dateStr)
             .flatMap(item => item.shifts);
 
-          const hasOverlap = existingShiftsForDate.some(existingShift => {
+          const hasLocalOverlap = existingShiftsForDate.some(existingShift => {
             return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
           });
 
-          if (hasOverlap) {
+          // Check API existing shifts overlap
+          let hasApiOverlap = false;
+          if (selectedClient) {
+            hasApiOverlap = checkApiOverlap(
+              Number(form.userId),
+              dateStr,
+              form.starttime,
+              form.endtime,
+              selectedClient.clientId,
+              selectedClient.addressId,
+              apiExistingShifts
+            );
+          }
+
+          if (hasLocalOverlap || hasApiOverlap) {
             skippedDays++;
-            console.log(`Skipping ${dateStr} due to overlap`);
+            console.log(`Skipping ${dateStr} due to ${hasLocalOverlap ? 'local' : 'API'} overlap`);
             continue; // Skip this day and move to next
           }
 
@@ -1201,6 +1295,8 @@ export const ViewSchedule = () => {
   const toggleScheduleEditMode = () => {
     if (!isScheduleEditMode) {
       setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
+      // Fetch existing shifts from API when entering edit mode
+      fetchApiExistingShifts();
     } else {
       const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
       if (hasChanges) {
@@ -1989,6 +2085,7 @@ export const ViewSchedule = () => {
                 loading={scheduleLoading || tableLoading}
                 onUserAutoToggle={handleUserAutoToggle}
                 onShiftAutoToggle={handleShiftAutoToggle}
+                apiExistingShiftsData={apiExistingShifts}
               />
             </div>
           )}

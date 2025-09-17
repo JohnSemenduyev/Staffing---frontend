@@ -177,7 +177,12 @@ export const convertTimestampToDate = (timestamp: string): string => {
 };
 
 // Form validation function
-export const validateForm = (formData: FormData, scheduleData: ScheduleItem[], editingShiftId?: number): { [key: string]: string } => {
+export const validateForm = (
+  formData: FormData, 
+  scheduleData: ScheduleItem[], 
+  editingShiftId?: number,
+  apiExistingShifts?: Map<string, any[]>
+): { [key: string]: string } => {
   const e: { [key: string]: string } = {};
   if (!formData.userId) e.userId = "Required";
   if (!formData.date) e.date = "Required";
@@ -192,9 +197,11 @@ export const validateForm = (formData: FormData, scheduleData: ScheduleItem[], e
     }
   }
 
-  // Check for overlapping shifts
+  // Check for overlapping shifts (both local and API data)
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
     console.log("existing data", scheduleData);
+    
+    // Check local schedule data overlaps
     const existingShifts = scheduleData
       .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
       .flatMap(item => item.shifts);
@@ -207,8 +214,55 @@ export const validateForm = (formData: FormData, scheduleData: ScheduleItem[], e
         break;
       }
     }
+
+    // Check API existing shifts overlaps if provided
+    if (apiExistingShifts && !e.overlap) {
+      const clientId = scheduleData.find(item => item.userId === Number(formData.userId))?.clientId;
+      const addressId = scheduleData.find(item => item.userId === Number(formData.userId))?.addressId;
+      
+      if (clientId && addressId) {
+        const combinationKey = `${clientId}-${addressId}-${formData.userId}`;
+        const apiShifts = apiExistingShifts.get(combinationKey) || [];
+        
+        for (const apiShift of apiShifts) {
+          // Check if the API shift is for the same date
+          const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+          if (apiShiftDate === formData.date) {
+            if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+              e.overlap = "Shift time overlaps with existing shift in the system for this user and date";
+              break;
+            }
+          }
+        }
+      }
+    }
   }
   return e;
+};
+
+// Helper function to check overlaps with API existing shifts
+export const checkApiOverlap = (
+  userId: number,
+  date: string,
+  startTime: string,
+  endTime: string,
+  clientId: number,
+  addressId: number,
+  apiExistingShifts: Map<string, any[]>
+): boolean => {
+  const combinationKey = `${clientId}-${addressId}-${userId}`;
+  const apiShifts = apiExistingShifts.get(combinationKey) || [];
+  
+  for (const apiShift of apiShifts) {
+    // Check if the API shift is for the same date
+    const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+    if (apiShiftDate === date) {
+      if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
+        return true;
+      }
+    }
+  }
+  return false;
 };
 
 export const calculateHours = (start: string, end: string): number => {

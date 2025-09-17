@@ -73,6 +73,13 @@ interface ScheduleTableProps {
   onScheduleAutoToggle?: (enabled: boolean) => void;
   hideActionButtons?: boolean; // Hide cancel, edit, download buttons
   existingShifts?: Shift[]; // Existing shifts from backend for overlap checking
+  apiExistingShiftsData?: Map<string, any[]>; // API existing shifts for overlap checking
+}
+
+interface ExistingShiftFromAPI {
+  startTime: string;
+  endTime: string;
+  date: string;
 }
 
 // Utility functions
@@ -193,7 +200,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onShiftAutoToggle,
   onScheduleAutoToggle,
   hideActionButtons = false,
-  existingShifts = [] // Default empty array for existing shifts
+  existingShifts = [], // Default empty array for existing shifts
+  apiExistingShiftsData = new Map() // Default empty Map for API existing shifts
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -206,6 +214,54 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   // Drag and drop states
   const [draggedShift, setDraggedShift] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null);
+  
+  // Use the apiExistingShiftsData prop instead of local state
+
+  // Helper function to check overlap with API existing shifts
+  const checkOverlapWithApiShifts = (userId: number, clientId: number, addressId: number, date: string, startTime: string, endTime: string, excludeShiftId?: number) => {
+    const key = `${clientId}-${addressId}-${userId}`;
+    const userShifts = apiExistingShiftsData.get(key) || [];
+    
+    console.log(`Checking API overlap for key: ${key}, date: ${date}, time: ${startTime}-${endTime}`);
+    console.log(`Available API shifts:`, userShifts);
+    
+    // Find the first overlapping shift
+    const overlappingShift = userShifts.find(shift => {
+      // Convert API date to local format for comparison
+      const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
+      const dateMatch = shiftDateStr === date;
+      
+      console.log(`Comparing dates: ${shiftDateStr} === ${date} = ${dateMatch}`);
+      
+      if (!dateMatch) return false;
+      
+      // Check for time overlap
+      const hasOverlap = doTimesOverlap(startTime, endTime, shift.startTime, shift.endTime);
+      console.log(`Time overlap check: ${startTime}-${endTime} vs ${shift.startTime}-${shift.endTime} = ${hasOverlap}`);
+      
+      return hasOverlap;
+    });
+
+    // If overlap found, show toast with specific details
+    if (overlappingShift) {
+      // Format the date for display
+      const shiftDateStr = overlappingShift.date.includes('T') ? overlappingShift.date.split('T')[0] : overlappingShift.date;
+      const [year, month, day] = shiftDateStr.split('-');
+      const formattedDate = `${month}-${day}-${year}`;
+      
+      hookToast({
+        title: "Shift Overlapping",
+        description: `Shift overlapping on date ${formattedDate} at ${overlappingShift.startTime}-${overlappingShift.endTime}`,
+        variant: "destructive",
+      });
+      
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Use the parent's toggle edit mode handler
 
   // Generate date columns for the schedule table
   const generateDateColumns = () => {
@@ -321,7 +377,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       }
     }
 
-    // Check for overlapping shifts with backend existing shifts
+    // Check for API overlap
+    const targetSchedule = scheduleData.find(item => item.userId === userId && item.startDate === date);
+    if (targetSchedule && checkOverlapWithApiShifts(userId, targetSchedule.clientId, targetSchedule.addressId, date, editForm.starttime, editForm.endtime, shift.id)) {
+      return;
+    }
+
+    // Check for overlapping shifts with backend existing shifts (legacy existingShifts prop)
     const hasBackendOverlap = existingShifts?.some(backendShift => {
       const shiftDateStr = backendShift.date.includes('T') ? backendShift.date.split('T')[0] : backendShift.date;
       const dateMatch = shiftDateStr === date;
@@ -343,6 +405,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       });
       return;
     }
+
 
     const calculateHours = (start: string, end: string) => {
       const [startH, startM] = start.split(":").map(Number);
@@ -500,6 +563,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
       });
     };
+
   
     // Handle overlap error
     const handleOverlapError = (message: string) => {
@@ -512,20 +576,42 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       cleanupDragState();
     };
   
+    // Declare sourceSchedule first
+    const sourceSchedule = scheduleData.find(
+      item => item.userId === sourceUserId && item.startDate === sourceDate
+    );
+
+    // Check for API existing shifts overlap
+    const checkApiOverlap = () => {
+      // First try to find target schedule, if not found, use source schedule for client/address info
+      let targetSchedule = scheduleData.find(item => item.userId === targetUserId && item.startDate === targetDate);
+      
+      if (!targetSchedule) {
+        // If no target schedule exists, use source schedule for client/address info
+        targetSchedule = sourceSchedule;
+      }
+      
+      if (!targetSchedule) return false;
+      
+      // This will show the toast and return true if overlap found
+      return checkOverlapWithApiShifts(targetUserId, targetSchedule.clientId, targetSchedule.addressId, targetDate, shift.startTime, shift.endTime);
+    };
+
     // Check for backend overlap first (applies to both scenarios)
     if (checkBackendOverlap()) {
       handleOverlapError("Backend overlap detected, blocking drop");
+      return;
+    }
+
+    // Check for API existing shifts overlap
+    if (checkApiOverlap()) {
       return;
     }
   
     const existingSchedule = scheduleData.find(
       item => item.userId === targetUserId && item.startDate === targetDate
     );
-  
-    const sourceSchedule = scheduleData.find(
-      item => item.userId === sourceUserId && item.startDate === sourceDate
-    );
-  
+
     if (!sourceSchedule) {
       console.error("Source schedule not found");
       cleanupDragState();
@@ -557,9 +643,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           // For same column drops, check overlap with ALL other shifts (including source)
           return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
         });
-  
+
         if (hasLocalOverlap) {
           handleOverlapError("Local overlap detected, blocking drop");
+          return;
+        }
+
+        // Check for API overlap
+        if (checkApiOverlap()) {
           return;
         }
   
@@ -589,9 +680,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           // For same column drops, check overlap with ALL shifts (including source)
           return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
         });
-  
+
         if (hasLocalOverlap) {
           handleOverlapError("Local overlap detected, blocking drop");
+          return;
+        }
+
+        // Check for API overlap
+        if (checkApiOverlap()) {
           return;
         }
   
@@ -616,6 +712,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       // Create new schedule - check backend overlap first
       if (checkBackendOverlap()) {
         handleOverlapError("Backend overlap detected in new schedule creation, blocking drop");
+        return;
+      }
+      
+      // Check for API existing shifts overlap
+      if (checkApiOverlap()) {
         return;
       }
       

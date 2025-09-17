@@ -383,7 +383,6 @@ export const Notification = () => {
         { label: 'Time Clock', value: 'time_clock' },
         { label: 'Weekly Hours', value: 'weekly_Hours' },
         { label: 'Schedule', value: 'schedule' },
-         { label: 'Shift Updates', value: 'shift_updates' },
       ],
       width: "150px",
       className: "min-w-[120px]",

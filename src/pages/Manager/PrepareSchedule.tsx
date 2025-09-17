@@ -649,7 +649,8 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         Number(clientId),
         startDate,
         Number(addressId),
-        Number(userId)
+        Number(userId),
+        "prepare" // type parameter for prepare schedule
       );
 
       // message === null -> allowed (same as previous overlap === true)
@@ -1111,7 +1112,6 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   className={`${inputClasses} ${form.date ? "text-black" : "text-gray-500"} `}
                 // minDate={currentWeekRange ? formatDateLocal(currentWeekRange.startOfWeek) : undefined}
                 // maxDate={currentWeekRange ? formatDateLocal(currentWeekRange.endOfWeek) : undefined}
-
                 />
 
                 <div className="flex items-center m-2 space-x-2">
