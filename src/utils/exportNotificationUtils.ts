@@ -91,12 +91,25 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
       column.width = width;
     });
 
+    // Remove all default borders from the entire worksheet
+    const maxRow = Math.max(100, excelData.length + 10);
+    const headers = Object.keys(excelData[0] || {});
+    const maxCol = headers.length + 10;
+    
+    for (let row = 1; row <= maxRow; row++) {
+      for (let col = 1; col <= maxCol; col++) {
+        const cell = worksheet.getCell(row, col);
+        // Remove all default borders by setting to undefined
+        cell.border = undefined;
+      }
+    }
+
     // Add title in B2 (row 2, column 2)
     const titleCell = worksheet.getCell('B2');
     titleCell.value = 'Notifications';
     titleCell.font = {
       name: 'Arial',
-      size: 18,
+      size: 16.2, // 10% smaller than 18
       bold: true,
       italic: true,
       color: { argb: 'FF000000' }
@@ -110,28 +123,12 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
       horizontal: 'left',
       vertical: 'middle'
     };
+    // Remove borders from title cell
+    titleCell.border = undefined;
 
     // Merge title cell across all data columns
-    const headers = Object.keys(excelData[0] || {});
     const lastColumn = String.fromCharCode(66 + headers.length - 1); // B + number of headers
     worksheet.mergeCells(`B2:${lastColumn}2`);
-
-    // First, remove all default borders from the entire worksheet
-    // This ensures no cell shows any border unless explicitly set
-    const maxRow = Math.max(100, excelData.length + 10); // Ensure we cover enough area
-    const maxCol = headers.length + 10;
-    
-    for (let row = 1; row <= maxRow; row++) {
-      for (let col = 1; col <= maxCol; col++) {
-        const cell = worksheet.getCell(row, col);
-        // cell.border = {
-        //   top: { style: 'none' },
-        //   bottom: { style: 'none' },
-        //   left: { style: 'none' },
-        //   right: { style: 'none' }
-        // };
-      }
-    }
 
     // Add headers in row 3 starting from column B
     if (headers.length > 0) {
@@ -140,14 +137,14 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         cell.value = header;
         cell.font = {
           name: 'Arial',
-          size: 12,
+          size: 10.8, // 10% smaller than 12
           bold: true,
-          color: { argb: 'FF000000' }
+          color: { argb: 'FFFFFFFF' } // White text for contrast
         };
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FFFFFFFF' }
+          fgColor: { argb: 'FF004175' } // Header color #004175
         };
         cell.alignment = {
           horizontal: 'left',
@@ -170,7 +167,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         cell.value = value;
         cell.font = {
           name: 'Arial',
-          size: 12,
+          size: 10.8, // 10% smaller than 12
           color: { argb: 'FF000000' }
         };
         cell.fill = {
@@ -227,8 +224,8 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
   try {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     
-    // Add title - matching summary styling with italic
-    doc.setFontSize(18);
+    // Add title - matching summary styling with italic (10% smaller)
+    doc.setFontSize(16.2); // 10% smaller than 18
     doc.setFont('helvetica', 'bolditalic');
     doc.text('Notifications', 5, 15); // Reduced margin to match 0.1in
 
@@ -264,77 +261,77 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
       body: tableData,
       startY: 20,
       styles: {
-        fontSize: 10, // Reduced from 15 to 10
-        cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, // Slightly reduced padding
+        fontSize: 9, // 10% smaller than 10
+        cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
         overflow: 'linebreak',
         halign: 'left',
-        lineWidth: 0.5, // Thinner border for table cells
-        lineColor: [0, 0, 0], // Black color for cell borders
-        minCellHeight: 4, // Reduced from 5.5 to 4
-        font: 'helvetica', // Match summary Arial/helvetica
-        textColor: [0, 0, 0], // Black text
-        fillColor: [255, 255, 255] // Pure white background for all rows
+        lineWidth: 0.5,
+        lineColor: [0, 0, 0],
+        minCellHeight: 4,
+        font: 'helvetica',
+        textColor: [0, 0, 0],
+        fillColor: [255, 255, 255]
       },
       alternateRowStyles: {
-        fillColor: [255, 255, 255] // Ensure alternate rows are also white
+        fillColor: [255, 255, 255]
       },
       headStyles: {
-        fillColor: [255, 255, 255], // White background like summary
-        textColor: [0, 0, 0], // Black text
+        fillColor: [0, 65, 117], // #004175 in RGB
+        textColor: [255, 255, 255], // White text for contrast
         fontStyle: 'bold',
-        lineWidth: 0.5, // Thinner border for table header
-        lineColor: [0, 0, 0], // Black color for header borders
-        minCellHeight: 4.5, // Reduced from 5.5 to 4.5
-        fontSize: 11, // Reduced from 15 to 11 (slightly larger than data for hierarchy)
-        font: 'helvetica' // Match summary font
+        lineWidth: 0.5,
+        lineColor: [0, 0, 0],
+        minCellHeight: 4.5,
+        fontSize: 9.9, // 10% smaller than 11
+        font: 'helvetica'
       },
       columnStyles: {
         0: { 
           halign: 'left', 
           fontStyle: 'bold',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        }, // S.No
+          fillColor: [255, 255, 255]
+        },
         1: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        },   // Client Name
+          fillColor: [255, 255, 255]
+        },
         2: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        },   // Address
+          fillColor: [255, 255, 255]
+        },
         3: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        }, // User Name
+          fillColor: [255, 255, 255]
+        },
         4: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        },   // Notification Type
+          fillColor: [255, 255, 255]
+        },
         5: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        },   // Message
+          fillColor: [255, 255, 255]
+        },
         6: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        }, // Date
+          fillColor: [255, 255, 255]
+        },
         7: { 
           halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
-          fillColor: [255, 255, 255] // Explicit white background
-        }  // Time
+          fillColor: [255, 255, 255]
+        }
       },
-      margin: { left: 2.5, right: 2.5, top: 0, bottom: 0 }, // Match 0.1in margins
-      tableLineWidth: 0.5, // Thinner border for outer table border
-      tableLineColor: [0, 0, 0], // Black color for outer table border
-      theme: 'grid' // Ensure all borders are visible
+      margin: { left: 2.5, right: 2.5, top: 0, bottom: 0 },
+      tableLineWidth: 0.5,
+      tableLineColor: [0, 0, 0],
+      theme: 'grid'
     });
 
     // Generate filename with timestamp
@@ -351,27 +348,6 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
   }
 };
 
-// Helper function to format date and time for export
-const formatDateTimeForExport = (dateTimeString: string): string => {
-  try {
-    if (!dateTimeString) return '-';
-    
-    const date = new Date(dateTimeString);
-    if (isNaN(date.getTime())) return dateTimeString;
-    
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (error) {
-    console.error('Error formatting date/time:', error);
-    return dateTimeString || '-';
-  }
-};
 
 // Helper function to truncate text for PDF display
 const truncateText = (text: string, maxLength: number): string => {
