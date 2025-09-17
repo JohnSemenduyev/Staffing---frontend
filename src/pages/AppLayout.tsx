@@ -24,7 +24,7 @@ const AppLayout = () => {
     <SidebarProvider>
       <div className="flex w-full bg-background">
         <AppSidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden sm:ml-[250px]">
           <main className="lg:flex-1 overflow-y-auto bg-gray-100">
             <Outlet />
           </main>

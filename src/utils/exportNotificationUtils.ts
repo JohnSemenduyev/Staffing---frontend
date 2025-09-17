@@ -140,7 +140,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         cell.value = header;
         cell.font = {
           name: 'Arial',
-          size: 15,
+          size: 12,
           bold: true,
           color: { argb: 'FF000000' }
         };
