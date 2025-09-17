@@ -1069,7 +1069,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                   setForm(f => ({ ...f, userId: "" }));
                 }}
                 placeholder="User Name"
-                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
+                className={`${inputClasses} `}
               />
               {errors.userId && (
                 <ErrorMessage message={errors.userId} />
