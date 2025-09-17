@@ -103,7 +103,7 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
     titleCell.value = 'View Time Summary';
     titleCell.font = {
       name: 'Arial',
-      size: 16.2, // 10% smaller than 18
+      size: 14,
       bold: true,
       italic: true,
       color: { argb: 'FF000000' }
@@ -117,12 +117,17 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
       horizontal: 'left',
       vertical: 'middle'
     };
-    // Remove borders from title cell
-    titleCell.border = undefined;
+    // Add dashed border around title
+    titleCell.border = {
+      bottom: { style: 'thin' }
+    };
 
     // Merge title cell across all data columns
     const lastColumn = String.fromCharCode(66 + headers.length - 1); // B + number of headers
     worksheet.mergeCells(`B2:${lastColumn}2`);
+
+    // Set row height for title row to reduce vertical spacing
+    worksheet.getRow(2).height = 18;
 
     // Add headers in row 3 starting from column B
     if (headers.length > 0) {
@@ -131,18 +136,19 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
         cell.value = header;
         cell.font = {
           name: 'Arial',
-          size: 10.8, // 10% smaller than 12
+          size: 10,
           bold: true,
-          color: { argb: 'FFFFFFFF' } // White text for contrast
+          color: { argb: 'FF000000' }
         };
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FF004175' } // Header color #004175
+          fgColor: { argb: 'FFF0F0F0' } // Light gray background
         };
         cell.alignment = {
           horizontal: 'left',
-          vertical: 'middle'
+          vertical: 'middle',
+          indent: 0
         };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -153,6 +159,9 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
       });
     }
 
+    // Set row height for header row
+    worksheet.getRow(3).height = 15;
+
     // Add data starting from row 4, column B
     excelData.forEach((row, rowIndex) => {
       const values = Object.values(row);
@@ -161,7 +170,7 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
         cell.value = value;
         cell.font = {
           name: 'Arial',
-          size: 10.8, // 10% smaller than 12 - match notifications
+          size: 9,
           color: { argb: 'FF000000' }
         };
         cell.fill = {
@@ -171,7 +180,8 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
         };
         cell.alignment = {
           horizontal: 'left',
-          vertical: 'middle'
+          vertical: 'middle',
+          indent: 0
         };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -218,10 +228,10 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
   try {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     
-    // Add title - matching summary styling with italic (10% smaller)
-    doc.setFontSize(16.2); // 10% smaller than 18
+    // Add title - matching summary styling with italic
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bolditalic');
-    doc.text('View Time Summary', 5, 15); // Reduced margin to match 0.1in
+    doc.text('View Time Summary', 1, 5); // Minimal top spacing
 
     // Prepare table data
     const tableData = data.map((row, index) => [
@@ -250,71 +260,72 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
     autoTable(doc, {
       head: [headers],
       body: tableData,
-      startY: 20,
+      startY: 8,
       styles: {
-        fontSize: 9, // 10% smaller than 10
-        cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+        fontSize: 9,
+        cellPadding: { top: 1, right: 2, bottom: 1, left: 4 },
         overflow: 'linebreak',
         halign: 'left',
         lineWidth: 0.5,
         lineColor: [0, 0, 0],
-        minCellHeight: 4,
+        minCellHeight: 3,
         font: 'helvetica',
         textColor: [0, 0, 0],
-        fillColor: [255, 255, 255]
+        fillColor: [255, 255, 255] //
       },
       alternateRowStyles: {
         fillColor: [255, 255, 255]
       },
       headStyles: {
-        fillColor: [0, 65, 117], // #004175 in RGB
-        textColor: [255, 255, 255], // White text for contrast
+        fillColor: [240, 240, 240], // Light gray background
+        textColor: [0, 0, 0], // Black text
         fontStyle: 'bold',
         lineWidth: 0.5,
         lineColor: [0, 0, 0],
-        minCellHeight: 4.5,
-        fontSize: 9.9, // 10% smaller than 11
-        font: 'helvetica'
+        minCellHeight: 3.5,
+        fontSize: 10,
+        font: 'helvetica',
+        cellPadding: { top: 1, right: 2, bottom: 1, left: 2 }
       },
       columnStyles: {
         0: { 
           halign: 'left', 
           fontStyle: 'bold',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         },
         1: { 
           halign: 'left',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         },
         2: { 
           halign: 'left',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         },
         3: { 
           halign: 'left',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         },
         4: { 
           halign: 'left',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         },
         5: { 
           halign: 'left',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         },
         6: { 
           halign: 'left',
-          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
+          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
           fillColor: [255, 255, 255]
         }
       },
-      margin: { left: 2.5, right: 2.5, top: 0, bottom: 0 },
+      margin: { left: 1, right: 1, top: 0, bottom: 0 },
       tableLineWidth: 0.5,
       tableLineColor: [0, 0, 0],
       theme: 'grid'
