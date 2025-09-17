@@ -115,7 +115,7 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
       fgColor: { argb: 'FFFFFFFF' }
     };
     titleCell.alignment = {
-      horizontal: 'center',
+      horizontal: 'left',
       vertical: 'middle'
     };
 
@@ -140,7 +140,7 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
           fgColor: { argb: 'FFFFFFFF' }
         };
         cell.alignment = {
-          horizontal: 'center',
+          horizontal: 'left',
           vertical: 'middle'
         };
         cell.border = {
@@ -169,7 +169,7 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
           fgColor: { argb: 'FFFFFFFF' }
         };
         cell.alignment = {
-          horizontal: 'center',
+          horizontal: 'left',
           vertical: 'middle'
         };
         cell.border = {
@@ -254,7 +254,7 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
         fontSize: 10, // Reduced from 15 to 10
         cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, // Slightly reduced padding
         overflow: 'linebreak',
-        halign: 'center',
+        halign: 'left',
         lineWidth: 0.5, // Thinner border for table cells
         lineColor: [0, 0, 0], // Black color for cell borders
         minCellHeight: 4, // Reduced from 5.5 to 4
@@ -277,7 +277,7 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
       },
       columnStyles: {
         0: { 
-          halign: 'center', 
+          halign: 'left', 
           fontStyle: 'bold',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
@@ -293,7 +293,7 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
           fillColor: [255, 255, 255] // Explicit white background
         },   // Last Name
         3: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // Date
@@ -308,7 +308,7 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
           fillColor: [255, 255, 255] // Explicit white background
         },   // Location
         6: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }  // Hours

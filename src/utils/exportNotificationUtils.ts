@@ -107,7 +107,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
       fgColor: { argb: 'FFFFFFFF' }
     };
     titleCell.alignment = {
-      horizontal: 'center',
+      horizontal: 'left',
       vertical: 'middle'
     };
 
@@ -150,7 +150,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
           fgColor: { argb: 'FFFFFFFF' }
         };
         cell.alignment = {
-          horizontal: 'center',
+          horizontal: 'left',
           vertical: 'middle'
         };
         cell.border = {
@@ -179,7 +179,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
           fgColor: { argb: 'FFFFFFFF' }
         };
         cell.alignment = {
-          horizontal: 'center',
+          horizontal: 'left',
           vertical: 'middle'
         };
         cell.border = {
@@ -267,7 +267,7 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
         fontSize: 10, // Reduced from 15 to 10
         cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 }, // Slightly reduced padding
         overflow: 'linebreak',
-        halign: 'center',
+        halign: 'left',
         lineWidth: 0.5, // Thinner border for table cells
         lineColor: [0, 0, 0], // Black color for cell borders
         minCellHeight: 4, // Reduced from 5.5 to 4
@@ -290,43 +290,43 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
       },
       columnStyles: {
         0: { 
-          halign: 'center', 
+          halign: 'left', 
           fontStyle: 'bold',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // S.No
         1: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Client Name
         2: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Address
         3: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // User Name
         4: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Notification Type
         5: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         },   // Message
         6: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }, // Date
         7: { 
-          halign: 'center',
+          halign: 'left',
           cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           fillColor: [255, 255, 255] // Explicit white background
         }  // Time
