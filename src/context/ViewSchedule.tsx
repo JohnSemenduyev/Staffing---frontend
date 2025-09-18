@@ -83,6 +83,7 @@ export type ScheduleSession = {
 export type ScheduleUser = {
   id: number;
   name: string;
+  lastName?: string;
   phone?: string;
 };
 
@@ -90,6 +91,8 @@ export type ScheduleDataItem = {
   auto: boolean;
   shifts: Shift[];
   user: ScheduleUser;
+  client: Client;
+  address: Address;
   clientId: number;
   addressId: number;
   weeklyHours: number;
@@ -203,16 +206,13 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     try {
       const token = localStorage.getItem("token");
       const response = await graphQLClient.request<{
-        ScheduleSessionsByClientWeek: {
-          lastPage: number;
-          data: ScheduleData;
-        };
+        ScheduleSessionsByClientWeek: ScheduleData;
       }>(
         SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
         { clientId, addressId, date },
         { Authorization: `Bearer ${token}` }
       );
-      setScheduleData(response.ScheduleSessionsByClientWeek.data);
+      setScheduleData(response.ScheduleSessionsByClientWeek);
     } catch (err) {
       console.error('fetchScheduleData:', err);
       setScheduleError(genericError('fetchSchedule', err));

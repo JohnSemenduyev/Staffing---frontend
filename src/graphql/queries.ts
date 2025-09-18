@@ -501,8 +501,7 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
 export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
   query ScheduleSessionsByClientWeek($clientId: Int, $addressId: Int, $date: String) {
     ScheduleSessionsByClientWeek(clientId: $clientId, addressId: $addressId, date: $date) {
-     lastPage
-      data {
+    
     shifts {
         startTime
         endTime
@@ -536,7 +535,6 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
       weeklyHours
       auto
     }
-}
   }
 `;
 
