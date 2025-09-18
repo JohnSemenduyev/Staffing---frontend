@@ -25,8 +25,7 @@ const notificationOptions = [
   "Geolocation",
   "Time Clock",
   "Weekly Hours",
-  "Scheduling",
-    "Shift Updates"
+  "Scheduling"
 
 ] as const;
 type NotificationOption = (typeof notificationOptions)[number];
@@ -35,7 +34,6 @@ const notificationMapping = {
   'geo_location': 'Geolocation',
   'time_clock': 'Time Clock',
   'weekly_Hours': 'Weekly Hours',
-  'shift_updates': 'Shift Updates',
   'schedule': 'Scheduling',
   'Geolocation': 'Geolocation',
   'Time Clock': 'Time Clock',
@@ -512,8 +510,7 @@ export default function AssignmentNew() {
         { label: 'Geolocation', value: 'geo_location' },
         { label: 'Time Clock', value: 'time_clock' },
         { label: 'Weekly Hours', value: 'weekly_Hours' },
-        { label: 'Schedule', value: 'schedule' },
-        { label: 'Shift Updates', value: 'shift_updates' },
+        { label: 'Schedule', value: 'schedule' }
       ],
       render: (value: NotificationOption[] | string[] | null | undefined) => {
         if (!value || !Array.isArray(value) || value.length === 0) {

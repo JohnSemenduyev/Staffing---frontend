@@ -14,7 +14,7 @@ interface EditAssignmentModalProps {
   onSuccess: () => void;
 }
 
-const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling",  "Shift Updates"];
+const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"];
 
 const EditAssignmentModal: React.FC<EditAssignmentModalProps> = ({ record, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({

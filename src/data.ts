@@ -42,5 +42,4 @@ export const notificationOptions = [
   "Time Clock",
   "Weekly Hours",
   "Scheduling",
-  "Shift Updates"
 ];

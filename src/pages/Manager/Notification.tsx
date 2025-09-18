@@ -17,14 +17,13 @@ import { Button } from "../../components/ui/button";
 import Pagination from "../../components/Pagination";
 
 
-const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", "Shift Updates"] as const;
+const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
 type NotificationOption = (typeof notificationOptions)[number];
 const notificationTypeMap: Record<NotificationOption, string> = {
   "Geolocation": "geo_location",
   "Time Clock": "time_clock",
   "Weekly Hours": "weekly_Hours",
-  "Scheduling": "schedule",
-  "Shift Updates": "shift_updates"
+  "Scheduling": "schedule"
 };
 
 export const Notification = () => {
@@ -237,7 +236,7 @@ export const Notification = () => {
   };
 
   // Export functions using utility
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!data || data.length === 0) {
       toast.error("No data to export. Please fetch data first.");
       return;
@@ -245,7 +244,7 @@ export const Notification = () => {
 
     console.log("Exporting Excel with data:", data);
     try {
-      const result = exportNotificationToExcel(data, 'notifications');
+      const result = await exportNotificationToExcel(data, 'notifications');
       console.log("Excel export result:", result);
       if (result.success) {
         toast.success(`Excel file exported successfully: ${result.filename}`);
