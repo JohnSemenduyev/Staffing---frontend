@@ -13,7 +13,6 @@ import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
-import Pagination from "../../components/Pagination";
 import { Button } from "../../components/ui/button";
 
 export const Summary = () => {
@@ -21,6 +20,7 @@ export const Summary = () => {
     clientId: "",
     addressId: "",
     date: "",
+    endDate: "",
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
@@ -36,7 +36,7 @@ export const Summary = () => {
     useSearchClient(debouncedClientSearch);
   const fieldInputClasses =
     "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-  const { data, loading, error, lastPage, currentPage, setCurrentPage, fetchSummary } = useViewTimeSummary();
+  const { data, loading, error, fetchSummary } = useViewTimeSummary();
   
 
   // Calculate table height dynamically
@@ -75,7 +75,35 @@ export const Summary = () => {
   }, [form, errors, submitLoader]);
   const validate = () => {
     const e: any = {};
-    // Client and address are now optional - no validation required
+    
+    // Check if user has provided either client+address OR start+end dates
+    const hasClientAndAddress = form.clientId && form.addressId;
+    const hasStartAndEndDate = form.date && form.endDate;
+    
+    if (!hasClientAndAddress && !hasStartAndEndDate) {
+      e.general = "Please provide either Client + Address OR Start Date + End Date";
+    }
+    
+    // If only start date is provided without end date
+    if (form.date && !form.endDate) {
+      e.endDate = "End date is required when start date is provided";
+    }
+    
+    // If only end date is provided without start date
+    if (form.endDate && !form.date) {
+      e.date = "Start date is required when end date is provided";
+    }
+    
+    // Validate end date if both dates are provided
+    if (form.date && form.endDate) {
+      const startDate = new Date(form.date);
+      const endDate = new Date(form.endDate);
+      
+      if (endDate < startDate) {
+        e.endDate = "End date must be after start date";
+      }
+    }
+    
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -85,7 +113,7 @@ export const Summary = () => {
       ...f,
       [field]: value,
     }));
-    setErrors((e) => ({ ...e, [field]: undefined }));
+    setErrors((e) => ({ ...e, [field]: undefined, general: undefined }));
   };
 
   const handleClientSelect = (
@@ -100,7 +128,7 @@ export const Summary = () => {
     const fullClientName = [client.name, client.lastName].filter(Boolean).join(' ');
     setClientSearch(fullClientName);
     setShowClientDropdown(false);
-    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined }));
+    setErrors((e) => ({ ...e, clientId: undefined, addressId: undefined, general: undefined }));
 
     const selectedClient = searchedClients.find(
       (c) => String(c.id) === String(client.id)
@@ -146,6 +174,7 @@ export const Summary = () => {
       clientId: "",
       addressId: "",
       date: "",
+      endDate: "",
     });
     setClientSearch("");
 
@@ -168,21 +197,25 @@ export const Summary = () => {
       console.log("Submitting form with data:", form);
 
       const clientId = form.clientId ? Number(form.clientId) : undefined;
+      const addressId = form.addressId ? Number(form.addressId) : undefined;
       const rawDate = form.date;
+      const rawEndDate = form.endDate;
 
       // Call API with or without date
       if (rawDate) {
         const formattedDate = formatDateForAPI(rawDate);  // Use utility function
+        const formattedEndDate = rawEndDate ? formatDateForAPI(rawEndDate) : undefined;
         console.log("Formatted Date for API:", formattedDate);
+        console.log("Formatted End Date for API:", formattedEndDate);
 
         // Add minimum loading time to ensure user sees the loading state
         await Promise.all([
-          fetchSummary(clientId, formattedDate, currentPage),
+          fetchSummary(clientId, addressId, formattedDate, formattedEndDate),
           new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
         ]);
       } else {
         await Promise.all([
-          fetchSummary(clientId, undefined, currentPage),
+          fetchSummary(clientId, addressId, undefined, undefined),
           new Promise(resolve => setTimeout(resolve, 500)) // Minimum 500ms loading
         ]);
       }
@@ -201,13 +234,13 @@ export const Summary = () => {
 
 
   // Export functions using utility
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!data || data.length === 0) {
       toast.error("No data to export. Please fetch data first.");
       return;
     }
 
-    const result = exportSummaryToExcel(data, 'time_summary');
+    const result = await exportSummaryToExcel(data, 'time_summary');
     if (result.success) {
       toast.success(`Excel file exported successfully: ${result.filename}`);
     } else {
@@ -564,7 +597,7 @@ export const Summary = () => {
           View Time Summary
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2 items-start">
             {/* Client Search Field */}
             <div className="relative">
               <input
@@ -633,13 +666,26 @@ export const Summary = () => {
               <CustomDatePicker
                 value={form.date}
                 onChange={handleChange}
-                placeholder="Select date"
+                placeholder="Start date"
                 fieldName="date"
                 className={`${fieldInputClasses} appearance-none`}
               />
               {errors.date && (
 
                 <ErrorMessage message={errors.date} />
+              )}
+            </div>
+
+            <div>
+              <CustomDatePicker
+                value={form.endDate}
+                onChange={handleChange}
+                placeholder="End date"
+                fieldName="endDate"
+                className={`${fieldInputClasses} appearance-none`}
+              />
+              {errors.endDate && (
+                <ErrorMessage message={errors.endDate} />
               )}
             </div>
 
@@ -666,6 +712,13 @@ export const Summary = () => {
             </div>
           </div>
         </form>
+        
+        {/* General Error Message */}
+        {errors.general && (
+          <div className="mt-2">
+            <ErrorMessage message={errors.general} />
+          </div>
+        )}
       </div>
 
       {/* Table Header with Print and Share Icons */}
@@ -696,28 +749,6 @@ export const Summary = () => {
           <FaFileExport className="w-5 h-5" />
         </button>
       </div>
-      
-      {/* Pagination */}
-      {data && data.length > 0 && (
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            lastPage={lastPage || 1}
-            onPageChange={(page) => {
-              setCurrentPage(page);
-              const clientId = Number(form.clientId);
-              if (form.date) {
-                const rawDate = form.date;
-                const formattedDate = formatDateForAPI(rawDate);
-                fetchSummary(clientId, formattedDate, page);
-              } else {
-                fetchSummary(clientId, undefined, page);
-              }
-            }}
-            loading={loading}
-          />
-        </div>
-      )}
     </div>
   );
 };

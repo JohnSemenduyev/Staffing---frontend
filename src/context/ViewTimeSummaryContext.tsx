@@ -38,10 +38,7 @@ type ViewTimeSummaryContextType = {
   data: TimeSummaryEntry[] | null;
   loading: boolean;
   error: string | null;
-  lastPage: number | null;
-  currentPage: number;
-  setCurrentPage: (page: number) => void;
-  fetchSummary: (clientId?: number, date?: string, page?: number) => Promise<void>;
+  fetchSummary: (clientId?: number, addressId?: number, date?: string, endDate?: string) => Promise<void>;
 };
 
 const ViewTimeSummaryContext = createContext<ViewTimeSummaryContextType | undefined>(undefined);
@@ -50,31 +47,26 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
   const [data, setData] = useState<TimeSummaryEntry[] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastPage, setLastPage] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const fetchSummary = async (clientId?: number, date?: string, page?: number) => {
+  const fetchSummary = async (clientId?: number, addressId?: number, date?: string, endDate?: string) => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
 
-      const variables: any = { date, page };
+      const variables: any = { date, endDate };
       if (clientId) variables.clientId = clientId;
+      if (addressId) variables.addressId = addressId;
+      
       const response = await graphQLClient.request<{ 
-        ScheduleSessionsByClientWeek: {
-          lastPage: number;
-          data: RawScheduleSession[];
-        };
+        ScheduleSessionsByClientWeek: RawScheduleSession[];
       }>(
         GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
         variables,
         { Authorization: `Bearer ${token}` }
       );
 
-      const paginatedData = response.ScheduleSessionsByClientWeek;
-      const rawData = paginatedData.data;
-      setLastPage(paginatedData.lastPage);
+      const rawData = response.ScheduleSessionsByClientWeek;
    const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
   session.shifts.map((shift) => {
     const formattedDate = formatDateStringLocal(shift.date);
@@ -112,9 +104,6 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
       data, 
       loading, 
       error, 
-      lastPage, 
-      currentPage, 
-      setCurrentPage, 
       fetchSummary 
     }}>
       {children}

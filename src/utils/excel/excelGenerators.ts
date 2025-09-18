@@ -329,9 +329,9 @@ export async function generateScheduleStyledExcel(
   
   // Add dashed border around title
   titleCell.border = {
-    top: { style: 'dashDot', color: { argb: 'FF0066CC' } },
-    left: { style: 'dashDot', color: { argb: 'FF0066CC' } },
-    right: { style: 'dashDot', color: { argb: 'FF0066CC' } },
+    top: { style: 'thin', color: { argb: 'FF0066CC' } },
+    left: { style: 'thin', color: { argb: 'FF0066CC' } },
+    right: { style: 'thin', color: { argb: 'FF0066CC' } },
     bottom: { style: 'thin' }
   };
   currentRow++;
@@ -371,8 +371,8 @@ export async function generateScheduleStyledExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: col === 1 ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: col === totalColumns ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: col === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
     };
   }
   currentRow++;
@@ -394,8 +394,8 @@ export async function generateScheduleStyledExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: colNumber === 1 ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: colNumber === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
     };
   });
   currentRow++;
@@ -430,23 +430,7 @@ export async function generateScheduleStyledExcel(
     (a[1]?.name || '').localeCompare(b[1]?.name || '')
   );
 
-  // Add sample data if no real data (for demo purposes)
-  if (users.length === 0) {
-    const sampleUser = {
-      name: 'Pawan Sharma',
-      days: new Map<string, Shift[]>()
-    };
-    
-    // Add sample shifts for each day
-    dateKeys.forEach(dateKey => {
-      sampleUser.days.set(dateKey, [
-        { startTime: '00:00', endTime: '08:00', hours: 8 },
-        { startTime: '16:00', endTime: '24:00', hours: 8 }
-      ]);
-    });
-    
-    users.push([1, sampleUser]);
-  }
+ 
 
   // Note: maxShiftsPerDay is no longer used since each user gets their own row count
   // Keeping this for potential future use if needed
@@ -518,7 +502,7 @@ export async function generateScheduleStyledExcel(
           top: { style: 'thin' },
           bottom: { style: 'thin' },
           left: { style: 'thin' },
-          right: col === totalColumns ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+          right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
         };
       }
       currentRow++;
@@ -551,7 +535,7 @@ export async function generateScheduleStyledExcel(
         top: { style: 'thin' },
         bottom: { style: 'thin' },
         left: { style: 'thin' },
-        right: col === totalColumns ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+        right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
       };
     }
     currentRow++;
@@ -568,7 +552,7 @@ export async function generateScheduleStyledExcel(
     nameCell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: { style: 'dashDot', color: { argb: 'FF0066CC' } },
+      left: { style: 'thin', color: { argb: 'FF0066CC' } },
       right: { style: 'thin' }
     };
   });
@@ -603,9 +587,9 @@ export async function generateScheduleStyledExcel(
     };
     cell.border = {
       top: { style: 'thin' },
-      bottom: { style: 'dashDot', color: { argb: 'FF0066CC' } },
-      left: colNumber === 1 ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'dashDot', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      bottom: { style: 'thin', color: { argb: 'FF0066CC' } },
+      left: colNumber === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
     };
   });
 

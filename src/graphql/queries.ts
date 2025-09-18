@@ -474,31 +474,26 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
 `;
 
 export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
-  query GetScheduleSessionsByClientWeek($clientId: Int!, $date: String, $page: Int) {
-    ScheduleSessionsByClientWeek(clientId: $clientId, date: $date, page: $page) {
-      lastPage
-      data {
-        client {
-          name
-          lastName
-        }
-        address {
-          address
-          pincode
-          state
-          city
-        }
-        user {
-          name
-          lastName
-          
-        }
-        shifts {
-          id
-          date
-          hours
-        }
-      
+  query GetScheduleSessionsByClientWeek($clientId: Int, $addressId: Int, $timeZone: String, $endDate: String, $date: String) {
+    ScheduleSessionsByClientWeek(clientId: $clientId, addressId: $addressId, timeZone: $timeZone, endDate: $endDate, date: $date) {
+      client {
+        name
+        lastName
+      }
+      address {
+        address
+        pincode
+        state
+        city
+      }
+      user {
+        name
+        lastName
+      }
+      shifts {
+        id
+        date
+        hours
       }
     }
   }
