@@ -402,11 +402,24 @@ export const Notification = () => {
       searchable: true,
       className: "min-w-[300px]",
       width: "200px",
-      render: (value: string) => (
-        <div className="leading-relaxed" title={value || ""}>
-          {value || "-"}
-        </div>
-      )
+      render: (value: string) => {
+        // Convert "BREAK" to line breaks in notification messages
+        const formatMessage = (message: string) => {
+          if (!message) return "-";
+          return message.split("BREAK").map((part, index) => (
+            <React.Fragment key={index}>
+              {part}
+              {index < message.split("BREAK").length - 1 && <br />}
+            </React.Fragment>
+          ));
+        };
+
+        return (
+          <div className="leading-relaxed" title={value || ""}>
+            {formatMessage(value)}
+          </div>
+        );
+      }
     }
   ];
   return (

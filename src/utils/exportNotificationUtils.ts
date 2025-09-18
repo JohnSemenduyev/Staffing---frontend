@@ -21,6 +21,12 @@ export interface NotificationData {
   [key: string]: any;
 }
 
+// Helper function to convert BREAK to line breaks
+const formatMessageForExport = (message: string): string => {
+  if (!message) return '-';
+  return message.replace(/BREAK/g, '\n');
+};
+
 export const exportNotificationToExcel = async (data: NotificationData[], filename: string = 'notifications') => {
   try {
     // Transform data for Excel export
@@ -32,7 +38,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
       'User Name': row.guardFirst && row.guardLast ? 
         `${row.guardFirst.name || ''} ${row.guardLast.name || ''}`.trim() : '-',
       'Notification Type': row.notificationType || '-',
-      'Message': row.message || '-',
+      'Message': formatMessageForExport(row.message),
       'Date': row.date || '-',
       'Time': row.time || '-'
     }));
@@ -248,7 +254,7 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
       row.guardFirst && row.guardLast ? 
         `${row.guardFirst.name || ''} ${row.guardLast.name || ''}`.trim() : '-',
       row.notificationType || '-',
-      row.message || '-',
+      formatMessageForExport(row.message),
       row.date || '-',
       row.time || '-'
     ]);
