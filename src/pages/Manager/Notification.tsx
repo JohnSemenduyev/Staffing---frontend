@@ -56,8 +56,7 @@ export const Notification = () => {
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
 
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+  const fieldInputClasses = inputClasses;
 
   // Date format conversion utility
   const toMDY = (ymd?: string) => {

@@ -14,6 +14,7 @@ import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { formatDateLocal, formatDateStringLocal } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
+import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 
 export const Summary = () => {
   const [form, setForm] = useState({
@@ -34,8 +35,7 @@ export const Summary = () => {
 
   const { data: searchedClients = [], isLoading: loadingClients } =
     useSearchClient(debouncedClientSearch);
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+  const fieldInputClasses = inputClasses; 
   const { data, loading, error, fetchSummary } = useViewTimeSummary();
   
 

@@ -3,7 +3,7 @@ import { GoPlus } from "react-icons/go";
 import { ChevronDown } from "lucide-react";
 import { ErrorMessage } from "./ui/error-message";
 import { Button } from "./ui/button";
-
+import { inputClasses } from "../pages/Admin/GeoLocationSetup";
 export interface FormField {
   key: string;
   type: 'text' | 'number' | 'select' | 'autocomplete' | 'readonly';
@@ -46,8 +46,8 @@ export const GenericForm: React.FC<GenericFormProps> = ({
   submitIcon = <GoPlus className="w-4 h-4 mr-2" />,
   gridCols = 5
 }) => {
-  const fieldInputClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-
+  const fieldInputClasses = inputClasses;
+  
   const renderField = (field: FormField) => {
     const fieldValue = formData[field.key] || '';
     const hasError = errors[field.key];

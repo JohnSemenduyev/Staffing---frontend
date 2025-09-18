@@ -4,7 +4,7 @@ import { CustomDatePicker } from "./CustomDatePicker";
 import { ErrorMessage } from "./ui/error-message";
 import ResetButton from "./ui/ResetButton";
 import { Button } from "./ui/button";
-
+import { inputClasses } from "../pages/Admin/GeoLocationSetup";
 export interface FieldConfig {
   name: string;
   type: 'text' | 'date' | 'select' | 'toggle';
@@ -57,11 +57,6 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
     setErrors({});
     setShowErrors(false);
   }, [fields, resetKey]); 
-  // const fieldInputClasses =
-  //   "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-
-  const inputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));

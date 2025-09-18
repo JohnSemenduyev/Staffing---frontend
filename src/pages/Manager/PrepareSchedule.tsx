@@ -9,7 +9,7 @@ import ToggleSwitch from "../../components/ui/toggle";
 import { useScheduleSession } from "../../context/ScheduleContext";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { Button } from "../../components/ui/button";
-
+import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 // Local utility functions
 const timeToMinutes = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -158,12 +158,6 @@ interface Address {
   address: string;
   label?: string;
 }
-
-const inputClasses = `
-w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition
-`;
-
-
 
 
 function formatLocalYMD(d: Date): string {

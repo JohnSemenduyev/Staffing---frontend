@@ -13,7 +13,6 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { Button } from "../../components/ui/button";
 import { twMerge } from "tailwind-merge";
 
-// export const inputClasses = ` w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition`;
 export const inputClasses = twMerge(
   "w-full text-black  placeholder:text-gray-500 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
 );

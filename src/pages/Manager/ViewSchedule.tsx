@@ -25,7 +25,6 @@ import {
 import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
 import { Button } from "../../components/ui/button";
 import {
-  inputClasses,
   timeToMinutes,
   sortShiftsByTime,
   convertDateFormat,
@@ -42,7 +41,7 @@ import {
   ScheduleItem,
   PeriodEndDateModalProps
 } from "./ViewSchedule/types";
-
+import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 
 // Normalize a shift key for comparison (YYYY-MM-DD|start|end)
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {

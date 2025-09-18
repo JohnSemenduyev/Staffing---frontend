@@ -1,9 +1,6 @@
 import { ScheduleItem, Shift, WeekRange, DateColumn, FormData } from './types';
 import { formatDateLocal } from "../../../lib/utils";
 
-export const inputClasses = `
-  w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition
-`;
 
 export const getWeekRangeFromDateUTC = (baseDate: Date): WeekRange => {
   const day = baseDate.getDay();

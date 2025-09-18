@@ -52,9 +52,7 @@ export const UniformCompliance = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const formRef = useRef<HTMLDivElement>(null);
   const { uniformCompliances, lastPage, error, fetchUniformCompliances } = useUniformCompliance();
-  const fieldInputClasses =
-    "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
-
+  const fieldInputClasses = inputClasses;
   // Calculate table height dynamically
   useEffect(() => {
     const calculateTableHeight = () => {
