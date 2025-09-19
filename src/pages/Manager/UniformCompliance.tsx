@@ -155,9 +155,8 @@ export const UniformCompliance = () => {
 
 
   const transformComplianceData = (uniformCompliances: any[]) => {
-    console.log(uniformCompliances);
-    return uniformCompliances.map((item) => ({
-      id: `${item.scheduleSessionId}-${item.shiftId}`,
+    return uniformCompliances.map((item, index) => ({
+      id: `${item.scheduleSessionId}-${item.shiftId}-${index}`,
       guardFirst: { name: item.scheduleSession.user.name },
       guardLast: { name: item.scheduleSession.user.lastName },
       date: formatDate(item.shift.date),
@@ -359,7 +358,61 @@ export const UniformCompliance = () => {
       sortable: true,
       searchable: true,
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-      render: (value: string) => <div className="truncate" title={value}>{value || "-"}</div>
+      render: (value: string) => {
+        if (!value) return <div>-</div>;
+        
+        // Split the already joined address by comma to get individual parts
+        const addressParts = value.split(',').map(part => part.trim()).filter(Boolean);
+        
+        if (addressParts.length === 0) return <div>-</div>;
+        
+        // Assuming the format is: address, city, state, pincode
+        const streetAddress = addressParts[0] || "";
+        const city = addressParts[1] || "";
+        const state = addressParts[2] || "";
+        const pin = addressParts[3] || "";
+        
+        // Format: street address, city (line 1), state, pin (line 2)
+        // If any line is more than 50 chars, break it
+        const formatAddressLine = (text: string) => {
+          if (text.length <= 50) return [text];
+          const words = text.split(' ');
+          const lines = [];
+          let currentLine = '';
+          
+          for (const word of words) {
+            if ((currentLine + ' ' + word).trim().length <= 50) {
+              currentLine = currentLine ? currentLine + ' ' + word : word;
+            } else {
+              if (currentLine) lines.push(currentLine);
+              currentLine = word;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+          return lines;
+        };
+        
+        const line1 = [streetAddress, city].filter(Boolean).join(", ");
+        const line2 = [state, pin].filter(Boolean).join(", ");
+        
+        const line1Parts = formatAddressLine(line1);
+        const line2Parts = formatAddressLine(line2);
+        
+        return (
+          <div className="space-y-1" title={value}>
+            {line1Parts.map((part, index) => (
+              <div key={`address-line1-${index}`} className="text-sm leading-tight">
+                {part}
+              </div>
+            ))}
+            {line2Parts.map((part, index) => (
+              <div key={`address-line2-${index}`} className="text-sm leading-tight">
+                {part}
+              </div>
+            ))}
+          </div>
+        );
+      }
     }
   ];
 

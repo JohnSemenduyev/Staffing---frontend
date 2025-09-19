@@ -317,15 +317,51 @@ export const Notification = () => {
          const address = row.address;
          if (!address) return "-";
          
-         const fullAddress = [
-           address.address,
-           address.city,
-           address.state,
-           address.pincode
-         ].filter(Boolean).join(', ');
-           return (
-           <div title={fullAddress} className="truncate">
-             {fullAddress || "-"}
+         const streetAddress = address.address ?? "";
+         const city = address.city ?? "";
+         const state = address.state ?? "";
+         const pin = address.pincode ?? "";
+         
+         const fullAddress = [streetAddress, city, state, pin].filter(Boolean).join(', ');
+         
+         // Format: street address, city (line 1), state, pin (line 2)
+         // If any line is more than 50 chars, break it
+         const formatAddressLine = (text: string) => {
+           if (text.length <= 50) return [text];
+           const words = text.split(' ');
+           const lines = [];
+           let currentLine = '';
+           
+           for (const word of words) {
+             if ((currentLine + ' ' + word).trim().length <= 50) {
+               currentLine = currentLine ? currentLine + ' ' + word : word;
+             } else {
+               if (currentLine) lines.push(currentLine);
+               currentLine = word;
+             }
+           }
+           if (currentLine) lines.push(currentLine);
+           return lines;
+         };
+         
+         const line1 = [streetAddress, city].filter(Boolean).join(", ");
+         const line2 = [state, pin].filter(Boolean).join(", ");
+         
+         const line1Parts = formatAddressLine(line1);
+         const line2Parts = formatAddressLine(line2);
+         
+         return (
+           <div className="space-y-1" title={fullAddress}>
+             {line1Parts.map((part, index) => (
+               <div key={`address-line1-${index}`} className="text-sm leading-tight">
+                 {part}
+               </div>
+             ))}
+             {line2Parts.map((part, index) => (
+               <div key={`address-line2-${index}`} className="text-sm leading-tight">
+                 {part}
+               </div>
+             ))}
            </div>
          );
        }

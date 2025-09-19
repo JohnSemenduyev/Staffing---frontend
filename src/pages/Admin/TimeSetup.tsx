@@ -261,8 +261,56 @@ export const TimeSetup = () => {
       label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px",
       render: (_: any, row: any) => {
         const a = row.address;
-        const full = [a?.address, a?.city, a?.state, a?.pincode].filter(Boolean).join(", ");
-        return <div className="truncate" title={full}>{full || "-"}</div>;
+        
+        if (!a) return <div>-</div>;
+        
+        const streetAddress = a?.address ?? "";
+        const city = a?.city ?? "";
+        const state = a?.state ?? "";
+        const pin = a?.pincode ?? "";
+        
+        const full = [streetAddress, city, state, pin].filter(Boolean).join(", ");
+        
+        // Format: street address, city (line 1), state, pin (line 2)
+        // If any line is more than 50 chars, break it
+        const formatAddressLine = (text: string) => {
+          if (text.length <= 50) return [text];
+          const words = text.split(' ');
+          const lines = [];
+          let currentLine = '';
+          
+          for (const word of words) {
+            if ((currentLine + ' ' + word).trim().length <= 50) {
+              currentLine = currentLine ? currentLine + ' ' + word : word;
+            } else {
+              if (currentLine) lines.push(currentLine);
+              currentLine = word;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+          return lines;
+        };
+        
+        const line1 = [streetAddress, city].filter(Boolean).join(", ");
+        const line2 = [state, pin].filter(Boolean).join(", ");
+        
+        const line1Parts = formatAddressLine(line1);
+        const line2Parts = formatAddressLine(line2);
+        
+        return (
+          <div className="space-y-1" title={full}>
+            {line1Parts.map((part, index) => (
+              <div key={`address-line1-${index}`} className="text-sm leading-tight">
+                {part}
+              </div>
+            ))}
+            {line2Parts.map((part, index) => (
+              <div key={`address-line2-${index}`} className="text-sm leading-tight">
+                {part}
+              </div>
+            ))}
+          </div>
+        );
       }
     },
     { key: "distance", label: "Distance (Miles)", sortable: true, render: (v) => `${v} Mile`, searchable: true, width: "250px", height: "40px" },
@@ -277,32 +325,22 @@ export const TimeSetup = () => {
       width: "250px",
       className: "whitespace-nowrap",
       render: (value: boolean) => (
-        <label className="inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={value}
-            readOnly
-            className="sr-only peer"
-          />
-          <div className="w-10 h-5 bg-gray-300 peer-checked:bg-[#004175] rounded-full relative transition-colors duration-300">
-            <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform duration-300" />
-          </div>
-        </label>
+        <ToggleSwitch
+          enabled={value}
+          onToggle={() => {}} // Read-only, no action needed
+          disabled={true}
+          size="small"
+        />
       )
     },
     {
       key: "unscheduledTime", label: "Unscheduled Time", width: "250px", sortable: false, searchable: false, render: (v) => (
-        <label className="inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={v}
-            readOnly
-            className="sr-only peer"
-          />
-          <div className="w-10 h-5 bg-gray-300 peer-checked:bg-[#004175] rounded-full relative transition-colors duration-300">
-            <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition-transform duration-300" />
-          </div>
-        </label>
+        <ToggleSwitch
+          enabled={v}
+          onToggle={() => {}} // Read-only, no action needed
+          disabled={true}
+          size="small"
+        />
       )
     },
   ];

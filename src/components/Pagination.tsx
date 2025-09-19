@@ -122,6 +122,11 @@ const Pagination: React.FC<PaginationProps> = ({
   onPageChange, 
   loading = false 
 }) => {
+  // Don't render pagination if there are no pages or only one page
+  if (lastPage < 1) {
+    return null;
+  }
+
   const getVisiblePages = (): (number | string)[] => {
     if (lastPage <= 7) {
       return Array.from({ length: lastPage }, (_, i) => i + 1);

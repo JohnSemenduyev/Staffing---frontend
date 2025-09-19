@@ -74,7 +74,7 @@ const ToggleSwitch: React.FC<ToggleProps> = ({
         onClick={disabled ? undefined : () => onToggle(!enabled)}
         disabled={disabled}
         className={`relative inline-flex items-center h-5 w-10 rounded-full transition-colors duration-300 focus:outline-none ${
-          enabled ? "bg-blue-600" : "bg-gray-300"
+          enabled ? "bg-[#004175]" : "bg-gray-300"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <span

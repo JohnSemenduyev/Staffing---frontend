@@ -443,8 +443,56 @@ export default function AssignmentNew() {
       width: "250px",
       render: (_: any, row: any) => {
         const a = row.address;
-        const full = [a?.address, a?.city, a?.state, a?.pincode || a?.zipcode].filter(Boolean).join(", ");
-        return <div className="truncate" title={full}>{full || "-"}</div>;
+        
+        if (!a) return <div>-</div>;
+        
+        const streetAddress = a?.address ?? "";
+        const city = a?.city ?? "";
+        const state = a?.state ?? "";
+        const pin = (a?.pincode || a?.zipcode) ?? "";
+        
+        const full = [streetAddress, city, state, pin].filter(Boolean).join(", ");
+        
+        // Format: street address, city (line 1), state, pin (line 2)
+        // If any line is more than 50 chars, break it
+        const formatAddressLine = (text: string) => {
+          if (text.length <= 50) return [text];
+          const words = text.split(' ');
+          const lines = [];
+          let currentLine = '';
+          
+          for (const word of words) {
+            if ((currentLine + ' ' + word).trim().length <= 50) {
+              currentLine = currentLine ? currentLine + ' ' + word : word;
+            } else {
+              if (currentLine) lines.push(currentLine);
+              currentLine = word;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+          return lines;
+        };
+        
+        const line1 = [streetAddress, city].filter(Boolean).join(", ");
+        const line2 = [state, pin].filter(Boolean).join(", ");
+        
+        const line1Parts = formatAddressLine(line1);
+        const line2Parts = formatAddressLine(line2);
+        
+        return (
+          <div className="space-y-1" title={full}>
+            {line1Parts.map((part, index) => (
+              <div key={`address-line1-${index}`} className="text-sm leading-tight">
+                {part}
+              </div>
+            ))}
+            {line2Parts.map((part, index) => (
+              <div key={`address-line2-${index}`} className="text-sm leading-tight">
+                {part}
+              </div>
+            ))}
+          </div>
+        );
       }
     },
     {
