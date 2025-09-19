@@ -66,8 +66,8 @@ export default function AssignmentNew() {
     access: "",
     notification: [] as NotificationOption[],
   });
-
- 
+const [showAccessDropdown, setShowAccessDropdown] = useState(false);
+ const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [submitLoader, setSubmitLoader] = useState(false);
@@ -89,6 +89,9 @@ export default function AssignmentNew() {
   const [showGuardDropdown, setShowGuardDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] =useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+    const accessDropdownRef = useRef<HTMLDivElement>(null);
+
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
   const debouncedClientSearch = useDebounce(clientSearch, 300);
@@ -751,45 +754,67 @@ export default function AssignmentNew() {
                 )}
               </SearchResultsDropdown>
             </div>
+<div
+  className="relative sm:col-span-1 lg:col-span-1"
+  ref={roleDropdownRef}
+>
+  <div
+    className={`${getFieldClasses(
+      "role"
+    )} cursor-pointer flex items-center justify-between`}
+    onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+  >
+    <div className="flex-1">
+      {form.role === "" ? (
+        <span className="text-gray-400">Select role...</span>
+      ) : (
+        <span className="text-gray-900">{form.role}</span>
+      )}
+    </div>
+    
+  </div>
 
-            {/* Role Select */}
-            <div>
-              <select
-                value={form.role}
-                onChange={(e) => handleChange("role", e.target.value)}
-                className={`${getFieldClasses(
-                  "role"
-                )} appearance-none bg-transparent ${form.role === "" ? "text-gray-400" : "text-gray-900"
-                  }`}
-              >
-                <option value="" disabled hidden>
-                  Select Role
-                </option>
-                <option value="Admin">Admin</option>
-                <option value="Manager">Manager</option>
-                <option value="Guard">Guard</option>
-                <option value="Client">Client</option>
-              </select>
-              {showErrors && errors.role && (
-                <div className="mt-1 flex items-center text-sm text-red-600">
-                  <svg
-                    className="w-4 h-4 mr-1"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {errors.role}
-                </div>
-              )}
-            </div>
+  {/* Dropdown menu */}
+  {showRoleDropdown && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+      {["Admin", "Manager", "Guard", "Client"].map((role) => (
+        <div
+          key={role}
+          className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
+          onClick={() => {
+            setForm((prev) => ({ ...prev, role }));
+            setShowRoleDropdown(false);
+          }}
+        >
+          {role}
+        </div>
+      ))}
+    </div>
+  )}
+
+  {/* Error message */}
+  {showErrors && errors.role && (
+    <div className="mt-1 flex items-center text-sm text-red-600">
+      <svg
+        className="w-4 h-4 mr-1"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path
+          fillRule="evenodd"
+          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+          clipRule="evenodd"
+        />
+      </svg>
+      {errors.role}
+    </div>
+  )}
+</div>
+
+
 
             {/* Access Select */}
-            <div>
+            {/* <div>
               <select
                 value={form.access}
                 onChange={(e) => handleChange("access", e.target.value)}
@@ -820,7 +845,65 @@ export default function AssignmentNew() {
                   {errors.access}
                 </div>
               )}
-            </div>
+            </div> */}
+
+            <div
+  className="relative sm:col-span-1 lg:col-span-1"
+  ref={accessDropdownRef}
+>
+  {/* Dropdown trigger */}
+  <div
+    className={`${getFieldClasses(
+      "access"
+    )} cursor-pointer flex items-center justify-between`}
+    onClick={() => setShowAccessDropdown(!showAccessDropdown)}
+  >
+    <div className="flex-1">
+      {form.access === "" ? (
+        <span className="text-gray-400">Select Access...</span>
+      ) : (
+        <span className="text-gray-900">{form.access}</span>
+      )}
+    </div>
+  </div>
+
+  {/* Dropdown menu */}
+  {showAccessDropdown && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+      {["View", "Edit"].map((access) => (
+        <div
+          key={access}
+          className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
+          onClick={() => {
+            setForm((prev) => ({ ...prev, access }));
+            setShowAccessDropdown(false);
+          }}
+        >
+          {access}
+        </div>
+      ))}
+    </div>
+  )}
+
+  {/* Error message */}
+  {showErrors && errors.access && (
+    <div className="mt-1 flex items-center text-sm text-red-600">
+      <svg
+        className="w-4 h-4 mr-1"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path
+          fillRule="evenodd"
+          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+          clipRule="evenodd"
+        />
+      </svg>
+      {errors.access}
+    </div>
+  )}
+</div>
+
 
             {/* User Search */}
             <div className="relative">
@@ -922,21 +1005,7 @@ export default function AssignmentNew() {
                     ))
                   )}
                 </div>
-                <div className="ml-2">
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
+               
               </div>
 
               {showNotificationDropdown && (
