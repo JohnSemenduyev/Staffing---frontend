@@ -436,7 +436,7 @@ export default function AssignmentNew() {
     },
     {
       key: "address.address",
-      label: "Location",
+      label: "Client Location",
       sortable: true,
       searchable: true,
       searchType: 'text',
@@ -513,7 +513,7 @@ export default function AssignmentNew() {
       label: "User Role",
       sortable: true,
       searchable: true,
-      searchType: 'dropdown', // Change to dropdown
+      searchType: 'dropdown',
       searchOptions: [
         { label: 'Admin', value: 'Admin' },
         { label: 'Manager', value: 'Manager' },

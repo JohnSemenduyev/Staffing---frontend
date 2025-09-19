@@ -68,8 +68,6 @@ export const GenericTable: React.FC<GenericTableProps> = ({
   const debouncedSearchTerms = useDebounce(searchTerms, 500);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
-
-  // Memoize the onSearch callback to prevent unnecessary re-renders
   const memoizedOnSearch = useCallback(onSearch, []);
 
   const handleSort = (key: string) => {
@@ -116,54 +114,6 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     }
     return [];
   };
-
-//   if (column.searchOptions) {
-//     return column.searchOptions;
-//   }
-
-//   if (column.getSearchOptions) {
-//     return column.getSearchOptions(data);
-//   }
-
-//   if (column.searchType === "dropdown") {
-//     const uniqueValues = new Set<string>();
-
-//     data.forEach((record) => {
-//       const value = getNestedValue(record, column.key);
-
-//       if (value !== null && value !== undefined) {
-//         if (Array.isArray(value)) {
-//           value.forEach((item) => {
-//             if (item !== null && item !== undefined) {
-//               uniqueValues.add(String(item).trim());
-//             }
-//           });
-//         } else if (typeof value === "string" && value.includes(",")) {
-//           // ✅ handle comma-separated multi-select values
-//           value
-//             .split(",")
-//             .map((v) => v.trim())
-//             .filter(Boolean)
-//             .forEach((v) => uniqueValues.add(v));
-//         } else {
-//           uniqueValues.add(String(value).trim());
-//         }
-//       }
-//     });
-
-//     return Array.from(uniqueValues)
-//       .sort((a, b) => a.localeCompare(b)) // ✅ case-insensitive sorting
-//       .map((value) => ({
-//         label: value,
-//         value: value,
-//       }));
-//   }
-
-//   return [];
-// };
-
-
-  // FIXED: Use memoizedOnSearch and add proper dependency array
   useEffect(() => {
     if (memoizedOnSearch) {
       const cleanSearchTerms = Object.fromEntries(
@@ -172,63 +122,6 @@ export const GenericTable: React.FC<GenericTableProps> = ({
       memoizedOnSearch(cleanSearchTerms);
     }
   }, [debouncedSearchTerms, memoizedOnSearch]);
-
-  // const filteredAndSortedData = useMemo(() => {
-  //   // let filtered = data.filter((record) => {
-  //   //   return columns.every((column) => {
-  //   //     if (!column.searchable || !searchTerms[column.key]) return true;
-  //   //     const value = getNestedValue(record, column.key);
-  //   //     const searchTerm = searchTerms[column.key];
-  //   //     if (value === null || value === undefined) return false;
-  //   //     if (column.searchType === 'dropdown') {
-  //   //       if (Array.isArray(value)) {
-  //   //         return value.some(item => String(item) === searchTerm);
-  //   //       } else {
-  //   //         return String(value) === searchTerm;
-  //   //       }
-  //   //     }
-  //   //     const searchTermLower = searchTerm.toLowerCase();
-  //   //     if (Array.isArray(value)) {
-  //   //       return value.some(item =>
-  //   //         String(item).toLowerCase().includes(searchTermLower)
-  //   //       );
-  //   //     } else {
-  //   //       return String(value).toLowerCase().includes(searchTermLower);
-  //   //     }
-  //   //   });
-  //   // });
-
-  //   let filtered = data.filt
-  //   if (sortConfig.key) {
-  //     filtered.sort((a, b) => {
-  //       const aValue = getNestedValue(a, sortConfig.key!);
-  //       const bValue = getNestedValue(b, sortConfig.key!);
-  //       if (aValue === null || aValue === undefined) return 1;
-  //       if (bValue === null || bValue === undefined) return -1;
-  //       let aCompare: any = aValue;
-  //       let bCompare: any = bValue;
-  //       if (Array.isArray(aValue)) aCompare = aValue.length > 0 ? aValue[0] : "";
-  //       if (Array.isArray(bValue)) bCompare = bValue.length > 0 ? bValue[0] : "";
-  //       if (typeof aCompare === "string" && typeof bCompare === "string") {
-  //         aCompare = aCompare.toLowerCase();
-  //         bCompare = bCompare.toLowerCase();
-  //       } else if (!isNaN(Number(aCompare)) && !isNaN(Number(bCompare))) {
-  //         aCompare = Number(aCompare);
-  //         bCompare = Number(bCompare);
-  //       }
-
-  //       if (aCompare < bCompare) {
-  //         return sortConfig.direction === "asc" ? -1 : 1;
-  //       }
-  //       if (aCompare > bCompare) {
-  //         return sortConfig.direction === "asc" ? 1 : -1;
-  //       }
-  //       return 0;
-  //     });
-  //   }
-
-  //   return filtered;
-  // }, [data, searchTerms, sortConfig, columns]);
 
   const filteredAndSortedData = useMemo(() => {
     let filtered = data;
@@ -412,8 +305,6 @@ const hasSearchValues = Object.values(searchTerms).some(
             </div>
           </div>
         )}
-
-        {/* Single Table with Sticky Header */}
         <div 
           className="overflow-auto bg-white rounded-t-2xl"
           style={{ 
