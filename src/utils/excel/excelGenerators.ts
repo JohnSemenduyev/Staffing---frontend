@@ -307,25 +307,45 @@ export async function generateScheduleStyledExcel(
   const formatMMDDYY = (d: Date) =>
     d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 
-  // Column setup: Officer Name + Empty Column + 7 days + Total = 10 columns
-  const totalColumns = 10;
+  // Column setup: Empty A + Officer Name + Empty Column + 7 days + Total = 11 columns
+  const totalColumns = 11;
   
   // Set column widths
   worksheet.columns = [
-    { header: '', key: 'officer', width: 18 },      // Officer Name
-    { header: '', key: 'empty', width: 8 },        // Empty column (no header text)
+    { header: '', key: 'emptyA', width: 2 },       // Empty column A - 2px width
+    { header: '', key: 'officer', width: 25 },     // Officer Name - increased width
+    { header: '', key: 'empty', width: 4 },        // Empty column - half width
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
-    { header: '', key: 'total', width: 10 }        // Total
+    { header: '', key: 'total', width: 6 }         // Total - narrow width for word only
   ];
+  
+  // Increase width for merged columns in row 3 only
+  // Note: These widths only affect the merged cells in row 3, not the header row
+  worksheet.getColumn(2).width = 30;  // Column B (Client Name) - increased width for row 3
+  
+  // Set equal width for columns E, F, G, H, I, J
+  const equalWidth = 15;  // Same width for all these columns
+  worksheet.getColumn(5).width = equalWidth;  // Column E
+  worksheet.getColumn(6).width = equalWidth;  // Column F
+  worksheet.getColumn(7).width = equalWidth;  // Column G
+  worksheet.getColumn(8).width = equalWidth;  // Column H
+  worksheet.getColumn(9).width = equalWidth;  // Column I
+  worksheet.getColumn(10).width = equalWidth;  // Column J
 
   let currentRow = 1;
 
-  // Title row - dynamic based on report type
-  worksheet.mergeCells(currentRow, 1, currentRow, totalColumns);
-  const titleCell = worksheet.getCell(currentRow, 1);
+  // Keep row 1 empty - start from row 2
+  currentRow++;
+
+  // Title row - dynamic based on report type (starting from column B)
+  worksheet.mergeCells(currentRow, 2, currentRow, totalColumns);
+  
+  // Merge column A across all rows (will be set after all rows are created)
+  const startRowForColumnA = currentRow;
+  const titleCell = worksheet.getCell(currentRow, 2);
   titleCell.value = reportType === 'actual' ? 'Actual Time' : 'Scheduled';
-  titleCell.font = { bold: true, size: 11 };
-  titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+  titleCell.font = { bold: true, size: 14 };
+  titleCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
   
   // Add dashed border around title
   titleCell.border = {
@@ -336,10 +356,10 @@ export async function generateScheduleStyledExcel(
   };
   currentRow++;
 
-  // Meta information row (3 sections)
-  worksheet.mergeCells(currentRow, 1, currentRow, 3);  // Client Name
-  worksheet.mergeCells(currentRow, 4, currentRow, 6);  // Client Address  
-  worksheet.mergeCells(currentRow, 7, currentRow, 9);  // Week Ending
+  // Meta information row (3 sections) - starting from column B
+  worksheet.mergeCells(currentRow, 2, currentRow, 4);  // Client Name (B-D)
+  worksheet.mergeCells(currentRow, 5, currentRow, 8);  // Address (E-H)
+  worksheet.mergeCells(currentRow, 9, currentRow, 11);  // Week Ending (I-K)
 
   const clientName = [selectedClient?.name, selectedClient?.lastName]
     .filter(Boolean)
@@ -353,17 +373,33 @@ export async function generateScheduleStyledExcel(
     .filter(Boolean)
     .join(', ');
   const weekEnding = formatMMDDYY(new Date(currentWeekRange.endOfWeek));
-  // Fill meta info
-  worksheet.getCell(currentRow, 1).value = `Client Name: ${clientName }`;
-  worksheet.getCell(currentRow, 4).value = `Client Address: ${clientAddress }`;
-  worksheet.getCell(currentRow, 7).value = `Week Ending: ${weekEnding }`;
-  
-  // Style meta row
-  [1, 4, 7].forEach(col => {
-    const cell = worksheet.getCell(currentRow, col);
-    cell.font = { bold: true, size: 10 };
-    cell.alignment = { horizontal: 'left', vertical: 'middle' };
-  });
+  // Fill meta info - starting from column B with mixed formatting
+  const clientNameCell = worksheet.getCell(currentRow, 2);
+  clientNameCell.value = {
+    richText: [
+      { text: 'Client Name: ', font: { bold: true, size: 10 } },
+      { text: clientName, font: { bold: false, size: 10 } }
+    ]
+  };
+  clientNameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+
+  const addressCell = worksheet.getCell(currentRow, 5);
+  addressCell.value = {
+    richText: [
+      { text: 'Address: ', font: { bold: true, size: 10 } },
+      { text: clientAddress, font: { bold: false, size: 10 } }
+    ]
+  };
+  addressCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+
+  const weekEndingCell = worksheet.getCell(currentRow, 9);
+  weekEndingCell.value = {
+    richText: [
+      { text: 'Week Ending: ', font: { bold: true, size: 10 } },
+      { text: weekEnding, font: { bold: false, size: 10 } }
+    ]
+  };
+  weekEndingCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
   
   // Add borders to meta row
   for (let col = 1; col <= totalColumns; col++) {
@@ -377,24 +413,24 @@ export async function generateScheduleStyledExcel(
   }
   currentRow++;
 
-  // Header row with dates
-  const headerValues = ['Officer Name', '', ...weekDates.map(formatMMDDYY), 'Total'];
+  // Header row with dates - starting from column B
+  const headerValues = ['', 'Officer Name', '', ...weekDates.map(formatMMDDYY), 'Total'];
   const headerRow = worksheet.getRow(currentRow);
   headerRow.values = headerValues;
   headerRow.height = 20;
   
   headerRow.eachCell((cell, colNumber) => {
     cell.font = { bold: true, size: 10 };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFF0F0F0' } // Light gray background
+    cell.alignment = { 
+      horizontal: colNumber === 2 ? 'left' : 'center', 
+      vertical: 'middle',
+      indent: colNumber === 2 ? 1 : 0
     };
+    // Remove grey background - no fill
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: colNumber === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
       right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
     };
   });
@@ -470,20 +506,20 @@ export async function generateScheduleStyledExcel(
       const row = worksheet.getRow(currentRow);
       const rowValues: (string | number)[] = new Array(totalColumns + 1).fill('');
       
-      // Skip column 1 (officer name is already merged)
+      // Skip column 1 (empty) and column 2 (officer name is already merged)
       let weeklyTotalForThisShift = 0;
       
-             dateKeys.forEach((dateKey, dayIndex) => {
-         const shifts = data.days.get(dateKey) || [];
-         const shift = shifts[shiftIndex]; // Get the shift at this index
-         
-         if (shift) {
-           rowValues[2 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +2 because we have Officer Name (col 1) + Empty Column (col 2) + Date columns starting at col 3
-           weeklyTotalForThisShift += shift.hours || 8;
-         } else {
-           rowValues[2 + dayIndex] = ''; // Empty if no shift at this index
-         }
-       });
+      dateKeys.forEach((dateKey, dayIndex) => {
+        const shifts = data.days.get(dateKey) || [];
+        const shift = shifts[shiftIndex]; // Get the shift at this index
+        
+        if (shift) {
+          rowValues[4 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+          weeklyTotalForThisShift += shift.hours || 8;
+        } else {
+          rowValues[4 + dayIndex] = ''; // Empty if no shift at this index
+        }
+      });
       
              // Only show total in the last shift row, and only if there are shifts
       //  if (shiftIndex === maxShiftsPerDay - 1 && weeklyTotalForThisShift > 0) {
@@ -511,15 +547,15 @@ export async function generateScheduleStyledExcel(
     // Add "Total" row for this officer showing daily totals
     const totalRow = worksheet.getRow(currentRow);
     const totalValues: (string | number)[] = new Array(totalColumns + 1).fill('');
-    totalValues[1] = 'Total'; // This will be in the merged cell area but won't show
+    totalValues[2] = 'Total'; // This will be in the merged cell area but won't show
     
     let weeklyGrandTotal = 0;
-         dateKeys.forEach((dateKey, dayIndex) => {
-       const shifts = data.days.get(dateKey) || [];
-       const dayTotal = shifts.reduce((sum, shift) => sum + (shift.hours || 8), 0);
-       totalValues[2 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +2 because we have Officer Name (col 1) + Empty Column (col 2) + Date columns starting at col 3
-       weeklyGrandTotal += dayTotal;
-     });
+    dateKeys.forEach((dateKey, dayIndex) => {
+      const shifts = data.days.get(dateKey) || [];
+      const dayTotal = shifts.reduce((sum, shift) => sum + (shift.hours || 8), 0);
+      totalValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+      weeklyGrandTotal += dayTotal;
+    });
     
          totalValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
     totalRow.values = totalValues;
@@ -542,13 +578,13 @@ export async function generateScheduleStyledExcel(
     
     // Now merge the officer name cell vertically across all rows for this user
     const userEndRow = currentRow - 1;
-    worksheet.mergeCells(userStartRow, 1, userEndRow, 1);
+    worksheet.mergeCells(userStartRow, 2, userEndRow, 2);
     
     // Set the officer name in the merged cell
-    const nameCell = worksheet.getCell(userStartRow, 1);
+    const nameCell = worksheet.getCell(userStartRow, 2);
     nameCell.value = data.name;
     nameCell.font = { size: 10 };
-    nameCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    nameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
     nameCell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
@@ -559,21 +595,21 @@ export async function generateScheduleStyledExcel(
 
   // Grand Total row
   const grandRow = worksheet.getRow(currentRow);
-  const grandValues: (string | number)[] = new Array(totalColumns ).fill('');
-     grandValues[0] = 'Grand Total';
+  const grandValues: (string | number)[] = new Array(totalColumns).fill('');
+  grandValues[1] = 'Grand Total'; // Column B in image
   
   let weeklyGrandTotal = 0;
-     dateKeys.forEach((dateKey, dayIndex) => {
-     let dayTotal = 0;
-     users.forEach(([__, data]) => {
-       if (!data) return;
-       const shifts = data.days.get(dateKey) || [];
-       dayTotal += shifts.reduce((sum, s) => sum + (s.hours || 8), 0);
-     });
-     weeklyGrandTotal += dayTotal;
-     grandValues[2 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +3 because we have Officer Name (col 1) + Empty Column (col 2) + Date columns starting at col 3
-   });
-           grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
+  dateKeys.forEach((dateKey, dayIndex) => {
+    let dayTotal = 0;
+    users.forEach(([__, data]) => {
+      if (!data) return;
+      const shifts = data.days.get(dateKey) || [];
+      dayTotal += shifts.reduce((sum, s) => sum + (s.hours || 8), 0);
+    });
+    weeklyGrandTotal += dayTotal;
+    grandValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+  });
+  grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
   
   grandRow.values = grandValues;
   grandRow.height = 20;
@@ -582,16 +618,31 @@ export async function generateScheduleStyledExcel(
   grandRow.eachCell((cell, colNumber) => {
     cell.font = { bold: true, size: 10 };
     cell.alignment = { 
-      horizontal: colNumber === 1 ? 'left' : 'center', 
-      vertical: 'middle' 
+      horizontal: colNumber === 2 ? 'left' : 'center', 
+      vertical: 'middle',
+      indent: colNumber === 2 ? 1 : 0
     };
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin', color: { argb: 'FF0066CC' } },
-      left: colNumber === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
       right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
     };
   });
+
+  // Merge column A across all rows
+  const endRowForColumnA = currentRow;
+  worksheet.mergeCells(startRowForColumnA, 1, endRowForColumnA, 1);
+  
+  // Set empty value for merged column A
+  const columnACell = worksheet.getCell(startRowForColumnA, 1);
+  columnACell.value = '';
+  columnACell.border = {
+    top: { style: 'thin' },
+    bottom: { style: 'thin' },
+    left: { style: 'thin' },
+    right: { style: 'thin' }
+  };
 
   // Generate and download the file
   const buffer = await workbook.xlsx.writeBuffer();
@@ -675,7 +726,11 @@ export async function generateScheduleStyledExcel(
     
 //     headerRow.eachCell((cell, colNumber) => {
 //       cell.font = { bold: true, size: 10 };
-//       cell.alignment = { horizontal: 'center', vertical: 'middle' };
+//       cell.alignment = { 
+//         horizontal: colNumber === 2 ? 'left' : 'center', 
+//         vertical: 'middle',
+//         indent: colNumber === 2 ? 1 : 0
+//       };
 //       cell.fill = {
 //         type: 'pattern',
 //         pattern: 'solid',
@@ -713,7 +768,7 @@ export async function generateScheduleStyledExcel(
 //         size: 10 
 //       };
 //       cell.alignment = { 
-//         horizontal: colNumber === 1 ? 'left' : 'center', 
+//         horizontal: colNumber === 2 ? 'left' : 'center', 
 //         vertical: 'middle',
 //         wrapText: true 
 //       };
@@ -746,6 +801,405 @@ export async function generateScheduleStyledExcel(
 //   }
 // }
 
+
+/**
+ * Generate a Scheduled format Excel that matches the second image exactly
+ * This creates the "Scheduled" format with shift times like "00:00-08:00" and "16:00-24:00"
+ */
+export async function generateScheduledFormatExcel(
+  scheduleData: any[],
+  selectedClient: any,
+  currentWeekRange: { startOfWeek: Date; endOfWeek: Date }
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Scheduled');
+
+  // Build week dates (Thu-Wed per app logic)
+  const weekDates: Date[] = [];
+  const start = new Date(currentWeekRange.startOfWeek);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    weekDates.push(d);
+  }
+
+  const formatMMDDYY = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+
+  // Column setup: Empty A + Officer Name + Empty Column + 7 days + Total = 11 columns
+  const totalColumns = 11;
+  
+  // Set column widths
+  worksheet.columns = [
+    { header: '', key: 'emptyA', width: 2 },       // Empty column A - 2px width
+    { header: '', key: 'officer', width: 25 },     // Officer Name - increased width
+    { header: '', key: 'empty', width: 4 },        // Empty column - half width
+    ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
+    { header: '', key: 'total', width: 6 }         // Total - narrow width for word only
+  ];
+  
+  // Increase width for merged columns in row 3 only
+  // Note: These widths only affect the merged cells in row 3, not the header row
+  worksheet.getColumn(2).width = 30;  // Column B (Client Name) - increased width for row 3
+  
+  // Set equal width for columns E, F, G, H, I, J
+  const equalWidth = 15;  // Same width for all these columns
+  worksheet.getColumn(5).width = equalWidth;  // Column E
+  worksheet.getColumn(6).width = equalWidth;  // Column F
+  worksheet.getColumn(7).width = equalWidth;  // Column G
+  worksheet.getColumn(8).width = equalWidth;  // Column H
+  worksheet.getColumn(9).width = equalWidth;  // Column I
+  worksheet.getColumn(10).width = equalWidth;  // Column J
+
+  let currentRow = 1;
+
+  // Keep row 1 empty - start from row 2
+  currentRow++;
+
+  // Title row - "Scheduled" (Row 2)
+  worksheet.mergeCells(currentRow, 2, currentRow, totalColumns);
+  
+  // Merge column A across all rows (will be set after all rows are created)
+  const startRowForColumnA = currentRow;
+  const titleCell = worksheet.getCell(currentRow, 2);
+  titleCell.value = 'Scheduled';
+  titleCell.font = { bold: true, size: 14 };
+  titleCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+  
+  // Add dashed border around title
+  titleCell.border = {
+    top: { style: 'thin', color: { argb: 'FF0066CC' } },
+    left: { style: 'thin', color: { argb: 'FF0066CC' } },
+    right: { style: 'thin', color: { argb: 'FF0066CC' } },
+    bottom: { style: 'thin' }
+  };
+  currentRow++;
+
+  // Meta information row (3 sections) - starting from column B
+  worksheet.mergeCells(currentRow, 2, currentRow, 4);  // Client Name (B-D)
+  worksheet.mergeCells(currentRow, 5, currentRow, 8);  // Address (E-H)
+  worksheet.mergeCells(currentRow, 9, currentRow, 11);  // Week Ending (I-K)
+
+  const clientName = [selectedClient?.name, selectedClient?.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const clientAddress = [
+    selectedClient?.address,
+    selectedClient?.city,
+    selectedClient?.state,
+    selectedClient?.pincode
+  ]
+    .filter(Boolean)
+    .join(', ');
+  const weekEnding = formatMMDDYY(new Date(currentWeekRange.endOfWeek));
+  
+  // Fill meta info - starting from column B with mixed formatting
+  const clientNameCell = worksheet.getCell(currentRow, 2);
+  clientNameCell.value = {
+    richText: [
+      { text: 'Client Name: ', font: { bold: true, size: 10 } },
+      { text: clientName, font: { bold: false, size: 10 } }
+    ]
+  };
+  clientNameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+
+  const addressCell = worksheet.getCell(currentRow, 5);
+  addressCell.value = {
+    richText: [
+      { text: 'Address: ', font: { bold: true, size: 10 } },
+      { text: clientAddress, font: { bold: false, size: 10 } }
+    ]
+  };
+  addressCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+
+  const weekEndingCell = worksheet.getCell(currentRow, 9);
+  weekEndingCell.value = {
+    richText: [
+      { text: 'Week Ending: ', font: { bold: true, size: 10 } },
+      { text: weekEnding, font: { bold: false, size: 10 } }
+    ]
+  };
+  weekEndingCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+  
+  // Add borders to meta row
+  for (let col = 1; col <= totalColumns; col++) {
+    const cell = worksheet.getCell(currentRow, col);
+    cell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: col === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+    };
+  }
+  currentRow++;
+
+  // Header row with dates (Row 5 in image)
+  const headerValues = ['', 'Officer Name', '', ...weekDates.map(formatMMDDYY), 'Total'];
+  const headerRow = worksheet.getRow(currentRow);
+  headerRow.values = headerValues;
+  headerRow.height = 20;
+  
+  headerRow.eachCell((cell, colNumber) => {
+    cell.font = { bold: true, size: 10 };
+    cell.alignment = { 
+      horizontal: colNumber === 2 ? 'left' : 'center', 
+      vertical: 'middle',
+      indent: colNumber === 2 ? 1 : 0
+    };
+    // Remove grey background - no fill
+    cell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+    };
+  });
+  currentRow++;
+
+  // Add shift time headers under dates (Row 6 in image)
+  // First shift row: 00:00-08:00
+  const shiftHeaderRow1 = worksheet.getRow(currentRow);
+  const shiftHeaderValues1 = ['', '', '', '', ...weekDates.map(() => '00:00-08:00'), ''];
+  shiftHeaderRow1.values = shiftHeaderValues1;
+  shiftHeaderRow1.height = 18;
+  
+  shiftHeaderRow1.eachCell((cell, colNumber) => {
+    cell.font = { size: 9 };
+    cell.alignment = { 
+      horizontal: colNumber === 2 ? 'left' : 'center', 
+      vertical: 'middle',
+      indent: colNumber === 2 ? 1 : 0
+    };
+    cell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+    };
+  });
+  currentRow++;
+
+  // Second shift row: 16:00-24:00
+  const shiftHeaderRow2 = worksheet.getRow(currentRow);
+  const shiftHeaderValues2 = ['', '', '', '', ...weekDates.map(() => '16:00-24:00'), ''];
+  shiftHeaderRow2.values = shiftHeaderValues2;
+  shiftHeaderRow2.height = 18;
+  
+  shiftHeaderRow2.eachCell((cell, colNumber) => {
+    cell.font = { size: 9 };
+    cell.alignment = { 
+      horizontal: colNumber === 2 ? 'left' : 'center', 
+      vertical: 'middle',
+      indent: colNumber === 2 ? 1 : 0
+    };
+    cell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+    };
+  });
+  currentRow++;
+
+  // Process schedule data
+  type Shift = { startTime: string; endTime: string; hours?: number };
+  type Item = { userId: number; userName: string; startDate: string; shifts: Shift[] };
+  const items: Item[] = (scheduleData || []) as Item[];
+
+  // Group data by user
+  const byUser = new Map<number, { name: string; days: Map<string, Shift[]> }>();
+  items.forEach((it) => {
+    const u = it.userId;
+    if (!byUser.has(u)) {
+      byUser.set(u, { name: it.userName, days: new Map<string, Shift[]>() });
+    }
+    const entry = byUser.get(u)!;
+    const dayKey = it.startDate;
+    const arr = entry.days.get(dayKey) || [];
+    it.shifts.forEach((s) => arr.push(s));
+    entry.days.set(dayKey, arr);
+  });
+
+  const dateKeys = weekDates.map((d) => {
+    const year = d.getFullYear();
+    const m = `${d.getMonth() + 1}`.padStart(2, '0');
+    const day = `${d.getDate()}`.padStart(2, '0');
+    return `${year}-${m}-${day}`;
+  });
+
+  const users = Array.from(byUser.entries()).sort((a, b) =>
+    (a[1]?.name || '').localeCompare(b[1]?.name || '')
+  );
+
+  // Add data rows for each user
+  users.forEach(([_, data]) => {
+    if (!data) return;
+    
+    const userStartRow = currentRow;
+    
+    // Calculate total rows needed for this specific user (their actual shifts + 1 total row)
+    let userMaxShiftsPerDay = 0;
+    dateKeys.forEach(dateKey => {
+      const shifts = data.days.get(dateKey) || [];
+      userMaxShiftsPerDay = Math.max(userMaxShiftsPerDay, shifts.length);
+    });
+    
+    const userRowsNeeded = userMaxShiftsPerDay + 1;
+    
+    // Add shift rows (one row per shift index for this specific user)
+    for (let shiftIndex = 0; shiftIndex < userMaxShiftsPerDay; shiftIndex++) {
+      const row = worksheet.getRow(currentRow);
+      const rowValues: (string | number)[] = new Array(totalColumns + 1).fill('');
+      
+      let weeklyTotalForThisShift = 0;
+      
+      dateKeys.forEach((dateKey, dayIndex) => {
+        const shifts = data.days.get(dateKey) || [];
+        const shift = shifts[shiftIndex]; // Get the shift at this index
+        
+        if (shift) {
+          rowValues[4 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+          weeklyTotalForThisShift += shift.hours || 8;
+        } else {
+          rowValues[4 + dayIndex] = ''; // Empty if no shift at this index
+        }
+      });
+      
+      rowValues[totalColumns - 1] = weeklyTotalForThisShift;
+      
+      row.values = rowValues;
+      row.height = 18;
+      
+      // Style the shift row (skip column 1 since it's merged)
+      for (let col = 2; col <= totalColumns; col++) {
+        const cell = row.getCell(col);
+        cell.font = { size: 9 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+        };
+      }
+      currentRow++;
+    }
+
+    // Add "Total" row for this officer showing daily totals
+    const totalRow = worksheet.getRow(currentRow);
+    const totalValues: (string | number)[] = new Array(totalColumns + 1).fill('');
+    totalValues[1] = 'Total'; // This will be in the merged cell area but won't show
+    
+    let weeklyGrandTotal = 0;
+    dateKeys.forEach((dateKey, dayIndex) => {
+      const shifts = data.days.get(dateKey) || [];
+      const dayTotal = shifts.reduce((sum, shift) => sum + (shift.hours || 8), 0);
+      totalValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+      weeklyGrandTotal += dayTotal;
+    });
+    
+    totalValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
+    totalRow.values = totalValues;
+    totalRow.height = 18;
+    
+    // Style the total row
+    for (let col = 2; col <= totalColumns; col++) {
+      const cell = totalRow.getCell(col);
+      cell.font = { size: 9, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' },
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      };
+    }
+    currentRow++;
+    
+    // Now merge the officer name cell vertically across all rows for this user
+    const userEndRow = currentRow - 1;
+    worksheet.mergeCells(userStartRow, 2, userEndRow, 2);
+    
+    // Set the officer name in the merged cell
+    const nameCell = worksheet.getCell(userStartRow, 2);
+    nameCell.value = data.name;
+    nameCell.font = { size: 10 };
+    nameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    nameCell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin' },
+      left: { style: 'thin', color: { argb: 'FF0066CC' } },
+      right: { style: 'thin' }
+    };
+  });
+
+  // Grand Total row
+  const grandRow = worksheet.getRow(currentRow);
+  const grandValues: (string | number)[] = new Array(totalColumns).fill('');
+  grandValues[1] = 'Grand Total'; // Column B in image
+
+  let weeklyGrandTotal = 0;
+  dateKeys.forEach((dateKey, dayIndex) => {
+    let dayTotal = 0;
+    users.forEach(([__, data]) => {
+      if (!data) return;
+      const shifts = data.days.get(dateKey) || [];
+      dayTotal += shifts.reduce((sum, s) => sum + (s.hours || 8), 0);
+    });
+    weeklyGrandTotal += dayTotal;
+    grandValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+  });
+  grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
+
+  grandRow.values = grandValues;
+  grandRow.height = 20;
+  
+  // Style the grand total row
+  grandRow.eachCell((cell, colNumber) => {
+    cell.font = { bold: true, size: 10 };
+    cell.alignment = { 
+      horizontal: colNumber === 2 ? 'left' : 'center', 
+      vertical: 'middle',
+      indent: colNumber === 2 ? 1 : 0
+    };
+    cell.border = {
+      top: { style: 'thin' },
+      bottom: { style: 'thin', color: { argb: 'FF0066CC' } },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+    };
+  });
+
+  // Merge column A across all rows
+  const endRowForColumnA = currentRow;
+  worksheet.mergeCells(startRowForColumnA, 1, endRowForColumnA, 1);
+  
+  // Set empty value for merged column A
+  const columnACell = worksheet.getCell(startRowForColumnA, 1);
+  columnACell.value = '';
+  columnACell.border = {
+    top: { style: 'thin' },
+    bottom: { style: 'thin' },
+    left: { style: 'thin' },
+    right: { style: 'thin' }
+  };
+
+  // Generate and download the file
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+  
+  const fileName = `Scheduled_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 /**
  * Legacy function for backward compatibility with existing code
