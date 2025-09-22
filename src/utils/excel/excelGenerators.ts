@@ -312,7 +312,7 @@ export async function generateScheduleStyledExcel(
   
   // Set column widths
   worksheet.columns = [
-    { header: '', key: 'emptyA', width: 2 },       // Empty column A - 2px width
+    { header: '', key: 'emptyA', width: 5 },       // Empty column A - 2px width
     { header: '', key: 'officer', width: 25 },     // Officer Name - increased width
     { header: '', key: 'empty', width: 5 },        // Empty column - half width
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
@@ -502,24 +502,42 @@ export async function generateScheduleStyledExcel(
        // We'll merge the cells after creating all rows for this user
 
     // Add shift rows (one row per shift index for this specific user)
+    let lastShiftId: any = null;
     for (let shiftIndex = 0; shiftIndex < userMaxShiftsPerDay; shiftIndex++) {
       const row = worksheet.getRow(currentRow);
       const rowValues: (string | number)[] = new Array(totalColumns + 1).fill('');
       
       // Skip column 1 (empty) and column 2 (officer name is already merged)
       let weeklyTotalForThisShift = 0;
+      let currentShiftId: any = null;
+      
+      // Collect all shift IDs for this row to detect changes
+      const shiftIdsInRow: any[] = [];
       
       dateKeys.forEach((dateKey, dayIndex) => {
         const shifts = data.days.get(dateKey) || [];
         const shift = shifts[shiftIndex]; // Get the shift at this index
         
         if (shift) {
-          rowValues[4 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
-          weeklyTotalForThisShift += shift.hours || 8;
+          rowValues[3 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+          // For actual time reports, only include complete sessions in total
+          if (reportType === 'actual') {
+            weeklyTotalForThisShift += typeof shift.hours === 'number' ? shift.hours : 0;
+          } else {
+            // For schedule reports, use the original logic
+            weeklyTotalForThisShift += shift.hours || 8;
+          }
+          // Track shift ID for actual time reports
+          if (reportType === 'actual' && (shift as any).id) {
+            shiftIdsInRow.push((shift as any).id);
+          }
         } else {
-          rowValues[4 + dayIndex] = ''; // Empty if no shift at this index
+          rowValues[3 + dayIndex] = ''; // Empty if no shift at this index
         }
       });
+      
+      // Use the first non-null shift ID as the representative for this row
+      currentShiftId = shiftIdsInRow.length > 0 ? shiftIdsInRow[0] : null;
       
              // Only show total in the last shift row, and only if there are shifts
       //  if (shiftIndex === maxShiftsPerDay - 1 && weeklyTotalForThisShift > 0) {
@@ -530,16 +548,45 @@ export async function generateScheduleStyledExcel(
       row.height = 18;
       
       // Style the shift row (skip column 1 since it's merged)
-      for (let col = 2; col <= totalColumns; col++) {
+      // Check if this is a new shift (shift ID changed)
+      const isNewShift = reportType === 'actual' && lastShiftId !== null && currentShiftId !== null && lastShiftId !== currentShiftId;
+      
+      // Debug logging
+      if (reportType === 'actual') {
+        console.log(`Row ${currentRow}: lastShiftId=${lastShiftId}, currentShiftId=${currentShiftId}, isNewShift=${isNewShift}`);
+      }
+      
+      for (let col = 1; col <= totalColumns; col++) {
         const cell = row.getCell(col);
         cell.font = { size: 11, name: 'Aptos Narrow' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        
+        // Base border
         cell.border = {
-          top: { style: 'thin' },
-          bottom: { style: 'thin' },
           left: { style: 'thin' },
           right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
         };
+        
+        // Add top border for new shift in actual time reports (thicker border for visibility)
+        if (isNewShift) {
+          cell.border.top = { style: 'thin', color: { argb: 'FF000000' } };
+        }
+      }
+      
+      // If there was a previous row and shift ID changed, add bottom border to previous row
+      if (reportType === 'actual' && lastShiftId !== null && currentShiftId !== null && lastShiftId !== currentShiftId && currentRow > 1) {
+        console.log(`Adding bottom border to previous row ${currentRow - 1}`);
+        const prevRow = worksheet.getRow(currentRow - 1);
+        for (let col = 1; col <= totalColumns; col++) {
+          const prevCell = prevRow.getCell(col);
+          if (!prevCell.border) prevCell.border = {};
+          prevCell.border.bottom = { style: 'thin', color: { argb: 'FF000000' } };
+        }
+      }
+      
+      // Update last shift ID for next iteration
+      if (reportType === 'actual' && currentShiftId !== null) {
+        lastShiftId = currentShiftId;
       }
       currentRow++;
     }
@@ -552,8 +599,16 @@ export async function generateScheduleStyledExcel(
     let weeklyGrandTotal = 0;
     dateKeys.forEach((dateKey, dayIndex) => {
       const shifts = data.days.get(dateKey) || [];
-      const dayTotal = shifts.reduce((sum, shift) => sum + (shift.hours || 8), 0);
-      totalValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+      const dayTotal = shifts.reduce((sum, shift) => {
+        // For actual time reports, only include complete sessions (with valid hours)
+        if (reportType === 'actual') {
+          return sum + (typeof shift.hours === 'number' ? shift.hours : 0);
+        } else {
+          // For schedule reports, use the original logic
+          return sum + (shift.hours || 8);
+        }
+      }, 0);
+      totalValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
       weeklyGrandTotal += dayTotal;
     });
     
@@ -607,7 +662,7 @@ export async function generateScheduleStyledExcel(
       dayTotal += shifts.reduce((sum, s) => sum + (s.hours || 8), 0);
     });
     weeklyGrandTotal += dayTotal;
-    grandValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+    grandValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
   });
   grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
   

@@ -1736,6 +1736,7 @@ export const ViewSchedule = () => {
               userName: user.name,
               startDate: date,
               shifts: [{
+                id: session.shiftId,  // Add the shift ID for border detection
                 startTime: session.clockIn || 'N/A',  // Use clockIn instead of startTime
                 endTime: session.clockOut || 'N/A',   // Use clockOut instead of endTime
                 hours: hasCompleteTime ? calculateWorkedTimeForExcel(session) : 'N/A'

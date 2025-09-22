@@ -63,7 +63,7 @@ export const generateSchedulePrintableTable = (
   
   if (!scheduleData || scheduleData.length === 0) {
     return `
-      <div style="text-align: center; padding: 40px; color: #666; font-size: 20px;">
+      <div style="text-align: center; padding: 40px; color: #666; font-size: 20px; margin:20px">
         <p>No schedule data available to print</p>
       </div>
     `;

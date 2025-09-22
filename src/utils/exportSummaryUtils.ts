@@ -233,7 +233,7 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bolditalic'); // Note: jsPDF doesn't support Aptos Narrow, using helvetica
     doc.text('View Time Summary', 1, 5); // Minimal top spacing
-
+    
     // Prepare table data
     const tableData = data.map((row, index) => [
       index + 1,
