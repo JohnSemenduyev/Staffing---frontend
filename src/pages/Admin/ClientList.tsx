@@ -1361,7 +1361,7 @@ function ClientList() {
             </div>
 
             <div className="flex space-x-3 justify-end">
-              <button
+              <Button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
@@ -1369,10 +1369,12 @@ function ClientList() {
                   cancelSaveEdit();
                   setSaveEditModal({ isOpen: false, clientData: null });
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                variant="secondary"
+
+                // className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel
-              </button>
+              </Button>
               <Button
                 type="button"
                 onClick={(e) => {
@@ -1388,7 +1390,7 @@ function ClientList() {
                 {isSaving ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                 ) : (
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className="w-4 h-4 mr-1" />
                 )}
                 {isSaving ? "Saving..." : "Save"}
               </Button>

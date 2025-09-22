@@ -367,13 +367,6 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
 };
 
 
-// Helper function to truncate text for PDF display
-const truncateText = (text: string, maxLength: number): string => {
-  if (!text) return '-';
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
-};
-
 // Export both functions as default
 export default {
   exportNotificationToExcel,
