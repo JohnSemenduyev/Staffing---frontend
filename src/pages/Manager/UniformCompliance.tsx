@@ -2,6 +2,7 @@ import React, { use, useEffect, useState, useRef } from "react";
 import { FiEye } from "react-icons/fi";
 import { GoPlus } from "react-icons/go";
 import { X, RotateCcw } from "lucide-react";
+import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
@@ -15,6 +16,8 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { formatDateLocal, parseLocalYMD } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import Pagination from "../../components/Pagination";
+import { toast } from "sonner";
+import { exportUniformComplianceToExcel, exportUniformComplianceToPDF } from "../../utils/exportUniformComplianceUtils";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -313,6 +316,46 @@ export const UniformCompliance = () => {
       });
     } catch (error) {
       console.error('Error fetching page:', error);
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    try {
+      if (!uniformCompliances || uniformCompliances.length === 0) {
+        toast.error("No data to export");
+        return;
+      }
+
+      const result = await exportUniformComplianceToExcel(uniformCompliances as any, 'uniform_compliance');
+      
+      if (result.success) {
+        toast.success("Uniform compliance report exported to Excel successfully!");
+      } else {
+        toast.error(`Failed to export Excel: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export Excel report");
+    }
+  };
+
+  const handleExportToPDF = () => {
+    try {
+      if (!uniformCompliances || uniformCompliances.length === 0) {
+        toast.error("No data to export");
+        return;
+      }
+
+      const result = exportUniformComplianceToPDF(uniformCompliances as any, 'uniform_compliance');
+      
+      if (result.success) {
+        toast.success("Uniform compliance report exported to PDF successfully!");
+      } else {
+        toast.error(`Failed to export PDF: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error exporting to PDF:", error);
+      toast.error("Failed to export PDF report");
     }
   };
 
@@ -721,6 +764,27 @@ export const UniformCompliance = () => {
         searchable={true}
         tableHeight={tableHeight}
       />
+
+      {/* Export Buttons */}
+      {uniformCompliances && uniformCompliances.length > 0 && (
+        <div className="flex justify-end items-center gap-2 mt-4 mb-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Pagination */}
       {lastPage > 0 && (

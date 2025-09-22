@@ -9,33 +9,53 @@ declare module 'jspdf' {
   }
 }
 
-export interface SummaryData {
-  guardFirst: { name: string };
-  guardLast: { name: string };
-  date: string;
-  Client: { name: string; lastName: string };
-  address: { address: string; city: string; state: string; pincode: string };
-  time: number;
-  [key: string]: any;
+export interface UniformComplianceData {
+  scheduleSessionId: number;
+  shiftId: number;
+  topUniformImage: string;
+  bottomUniformImage: string;
+  scheduleSession: {
+    client: {
+      name: string;
+      lastName: string;
+    };
+    user: {
+      name: string;
+      lastName: string;
+    };
+    address: {
+      address: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    };
+  };
+  shift: {
+    id: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+  };
 }
 
-export const exportSummaryToExcel = async (data: SummaryData[], filename: string = 'time_summary') => {
+export const exportUniformComplianceToExcel = async (data: UniformComplianceData[], filename: string = 'uniform_compliance') => {
   try {
-    // Transform data for Excel export
-    const excelData = data.map((row, index) => ({
-      'S.No': index + 1,
-      'First Name': row.guardFirst?.name || '-',
-      'Last Name': row.guardLast?.name || '-',
-      'Date': row.date ? formatDateForExport(row.date) : '-',
-      'Client Name': row.Client ? `${row.Client.name || ''} ${row.Client.lastName || ''}`.trim() : '-',
-      'Client Location': row.address ? 
-        `${row.address.address || ''}, ${row.address.city || ''}, ${row.address.state || ''} ${row.address.pincode || ''}`.trim() : '-',
-      'Hours': row.time || 0
-    }));
+     // Transform data for Excel export
+     const excelData = data.map((row, index) => ({
+       'S.No': index + 1,
+       'Guard First Name': row.scheduleSession.user.name || '-',
+       'Guard Last Name': row.scheduleSession.user.lastName || '-',
+       'Date': row.shift.date ? formatDateForExport(row.shift.date) : '-',
+       'Start Time': row.shift.startTime || '-',
+       'End Time': row.shift.endTime || '-',
+       'Client Name': row.scheduleSession.client ? `${row.scheduleSession.client.name || ''} ${row.scheduleSession.client.lastName || ''}`.trim() : '-',
+       'Client Location': row.scheduleSession.address ? 
+         `${row.scheduleSession.address.address || ''}, ${row.scheduleSession.address.city || ''}, ${row.scheduleSession.address.state || ''} ${row.scheduleSession.address.pincode || ''}`.trim() : '-'
+     }));
 
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Time Summary');
+    const worksheet = workbook.addWorksheet('Uniform Compliance');
 
     // Calculate dynamic column widths based on content length
     const calculateColumnWidths = () => {
@@ -100,7 +120,7 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
 
     // Add title in B2 (row 2, column 2)
     const titleCell = worksheet.getCell('B2');
-    titleCell.value = 'View Time Summary';
+    titleCell.value = 'Uniform Compliance Report';
     titleCell.font = {
       name: 'Aptos Narrow',
       size: 14,
@@ -225,37 +245,39 @@ export const exportSummaryToExcel = async (data: SummaryData[], filename: string
   }
 };
 
-export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time_summary') => {
+export const exportUniformComplianceToPDF = (data: UniformComplianceData[], filename: string = 'uniform_compliance') => {
   try {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     
     // Add title - matching summary styling with italic
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bolditalic'); // Note: jsPDF doesn't support Aptos Narrow, using helvetica
-    doc.text('View Time Summary', 1, 5); // Minimal top spacing
+    doc.text('Uniform Compliance Report', 1, 5); // Minimal top spacing
 
-    // Prepare table data
-    const tableData = data.map((row, index) => [
-      index + 1,
-      row.guardFirst?.name || '-',
-      row.guardLast?.name || '-',
-      row.date ? formatDateForExport(row.date) : '-',
-      row.Client ? `${row.Client.name || ''} ${row.Client.lastName || ''}`.trim() : '-',
-      row.address ? 
-        `${row.address.address || ''}, ${row.address.city || ''}, ${row.address.state || ''} ${row.address.pincode || ''}`.trim() : '-',
-      row.time || 0
-    ]);
+     // Prepare table data
+     const tableData = data.map((row, index) => [
+       index + 1,
+       row.scheduleSession.user.name || '-',
+       row.scheduleSession.user.lastName || '-',
+       row.shift.date ? formatDateForExport(row.shift.date) : '-',
+       row.shift.startTime || '-',
+       row.shift.endTime || '-',
+       row.scheduleSession.client ? `${row.scheduleSession.client.name || ''} ${row.scheduleSession.client.lastName || ''}`.trim() : '-',
+       row.scheduleSession.address ? 
+         `${row.scheduleSession.address.address || ''}, ${row.scheduleSession.address.city || ''}, ${row.scheduleSession.address.state || ''} ${row.scheduleSession.address.pincode || ''}`.trim() : '-'
+     ]);
 
-    // Table headers
-    const headers = [
-      'S.No',
-      'First Name',
-      'Last Name', 
-      'Date',
-      'Client Name',
-      'Location',
-      'Hours'
-    ];
+     // Table headers
+     const headers = [
+       'S.No',
+       'First Name',
+       'Last Name', 
+       'Date',
+       'Start Time',
+       'End Time',
+       'Client Name',
+       'Location'
+     ];
 
     // Generate table - with smaller font sizes for better fit
     autoTable(doc, {
@@ -288,44 +310,49 @@ export const exportSummaryToPDF = (data: SummaryData[], filename: string = 'time
         font: 'helvetica', // Note: jsPDF doesn't support Aptos Narrow, using helvetica
         cellPadding: { top: 1, right: 2, bottom: 1, left: 2 }
       },
-      columnStyles: {
-        0: { 
-          halign: 'left', 
-          fontStyle: 'bold',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        },
-        1: { 
-          halign: 'left',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        },
-        2: { 
-          halign: 'left',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        },
-        3: { 
-          halign: 'left',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        },
-        4: { 
-          halign: 'left',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        },
-        5: { 
-          halign: 'left',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        },
-        6: { 
-          halign: 'left',
-          cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
-          fillColor: [255, 255, 255]
-        }
-      },
+       columnStyles: {
+         0: { 
+           halign: 'left', 
+           fontStyle: 'bold',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         1: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         2: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         3: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         4: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         5: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         6: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         },
+         7: { 
+           halign: 'left',
+           cellPadding: { top: 1, right: 2, bottom: 1, left: 2 },
+           fillColor: [255, 255, 255]
+         }
+       },
       margin: { left: 1, right: 1, top: 0, bottom: 0 },
       tableLineWidth: 0.3,
       tableLineColor: [0, 0, 0],
@@ -409,6 +436,6 @@ const formatDateForExport = (date: Date | string): string => {
 
 // Export both functions as default
 export default {
-  exportSummaryToExcel,
-  exportSummaryToPDF
+  exportUniformComplianceToExcel,
+  exportUniformComplianceToPDF
 };

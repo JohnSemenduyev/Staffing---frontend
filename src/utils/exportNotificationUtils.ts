@@ -114,7 +114,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
     const titleCell = worksheet.getCell('B2');
     titleCell.value = 'Notifications';
     titleCell.font = {
-      name: 'Arial',
+      name: 'Aptos Narrow',
       size: 14,
       bold: true,
       italic: true,
@@ -127,7 +127,8 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
     };
     titleCell.alignment = {
       horizontal: 'left',
-      vertical: 'middle'
+      vertical: 'middle',
+      indent: 1
     };
     // Add dashed border around title
     titleCell.border = {
@@ -147,8 +148,8 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         const cell = worksheet.getCell(3, index + 2); // Row 3, column B onwards
         cell.value = header;
         cell.font = {
-          name: 'Arial',
-          size: 10,
+          name: 'Aptos Narrow',
+          size: 11,
           bold: true,
           color: { argb: 'FF000000' }
         };
@@ -160,7 +161,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         cell.alignment = {
           horizontal: 'left',
           vertical: 'middle',
-          indent: 0
+          indent: 1
         };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -181,8 +182,8 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         const cell = worksheet.getCell(rowIndex + 4, colIndex + 2); // Row 4+, column B onwards
         cell.value = value;
         cell.font = {
-          name: 'Arial',
-          size: 9,
+          name: 'Aptos Narrow',
+          size: 11,
           color: { argb: 'FF000000' }
         };
         cell.fill = {
@@ -193,7 +194,7 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
         cell.alignment = {
           horizontal: 'left',
           vertical: 'middle',
-          indent: 0
+          indent: 1
         };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -242,7 +243,7 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
     
     // Add title - matching summary styling with italic
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bolditalic');
+    doc.setFont('helvetica', 'bolditalic'); // Note: jsPDF doesn't support Aptos Narrow, using helvetica
     doc.text('Notifications', 1, 5); // Minimal top spacing
 
     // Prepare table data
@@ -277,14 +278,14 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
       body: tableData,
       startY: 8,
       styles: {
-        fontSize: 9,
+        fontSize: 11,
         cellPadding: { top: 1, right: 2, bottom: 1, left: 4 },
         overflow: 'linebreak',
         halign: 'left',
-        lineWidth: 0.5,
+        lineWidth: 0.3,
         lineColor: [0, 0, 0],
         minCellHeight: 3,
-        font: 'helvetica',
+        font: 'helvetica', // Note: jsPDF doesn't support Aptos Narrow, using helvetica
         textColor: [0, 0, 0],
         fillColor: [255, 255, 255]
       },
@@ -295,11 +296,11 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
         fillColor: [240, 240, 240], // Light gray background
         textColor: [0, 0, 0], // Black text
         fontStyle: 'bold',
-        lineWidth: 0.5,
+        lineWidth: 0.3,
         lineColor: [0, 0, 0],
         minCellHeight: 3.5,
-        fontSize: 10,
-        font: 'helvetica',
+        fontSize: 11,
+        font: 'helvetica', // Note: jsPDF doesn't support Aptos Narrow, using helvetica
         cellPadding: { top: 1, right: 2, bottom: 1, left: 2 }
       },
       columnStyles: {
@@ -346,7 +347,7 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
         }
       },
       margin: { left: 1, right: 1, top: 0, bottom: 0 },
-      tableLineWidth: 0.5,
+      tableLineWidth: 0.3,
       tableLineColor: [0, 0, 0],
       theme: 'grid'
     });

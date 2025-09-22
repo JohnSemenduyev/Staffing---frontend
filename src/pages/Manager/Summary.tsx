@@ -76,25 +76,9 @@ export const Summary = () => {
   const validate = () => {
     const e: any = {};
     
-    // Check if user has provided either client+address OR start+end dates
-    const hasClientAndAddress = form.clientId && form.addressId;
-    const hasStartAndEndDate = form.date && form.endDate;
+    // All fields are now completely optional - no validation required
     
-    if (!hasClientAndAddress && !hasStartAndEndDate) {
-      e.general = "Please provide either Client + Address OR Start Date + End Date";
-    }
-    
-    // If only start date is provided without end date
-    if (form.date && !form.endDate) {
-      e.endDate = "End date is required when start date is provided";
-    }
-    
-    // If only end date is provided without start date
-    if (form.endDate && !form.date) {
-      e.date = "Start date is required when end date is provided";
-    }
-    
-    // Validate end date if both dates are provided
+    // Only validate date logic if both dates are provided
     if (form.date && form.endDate) {
       const startDate = new Date(form.date);
       const endDate = new Date(form.endDate);
@@ -187,7 +171,7 @@ export const Summary = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please correct the form errors");
       return;
     }
 

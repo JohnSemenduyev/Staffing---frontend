@@ -314,7 +314,7 @@ export async function generateScheduleStyledExcel(
   worksheet.columns = [
     { header: '', key: 'emptyA', width: 2 },       // Empty column A - 2px width
     { header: '', key: 'officer', width: 25 },     // Officer Name - increased width
-    { header: '', key: 'empty', width: 4 },        // Empty column - half width
+    { header: '', key: 'empty', width: 5 },        // Empty column - half width
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
     { header: '', key: 'total', width: 6 }         // Total - narrow width for word only
   ];
@@ -344,16 +344,11 @@ export async function generateScheduleStyledExcel(
   const startRowForColumnA = currentRow;
   const titleCell = worksheet.getCell(currentRow, 2);
   titleCell.value = reportType === 'actual' ? 'Actual Time' : 'Scheduled';
-  titleCell.font = { bold: true, size: 14 };
+  titleCell.font = { bold: true, italic: true, size: 14, name: 'Aptos Narrow' };
   titleCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
   
-  // Add dashed border around title
-  titleCell.border = {
-    top: { style: 'thin', color: { argb: 'FF0066CC' } },
-    left: { style: 'thin', color: { argb: 'FF0066CC' } },
-    right: { style: 'thin', color: { argb: 'FF0066CC' } },
-    bottom: { style: 'thin' }
-  };
+  // No border around title - it's outside the table
+  // Remove any default borders by not setting border property
   currentRow++;
 
   // Meta information row (3 sections) - starting from column B
@@ -377,8 +372,8 @@ export async function generateScheduleStyledExcel(
   const clientNameCell = worksheet.getCell(currentRow, 2);
   clientNameCell.value = {
     richText: [
-      { text: 'Client Name: ', font: { bold: true, size: 10 } },
-      { text: clientName, font: { bold: false, size: 10 } }
+      { text: 'Client Name: ', font: { bold: true, italic: false, size: 11, name: 'Aptos Narrow' } },
+      { text: clientName, font: { bold: false, size: 11, name: 'Aptos Narrow' } }
     ]
   };
   clientNameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
@@ -386,8 +381,8 @@ export async function generateScheduleStyledExcel(
   const addressCell = worksheet.getCell(currentRow, 5);
   addressCell.value = {
     richText: [
-      { text: 'Address: ', font: { bold: true, size: 10 } },
-      { text: clientAddress, font: { bold: false, size: 10 } }
+      { text: 'Address: ', font: { bold: true, italic: false, size: 11, name: 'Aptos Narrow' } },
+      { text: clientAddress, font: { bold: false, size: 11, name: 'Aptos Narrow' } }
     ]
   };
   addressCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
@@ -395,8 +390,8 @@ export async function generateScheduleStyledExcel(
   const weekEndingCell = worksheet.getCell(currentRow, 9);
   weekEndingCell.value = {
     richText: [
-      { text: 'Week Ending: ', font: { bold: true, size: 10 } },
-      { text: weekEnding, font: { bold: false, size: 10 } }
+      { text: 'Week Ending: ', font: { bold: true, italic: false, size: 11, name: 'Aptos Narrow' } },
+      { text: weekEnding, font: { bold: false, size: 11, name: 'Aptos Narrow' } }
     ]
   };
   weekEndingCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
@@ -407,8 +402,8 @@ export async function generateScheduleStyledExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: col === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: col === 1 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   }
   currentRow++;
@@ -420,7 +415,7 @@ export async function generateScheduleStyledExcel(
   headerRow.height = 20;
   
   headerRow.eachCell((cell, colNumber) => {
-    cell.font = { bold: true, size: 10 };
+    cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
     cell.alignment = { 
       horizontal: colNumber === 2 ? 'left' : 'center', 
       vertical: 'middle',
@@ -430,8 +425,8 @@ export async function generateScheduleStyledExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   });
   currentRow++;
@@ -532,13 +527,13 @@ export async function generateScheduleStyledExcel(
       // Style the shift row (skip column 1 since it's merged)
       for (let col = 2; col <= totalColumns; col++) {
         const cell = row.getCell(col);
-        cell.font = { size: 9 };
+        cell.font = { size: 11, name: 'Aptos Narrow' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
           top: { style: 'thin' },
           bottom: { style: 'thin' },
           left: { style: 'thin' },
-          right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+          right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
         };
       }
       currentRow++;
@@ -565,13 +560,13 @@ export async function generateScheduleStyledExcel(
     
     for (let col = 2; col <= totalColumns; col++) {
       const cell = totalRow.getCell(col);
-      cell.font = { size: 9, bold: true };
+      cell.font = { size: 11, bold: true, name: 'Aptos Narrow' };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
         top: { style: 'thin' },
         bottom: { style: 'thin' },
         left: { style: 'thin' },
-        right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+        right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
       };
     }
     currentRow++;
@@ -583,12 +578,12 @@ export async function generateScheduleStyledExcel(
     // Set the officer name in the merged cell
     const nameCell = worksheet.getCell(userStartRow, 2);
     nameCell.value = data.name;
-    nameCell.font = { size: 10 };
+    nameCell.font = { size: 11, name: 'Aptos Narrow' };
     nameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
     nameCell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: { style: 'thin', color: { argb: 'FF0066CC' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
       right: { style: 'thin' }
     };
   });
@@ -616,7 +611,7 @@ export async function generateScheduleStyledExcel(
   
   // Style the grand total row
   grandRow.eachCell((cell, colNumber) => {
-    cell.font = { bold: true, size: 10 };
+    cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
     cell.alignment = { 
       horizontal: colNumber === 2 ? 'left' : 'center', 
       vertical: 'middle',
@@ -624,9 +619,9 @@ export async function generateScheduleStyledExcel(
     };
     cell.border = {
       top: { style: 'thin' },
-      bottom: { style: 'thin', color: { argb: 'FF0066CC' } },
-      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   });
 
@@ -637,12 +632,13 @@ export async function generateScheduleStyledExcel(
   // Set empty value for merged column A
   const columnACell = worksheet.getCell(startRowForColumnA, 1);
   columnACell.value = '';
-  columnACell.border = {
-    top: { style: 'thin' },
-    bottom: { style: 'thin' },
-    left: { style: 'thin' },
-    right: { style: 'thin' }
-  };
+  // No borders for column A since it's outside the table
+  // columnACell.border = {
+  //   top: { style: 'thin' },
+  //   bottom: { style: 'thin' },
+  //   left: { style: 'thin' },
+  //   right: { style: 'thin' }
+  // };
 
   // Generate and download the file
   const buffer = await workbook.xlsx.writeBuffer();
@@ -661,146 +657,6 @@ export async function generateScheduleStyledExcel(
   a.remove();
   URL.revokeObjectURL(url);
 }
-
-// // Enhanced base ExcelGenerator class with better styling
-// export class ExcelGenerator {
-//   private workbook: ExcelJS.Workbook;
-
-//   constructor() {
-//     this.workbook = new ExcelJS.Workbook();
-//   }
-
-//   /**
-//    * Create a worksheet with proper styling that matches the image format
-//    */
-//   protected createStyledWorksheet(
-//     name: string,
-//     title: string,
-//     headers: string[],
-//     metaInfo?: { [key: string]: string }
-//   ): ExcelJS.Worksheet {
-//     const worksheet = this.workbook.addWorksheet(name);
-//     let currentRow = 1;
-
-//     // Title
-//     worksheet.mergeCells(currentRow, 1, currentRow, headers.length);
-//     const titleCell = worksheet.getCell(currentRow, 1);
-//     titleCell.value = title;
-//     titleCell.font = { bold: true, size: 12 };
-//     titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
-//     currentRow++;
-
-//     // Meta information if provided
-//     if (metaInfo) {
-//       const metaKeys = Object.keys(metaInfo);
-//       const colsPerMeta = Math.floor(headers.length / metaKeys.length);
-      
-//       metaKeys.forEach((key, index) => {
-//         const startCol = index * colsPerMeta + 1;
-//         const endCol = index === metaKeys.length - 1 ? headers.length : (index + 1) * colsPerMeta;
-        
-//         worksheet.mergeCells(currentRow, startCol, currentRow, endCol);
-//         const cell = worksheet.getCell(currentRow, startCol);
-//         cell.value = `${key}: ${metaInfo[key]}`;
-//         cell.font = { bold: true, size: 10 };
-//         cell.alignment = { horizontal: 'left', vertical: 'middle' };
-        
-//         // Add borders
-//         for (let col = startCol; col <= endCol; col++) {
-//           const borderCell = worksheet.getCell(currentRow, col);
-//           borderCell.border = {
-//             top: { style: 'medium' },
-//             bottom: { style: 'thin' },
-//             left: col === 1 ? { style: 'medium' } : { style: 'thin' },
-//             right: col === headers.length ? { style: 'medium' } : { style: 'thin' }
-//           };
-//         }
-//       });
-//       currentRow++;
-//     }
-
-//     // Headers
-//     const headerRow = worksheet.getRow(currentRow);
-//     headerRow.values = headers;
-//     headerRow.height = 20;
-    
-//     headerRow.eachCell((cell, colNumber) => {
-//       cell.font = { bold: true, size: 10 };
-//       cell.alignment = { 
-//         horizontal: colNumber === 2 ? 'left' : 'center', 
-//         vertical: 'middle',
-//         indent: colNumber === 2 ? 1 : 0
-//       };
-//       cell.fill = {
-//         type: 'pattern',
-//         pattern: 'solid',
-//         fgColor: { argb: 'FFF2F2F2' }
-//       };
-//       cell.border = {
-//         top: { style: 'thin' },
-//         bottom: { style: 'thin' },
-//         left: colNumber === 1 ? { style: 'medium' } : { style: 'thin' },
-//         right: colNumber === headers.length ? { style: 'medium' } : { style: 'thin' }
-//       };
-//     });
-
-//     return worksheet;
-//   }
-
-//   /**
-//    * Add a data row with proper styling and borders
-//    */
-//   protected addStyledDataRow(
-//     worksheet: ExcelJS.Worksheet,
-//     rowData: any[],
-//     rowNumber: number,
-//     options: { isTotalRow?: boolean; height?: number } = {}
-//   ): void {
-//     const row = worksheet.getRow(rowNumber);
-//     row.values = rowData;
-//     row.height = options.height || 20;
-    
-//     const totalColumns = rowData.length - 1; // -1 because values array is 1-indexed
-    
-//     row.eachCell((cell, colNumber) => {
-//       cell.font = { 
-//         bold: options.isTotalRow || false, 
-//         size: 10 
-//       };
-//       cell.alignment = { 
-//         horizontal: colNumber === 2 ? 'left' : 'center', 
-//         vertical: 'middle',
-//         wrapText: true 
-//       };
-//       cell.border = {
-//         top: { style: 'thin' },
-//         bottom: { style: 'thin' },
-//         left: colNumber === 1 ? { style: 'medium' } : { style: 'thin' },
-//         right: colNumber === totalColumns ? { style: 'medium' } : { style: 'thin' }
-//       };
-//     });
-//   }
-
-//   /**
-//    * Download the generated Excel file
-//    */
-//   async download(fileName: string): Promise<void> {
-//     const buffer = await this.workbook.xlsx.writeBuffer();
-//     const blob = new Blob([buffer], {
-//       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-//     });
-    
-//     const url = URL.createObjectURL(blob);
-//     const a = document.createElement('a');
-//     a.href = url;
-//     a.download = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`;
-//     document.body.appendChild(a);
-//     a.click();
-//     a.remove();
-//     URL.revokeObjectURL(url);
-//   }
-// }
-
 
 /**
  * Generate a Scheduled format Excel that matches the second image exactly
@@ -833,7 +689,7 @@ export async function generateScheduledFormatExcel(
   worksheet.columns = [
     { header: '', key: 'emptyA', width: 2 },       // Empty column A - 2px width
     { header: '', key: 'officer', width: 25 },     // Officer Name - increased width
-    { header: '', key: 'empty', width: 4 },        // Empty column - half width
+    { header: '', key: 'empty', width: 5 },        // Empty column - half width
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
     { header: '', key: 'total', width: 6 }         // Total - narrow width for word only
   ];
@@ -863,16 +719,12 @@ export async function generateScheduledFormatExcel(
   const startRowForColumnA = currentRow;
   const titleCell = worksheet.getCell(currentRow, 2);
   titleCell.value = 'Scheduled';
-  titleCell.font = { bold: true, size: 14 };
+  titleCell.font = { bold: true, italic: true, size: 14, name: 'Aptos Narrow' };
   titleCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
   
-  // Add dashed border around title
-  titleCell.border = {
-    top: { style: 'thin', color: { argb: 'FF0066CC' } },
-    left: { style: 'thin', color: { argb: 'FF0066CC' } },
-    right: { style: 'thin', color: { argb: 'FF0066CC' } },
-    bottom: { style: 'thin' }
-  };
+  // No border around title - it's outside the table
+  // Remove any default borders by not setting border property  
+
   currentRow++;
 
   // Meta information row (3 sections) - starting from column B
@@ -897,8 +749,8 @@ export async function generateScheduledFormatExcel(
   const clientNameCell = worksheet.getCell(currentRow, 2);
   clientNameCell.value = {
     richText: [
-      { text: 'Client Name: ', font: { bold: true, size: 10 } },
-      { text: clientName, font: { bold: false, size: 10 } }
+      { text: 'Client Name: ', font: { bold: true, italic: false, size: 11, name: 'Aptos Narrow' } },
+      { text: clientName, font: { bold: false, size: 11, name: 'Aptos Narrow' } }
     ]
   };
   clientNameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
@@ -906,8 +758,8 @@ export async function generateScheduledFormatExcel(
   const addressCell = worksheet.getCell(currentRow, 5);
   addressCell.value = {
     richText: [
-      { text: 'Address: ', font: { bold: true, size: 10 } },
-      { text: clientAddress, font: { bold: false, size: 10 } }
+      { text: 'Address: ', font: { bold: true, italic: false, size: 11, name: 'Aptos Narrow' } },
+      { text: clientAddress, font: { bold: false, size: 11, name: 'Aptos Narrow' } }
     ]
   };
   addressCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
@@ -915,8 +767,8 @@ export async function generateScheduledFormatExcel(
   const weekEndingCell = worksheet.getCell(currentRow, 9);
   weekEndingCell.value = {
     richText: [
-      { text: 'Week Ending: ', font: { bold: true, size: 10 } },
-      { text: weekEnding, font: { bold: false, size: 10 } }
+      { text: 'Week Ending: ', font: { bold: true, italic: false, size: 11, name: 'Aptos Narrow' } },
+      { text: weekEnding, font: { bold: false, size: 11, name: 'Aptos Narrow' } }
     ]
   };
   weekEndingCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
@@ -927,8 +779,8 @@ export async function generateScheduledFormatExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: col === 1 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: col === 1 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   }
   currentRow++;
@@ -940,7 +792,7 @@ export async function generateScheduledFormatExcel(
   headerRow.height = 20;
   
   headerRow.eachCell((cell, colNumber) => {
-    cell.font = { bold: true, size: 10 };
+    cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
     cell.alignment = { 
       horizontal: colNumber === 2 ? 'left' : 'center', 
       vertical: 'middle',
@@ -950,8 +802,8 @@ export async function generateScheduledFormatExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   });
   currentRow++;
@@ -964,7 +816,7 @@ export async function generateScheduledFormatExcel(
   shiftHeaderRow1.height = 18;
   
   shiftHeaderRow1.eachCell((cell, colNumber) => {
-    cell.font = { size: 9 };
+    cell.font = { size: 11, name: 'Aptos Narrow' };
     cell.alignment = { 
       horizontal: colNumber === 2 ? 'left' : 'center', 
       vertical: 'middle',
@@ -973,8 +825,8 @@ export async function generateScheduledFormatExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   });
   currentRow++;
@@ -986,7 +838,7 @@ export async function generateScheduledFormatExcel(
   shiftHeaderRow2.height = 18;
   
   shiftHeaderRow2.eachCell((cell, colNumber) => {
-    cell.font = { size: 9 };
+    cell.font = { size: 11, name: 'Aptos Narrow' };
     cell.alignment = { 
       horizontal: colNumber === 2 ? 'left' : 'center', 
       vertical: 'middle',
@@ -995,8 +847,8 @@ export async function generateScheduledFormatExcel(
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   });
   currentRow++;
@@ -1073,13 +925,13 @@ export async function generateScheduledFormatExcel(
       // Style the shift row (skip column 1 since it's merged)
       for (let col = 2; col <= totalColumns; col++) {
         const cell = row.getCell(col);
-        cell.font = { size: 9 };
+        cell.font = { size: 11, name: 'Aptos Narrow' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = {
           top: { style: 'thin' },
           bottom: { style: 'thin' },
           left: { style: 'thin' },
-          right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+          right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
         };
       }
       currentRow++;
@@ -1105,13 +957,13 @@ export async function generateScheduledFormatExcel(
     // Style the total row
     for (let col = 2; col <= totalColumns; col++) {
       const cell = totalRow.getCell(col);
-      cell.font = { size: 9, bold: true };
+      cell.font = { size: 11, bold: true, name: 'Aptos Narrow' };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
         top: { style: 'thin' },
         bottom: { style: 'thin' },
         left: { style: 'thin' },
-        right: col === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+        right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
       };
     }
     currentRow++;
@@ -1123,12 +975,12 @@ export async function generateScheduledFormatExcel(
     // Set the officer name in the merged cell
     const nameCell = worksheet.getCell(userStartRow, 2);
     nameCell.value = data.name;
-    nameCell.font = { size: 10 };
+    nameCell.font = { size: 11, name: 'Aptos Narrow' };
     nameCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
     nameCell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
-      left: { style: 'thin', color: { argb: 'FF0066CC' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
       right: { style: 'thin' }
     };
   });
@@ -1156,7 +1008,7 @@ export async function generateScheduledFormatExcel(
   
   // Style the grand total row
   grandRow.eachCell((cell, colNumber) => {
-    cell.font = { bold: true, size: 10 };
+    cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
     cell.alignment = { 
       horizontal: colNumber === 2 ? 'left' : 'center', 
       vertical: 'middle',
@@ -1164,9 +1016,9 @@ export async function generateScheduledFormatExcel(
     };
     cell.border = {
       top: { style: 'thin' },
-      bottom: { style: 'thin', color: { argb: 'FF0066CC' } },
-      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' },
-      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF0066CC' } } : { style: 'thin' }
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      left: colNumber === 2 ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' },
+      right: colNumber === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
     };
   });
 
@@ -1177,12 +1029,13 @@ export async function generateScheduledFormatExcel(
   // Set empty value for merged column A
   const columnACell = worksheet.getCell(startRowForColumnA, 1);
   columnACell.value = '';
-  columnACell.border = {
-    top: { style: 'thin' },
-    bottom: { style: 'thin' },
-    left: { style: 'thin' },
-    right: { style: 'thin' }
-  };
+  // No borders for column A since it's outside the table
+  // columnACell.border = {
+  //   top: { style: 'thin' },
+  //   bottom: { style: 'thin' },
+  //   left: { style: 'thin' },
+  //   right: { style: 'thin' }
+  // };
 
   // Generate and download the file
   const buffer = await workbook.xlsx.writeBuffer();
