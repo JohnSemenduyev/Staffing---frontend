@@ -648,12 +648,13 @@ function ClientList() {
         let aCompare: any = aValue;
         let bCompare: any = bValue;
 
-        if (typeof aCompare === "string" && typeof bCompare === "string") {
-          aCompare = aCompare.toLowerCase();
-          bCompare = bCompare.toLowerCase();
-        } else if (!isNaN(Number(aCompare)) && !isNaN(Number(bCompare))) {
+        // Handle numeric comparison for coordinates and other numeric fields
+        if (!isNaN(Number(aCompare)) && !isNaN(Number(bCompare))) {
           aCompare = Number(aCompare);
           bCompare = Number(bCompare);
+        } else if (typeof aCompare === "string" && typeof bCompare === "string") {
+          aCompare = aCompare.toLowerCase();
+          bCompare = bCompare.toLowerCase();
         }
 
         if (aCompare < bCompare) {
@@ -853,13 +854,13 @@ function ClientList() {
                   <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>
                     <div className="flex items-center">
                       Longitude
-                      <div className="pl-1 cursor-pointer" onClick={() => handleSort("longitude")}>
-                        <span className={`cursor-pointer ${sortConfig.key === "longitude" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}>
+                      <div className="pl-1 cursor-pointer" onClick={() => handleSort("longitute")}>
+                        <span className={`cursor-pointer ${sortConfig.key === "longitute" && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}>
                           <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" className="-mb-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                             <path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path>
                           </svg>
                         </span>
-                        <span className={`cursor-pointer ${sortConfig.key === "longitude" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}>
+                        <span className={`cursor-pointer ${sortConfig.key === "longitute" && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}>
                           <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
                             <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path>
                           </svg>

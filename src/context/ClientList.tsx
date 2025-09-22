@@ -28,7 +28,7 @@ export interface ScheduleSession {
   state: string;
   pincode: string;
   latitude?: number;
-  longitute?: number;
+  longitude?: number;
 }
 
 interface ScheduleSessionState {

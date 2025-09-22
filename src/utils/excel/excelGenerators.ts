@@ -421,7 +421,12 @@ export async function generateScheduleStyledExcel(
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
-    // Remove grey background - no fill
+    // Add light gray background for headers
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF0F0F0' } // Light gray background
+    };
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
@@ -798,7 +803,12 @@ export async function generateScheduledFormatExcel(
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
-    // Remove grey background - no fill
+    // Add light gray background for headers
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF0F0F0' } // Light gray background
+    };
     cell.border = {
       top: { style: 'thin' },
       bottom: { style: 'thin' },
