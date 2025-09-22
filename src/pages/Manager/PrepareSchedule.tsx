@@ -25,6 +25,7 @@ const minutesDiffWithWrap = (start: string, end: string) => {
 };
 
 const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
+  // Convert times to ranges in minutes, handling wrap-around
   const toRanges = (s: string, e: string): Array<[number, number]> => {
     const ss = timeToMinutes(s);
     const ee = timeToMinutes(e);
@@ -40,6 +41,8 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
     for (const b of ranges2) {
       const aStart = a[0], aEnd = a[1];
       const bStart = b[0], bEnd = b[1];
+      // if start1===end1 or start2===end2, they cover full day and always overlap
+      if (aStart === aEnd || bStart === bEnd) return true;
       const hasRequiredGap = (aEnd + 1 <= bStart) || (bEnd + 1 <= aStart);
       if (!hasRequiredGap) return true;
     }
@@ -61,6 +64,7 @@ const sortShiftsByTime = (shifts: Shift[]) => {
 const calculateHours = (start: string, end: string) => {
   const [startH, startM] = start.split(":").map(Number);
   const [endH, endM] = end.split(":").map(Number);
+  if(startH === endH && startM === endM) return 24;
   let hours = endH - startH + (endM - startM) / 60;
   if (hours < 0) hours += 24;
   return parseFloat(hours.toFixed(2));
@@ -159,13 +163,6 @@ interface Address {
   label?: string;
 }
 
-
-function formatLocalYMD(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function formatLocalMDY(d: Date): string {
-  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
-}
 
 export const PrepareSchedule = () => {
   const { toast } = useToast();
@@ -337,7 +334,6 @@ export const PrepareSchedule = () => {
           return;
         }
       }
-
       setCurrentWeekRange(weekRange);
     }
   };
@@ -378,9 +374,6 @@ export const PrepareSchedule = () => {
     setShowUserDropdown(false);
     setErrors((e) => ({ ...e, userId: undefined, overlap: undefined }));
   };
-
-
-
   const resetForm = () => {
     setForm({
       clientId: "",
@@ -408,10 +401,6 @@ export const PrepareSchedule = () => {
       description: "Form has been reset successfully.",
     });
   };
-
-
-
-
 
   const dateColumns = generateDateColumns(currentWeekRange);
 
@@ -478,28 +467,6 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
     description: `Schedule auto setting ${enabled ? 'enabled' : 'disabled'} for all users and shifts.`,
   });
 };
-
-// And add this prop back to your ScheduleTable component:
-// onScheduleAutoToggle={handleScheduleAutoToggle}
-
-
-
-  // Auto-update schedule-level auto based on shift-level auto states (only for table view)
-  // useEffect(() => {
-  //   if (scheduleData.length > 0) {
-  //     // Check if any shift has auto enabled
-  //     const hasAnyShiftAuto = scheduleData.some(item => 
-  //       item.shifts.some(shift => shift.auto === true)
-  //     );
-
-  //     // Update schedule-level auto state for all users in the table
-  //     setScheduleData(prev => prev.map(item => ({
-  //       ...item,
-  //       auto: hasAnyShiftAuto
-  //     })));
-  //   }
-  // }, [scheduleData]);
-
 
   const handlePublish = async () => {
     setPublishModal({ isOpen: true });

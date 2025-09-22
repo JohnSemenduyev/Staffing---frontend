@@ -312,6 +312,7 @@ export const GET_TIME_SETUP = gql`
         client {
           id
           name
+          lastName
         }
         address {
           id
