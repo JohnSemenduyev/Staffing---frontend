@@ -725,7 +725,7 @@ export const ViewSchedule = () => {
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
-    { key: "address", label: "Street Name", sortable: true, searchable: true, width: "225px" },
+    { key: "address", label: "Street Address", sortable: true, searchable: true, width: "225px" },
     { key: "city", label: "City", sortable: true, searchable: true, width: "225px" },
     { key: "state", label: "State", sortable: true, searchable: true, width: "225px" },
     { key: "pincode", label: "Pincode", sortable: true, searchable: true, width: "225px" },

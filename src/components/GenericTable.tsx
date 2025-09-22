@@ -233,35 +233,90 @@ const hasSearchValues = Object.values(searchTerms).some(
     }
 
     if (column.searchType === "dropdown") {
-      const options = getColumnSearchOptions(column);
+  const options = getColumnSearchOptions(column);
+  const selectedValue = searchTerms[column.key] || "";
+  const [showDropdown, setShowDropdown] = useState(false); // 👈 local state
 
-      return (
-        <div className="relative">
-          <select
-            value={searchTerms[column.key] || ''}
-            onChange={(e) =>
-              setSearchTerms((prev) => ({
-                ...prev,
-                [column.key]: e.target.value,
-              }))
-            }
-            className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] appearance-none bg-white pr-8"
-            style={{
-              maxWidth: '100%',
-              minWidth: column.width ? `calc(${column.width} - 32px)` : 'auto'
+  return (
+    <div className="relative">
+      {/* Dropdown trigger */}
+      <div
+        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
+        onClick={() => setShowDropdown(!showDropdown)}
+      >
+        <span
+          className={
+            selectedValue ? "text-gray-900" : "text-gray-400"
+          }
+        >
+          {selectedValue
+            ? options.find((opt) => opt.value === selectedValue)?.label
+            : `All ${column.label}`}
+        </span>
+        <ChevronDown className="w-4 h-4 text-gray-400" />
+      </div>
+
+      {/* Dropdown menu */}
+      {showDropdown && (
+        <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+          <div
+            className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500"
+            onClick={() => {
+              setSearchTerms((prev) => ({ ...prev, [column.key]: "" }));
+              setShowDropdown(false);
             }}
           >
-            <option value="">All {column.label}</option>
-            {options.map((option, index) => (
-              <option key={index} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            All {column.label}
+          </div>
+          {options.map((opt) => (
+            <div
+              key={opt.value}
+              className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500"
+              onClick={() => {
+                setSearchTerms((prev) => ({ ...prev, [column.key]: opt.value }));
+                setShowDropdown(false);
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
         </div>
-      );
-    }
+      )}
+    </div>
+  );
+}
+
+
+    // if (column.searchType === "dropdown") {
+    //   const options = getColumnSearchOptions(column);
+
+    //   return (
+    //     <div className="relative">
+    //       <select
+    //         value={searchTerms[column.key] || ''}
+    //         onChange={(e) =>
+    //           setSearchTerms((prev) => ({
+    //             ...prev,
+    //             [column.key]: e.target.value,
+    //           }))
+    //         }
+    //         className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] appearance-none bg-white pr-8"
+    //         style={{
+    //           maxWidth: '100%',
+    //           minWidth: column.width ? `calc(${column.width} - 32px)` : 'auto'
+    //         }}
+    //       >
+    //         <option value="">All {column.label}</option>
+    //         {options.map((option, index) => (
+    //           <option key={index} value={option.value}>
+    //             {option.label}
+    //           </option>
+    //         ))}
+    //       </select>
+    //       <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+    //     </div>
+    //   );
+    // }
     return (
       <input
         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
