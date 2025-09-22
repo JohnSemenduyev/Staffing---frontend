@@ -646,7 +646,7 @@ export const UniformCompliance = () => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${fieldInputClasses} appearance-none bg-gray-50`}
+                className={`${fieldInputClasses} `}
               />
               {errors.addressId && (
                 <ErrorMessage message={errors.addressId} />

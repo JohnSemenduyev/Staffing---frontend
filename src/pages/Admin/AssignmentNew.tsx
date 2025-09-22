@@ -56,7 +56,7 @@ export default function AssignmentNew() {
     updateAssignment,
     deleteAssignment,
   } = useAssignment();
-  const {toast} = useToast();
+  const { toast } = useToast();
   const [form, setForm] = useState({
     userId: "",
     guardId: "",
@@ -66,8 +66,8 @@ export default function AssignmentNew() {
     access: "",
     notification: [] as NotificationOption[],
   });
-const [showAccessDropdown, setShowAccessDropdown] = useState(false);
- const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showAccessDropdown, setShowAccessDropdown] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [submitLoader, setSubmitLoader] = useState(false);
@@ -87,10 +87,10 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showGuardDropdown, setShowGuardDropdown] = useState(false);
-  const [showNotificationDropdown, setShowNotificationDropdown] =useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
-    const accessDropdownRef = useRef<HTMLDivElement>(null);
+  const accessDropdownRef = useRef<HTMLDivElement>(null);
 
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
@@ -105,22 +105,26 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
   const { data: searchedGuards = [], isLoading: loadingGuards } =
     useSearchUsers(debouncedGuardSearch);
 
-    const searchFields = useMemo<FieldConfig[]>(() => [
-      { name: 'clientName', type: 'text', placeholder: 'Client Name' },
-      { name: 'location', type: 'text', placeholder: 'Location' },
-      { name: 'userName', type: 'text', placeholder: 'User Name' },
-      { name: 'role', type: 'select', placeholder: 'Select Role', options: [
+  const searchFields = useMemo<FieldConfig[]>(() => [
+    { name: 'clientName', type: 'text', placeholder: 'Client Name' },
+    { name: 'location', type: 'text', placeholder: 'Location' },
+    { name: 'userName', type: 'text', placeholder: 'User Name' },
+    {
+      name: 'role', type: 'select', placeholder: 'Select Role', options: [
         { label: 'Admin', value: 'Admin' },
         { label: 'Manager', value: 'Manager' },
         { label: 'Guard', value: 'Guard' },
         { label: 'Client', value: 'Client' }
-      ]},
-      { name: 'access', type: 'select', placeholder: 'Select Access', options: [
+      ]
+    },
+    {
+      name: 'access', type: 'select', placeholder: 'Select Access', options: [
         { label: 'View', value: 'View' },
         { label: 'Edit', value: 'Edit' }
-      ]},
-      { name: 'userNotified', type: 'text', placeholder: 'User Notified' }
-    ], []);
+      ]
+    },
+    { name: 'userNotified', type: 'text', placeholder: 'User Notified' }
+  ], []);
 
   useEffect(() => {
     fetchAssignments(currentPage);
@@ -145,7 +149,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
     };
 
     window.addEventListener('resize', handleResize);
-    
+
     // Use ResizeObserver to detect form height changes
     const resizeObserver = new ResizeObserver(() => {
       calculateTableHeight();
@@ -176,50 +180,50 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
     };
   }, []);
 
- const handleSearch = async (searchData: { [key: string]: any }) => {
-  const filterEntries = Object.entries(searchData).filter(
-    ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
-  );
+  const handleSearch = async (searchData: { [key: string]: any }) => {
+    const filterEntries = Object.entries(searchData).filter(
+      ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+    );
 
-  if (filterEntries.length === 0) {
-    setCurrentPage(1);
-    await fetchAssignments(1, null);
-    return;
-  }
+    if (filterEntries.length === 0) {
+      setCurrentPage(1);
+      await fetchAssignments(1, null);
+      return;
+    }
 
-  // mapping table keys -> API keys
-  const keyMapping: Record<string, string> = {
-    "client.name": "clientName",
-    "user.name": "userName",
-    "guard.name": "guardName",
-    "address.address": "addressText",
-    "notification": "notification",
-    "role": "role",
-    "access": "access",
-  };
+    // mapping table keys -> API keys
+    const keyMapping: Record<string, string> = {
+      "client.name": "clientName",
+      "user.name": "userName",
+      "guard.name": "guardName",
+      "address.address": "addressText",
+      "notification": "notification",
+      "role": "role",
+      "access": "access",
+    };
 
-  const filter = Object.fromEntries(
-    filterEntries.map(([key, value]) => {
-      const mappedKey = keyMapping[key] || key;
-      // Convert notification to array format (handle comma-separated values)
-      if (mappedKey === "notification") {
-        if (Array.isArray(value)) {
-          return [mappedKey, value];
+    const filter = Object.fromEntries(
+      filterEntries.map(([key, value]) => {
+        const mappedKey = keyMapping[key] || key;
+        // Convert notification to array format (handle comma-separated values)
+        if (mappedKey === "notification") {
+          if (Array.isArray(value)) {
+            return [mappedKey, value];
+          }
+          // Split comma-separated string into array
+          const notificationArray = typeof value === 'string'
+            ? value.split(',').map(item => item.trim()).filter(item => item.length > 0)
+            : [value];
+          return [mappedKey, notificationArray];
         }
-        // Split comma-separated string into array
-        const notificationArray = typeof value === 'string' 
-          ? value.split(',').map(item => item.trim()).filter(item => item.length > 0)
-          : [value];
-        return [mappedKey, notificationArray];
-      }
-      return [mappedKey, value];
-    })
-  );
+        return [mappedKey, value];
+      })
+    );
 
-  setCurrentPage(1);
-  console.log(filter); // 👀 debug
-  await fetchAssignments(1, filter);
-};
+    setCurrentPage(1);
+    console.log(filter); // 👀 debug
+    await fetchAssignments(1, filter);
+  };
 
   const handleChange = (field: string, value: any) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -340,36 +344,36 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
     setEditId(null);
   };
 
- const onSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!validate()) return;
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
 
-  const input = {
-    userId: Number(form.userId),
-    guardId: Number(form.guardId),
-    clientId: Number(form.clientId),
-    addressId: Number(form.addressId),
-    role: form.role,
-    access: form.access,
-    notification: form.notification,
-  };
+    const input = {
+      userId: Number(form.userId),
+      guardId: Number(form.guardId),
+      clientId: Number(form.clientId),
+      addressId: Number(form.addressId),
+      role: form.role,
+      access: form.access,
+      notification: form.notification,
+    };
 
-  try {
-    setSubmitLoader(true);
-    if (isEditing && editId !== null) {
-      await updateAssignment(editId, input);
-    } else {
-      await createAssignment(input);
+    try {
+      setSubmitLoader(true);
+      if (isEditing && editId !== null) {
+        await updateAssignment(editId, input);
+      } else {
+        await createAssignment(input);
+      }
+      resetForm();
+      fetchAssignments(currentPage)
+    } catch (error: any) {
+      console.error("Error submitting assignment:", error);
+    } finally {
+      setSubmitError("");
+      setSubmitLoader(false);
     }
-    resetForm();
-    fetchAssignments(currentPage)
-  } catch (error: any) {
-    console.error("Error submitting assignment:", error);
-  } finally {
-    setSubmitError("");
-    setSubmitLoader(false);
-  }
-};
+  };
 
   const handleEdit = (record: any) => {
     setIsEditing(true);
@@ -386,7 +390,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       guardId: String(record.guard?.id || ""),
       role: record.role || "",
       access: record.access || "",
-      notification: mappedNotifications, 
+      notification: mappedNotifications,
     });
     setClientSearch(record.client?.name || "");
     const fullAddress = [
@@ -398,7 +402,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       .filter(Boolean)
       .join(", ");
     setSelectedAddressText(fullAddress);
-          setUserSearch(record.user?.name || "");
+    setUserSearch(record.user?.name || "");
     setGuardSearch(record.guard?.name || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -413,11 +417,11 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
     try {
       setDeleteLoader(true);
       await deleteAssignment(deleteModal.record.id);
-      toast({title : "SUCCESS", description : "Assignment deleted successfully"});
+      toast({ title: "SUCCESS", description: "Assignment deleted successfully" });
       fetchAssignments(currentPage);
       setDeleteModal({ isOpen: false, record: null });
     } catch (err) {
-      toast({title : "ERROR", description : "Failed to delete assignment"});
+      toast({ title: "ERROR", description: "Failed to delete assignment" });
     } finally {
       setDeleteLoader(false);
     }
@@ -432,7 +436,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       return "GeoLocation"
     }
     return notification
-      .replace(/_/g, ' ') 
+      .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
@@ -444,10 +448,10 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       searchable: true,
       searchType: 'text',
       width: "250px",
-      height:"40px",
-       render: (_: any, row: any) => {
+      height: "40px",
+      render: (_: any, row: any) => {
         const a = row.client;
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -460,16 +464,16 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       width: "250px",
       render: (_: any, row: any) => {
         const a = row.address;
-        
+
         if (!a) return <div>-</div>;
-        
+
         const streetAddress = a?.address ?? "";
         const city = a?.city ?? "";
         const state = a?.state ?? "";
         const pin = (a?.pincode || a?.zipcode) ?? "";
-        
+
         const full = [streetAddress, city, state, pin].filter(Boolean).join(", ");
-        
+
         // Format: street address, city (line 1), state, pin (line 2)
         // If any line is more than 50 chars, break it
         const formatAddressLine = (text: string) => {
@@ -477,7 +481,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
           const words = text.split(' ');
           const lines = [];
           let currentLine = '';
-          
+
           for (const word of words) {
             if ((currentLine + ' ' + word).trim().length <= 50) {
               currentLine = currentLine ? currentLine + ' ' + word : word;
@@ -489,13 +493,13 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
           if (currentLine) lines.push(currentLine);
           return lines;
         };
-        
+
         const line1 = [streetAddress, city].filter(Boolean).join(", ");
         const line2 = [state, pin].filter(Boolean).join(", ");
-        
+
         const line1Parts = formatAddressLine(line1);
         const line2Parts = formatAddressLine(line2);
-        
+
         return (
           <div className="space-y-1" title={full}>
             {line1Parts.map((part, index) => (
@@ -519,9 +523,9 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       searchable: true,
       searchType: 'text', // Keep as text search
       width: "250px",
-       render: (_: any, row: any) => {
+      render: (_: any, row: any) => {
         const a = row.guard;
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -560,7 +564,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
       width: "250px",
       render: (_: any, row: any) => {
         const a = row.user;
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -595,7 +599,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
   const tableActions: TableAction[] = [
     {
       label: "Edit",
-      icon: <FaRegEdit className="w-4 h-4" color="blue"/>,
+      icon: <FaRegEdit className="w-4 h-4" color="blue" />,
       onClick: handleEdit,
       className: "text-blue-500 hover:text-green-700",
       title: "Edit",
@@ -616,7 +620,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
           {isEditing ? "Edit Assignment" : "Add Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
-        <div className="grid grid-cols-1 sm:grid-cols-3  lg:grid-cols-4 xxl:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3  lg:grid-cols-4 xxl:grid-cols-3 gap-2">
             <div className="relative">
               <input
                 type="text"
@@ -768,81 +772,102 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
                 )}
               </SearchResultsDropdown>
             </div>
-<div
-  className="relative sm:col-span-1 lg:col-span-1"
-  ref={roleDropdownRef}
->
-  <div
-    className={`${getFieldClasses(
-      "role"
-    )} cursor-pointer flex items-center justify-between`}
-    onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-  >
-    <div className="flex-1">
-      {form.role === "" ? (
-        <span className="text-gray-400">Select role...</span>
-      ) : (
-        <span className="text-gray-900">{form.role}</span>
-      )}
-    </div>
-    
-  </div>
+            <div
+              className="relative sm:col-span-1 lg:col-span-1"
+              ref={roleDropdownRef}
+            >
+              <div
+                className={`${getFieldClasses(
+                  "role"
+                )} cursor-pointer flex items-center justify-between`}
+                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+              >
+                <div className="flex-1">
+                  {form.role === "" ? (
+                    <span className="text-gray-500">Select role...</span>
+                  ) : (
+                    <span className="text-gray-900">{form.role}</span>
+                  )}
+                </div>
 
-  {/* Dropdown menu */}
-  {showRoleDropdown && (
-    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
-      {["Admin", "Manager", "Guard", "Client"].map((role) => (
-        <div
-          key={role}
-          className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
-          onClick={() => {
-            setForm((prev) => ({ ...prev, role }));
-            setShowRoleDropdown(false);
-          }}
-        >
-          {role}
-        </div>
-      ))}
-    </div>
-  )}
+              </div>
 
-  {/* Error message */}
-  {showErrors && errors.role && (
-    <div className="mt-1 flex items-center text-sm text-red-600">
-      <svg
-        className="w-4 h-4 mr-1"
-        fill="currentColor"
-        viewBox="0 0 20 20"
-      >
-        <path
-          fillRule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-          clipRule="evenodd"
-        />
-      </svg>
-      {errors.role}
-    </div>
-  )}
-</div>
+              {/* Dropdown menu */}
+              {showRoleDropdown && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                  {["Admin", "Manager", "Guard", "Client"].map((role) => (
+                    <div
+                      key={role}
+                      className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, role }));
+                        setShowRoleDropdown(false);
+                      }}
+                    >
+                      {role}
+                    </div>
+                  ))}
+                </div>
+              )}
 
+              {/* Error message */}
+              {showErrors && errors.role && (
+                <div className="mt-1 flex items-center text-sm text-red-600">
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {errors.role}
+                </div>
+              )}
+            </div>
 
-
-            {/* Access Select */}
-            {/* <div>
-              <select
-                value={form.access}
-                onChange={(e) => handleChange("access", e.target.value)}
+            <div
+              className="relative sm:col-span-1 lg:col-span-1"
+              ref={accessDropdownRef}
+            >
+              {/* Dropdown trigger */}
+              <div
                 className={`${getFieldClasses(
                   "access"
-                )} appearance-none bg-transparent ${form.access === "" ? "text-gray-400" : "text-gray-900"
-                  }`}
+                )} cursor-pointer flex items-center justify-between`}
+                onClick={() => setShowAccessDropdown(!showAccessDropdown)}
               >
-                <option value="" disabled hidden>
-                  Select Access
-                </option>
-                <option value="View">View</option>
-                <option value="Edit">Edit</option>
-              </select>
+                <div className="flex-1">
+                  {form.access === "" ? (
+                    <span className="text-gray-500">Select Access...</span>
+                  ) : (
+                    <span className="text-gray-900">{form.access}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Dropdown menu */}
+              {showAccessDropdown && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                  {["View", "Edit"].map((access) => (
+                    <div
+                      key={access}
+                      className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, access }));
+                        setShowAccessDropdown(false);
+                      }}
+                    >
+                      {access}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Error message */}
               {showErrors && errors.access && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
                   <svg
@@ -859,64 +884,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
                   {errors.access}
                 </div>
               )}
-            </div> */}
-
-            <div
-  className="relative sm:col-span-1 lg:col-span-1"
-  ref={accessDropdownRef}
->
-  {/* Dropdown trigger */}
-  <div
-    className={`${getFieldClasses(
-      "access"
-    )} cursor-pointer flex items-center justify-between`}
-    onClick={() => setShowAccessDropdown(!showAccessDropdown)}
-  >
-    <div className="flex-1">
-      {form.access === "" ? (
-        <span className="text-gray-400">Select Access...</span>
-      ) : (
-        <span className="text-gray-900">{form.access}</span>
-      )}
-    </div>
-  </div>
-
-  {/* Dropdown menu */}
-  {showAccessDropdown && (
-    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
-      {["View", "Edit"].map((access) => (
-        <div
-          key={access}
-          className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
-          onClick={() => {
-            setForm((prev) => ({ ...prev, access }));
-            setShowAccessDropdown(false);
-          }}
-        >
-          {access}
-        </div>
-      ))}
-    </div>
-  )}
-
-  {/* Error message */}
-  {showErrors && errors.access && (
-    <div className="mt-1 flex items-center text-sm text-red-600">
-      <svg
-        className="w-4 h-4 mr-1"
-        fill="currentColor"
-        viewBox="0 0 20 20"
-      >
-        <path
-          fillRule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-          clipRule="evenodd"
-        />
-      </svg>
-      {errors.access}
-    </div>
-  )}
-</div>
+            </div>
 
 
             {/* User Search */}
@@ -993,7 +961,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
               >
                 <div className="flex flex-wrap gap-1 flex-1">
                   {form.notification.length === 0 ? (
-                    <span className="text-gray-400">
+                    <span className="text-gray-500">
                       Select notifications...
                     </span>
                   ) : (
@@ -1019,7 +987,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
                     ))
                   )}
                 </div>
-               
+
               </div>
 
               {showNotificationDropdown && (
@@ -1037,8 +1005,8 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
                       />
                       <span
                         className={`${form.notification.includes(option)
-                            ? "text-blue-800"
-                            : "text-gray-700"
+                          ? "text-blue-800"
+                          : "text-gray-700"
                           }`}
                       >
                         {option}
@@ -1095,7 +1063,7 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
         loading={loading}
         emptyMessage="No records found matching your search criteria."
         searchable={true}
-        onSearch = {handleSearch}
+        onSearch={handleSearch}
         tableHeight={tableHeight}
       />
 

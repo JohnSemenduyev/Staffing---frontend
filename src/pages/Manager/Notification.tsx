@@ -636,7 +636,7 @@ export const Notification = () => {
               >
                 <div className="flex flex-wrap gap-1 flex-1">
                   {form.notification.length === 0 ? (
-                    <span className="text-gray-400">Select notifications...</span>
+                    <span className="text-gray-500">Select notifications...</span>
                   ) : (
                     form.notification.map(option => (
                       <span

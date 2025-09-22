@@ -25,7 +25,7 @@ export const TimeSetup = () => {
     hours: "",
     reminder: "",
   });
-  const {toast} = useToast();
+  const { toast } = useToast();
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showErrors, setShowErrors] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -40,12 +40,12 @@ export const TimeSetup = () => {
   const [deleteLoader, setDeleteLoader] = useState(false);
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
-  const { timeSetups, createTimeSetup,error, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading } = useTimeSetupContext();
+  const { timeSetups, createTimeSetup, error, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
 
 
   const getFieldClasses = (fieldName: string) => {
-    const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition";
+    const baseClasses = "w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition placeholder:text-gray-500";
     const errorClasses = "border-red-500 focus:ring-red-500 focus:border-red-500";
     const normalClasses = "border-gray-300";
 
@@ -88,7 +88,7 @@ export const TimeSetup = () => {
     };
 
     window.addEventListener('resize', handleResize);
-    
+
     // Use ResizeObserver to detect form height changes
     const resizeObserver = new ResizeObserver(() => {
       calculateTableHeight();
@@ -243,34 +243,35 @@ export const TimeSetup = () => {
   const hasInput = Object.values(form).some((val) => val.trim() !== "");
 
   const tableColumns: TableColumn[] = [
-   {
+    {
       key: "client.name",
       label: "Client Name",
       sortable: true,
       searchable: true,
       searchType: 'text',
       width: "250px",
-      height:"40px",
-       render: (_: any, row: any) => {
+      height: "40px",
+      render: (_: any, row: any) => {
         const a = row.client;
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
-    { key: "address.address",
+    {
+      key: "address.address",
       label: "Client Location", sortable: true, searchable: true, width: "250px", height: "40px",
       render: (_: any, row: any) => {
         const a = row.address;
-        
+
         if (!a) return <div>-</div>;
-        
+
         const streetAddress = a?.address ?? "";
         const city = a?.city ?? "";
         const state = a?.state ?? "";
         const pin = a?.pincode ?? "";
-        
+
         const full = [streetAddress, city, state, pin].filter(Boolean).join(", ");
-        
+
         // Format: street address, city (line 1), state, pin (line 2)
         // If any line is more than 50 chars, break it
         const formatAddressLine = (text: string) => {
@@ -278,7 +279,7 @@ export const TimeSetup = () => {
           const words = text.split(' ');
           const lines = [];
           let currentLine = '';
-          
+
           for (const word of words) {
             if ((currentLine + ' ' + word).trim().length <= 50) {
               currentLine = currentLine ? currentLine + ' ' + word : word;
@@ -290,13 +291,13 @@ export const TimeSetup = () => {
           if (currentLine) lines.push(currentLine);
           return lines;
         };
-        
+
         const line1 = [streetAddress, city].filter(Boolean).join(", ");
         const line2 = [state, pin].filter(Boolean).join(", ");
-        
+
         const line1Parts = formatAddressLine(line1);
         const line2Parts = formatAddressLine(line2);
-        
+
         return (
           <div className="space-y-1" title={full}>
             {line1Parts.map((part, index) => (
@@ -327,7 +328,7 @@ export const TimeSetup = () => {
       render: (value: boolean) => (
         <ToggleSwitch
           enabled={value}
-          onToggle={() => {}} // Read-only, no action needed
+          onToggle={() => { }} // Read-only, no action needed
           disabled={true}
           size="small"
         />
@@ -337,7 +338,7 @@ export const TimeSetup = () => {
       key: "unscheduledTime", label: "Unscheduled Time", width: "250px", sortable: false, searchable: false, render: (v) => (
         <ToggleSwitch
           enabled={v}
-          onToggle={() => {}} // Read-only, no action needed
+          onToggle={() => { }} // Read-only, no action needed
           disabled={true}
           size="small"
         />
@@ -346,39 +347,39 @@ export const TimeSetup = () => {
   ];
 
   const tableActions: TableAction[] = [
-    { label: "Edit", icon: <FaRegEdit className="w-4 h-4" color="blue"/>, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
+    { label: "Edit", icon: <FaRegEdit className="w-4 h-4" color="blue" />, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
     { label: "Delete", icon: <FaRegTrashAlt className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
   ];
-const handleSearch = (formData: { [key: string]: any }) => {
-  const filterEntries = Object.entries(formData).filter(
-    ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
-  );
+  const handleSearch = (formData: { [key: string]: any }) => {
+    const filterEntries = Object.entries(formData).filter(
+      ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+    );
 
-  if (filterEntries.length === 0) {
+    if (filterEntries.length === 0) {
+      setCurrentPage(1);
+      fetchTimeSetups(1, null);
+      return;
+    }
+    const keyMapping: Record<string, string> = {
+      "client.name": "clientName",
+      "address.address": "addressText",
+    };
+
+    const numericKeys = ["distance", "actualScheduledTime", "weeklyHours", "reminderTime"];
+
+    const filter = Object.fromEntries(
+      filterEntries.map(([key, value]) => {
+        const mappedKey = keyMapping[key] || key;
+        const mappedValue = numericKeys.includes(mappedKey)
+          ? Number(value)
+          : value;
+        return [mappedKey, mappedValue];
+      })
+    );
+
     setCurrentPage(1);
-    fetchTimeSetups(1, null);
-    return;
-  }
-  const keyMapping: Record<string, string> = {
-    "client.name": "clientName",
-    "address.address": "addressText",
+    fetchTimeSetups(1, filter);
   };
-
-  const numericKeys = ["distance", "actualScheduledTime", "weeklyHours", "reminderTime"];
-
-  const filter = Object.fromEntries(
-    filterEntries.map(([key, value]) => {
-      const mappedKey = keyMapping[key] || key;
-      const mappedValue = numericKeys.includes(mappedKey)
-        ? Number(value)
-        : value;
-      return [mappedKey, mappedValue];
-    })
-  );
-
-  setCurrentPage(1);
-  fetchTimeSetups(1, filter);
-};
 
 
   return (
@@ -442,7 +443,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
               </SearchResultsDropdown>
             </div>
             <div>
-              <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${getFieldClasses('addressId')} bg-gray-50`} />
+              <input type="text" value={selectedAddressText} placeholder="Location" readOnly className={`${getFieldClasses('addressId')} `} />
               {showErrors && errors.addressId && (
                 <ErrorMessage message={errors.addressId} />
               )}
@@ -454,7 +455,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
               )}
             </div>
             <div>
-              <input type="number" step="any" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={getFieldClasses('time')} />
+              <input type="number" step="any" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Scheduled Time" min="0" className={getFieldClasses('time')} />
               {showErrors && errors.time && (
                 <ErrorMessage message={errors.time} />
               )}
@@ -505,7 +506,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
         loading={loading}
         emptyMessage="No time setup records found."
         searchable={true}
-        onSearch = {handleSearch}
+        onSearch={handleSearch}
         tableHeight={tableHeight}
       />
 

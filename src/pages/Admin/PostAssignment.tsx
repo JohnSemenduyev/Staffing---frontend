@@ -449,7 +449,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${getFieldClasses('addressId')} appearance-none`}
+                className={`${getFieldClasses('addressId')} placeholder:text-gray-500`}
               />
               {showErrors && errors.addressId && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
@@ -468,7 +468,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
                 value={form.postname}
                 onChange={(e) => handleChange("postname", e.target.value)}
                 placeholder="Enter post name"
-                className={getFieldClasses('postname')}
+                className={getFieldClasses('postname') + " placeholder:text-gray-500"}
               />
               {showErrors && errors.postname && (
                 <ErrorMessage message={errors.postname} />
