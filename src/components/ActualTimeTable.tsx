@@ -141,7 +141,9 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
   const end1Minutes = timeToMinutes(end1);
   const start2Minutes = timeToMinutes(start2);
   const end2Minutes = timeToMinutes(end2);
-
+  if(start1 === end1 || start2 === end2){
+    return true;
+  }
   // Require at least 1-minute gap between sessions
   const hasRequiredGap = (end1Minutes + 1 <= start2Minutes) || (end2Minutes + 1 <= start1Minutes);
   return !hasRequiredGap;
@@ -364,16 +366,17 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   // Edit dialog for a shift's sessions
   const [editShiftModal, setEditShiftModal] = useState({ isOpen: false, userId: null as number | null, date: null as string | null, shiftId: null as number | null });
   const [editSessions, setEditSessions] = useState<Array<{ id: number | null; clockIn: string; clockOut: string }>>([]);
-  const hasTimeOverlap = (userId: number, date: string, start: string, end: string, excludeIds: Set<number> = new Set()) => {
-    return sessionData.some(s => {
-      if (excludeIds.has(s.id)) return false;
-      const d = s.shift?.date || String(s.scheduleSessionId);
-      const sDate = d ? formatDateStringLocal(d) : '';
-      if (sDate !== date) return false;
-      if (!s.clockIn || !s.clockOut) return false;
-      return doTimesOverlap(start, end, s.clockIn, s.clockOut);
-    });
-  };
+  // const hasTimeOverlap = (userId: number, date: string, start: string, end: string, excludeIds: Set<number> = new Set()) => {
+  //   return sessionData.some(s => {
+      
+  //     if (excludeIds.has(s.id)) return false;
+  //     const d = s.shift?.date || String(s.scheduleSessionId);
+  //     const sDate = d ? formatDateStringLocal(d) : '';
+  //     if (sDate !== date) return false;
+  //     if (!s.clockIn || !s.clockOut) return false;
+  //     return doTimesOverlap(start, end, s.clockIn, s.clockOut);
+  //   });
+  // };
   // Generate date columns for the actual time table
   const generateDateColumns = () => {
     if (!currentWeekRange) return [];

@@ -19,13 +19,13 @@ const ToggleSwitch: React.FC<ToggleProps> = ({
   if (size === "small") {
     return (
       <div className="inline-flex items-center">
-        {label && <span className="text-gray-500 mr-2 text-xs">{label}</span>}
+        {label && <span className="text-gray-500 mr-2 text-sm">{label}</span>}
         <button
           type="button"
           onClick={disabled ? undefined : () => onToggle(!enabled)}
           disabled={disabled}
           className={`relative inline-flex items-center h-[20px] w-[40px] rounded-full transition-colors duration-300 focus:outline-none ${
-            enabled ? "bg-blue-600" : "bg-gray-300"
+            enabled ? "bg-[#004175]" : "bg-gray-300"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           <span
