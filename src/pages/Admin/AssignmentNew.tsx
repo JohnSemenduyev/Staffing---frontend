@@ -199,7 +199,21 @@ const [showAccessDropdown, setShowAccessDropdown] = useState(false);
   };
 
   const filter = Object.fromEntries(
-    filterEntries.map(([key, value]) => [keyMapping[key] || key, value])
+    filterEntries.map(([key, value]) => {
+      const mappedKey = keyMapping[key] || key;
+      // Convert notification to array format (handle comma-separated values)
+      if (mappedKey === "notification") {
+        if (Array.isArray(value)) {
+          return [mappedKey, value];
+        }
+        // Split comma-separated string into array
+        const notificationArray = typeof value === 'string' 
+          ? value.split(',').map(item => item.trim()).filter(item => item.length > 0)
+          : [value];
+        return [mappedKey, notificationArray];
+      }
+      return [mappedKey, value];
+    })
   );
 
   setCurrentPage(1);
