@@ -4,21 +4,21 @@ import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider } from "../components/ui/sidebar";
 import { AppSidebar } from "../components/AppSidebar";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../context/LoginContext";
 import { Headers } from "../components/Headers";
 
 const AppLayout = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { token, role, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || !user)) {
+    if (!isLoading && (!token || !role)) {
       navigate("/login");
     }
-  }, [isAuthenticated, user, isLoading, navigate]);
+  }, [isLoading, token, role, navigate]);
 
   if (isLoading) return <div>Loading...</div>;
-  if (!isAuthenticated || !user) return null;
+  if (!token || !role) return null;
 
   return (
     <SidebarProvider>

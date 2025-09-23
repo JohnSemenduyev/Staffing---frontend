@@ -313,7 +313,7 @@ export async function generateScheduleStyledExcel(
   // Set column widths
   worksheet.columns = [
     { header: '', key: 'emptyA', width: 5 },       // Empty column A - 2px width
-    { header: '', key: 'officer', width: 25 },     // Officer Name - increased width
+    { header: '', key: 'officer', width: 20 },     // Officer Name - increased width
     { header: '', key: 'empty', width: 5 },        // Empty column - half width
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
     { header: '', key: 'total', width: 6 }         // Total - narrow width for word only

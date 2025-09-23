@@ -9,7 +9,6 @@ import { GoPlus } from "react-icons/go";
 import { RotateCcw, Calendar, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
-import {  ExcelData } from "../../utils/excel";
 import { generateScheduleStyledExcel } from "../../utils/excel/excelGenerators";
 
 import { useSearchUsers } from "../../hooks/useSearchUser";

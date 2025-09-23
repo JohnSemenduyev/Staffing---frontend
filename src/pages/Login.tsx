@@ -22,121 +22,125 @@ const roleOptions: RoleOption[] = [
 ];
 
 const Login = () => {
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
-  const [username, setUsername] = useState('');
+  console.log("[Login] Rendered");
+ const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingRoles, setPendingRoles] = useState<RoleType[] | null>(null);
   const navigate = useNavigate();
-  const { token, role, login, logout } = useAuth();
+  const { token, roles, role, login, changeRoles } = useAuth();
   const { toast } = useToast();
 
-  const handleRoleSelect = (role: RoleType) => {
-    setSelectedRole(role);
-  };
 
-  const handleBackToRoleSelection = () => {
-    setSelectedRole(null);
-    setUsername('');
-    setPassword('');
-  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const result = await login(username, password);  // ✅ Await login here
-    // console.log(result);
+    console.log('[Login] handleSubmit called, username:', username);
+    const result = await login(username, password);
+    console.log('[Login] login result:', result);
     if (result.success) {
-      const storedRole = localStorage.getItem('role'); // ✅ Get role from localStorage
-      let redirectPath = '/';
-      if (storedRole === 'admin') {
-        redirectPath = '/assign-user-permission';
-      } else if (storedRole === 'manager') {
-        redirectPath = '/prepare-schedule';
+      // If multiple roles, show selection screen
+      if (result.roles && result.roles.length > 1) {
+        console.log('[Login] Multiple roles found:', result.roles);
+        setPendingRoles(result.roles as RoleType[]);
+      } else {
+        // Only one role, redirect immediately
+        console.log('[Login] Single role, redirecting:', result.roles?.[0] || role);
+        handleRedirect(result.roles?.[0] || role);
       }
-
       toast({
         title: "Success",
         description: "Login successful",
         variant: "default"
       });
-
-      navigate(redirectPath);
     } else {
-      // Show specific error message from GraphQL response
+      console.log('[Login] Login failed:', result.error);
       toast({
         title: "Error",
         description: result.error || "Failed to login",
         variant: "destructive"
       });
     }
-
     setIsLoading(false);
   };
+const handleRoleSelect = (role: RoleType) => {
+  console.log('[Login] Role selected:', role);
+  changeRoles?.(role);
+  localStorage.setItem("role", role);
+  setPendingRoles(null);
+
+  // small delay to let context update
+  setTimeout(() => {
+    console.log('[Login] Redirecting after role select:', role);
+    handleRedirect(role);
+  }, 1000);
+};
 
   const handleSignupRedirect = () => {
     navigate('/signup'); // Redirect to signup page
   };
-
-  // Role Selection Screen - COMMENTED OUT FOR NOW
-  // if (!selectedRole) {
-  //   return (
-  //     <div className="h-screen flex flex-col md:flex-row overflow-hidden">
-  //       {/* Left Side - Logo (Fixed) */}
-  //       <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
-  //         <div className="flex items-center justify-center w-full h-full">
-  //           <img 
-  //             src={img}
-  //             alt="Maximal Security - Complete Logo" 
-  //             className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
-  //           />
-  //         </div>
-  //       </div>
-
-  //       {/* Right Side - Role Selection */}
-  //       <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] h-[60vh] md:h-full p-6">
-  //         <div className="w-full max-w-md text-center">
-  //           {/* Role Selection Header */}
-  //           <h2 className="text-3xl font-bold text-white mb-8"> Select User </h2>
-  //           
-  //           {/* Role Buttons */}
-  //           <div className="space-y-4">
-  //             {roleOptions.map((role) => (
-  //               <Button
-  //                 key={role.value}
-  //                 onClick={() => handleRoleSelect(role.value)}
-  //                 variant="outline"
-  //                 size="lg"
-  //                 className="w-full border-white text-white hover:bg-white hover:text-[#004175]"
-  //               >
-  //                 {role.label}
-  //               </Button>
-  //             ))}
-  //           </div>
-
-  //           {/* Sign Up Link */}
-  //           <div className="mt-8">
-  //             <p className="text-white text-sm mb-2">
-  //               Don't have an account?
-  //             </p>
-  //             <Button
-  //               type="button"
-  //               onClick={handleSignupRedirect}
-  //               variant="link"
-  //               className="text-white hover:underline font-medium"
-  //             >
-  //               Sign Up
-  //             </Button>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
-  // Login Form Screen
-  return (
+const handleRedirect = (role: string | null) => {
+  let redirectPath = '/';
+  console.log('[Login] handleRedirect called with role:', role);
+    if (role === 'admin') {
+      redirectPath = '/assign-user-permission';
+    } else if (role === 'manager') {
+      redirectPath = '/prepare-schedule';
+    }
+    navigate(redirectPath);
+  };
+  if (pendingRoles && pendingRoles.length > 1) {
+    return (
+      <div className="h-screen flex flex-col md:flex-row overflow-hidden">
+        {/* Left Side - Logo */}
+        <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
+          <div className="flex items-center justify-center w-full h-full">
+            <img 
+              src={img}
+              alt="Maximal Security - Complete Logo" 
+              className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
+            />
+          </div>
+        </div>
+        {/* Right Side - Role Selection */}
+        <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] h-[60vh] md:h-full p-6">
+          <div className="w-full max-w-md text-center">
+            <h2 className="text-3xl font-bold text-white mb-8">Select User Role</h2>
+            <div className="space-y-4">
+              {pendingRoles.map((role) => (
+                <Button
+                  key={role}
+                  onClick={() => handleRoleSelect(role)}
+                  variant="outline"
+                  size="lg"
+                  className="w-full border-white text-white hover:bg-white hover:text-[#004175]"
+                >
+                  {roleOptions.find((r) => r.value === role)?.label || role}
+                </Button>
+              ))}
+            </div>
+            <div className="mt-8">
+              <p className="text-white text-sm mb-2">
+                Don't have an account?
+              </p>
+              <Button
+                type="button"
+                onClick={handleSignupRedirect}
+                variant="link"
+                className="text-white hover:underline font-medium"
+              >
+                Sign Up
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left Side - Logo */}
       <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 min-h-[40vh] md:min-h-screen">
@@ -148,17 +152,13 @@ const Login = () => {
           />
         </div>
       </div>
-
       {/* Right Side - Login Form */}
       <div className="flex justify-center items-center bg-[#004175] w-full md:w-[35%] min-h-[60vh] md:min-h-screen p-6 overflow-y-auto">
         <div className="w-full max-w-md bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid">
-          {/* Login Header */}
           <h2 className="text-3xl font-bold text-center text-[#004175] mb-2">
-            {roleOptions.find(r => r.value === selectedRole)?.label} Login
+            Login
           </h2>
           <p className="text-sm text-center text-gray-600 mb-6">Glad you're back!</p>
-
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <input
@@ -170,7 +170,6 @@ const Login = () => {
                 required
               />
             </div>
-
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -192,7 +191,6 @@ const Login = () => {
                 )}
               </button>
             </div>
-
             <div className="flex items-center text-sm">
               <input
                 type="checkbox"
@@ -203,7 +201,6 @@ const Login = () => {
                 Remember me
               </label>
             </div>
-
             <Button 
               type="submit" 
               variant="primary"
@@ -223,27 +220,12 @@ const Login = () => {
                 </>
               )}
             </Button>
-
             <div className="text-center">
               <a href="#" className="text-gray-600 hover:text-[#004175] text-sm">
                 Forgot Password?
               </a>
             </div>
           </form>
-
-          {/* Back to Role Selection - COMMENTED OUT FOR NOW */}
-          {/* <div className="text-center text-sm mt-4">
-            <Button
-              type="button"
-              onClick={handleBackToRoleSelection}
-              variant="link"
-              className="text-[#004175] hover:text-blue-600 font-medium"
-            >
-              ← Back to Role Selection
-            </Button>
-          </div> */}
-
-          {/* Alternative: Signup Section at Bottom */}
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-600">
               Don't have an account?{' '}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Calendar,
   Clock,
@@ -100,8 +100,22 @@ export function AppSidebar() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
-  const { logout, role, token, isLoading } = useAuth();
-
+  // const { logout, role, token, isLoading } = useAuth();
+  const { logout, role, roles, changeRoles, token, isLoading } = useAuth();
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  useEffect(() => {
+    // Redirect to default route when role changes
+    if (role === "admin") {
+      navigate("/assign-user-permission", { replace: true });
+    } else if (role === "manager") {
+      navigate("/prepare-schedule", { replace: true });
+    } else if (role === "client") {
+      navigate("/client", { replace: true });
+    } else if (role === "guard") {
+      navigate("/guard", { replace: true });
+    }
+    // Add more roles if needed
+  }, [role, navigate]);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -181,13 +195,13 @@ export function AppSidebar() {
               // Item with children
               const isExpanded = expandedGroups.has(item.id);
               return (
-                <div key={item.id} style={{lineHeight: '20px'}} >
+                <div key={item.id} style={{ lineHeight: '20px' }} >
                   <button
                     onClick={() => toggleGroup(item.id)}
                     className="flex items-center justify-between gap-3 px-4 py-2 rounded transition hover:bg-[#00325d] w-full text-left"
                   >
                     <div className="flex items-center gap-3" >
-                      <item.icon className="text-white w-4 h-4"/>
+                      <item.icon className="text-white w-4 h-4" />
                       <span className="text-sm" >{item.label}</span>
                     </div>
                     {isExpanded ? <ChevronDown /> : <ChevronRight />}
@@ -205,7 +219,7 @@ export function AppSidebar() {
                               isActive ? "bg-[#00325d] font-semibold" : ""
                             )}
                           >
-                            <child.icon className="text-white w-4 h-4"/>
+                            <child.icon className="text-white w-4 h-4" />
                             <span className="text-sm">{child.label}</span>
                           </button>
                         );
@@ -226,8 +240,8 @@ export function AppSidebar() {
                     isActive ? "bg-[#00325d] font-semibold" : ""
                   )}
                 >
-                  <item.icon className="text-white w-4 h-4"/>
-                  <span className="text-sm" style={{lineHeight: '20px'}}>{item.label}</span>
+                  <item.icon className="text-white w-4 h-4" />
+                  <span className="text-sm" style={{ lineHeight: '20px' }}>{item.label}</span>
                 </button>
               );
             }
@@ -242,7 +256,39 @@ export function AppSidebar() {
             <MdLogout size={18} />
             <span className="text-sm">Logout</span>
           </button>
+          <div className="absolute bottom-0 left-0 w-full p-4 bg-[#004175] border-t border-[#00325d]">
+            <div className="relative">
+              <button
+                className="w-full flex items-center justify-between px-4 py-2 rounded bg-white text-[#004175] font-semibold shadow hover:bg-gray-100 transition"
+                onClick={() => setShowRoleDropdown((prev) => !prev)}
+              >
+                <span>Role: {role ? role.charAt(0).toUpperCase() + role.slice(1) : "None"}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              {showRoleDropdown && (
+                <div className="absolute left-0 right-0 bottom-full mb-2 bg-white border rounded shadow z-50">
+                  {roles.map((r) => (
+                    <button
+                      key={r}
+                      className={`w-full text-left px-4 py-2 hover:bg-[#004175] hover:text-white transition ${r === role ? "bg-gray-100 text-[#004175] cursor-not-allowed" : "text-[#004175]"
+                        }`}
+                      disabled={r === role}
+                      onClick={() => {
+                        if (r !== role) {
+                          changeRoles?.(r);
+                          setShowRoleDropdown(false);
+                        }
+                      }}
+                    >
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </nav>
+
       </aside>
     </>
   );
