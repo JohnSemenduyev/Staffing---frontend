@@ -16,12 +16,12 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
 
   // Always log on every render
 
-  useEffect(() => {
-    console.log("[ProtectedRoute] token:", token);
-    console.log("[ProtectedRoute] role:", role);
-    console.log("[ProtectedRoute] allowedRoles:", allowedRoles);
-    console.log("[ProtectedRoute] isLoading:", isLoading);
-  }, [token, role, allowedRoles, isLoading]);
+  // useEffect(() => {
+  //   console.log("[ProtectedRoute] token:", token);
+  //   console.log("[ProtectedRoute] role:", role);
+  //   console.log("[ProtectedRoute] allowedRoles:", allowedRoles);
+  //   console.log("[ProtectedRoute] isLoading:", isLoading);
+  // }, [token, role, allowedRoles, isLoading]);
 
   useEffect(() => {
     if (!token || !role) return;

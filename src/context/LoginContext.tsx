@@ -52,8 +52,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const variables = { email, password };
       const data = await graphQLClient.request<LoginUserResponse>(LOGIN_USER, variables);
       const { token, roles } = data.loginUser;
-      // const filteredRoles = roles.filter(role => [ 'admin', 'manager'].includes(role));
-            const filteredRoles = roles;
+      const filteredRoles = roles.filter(role => [ 'admin', 'manager'].includes(role));
+            // const filteredRoles = roles;
 
       setToken(token);
       setRoles(filteredRoles);
