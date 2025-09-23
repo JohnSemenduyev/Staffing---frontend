@@ -103,19 +103,19 @@ export function AppSidebar() {
   // const { logout, role, token, isLoading } = useAuth();
   const { logout, role, roles, changeRoles, token, isLoading } = useAuth();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  useEffect(() => {
+  // useEffect(() => {
     // Redirect to default route when role changes
-    if (role === "admin") {
-      navigate("/assign-user-permission", { replace: true });
-    } else if (role === "manager") {
-      navigate("/prepare-schedule", { replace: true });
-    } else if (role === "client") {
-      navigate("/client", { replace: true });
-    } else if (role === "guard") {
-      navigate("/guard", { replace: true });
-    }
-    // Add more roles if needed
-  }, [role, navigate]);
+    // if (role === "admin") {
+    //   navigate("/assign-user-permission", { replace: true });
+    // } else if (role === "manager") {
+    //   navigate("/prepare-schedule", { replace: true });
+    // } else if (role === "client") {
+    //   navigate("/client", { replace: true });
+    // } else if (role === "guard") {
+    //   navigate("/guard", { replace: true });
+    // }
+    // // Add more roles if needed
+  // }, [role, navigate]);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">

@@ -1,3 +1,12 @@
+export const ACCESS_TOKEN_REGENERATE = gql`
+  mutation AccessTokenReGenerate($role: String!) {
+    accessTokenReGenerate(role: $role) {
+      token
+      role
+      email
+    }
+  }
+`;
 // src/graphql/mutations.ts
 
 import { gql } from "graphql-request";

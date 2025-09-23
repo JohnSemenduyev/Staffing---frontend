@@ -1,3 +1,10 @@
+export function setGraphQLToken(token: string | null) {
+	if (token) {
+		graphQLClient.setHeader("Authorization", `Bearer ${token}`);
+	} else {
+		graphQLClient.setHeaders({});
+	}
+}
 // src/graphqlClient.ts
 import { GraphQLClient } from "graphql-request";
 export const graphQLClient = new GraphQLClient("https://securitywebappbackend-fkuv.onrender.com/");

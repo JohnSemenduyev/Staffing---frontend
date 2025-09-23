@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/LoginContext';
+import { graphQLClient, setGraphQLToken } from '../GraphqlClient';
+import { ACCESS_TOKEN_REGENERATE } from '../graphql/mutation';
 import { useToast } from '../hooks/use-toast';
 import { MdLogin } from "react-icons/md";
 import { Eye, EyeOff } from "lucide-react";
@@ -40,12 +42,12 @@ const handleSubmit = async (e: React.FormEvent) => {
   const result = await login(username, password);
     if (result.success) {
       // If multiple roles, show selection screen
-      if (result.roles && result.roles.length > 1) {
+      // if (result.roles && result.roles.length > 0) {
         setPendingRoles(result.roles as RoleType[]);
-      } else {
-        // Only one role, redirect immediately
-        handleRedirect(result.roles?.[0] || role);
-      }
+      // } else {
+      //   // Only one role, redirect immediately
+      //   handleRedirect(result.roles?.[0] || role);
+      // }
       toast({
         title: "Success",
         description: "Login successful",
@@ -61,10 +63,32 @@ const handleSubmit = async (e: React.FormEvent) => {
     setIsLoading(false);
   };
 const handleRoleSelect = (role: RoleType) => {
-  changeRoles?.(role);
-  localStorage.setItem("role", role);
-  setPendingRoles(null);
-  handleRedirect(role);
+  setIsLoading(true);
+  (async () => {
+    try {
+      const variables = { role };
+      const response = await graphQLClient.request(ACCESS_TOKEN_REGENERATE, variables) as {
+        accessTokenReGenerate: { token: string; role: RoleType }
+      };
+      const { token: newToken, role: newRole } = response.accessTokenReGenerate;
+      // Update context and localStorage
+      changeRoles?.(newRole);
+      setGraphQLToken(newToken);
+      localStorage.setItem("role", newRole);
+      localStorage.setItem("token", newToken);
+      // If you have a setToken in context, call it here as well
+      setPendingRoles(null);
+      handleRedirect(newRole);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to regenerate access token.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  })();
 };
 
   const handleSignupRedirect = () => {
@@ -79,7 +103,7 @@ const handleRedirect = (role: string | null) => {
     }
     navigate(redirectPath);
   };
-  if (pendingRoles && pendingRoles.length > 1) {
+  if (pendingRoles && pendingRoles.length > 0) {
     return (
       <div className="h-screen flex flex-col md:flex-row overflow-hidden">
         {/* Left Side - Logo */}

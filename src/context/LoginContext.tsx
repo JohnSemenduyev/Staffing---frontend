@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { graphQLClient } from "../GraphqlClient";
+import { setGraphQLToken } from "../GraphqlClient";
 import { gql } from "graphql-request";
 import { LOGIN_USER } from "../graphql/mutation";
 
@@ -38,6 +39,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setGraphQLToken(token);
+  }, [token]);
+
+  useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
     const storedRoles = localStorage.getItem("roles");
@@ -61,13 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("token", token);
       localStorage.setItem("roles", JSON.stringify(filteredRoles));
 
-      // If only one role, select it automatically
-      if (filteredRoles.length === 1) {
-        setRole(filteredRoles[0]);
-        localStorage.setItem("role", filteredRoles[0]);
-        return { success: true, roles: filteredRoles };
-        } 
-      return { success: true, roles: filteredRoles };
+  // Always return roles for selection, do not auto-select
+  setRole(null);
+  localStorage.removeItem("role");
+  return { success: true, roles: filteredRoles };
   } catch (error: any) {
     console.error("Login failed:", error);
 
