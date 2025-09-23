@@ -198,7 +198,7 @@ export const TimeSetup = () => {
       hours: String(record.weeklyHours),
       reminder: String(record.reminderTime),
     });
-    setClientSearch(record.client.name);
+    setClientSearch(record.client.name + (record.client.lastName ? " " + record.client.lastName : ""));
     const fullAddress = [
       record.address.address,
       (record.address as any)?.city,
