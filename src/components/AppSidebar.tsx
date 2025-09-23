@@ -95,7 +95,7 @@ const adminTabs = [
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar() { 
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
