@@ -15,11 +15,6 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
   const [countdown, setCountdown] = useState(5);
 
   // Always log on every render
-  console.log("[ProtectedRoute] Rendered");
-  console.log("[ProtectedRoute] token:", token);
-  console.log("[ProtectedRoute] role:", role);
-  console.log("[ProtectedRoute] allowedRoles:", allowedRoles);
-  console.log("[ProtectedRoute] isLoading:", isLoading);
 
   useEffect(() => {
     console.log("[ProtectedRoute] token:", token);
@@ -62,12 +57,10 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
   //   return <div>Loading...</div>; // or spinner component
   // }
   if (!token || !role) {
-    console.log("[ProtectedRoute] Redirecting to /login because token or role missing");
     return <Navigate to="/login" replace />;
   }
 
   if (!allowedRoles.includes(role)) {
-    console.log("[ProtectedRoute] Role not allowed, showing countdown UI");
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <h1 className="text-2xl font-bold text-red-600">

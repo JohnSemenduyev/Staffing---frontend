@@ -12,7 +12,8 @@ const AppLayout = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && (!token || !role)) {
+    if (isLoading) return;
+    if (!token || !role) {
       navigate("/login");
     }
   }, [isLoading, token, role, navigate]);

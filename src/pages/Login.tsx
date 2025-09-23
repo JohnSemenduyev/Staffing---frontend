@@ -22,7 +22,6 @@ const roleOptions: RoleOption[] = [
 ];
 
 const Login = () => {
-  console.log("[Login] Rendered");
  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,17 +37,13 @@ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    console.log('[Login] handleSubmit called, username:', username);
-    const result = await login(username, password);
-    console.log('[Login] login result:', result);
+  const result = await login(username, password);
     if (result.success) {
       // If multiple roles, show selection screen
       if (result.roles && result.roles.length > 1) {
-        console.log('[Login] Multiple roles found:', result.roles);
         setPendingRoles(result.roles as RoleType[]);
       } else {
         // Only one role, redirect immediately
-        console.log('[Login] Single role, redirecting:', result.roles?.[0] || role);
         handleRedirect(result.roles?.[0] || role);
       }
       toast({
@@ -57,7 +52,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         variant: "default"
       });
     } else {
-      console.log('[Login] Login failed:', result.error);
       toast({
         title: "Error",
         description: result.error || "Failed to login",
@@ -67,16 +61,10 @@ const handleSubmit = async (e: React.FormEvent) => {
     setIsLoading(false);
   };
 const handleRoleSelect = (role: RoleType) => {
-  console.log('[Login] Role selected:', role);
   changeRoles?.(role);
   localStorage.setItem("role", role);
   setPendingRoles(null);
-
-  // small delay to let context update
-  setTimeout(() => {
-    console.log('[Login] Redirecting after role select:', role);
-    handleRedirect(role);
-  }, 1000);
+  handleRedirect(role);
 };
 
   const handleSignupRedirect = () => {
@@ -84,7 +72,6 @@ const handleRoleSelect = (role: RoleType) => {
   };
 const handleRedirect = (role: string | null) => {
   let redirectPath = '/';
-  console.log('[Login] handleRedirect called with role:', role);
     if (role === 'admin') {
       redirectPath = '/assign-user-permission';
     } else if (role === 'manager') {
