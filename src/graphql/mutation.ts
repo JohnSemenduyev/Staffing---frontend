@@ -219,6 +219,7 @@ export const CREATE_GEOLOCATION = gql`
       client {
         id
         name
+        lastName
       }
       address {
         id
@@ -248,6 +249,7 @@ export const UPDATE_GEOLOCATION = gql`
       client {
         id
         name
+        lastName
       }
       address {
         id

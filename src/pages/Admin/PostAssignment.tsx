@@ -186,7 +186,7 @@ export const PostAssignment = () => {
     });
 
     // Set client search and address text directly from the record
-    setClientSearch(record.client.name || "");
+    setClientSearch([record.client.name, record.client.lastName].filter(Boolean).join(" "));
     const fullAddress = [
       record.address.address,
       (record.address as any)?.city,

@@ -171,7 +171,7 @@ export const GeoLocationSetup = () => {
       distance: String(record.distance ?? ""),
       time: String(record.time ?? ""),
     });
-    setClientSearch(record.client.name);
+  setClientSearch([record.client.name, record.client.lastName].filter(Boolean).join(" "));
     const fullAddress = [
       record.address.address,
       (record.address as any)?.city,
@@ -219,10 +219,10 @@ export const GeoLocationSetup = () => {
       width: "250px",
       height:"40px",
        render: (_: any, row: any) => {
-        const a = row.client;
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
-        return <div className="truncate" title={full}>{full || "-"}</div>;
-      }
+       const a = row.client;
+    const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+    return <div className="truncate" title={full}>{full || "-"}</div>;
+ }
     
     },
     {

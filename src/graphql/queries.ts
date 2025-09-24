@@ -277,6 +277,7 @@ export const GET_GEOLOCATIONS = gql`
         client {
           id
           name
+          lastName
         }
         address {
           id
@@ -343,6 +344,7 @@ export const GET_POST_ASSIGN = gql`
         client {
           id
           name
+          lastName
         }
         address {
           id
