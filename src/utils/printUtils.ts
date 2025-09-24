@@ -52,7 +52,18 @@ const timeToMinutes = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
 };
-
+const getFullClientName = (client: { name?: string; lastName?: string }) => {
+  if (!client) return "-";
+  // If name already ends with lastName, don't append again
+  if (
+    client.lastName &&
+    client.name &&
+    client.name.trim().endsWith(client.lastName.trim())
+  ) {
+    return client.name;
+  }
+  return [client.name, client.lastName].filter(Boolean).join(" ");
+};
 export const generateSchedulePrintableTable = (
   scheduleData: ScheduleItem[],
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
@@ -126,7 +137,7 @@ export const generateSchedulePrintableTable = (
   const clientInfoRow = `
     <tr>
       <td colspan="3" style="padding: 0px 12px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
-        <strong>Client Name:</strong> ${selectedClient ? [selectedClient.name, selectedClient.lastName].filter(Boolean).join(' ') : 'All Clients'}
+        <strong>Client Name:</strong> ${selectedClient ? getFullClientName(selectedClient) : 'All Clients'}
       </td>
       <td colspan="4" style="padding: 0px 0px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
@@ -548,7 +559,7 @@ export const generateActualTimePrintableTable = (
   const clientInfoRow = `
     <tr>
       <td colspan="3" style="padding: 0px 12px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
-        <strong>Client Name:</strong> ${selectedClient ? [selectedClient.name, selectedClient.lastName].filter(Boolean).join(' ') : 'All Clients'}
+        <strong>Client Name:</strong> ${selectedClient ? getFullClientName(selectedClient) : 'All Clients'}
       </td>
       <td colspan="4" style="padding: 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
