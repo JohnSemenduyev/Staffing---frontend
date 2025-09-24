@@ -76,8 +76,17 @@ const handleRoleSelect = (role: RoleType) => {
       setGraphQLToken(newToken);
       localStorage.setItem("role", newRole);
       localStorage.setItem("token", newToken);
+      // if no role in context, show toast saying "Guard and Client Login will be available soon"
+      if (!role) {
+        toast({
+          title: "Info",
+          description: "Guard and Client Login will be available soon",
+          variant: "default"
+        });
+      }
       // If you have a setToken in context, call it here as well
       setPendingRoles(null);
+      
       handleRedirect(newRole);
     } catch (error) {
       toast({
@@ -133,20 +142,19 @@ const handleRedirect = (role: string | null) => {
                 </Button>
               ))}
             </div>
-            <div className="mt-8">
-              <p className="text-white text-sm mb-2">
-                Don't have an account?
-              </p>
-              <Button
-                type="button"
+            <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-center text-sm text-white">
+              Don't have an account?{' '}
+              <Button 
                 onClick={handleSignupRedirect}
-                variant="link"
-                className="text-white hover:underline font-medium"
-              >
+                variant="primary"
+                >
                 Sign Up
               </Button>
-            </div>
+            </p>
           </div>
+          </div>
+          
         </div>
       </div>
     );

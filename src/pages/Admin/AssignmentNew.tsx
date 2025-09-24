@@ -402,8 +402,9 @@ export default function AssignmentNew() {
       .filter(Boolean)
       .join(", ");
     setSelectedAddressText(fullAddress);
-    setUserSearch(record.user?.name || "");
-    setGuardSearch(record.guard?.name || "");
+    setUserSearch(record.user?.name + " " + record.user?.lastName || "");
+    setGuardSearch(record.guard?.name + " " + record.guard?.lastName || "");
+    
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
