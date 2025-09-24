@@ -62,42 +62,21 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
     setIsLoading(false);
   };
-const handleRoleSelect = (role: RoleType) => {
+const handleRoleSelect = async (role: RoleType) => {
   setIsLoading(true);
-  (async () => {
-    try {
-      const variables = { role };
-      const response = await graphQLClient.request(ACCESS_TOKEN_REGENERATE, variables) as {
-        accessTokenReGenerate: { token: string; role: RoleType }
-      };
-      const { token: newToken, role: newRole } = response.accessTokenReGenerate;
-      // Update context and localStorage
-      changeRoles?.(newRole);
-      setGraphQLToken(newToken);
-      localStorage.setItem("role", newRole);
-      localStorage.setItem("token", newToken);
-      // if no role in context, show toast saying "Guard and Client Login will be available soon"
-      if (!role) {
-        toast({
-          title: "Info",
-          description: "Guard and Client Login will be available soon",
-          variant: "default"
-        });
-      }
-      // If you have a setToken in context, call it here as well
-      setPendingRoles(null);
-      
-      handleRedirect(newRole);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to regenerate access token.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  })();
+  try {
+    await changeRoles?.(role); // Only call context function
+    setPendingRoles(null);
+    handleRedirect(role);
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to regenerate access token.",
+      variant: "destructive"
+    });
+  } finally {
+    setIsLoading(false);
+  }
 };
 
   const handleSignupRedirect = () => {

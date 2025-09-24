@@ -1,4 +1,3 @@
-// src/components/ProtectedRoute.tsx
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/LoginContext";
@@ -10,30 +9,36 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
-  const { role, token, isLoading } = useAuth();
+  const { role, token, isLoading, changeRoles } = useAuth();
   const navigate = useNavigate();
-const [countdown, setCountdown] = useState(5);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-useEffect(() => {
-  setCountdown(5);
+  useEffect(() => {
+    if (!token || !role) return;
 
-  if (!token || !role) return;
+    if (!allowedRoles.includes(role)) {
+      setIsCheckingAccess(true);
+      setIsAuthorized(null);
 
-  if (!allowedRoles.includes(role)) {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
+      // Use changeRoles to check access and update token/role
+      changeRoles?.(role)
+        .then(() => {
+          setIsCheckingAccess(false);
+          setIsAuthorized(true);
           handleRedirect();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+        })
+        .catch(() => {
+          setIsCheckingAccess(false);
+          setIsAuthorized(false);
+        });
+    } else {
+      setIsAuthorized(true);
+      setIsCheckingAccess(false);
+    }
+    // eslint-disable-next-line
+  }, [role, token, allowedRoles]);
 
-    return () => clearInterval(timer);
-  }
-}, [role, token, allowedRoles]);
   const handleRedirect = () => {
     if (role === "admin") {
       navigate("/assign-user-permission", { replace: true });
@@ -44,32 +49,41 @@ useEffect(() => {
     }
   };
 
-  
-  // if (isLoading || role === null) {
-  //   return <div>Loading...</div>; // or spinner component
-  // }
   if (!token || !role) {
     return <Navigate to="/login" replace />;
   }
 
   if (!allowedRoles.includes(role)) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <h1 className="text-2xl font-bold text-red-600">
-          🚫 Wait... while we check if you are authorized to access this page with selected role
-        </h1>
-        <p className="text-gray-700">
-          Redirecting you to your accessible page in{" "}
-          <span className="font-semibold">{countdown}</span> seconds...
-        </p>
-        <Button
-          onClick={handleRedirect}
-          variant="primary"
-        >
-          Go Back Now
-        </Button>
-      </div>
-    );
+    if (isCheckingAccess || isAuthorized === null) {
+      // Show spinner while checking
+      return (
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
+          <h1 className="text-2xl font-bold text-red-600">
+            🚫 Wait... while we check if you are authorized to access this page with selected role
+          </h1>
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+            <span className="text-gray-700">Checking authorization...</span>
+          </div>
+        </div>
+      );
+    }
+    if (isAuthorized === false) {
+      // Show not authorized message
+      return (
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
+          <h1 className="text-2xl font-bold text-red-600">
+            🚫 You are not authorized for this role
+          </h1>
+          <Button
+            onClick={handleRedirect}
+            variant="primary"
+          >
+            Go Back
+          </Button>
+        </div>
+      );
+    }
   }
 
   return <>{children}</>;

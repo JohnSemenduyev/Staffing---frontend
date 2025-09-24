@@ -3,6 +3,7 @@ import { graphQLClient } from "../GraphqlClient";
 import { setGraphQLToken } from "../GraphqlClient";
 import { gql } from "graphql-request";
 import { LOGIN_USER } from "../graphql/mutation";
+import { ACCESS_TOKEN_REGENERATE } from "../graphql/mutation";
 
 type RoleType = 'client' | 'admin' | 'manager' | 'guard';
 
@@ -20,6 +21,7 @@ type AuthContextType = {
     error?: string;
   }>;
   logout: () => void;
+  
 };
 type LoginUserResponse = {
   loginUser: {
@@ -100,10 +102,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.reload();
   };
 
-  const changeRoles = (newRole: string) => {
-    setRole(newRole);
-    localStorage.setItem("role", newRole);
-  };
+const changeRoles = async (newRole: string) => {
+  try {
+    // Call the API to regenerate the token for the new role
+    const response = await graphQLClient.request(ACCESS_TOKEN_REGENERATE, { role: newRole });
+    const { token: newToken, role: apiRole } = response.accessTokenReGenerate;
+
+    setRole(apiRole);
+    setToken(newToken);
+    localStorage.setItem("role", apiRole);
+    localStorage.setItem("token", newToken);
+    setGraphQLToken(newToken);
+  } catch (error) {
+    console.error("Failed to regenerate access token for role change:", error);
+    // Optionally show a toast or error message here
+  }
+};
 
   return (
     <AuthContext.Provider value={{ token, role, roles, login, logout, isLoading, changeRoles }}>
