@@ -239,12 +239,12 @@ export const exportNotificationToExcel = async (data: NotificationData[], filena
 
 export const exportNotificationToPDF = (data: NotificationData[], filename: string = 'notifications') => {
   try {
-    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const doc = new jsPDF('p', 'mm', 'a4');
     
     // Add title - matching summary styling with italic
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bolditalic'); // Note: jsPDF doesn't support Aptos Narrow, using helvetica
-    doc.text('Notifications', 1, 5); // Minimal top spacing
+    doc.text('Notifications', 1, 5); // Increased from 5 to 7 to accommodate 2px margin
 
     // Prepare table data
     const tableData = data.map((row, index) => [
@@ -276,7 +276,7 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
     autoTable(doc, {
       head: [headers],
       body: tableData,
-      startY: 8,
+      startY: 8, // Increased from 8 to 10 to accommodate 2px margin
       styles: {
         fontSize: 11,
         cellPadding: { top: 1, right: 2, bottom: 1, left: 4 },
@@ -346,10 +346,16 @@ export const exportNotificationToPDF = (data: NotificationData[], filename: stri
           fillColor: [255, 255, 255]
         }
       },
-      margin: { left: 1, right: 1, top: 0, bottom: 0 },
+      margin: { left: 1, right: 1, top: 2, bottom: 0 }, // Changed top margin from 0 to 2
       tableLineWidth: 0.3,
       tableLineColor: [0, 0, 0],
-      theme: 'grid'
+      theme: 'grid',
+      didDrawPage: (dataArg) => {
+        if (dataArg.pageNumber > 1) {
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bolditalic');
+        }
+      }
     });
 
     // Generate filename with timestamp

@@ -247,7 +247,7 @@ export const exportUniformComplianceToExcel = async (data: UniformComplianceData
 
 export const exportUniformComplianceToPDF = (data: UniformComplianceData[], filename: string = 'uniform_compliance') => {
   try {
-    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const doc = new jsPDF('p', 'mm', 'a4');
     
     // Add title - matching summary styling with italic
     doc.setFontSize(14);
@@ -353,7 +353,7 @@ export const exportUniformComplianceToPDF = (data: UniformComplianceData[], file
            fillColor: [255, 255, 255]
          }
        },
-      margin: { left: 1, right: 1, top: 0, bottom: 0 },
+      margin: { left: 1, right: 1, top: 2, bottom: 0 },
       tableLineWidth: 0.3,
       tableLineColor: [0, 0, 0],
       theme: 'grid'

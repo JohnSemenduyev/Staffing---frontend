@@ -418,7 +418,7 @@ export const Notification = () => {
         { label: 'Weekly Hours', value: 'weekly_Hours' },
         { label: 'Schedule', value: 'schedule' },
       ],
-      width: "150px",
+      width: "200px",
       className: "min-w-[120px]",
       render: (value: string) => {
         const formattedType = value ? formatNotificationText(value) : "Unknown";
@@ -434,7 +434,7 @@ export const Notification = () => {
       label: "Message",
       sortable: false,
       searchable: true,
-      className: "min-w-[300px]",
+      className: "min-w-[250px]",
       width: "200px",
       render: (value: string) => {
         // Convert "BREAK" to line breaks in notification messages

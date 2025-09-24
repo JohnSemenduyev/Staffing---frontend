@@ -138,46 +138,73 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     }
   }, [debouncedSearchTerms, memoizedOnSearch]);
 
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = data;
+const filteredAndSortedData = useMemo(() => {
+  let filtered = data;
 
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        const aValue = getNestedValue(a, sortConfig.key!);
-        const bValue = getNestedValue(b, sortConfig.key!);
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
-        let aCompare: any = aValue;
-        let bCompare: any = bValue;
-        if (Array.isArray(aValue)) aCompare = aValue.length > 0 ? aValue[0] : "";
-        if (Array.isArray(bValue)) bCompare = bValue.length > 0 ? bValue[0] : "";
-        if (typeof aCompare === "string" && typeof bCompare === "string") {
-          aCompare = aCompare.toLowerCase();
-          bCompare = bCompare.toLowerCase();
-        } else if (!isNaN(Number(aCompare)) && !isNaN(Number(bCompare))) {
-          aCompare = Number(aCompare);
-          bCompare = Number(bCompare);
+  // Local search: filter data if no onSearch prop
+  if (!onSearch) {
+    Object.entries(searchTerms).forEach(([key, value]) => {
+      if (!value) return;
+      filtered = filtered.filter((row) => {
+        // Support nested keys like "client.name"
+        const keys = key.split(".");
+        let cellValue = row;
+        for (const k of keys) {
+          cellValue = cellValue?.[k];
         }
-
-        if (aCompare < bCompare) {
-          return sortConfig.direction === "asc" ? -1 : 1;
+        if (typeof cellValue === "string") {
+          return cellValue.toLowerCase().includes(value.toLowerCase());
         }
-        if (aCompare > bCompare) {
-          return sortConfig.direction === "asc" ? 1 : -1;
+        if (Array.isArray(cellValue)) {
+          return cellValue.some((v) =>
+            String(v).toLowerCase().includes(value.toLowerCase())
+          );
         }
-        return 0;
+        return cellValue !== undefined && cellValue !== null
+          ? String(cellValue).toLowerCase().includes(value.toLowerCase())
+          : false;
       });
-    }
+    });
+  }
 
-    return filtered;
-  }, [data, sortConfig]);
+  // Sorting
+  if (sortConfig.key) {
+    filtered = [...filtered].sort((a, b) => {
+      const aValue = getNestedValue(a, sortConfig.key!);
+      const bValue = getNestedValue(b, sortConfig.key!);
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+      let aCompare: any = aValue;
+      let bCompare: any = bValue;
+      if (Array.isArray(aValue)) aCompare = aValue.length > 0 ? aValue[0] : "";
+      if (Array.isArray(bValue)) bCompare = bValue.length > 0 ? bValue[0] : "";
+      if (typeof aCompare === "string" && typeof bCompare === "string") {
+        aCompare = aCompare.toLowerCase();
+        bCompare = bCompare.toLowerCase();
+      } else if (!isNaN(Number(aCompare)) && !isNaN(Number(bCompare))) {
+        aCompare = Number(aCompare);
+        bCompare = Number(bCompare);
+      }
+
+      if (aCompare < bCompare) {
+        return sortConfig.direction === "asc" ? -1 : 1;
+      }
+      if (aCompare > bCompare) {
+        return sortConfig.direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+  }
+
+  return filtered;
+}, [data, sortConfig, searchTerms, onSearch]);
 
   const resetSearch = () => {
-  setSearchTerms({});
-};
-const hasSearchValues = Object.values(searchTerms).some(
-  (val) => val !== undefined && val !== null && String(val).trim() !== ""
-);
+    setSearchTerms({});
+  };
+  const hasSearchValues = Object.values(searchTerms).some(
+    (val) => val !== undefined && val !== null && String(val).trim() !== ""
+  );
 
   const renderSearchField = (column: TableColumn) => {
     if (!column.searchable) return null;
@@ -248,10 +275,10 @@ const hasSearchValues = Object.values(searchTerms).some(
     }
 
     if (column.searchType === "dropdown") {
-  const options = getColumnSearchOptions(column);
-  const selectedValue = searchTerms[column.key] || "";
-  const [showDropdown, setShowDropdown] = useState(false); 
- const dropdownRef = useRef<HTMLDivElement>(null);
+      const options = getColumnSearchOptions(column);
+      const selectedValue = searchTerms[column.key] || "";
+      const [showDropdown, setShowDropdown] = useState(false);
+      const dropdownRef = useRef<HTMLDivElement>(null);
 
       useEffect(() => {
         if (!showDropdown) return;
@@ -268,86 +295,55 @@ const hasSearchValues = Object.values(searchTerms).some(
           document.removeEventListener("mousedown", handleClickOutside);
         };
       }, [showDropdown]);
-  return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Dropdown trigger */}
-      <div
-        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
-        onClick={() => setShowDropdown(!showDropdown)}
-      >
-        <span
-          className={
-            selectedValue ? "text-gray-900" : "text-gray-400"
-          }
-        >
-          {selectedValue
-            ? options.find((opt) => opt.value === selectedValue)?.label
-            : `All ${column.label}`}
-        </span>
-        <ChevronDown className="w-4 h-4 text-gray-400" />
-      </div>
-
-      {/* Dropdown menu */}
-      {showDropdown && (
-        <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+      return (
+        <div className="relative" ref={dropdownRef}>
+          {/* Dropdown trigger */}
           <div
-            className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500"
-            onClick={() => {
-              setSearchTerms((prev) => ({ ...prev, [column.key]: "" }));
-              setShowDropdown(false);
-            }}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
+            onClick={() => setShowDropdown(!showDropdown)}
           >
-            All {column.label}
-          </div>
-          {options.map((opt) => (
-            <div
-              key={opt.value}
-              className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500"
-              onClick={() => {
-                setSearchTerms((prev) => ({ ...prev, [column.key]: opt.value }));
-                setShowDropdown(false);
-              }}
+            <span
+              className={
+                selectedValue ? "text-gray-900" : "text-gray-400"
+              }
             >
-              {opt.label}
+              {selectedValue
+                ? options.find((opt) => opt.value === selectedValue)?.label
+                : `All ${column.label}`}
+            </span>
+            <ChevronDown className="w-4 h-4 text-gray-400" />
+          </div>
+
+          {/* Dropdown menu */}
+          {showDropdown && (
+            <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+              <div
+                className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500"
+                onClick={() => {
+                  setSearchTerms((prev) => ({ ...prev, [column.key]: "" }));
+                  setShowDropdown(false);
+                }}
+              >
+                All {column.label}
+              </div>
+              {options.map((opt) => (
+                <div
+                  key={opt.value}
+                  className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500"
+                  onClick={() => {
+                    setSearchTerms((prev) => ({ ...prev, [column.key]: opt.value }));
+                    setShowDropdown(false);
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
-    </div>
-  );
-}
+      );
+    }
 
-
-    // if (column.searchType === "dropdown") {
-    //   const options = getColumnSearchOptions(column);
-
-    //   return (
-    //     <div className="relative">
-    //       <select
-    //         value={searchTerms[column.key] || ''}
-    //         onChange={(e) =>
-    //           setSearchTerms((prev) => ({
-    //             ...prev,
-    //             [column.key]: e.target.value,
-    //           }))
-    //         }
-    //         className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] appearance-none bg-white pr-8"
-    //         style={{
-    //           maxWidth: '100%',
-    //           minWidth: column.width ? `calc(${column.width} - 32px)` : 'auto'
-    //         }}
-    //       >
-    //         <option value="">All {column.label}</option>
-    //         {options.map((option, index) => (
-    //           <option key={index} value={option.value}>
-    //             {option.label}
-    //           </option>
-    //         ))}
-    //       </select>
-    //       <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-    //     </div>
-    //   );
-    // }
     return (
       <input
         placeholder={column.searchPlaceholder || `Search ${column.label.toLowerCase()}`}
@@ -376,7 +372,7 @@ const hasSearchValues = Object.values(searchTerms).some(
         style={{ height: tableHeight, minHeight: tableHeight }}
       >
         {loading && (
-          <div 
+          <div
             className="absolute bg-white bg-opacity-10 flex items-center justify-center z-30 rounded-2xl"
             style={{
               top: searchable ? '82px' : '41px', // Start below the header
@@ -391,9 +387,9 @@ const hasSearchValues = Object.values(searchTerms).some(
             </div>
           </div>
         )}
-        <div 
+        <div
           className="overflow-auto bg-white rounded-t-2xl"
-          style={{ 
+          style={{
             height: tableHeight,
             maxHeight: tableHeight
           }}
@@ -424,8 +420,8 @@ const hasSearchValues = Object.values(searchTerms).some(
                         <div className="pl-1 cursor-pointer" onClick={() => handleSort(column.key)}>
                           <span
                             className={`cursor-pointer ${sortConfig.key === column.key && sortConfig.direction === "asc"
-                                ? "text-white"
-                                : "text-white/40"
+                              ? "text-white"
+                              : "text-white/40"
                               }`}
                           >
                             <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" className="-mb-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
@@ -434,8 +430,8 @@ const hasSearchValues = Object.values(searchTerms).some(
                           </span>
                           <span
                             className={`cursor-pointer ${sortConfig.key === column.key && sortConfig.direction === "desc"
-                                ? "text-white"
-                                : "text-white/40"
+                              ? "text-white"
+                              : "text-white/40"
                               }`}
                           >
                             <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
