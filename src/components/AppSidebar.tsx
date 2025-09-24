@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, {useRef, useEffect ,  useState } from 'react';
 import {
   Calendar,
   Clock,
@@ -100,9 +100,26 @@ export function AppSidebar() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
+    const [showRoleDropdown, setShowRoleDropdown] = useState(false); 
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showRoleDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        roleDropdownRef.current &&
+        !roleDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowRoleDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showRoleDropdown]);
   // const { logout, role, token, isLoading } = useAuth();
   const { logout, role, roles, changeRoles, token, isLoading } = useAuth();
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -244,7 +261,7 @@ export function AppSidebar() {
             <span className="text-sm">Logout</span>
           </button>
           <div className="absolute bottom-0 left-0 w-full p-4 bg-[#004175] border-t border-[#00325d]">
-            <div className="relative">
+            <div className="relative" ref={roleDropdownRef}>
               <button
                 className="w-full flex items-center justify-between px-4 py-2 rounded bg-white text-[#004175] font-semibold shadow hover:bg-gray-100 transition"
                 onClick={() => setShowRoleDropdown((prev) => !prev)}

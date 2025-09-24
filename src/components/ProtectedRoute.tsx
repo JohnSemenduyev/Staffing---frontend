@@ -12,36 +12,28 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
   const { role, token, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [countdown, setCountdown] = useState(5);
+const [countdown, setCountdown] = useState(5);
 
-  // Always log on every render
+useEffect(() => {
+  setCountdown(5);
 
-  // useEffect(() => {
-  //   console.log("[ProtectedRoute] token:", token);
-  //   console.log("[ProtectedRoute] role:", role);
-  //   console.log("[ProtectedRoute] allowedRoles:", allowedRoles);
-  //   console.log("[ProtectedRoute] isLoading:", isLoading);
-  // }, [token, role, allowedRoles, isLoading]);
+  if (!token || !role) return;
 
-  useEffect(() => {
-    if (!token || !role) return;
+  if (!allowedRoles.includes(role)) {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleRedirect();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-    if (!allowedRoles.includes(role)) {
-      // countdown timer
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            handleRedirect();
-            clearInterval(timer);
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }
-  }, [role, token, allowedRoles]);
-
+    return () => clearInterval(timer);
+  }
+}, [role, token, allowedRoles]);
   const handleRedirect = () => {
     if (role === "admin") {
       navigate("/assign-user-permission", { replace: true });
@@ -64,10 +56,10 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <h1 className="text-2xl font-bold text-red-600">
-          🚫 You are not authorized to access this page
+          🚫 You are not authorized to access this page with selected role
         </h1>
         <p className="text-gray-700">
-          Redirecting you to your accessable page in{" "}
+          Redirecting you to your accessible page in{" "}
           <span className="font-semibold">{countdown}</span> seconds...
         </p>
         <Button

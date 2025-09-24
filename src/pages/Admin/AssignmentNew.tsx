@@ -104,7 +104,58 @@ export default function AssignmentNew() {
     useSearchUsers(debouncedUserSearch);
   const { data: searchedGuards = [], isLoading: loadingGuards } =
     useSearchUsers(debouncedGuardSearch);
+// const accessDropdownRef = useRef<HTMLDivElement>(null);
 
+// Access Dropdown
+useEffect(() => {
+  if (!showAccessDropdown) return;
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      accessDropdownRef.current &&
+      !accessDropdownRef.current.contains(event.target as Node)
+    ) {
+      setShowAccessDropdown(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [showAccessDropdown]);
+
+// Role Dropdown
+useEffect(() => {
+  if (!showRoleDropdown) return;
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      roleDropdownRef.current &&
+      !roleDropdownRef.current.contains(event.target as Node)
+    ) {
+      setShowRoleDropdown(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [showRoleDropdown]);
+
+// Notification Dropdown
+useEffect(() => {
+  if (!showNotificationDropdown) return;
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      notificationDropdownRef.current &&
+      !notificationDropdownRef.current.contains(event.target as Node)
+    ) {
+      setShowNotificationDropdown(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [showNotificationDropdown]);
   const searchFields = useMemo<FieldConfig[]>(() => [
     { name: 'clientName', type: 'text', placeholder: 'Client Name' },
     { name: 'location', type: 'text', placeholder: 'Location' },

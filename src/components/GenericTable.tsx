@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { ChevronDown } from "lucide-react";
 import { useDebounce } from "../hooks/useDebounce";
 import ResetButton from "./ui/ResetButton";
@@ -63,12 +63,27 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     key: null,
     direction: "asc",
   });
-
+  const notificationDropdownRef = useRef<HTMLDivElement>(null);
   const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
   const debouncedSearchTerms = useDebounce(searchTerms, 500);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
   const memoizedOnSearch = useCallback(onSearch, []);
+  useEffect(() => {
+    if (!showNotificationDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationDropdownRef.current &&
+        !notificationDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowNotificationDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotificationDropdown]);
 
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({
@@ -188,7 +203,7 @@ const hasSearchValues = Object.values(searchTerms).some(
       };
 
       return (
-        <div className="relative">
+        <div className="relative" ref={notificationDropdownRef}>
           <div
             className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
             onClick={() =>
@@ -235,10 +250,26 @@ const hasSearchValues = Object.values(searchTerms).some(
     if (column.searchType === "dropdown") {
   const options = getColumnSearchOptions(column);
   const selectedValue = searchTerms[column.key] || "";
-  const [showDropdown, setShowDropdown] = useState(false); // 👈 local state
+  const [showDropdown, setShowDropdown] = useState(false); 
+ const dropdownRef = useRef<HTMLDivElement>(null);
 
+      useEffect(() => {
+        if (!showDropdown) return;
+        const handleClickOutside = (event: MouseEvent) => {
+          if (
+            dropdownRef.current &&
+            !dropdownRef.current.contains(event.target as Node)
+          ) {
+            setShowDropdown(false);
+          }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+          document.removeEventListener("mousedown", handleClickOutside);
+        };
+      }, [showDropdown]);
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       {/* Dropdown trigger */}
       <div
         className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
