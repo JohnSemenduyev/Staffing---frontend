@@ -56,7 +56,7 @@ useEffect(() => {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <h1 className="text-2xl font-bold text-red-600">
-          🚫 You are not authorized to access this page with selected role
+          🚫 Wait... while we check if you are authorized to access this page with selected role
         </h1>
         <p className="text-gray-700">
           Redirecting you to your accessible page in{" "}

@@ -720,7 +720,10 @@ export const ViewSchedule = () => {
       height:"40px",
        render: (_: any, row: any) => {
         const a = row;
-        const full = [a?.clientName??"" , a?.clientLastName??""].filter(Boolean).join(" ");
+        // const full = [a?.clientName??"" , a?.clientLastName??""].filter(Boolean).join(" ");
+        const full = a?.clientName??"";
+
+        console.log("first name" );
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
