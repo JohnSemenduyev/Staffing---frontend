@@ -973,13 +973,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                     <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
                       {calculateUserTotal(user.id, scheduleData)}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
                       {isEditMode && (
+                                            <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
+
                         <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
                           <FaRegTrashAlt  className="w-4 h-4" />
                         </button>
+                        </td>
                       )}
-                    </td>
+                    
                   </tr>
                 </React.Fragment>
               );
