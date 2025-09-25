@@ -16,6 +16,7 @@ export interface GeoLocation {
   client: {
     id: number;
     name: string;
+    lastName?:string;
   };
   address: {
     id: number;

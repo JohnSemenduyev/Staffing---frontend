@@ -105,8 +105,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 const changeRoles = async (newRole: string) => {
   try {
     // Call the API to regenerate the token for the new role
-    const response = await graphQLClient.request(ACCESS_TOKEN_REGENERATE, { role: newRole });
-    const { token: newToken, role: apiRole } = response.accessTokenReGenerate;
+    const response = await graphQLClient.request<{ accessTokenReGenerate: { token: string; role: string; email: string } }>(
+  ACCESS_TOKEN_REGENERATE,
+  { role: newRole }
+);
+const { token: newToken, role: apiRole, email } = response.accessTokenReGenerate;
 
     setRole(apiRole);
     setToken(newToken);

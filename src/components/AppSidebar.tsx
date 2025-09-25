@@ -184,7 +184,7 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={twMerge(
-          "fixed top-0 left-0 min-w-[250px] h-full bg-[#004175] text-white p-5 z-50 transition-transform duration-300 ease-in-out",
+          "fixed top-0 left-0 w-[270px] h-full bg-[#004175] text-white p-5 z-50 transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "sm:translate-x-0 sm:block"
         )}

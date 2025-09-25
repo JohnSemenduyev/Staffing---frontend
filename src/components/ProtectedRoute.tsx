@@ -17,25 +17,23 @@ const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
   useEffect(() => {
     if (!token || !role) return;
 
-    if (!allowedRoles.includes(role)) {
-      setIsCheckingAccess(true);
-      setIsAuthorized(null);
+   if (!allowedRoles.includes(role)) {
+  setIsCheckingAccess(true);
+  setIsAuthorized(null);
 
-      // Use changeRoles to check access and update token/role
-      changeRoles?.(role)
-        .then(() => {
-          setIsCheckingAccess(false);
-          setIsAuthorized(true);
-          handleRedirect();
-        })
-        .catch(() => {
-          setIsCheckingAccess(false);
-          setIsAuthorized(false);
-        });
-    } else {
-      setIsAuthorized(true);
-      setIsCheckingAccess(false);
-    }
+  try {
+    changeRoles?.(role);
+    setIsCheckingAccess(false);
+    setIsAuthorized(true);
+    handleRedirect();
+  } catch {
+    setIsCheckingAccess(false);
+    setIsAuthorized(false);
+  }
+} else {
+  setIsAuthorized(true);
+  setIsCheckingAccess(false);
+}
     // eslint-disable-next-line
   }, [role, token, allowedRoles]);
 
