@@ -8,7 +8,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { inputClasses } from "../Admin/GeoLocationSetup";
-import { useUniformCompliance } from "../../context/unifromCompliace";s
+import { useUniformCompliance } from "../../context/unifromCompliace";
 import ResetButton from "../../components/ui/ResetButton";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { ErrorMessage } from "../../components/ui/error-message";
