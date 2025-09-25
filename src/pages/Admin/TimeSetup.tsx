@@ -455,7 +455,7 @@ export const TimeSetup = () => {
               )}
             </div>
             <div>
-              <input type="number" step="any" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Scheduled Time" min="0" className={getFieldClasses('time')} />
+              <input type="number" step="any" value={form.time} onChange={(e) => handleChange("time", e.target.value)} placeholder="Actual/Scheduled Time" min="0" className={getFieldClasses('time')} />
               {showErrors && errors.time && (
                 <ErrorMessage message={errors.time} />
               )}
