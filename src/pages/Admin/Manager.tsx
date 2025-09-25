@@ -139,7 +139,7 @@ export const Manager = () => {
   ];
 
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10">
+    <div className="w-full overflow-x-hidden p-6">
       <div ref={formRef} className="mb-4">
         <h2 className="text-lg font-semibold text-gray-800">Manager List</h2>
       </div>

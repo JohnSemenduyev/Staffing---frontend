@@ -1811,7 +1811,7 @@ export const ViewSchedule = () => {
   };
 
   return (
-    <div className="w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pt-10 pb-6">
+    <div className="w-full overflow-x-hidden p-6 pb-6">
       {!showScheduleTable ? (
         <>
           {error ? (
