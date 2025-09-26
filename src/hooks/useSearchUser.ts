@@ -3,17 +3,15 @@ import { graphQLClient } from "../GraphqlClient";
 import { SEARCH_USERS } from "../graphql/queries";
 import type { User } from "../types";
 import { useAuth } from "../context/LoginContext";
-export function useSearchUsers(search: string) {
+export function useSearchUsers(search: string, clientId?: number, addressId?: number) {
   const { token } = useAuth();
   return useQuery<User[]>({
-    queryKey: ["searchUsers", search],
+    queryKey: ["searchUsers", search, clientId, addressId],
     queryFn: async () => {
       const data = await graphQLClient.request<{ searchUsers: User[] }>(
         SEARCH_USERS, 
-        { search }, // Variables
-        { 
-          Authorization: `Bearer ${token}` // Headers
-        }
+        { search, clientId, addressId }, // Pass clientId and addressId
+        { Authorization: `Bearer ${token}` }
       );
       return data.searchUsers;
     },
