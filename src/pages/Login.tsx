@@ -33,7 +33,14 @@ const Login = () => {
   const { token, roles, role, login, changeRoles } = useAuth();
   const { toast } = useToast();
 
-
+  const handleBackToLogin = () => {
+    
+    setUsername('');
+    setPassword('');
+    setShowPassword(false);
+    setIsLoading(false);
+    setPendingRoles(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +136,7 @@ const Login = () => {
             
             <div className="mt-6 pt-6 border-t border-gray-200">
             <Button
-                  onClick={() => setPendingRoles(null)}
+                  onClick={handleBackToLogin}
                   variant="link"
                   className="text-white hover:text-yellow-300 font-medium"
                 >
