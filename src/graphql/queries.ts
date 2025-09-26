@@ -188,8 +188,8 @@ export const GET_USERS = gql`
 `;
 
 export const SEARCH_USERS = gql`
-  query SearchUsers($search: String!, $clientId: Int, $addressId: Int) {
-  searchUsers(search: $search, clientId: $clientId, addressId: $addressId) {
+  query SearchUsers($search: String!) {
+    searchUsers(search: $search) {
       id
       name
       phone
