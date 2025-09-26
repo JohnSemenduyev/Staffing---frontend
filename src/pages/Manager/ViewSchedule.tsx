@@ -113,7 +113,7 @@ const DateNavigation = ({
 
 export const ViewSchedule = () => {
   const { toast } = useToast();
-
+  
   // URL parameter handling functions
   const getUrlParams = () => {
     const params = new URLSearchParams(window.location.search);
@@ -204,7 +204,7 @@ export const ViewSchedule = () => {
       if (userId) {
         // Fetch for specific user only
         const combination = `${selectedClient.clientId}-${selectedClient.addressId}-${userId}`;
-
+        
         try {
           const result = await checkScheduleSession(
             selectedClient.clientId,
@@ -212,7 +212,7 @@ export const ViewSchedule = () => {
             userId,
             formattedStartDate
           );
-
+          
           if (result?.shifts) {
             newApiShifts.set(combination, result.shifts);
           }
@@ -221,33 +221,33 @@ export const ViewSchedule = () => {
         }
       } else {
         // Fetch for all users in schedule data (for edit mode)
-        const uniqueCombinations = new Set<string>();
-        scheduleData.forEach(item => {
-          const key = `${item.clientId}-${item.addressId}-${item.userId}`;
-          uniqueCombinations.add(key);
-        });
+      const uniqueCombinations = new Set<string>();
+      scheduleData.forEach(item => {
+        const key = `${item.clientId}-${item.addressId}-${item.userId}`;
+        uniqueCombinations.add(key);
+      });
 
-        // Fetch existing shifts for each combination
-        await Promise.all(
-          Array.from(uniqueCombinations).map(async (combination) => {
-            const [clientId, addressId, userId] = combination.split('-').map(Number);
-
-            try {
+      // Fetch existing shifts for each combination
+      await Promise.all(
+        Array.from(uniqueCombinations).map(async (combination) => {
+          const [clientId, addressId, userId] = combination.split('-').map(Number);
+          
+          try {
               const result = await checkScheduleSession(
-                clientId,
-                addressId,
-                userId,
+                  clientId,
+                  addressId,
+                  userId,
                 formattedStartDate
               );
-
+              
               if (result?.shifts) {
                 newApiShifts.set(combination, result.shifts);
-              }
-            } catch (error) {
-              console.error(`Failed to fetch shifts for user ${userId}:`, error);
             }
-          })
-        );
+          } catch (error) {
+            console.error(`Failed to fetch shifts for user ${userId}:`, error);
+          }
+        })
+      );
       }
 
       setApiExistingShifts(newApiShifts);
@@ -279,7 +279,8 @@ export const ViewSchedule = () => {
     debouncedUserSearch,
     selectedClient?.clientId ? Number(selectedClient.clientId) : undefined,
     selectedClient?.addressId ? Number(selectedClient.addressId) : undefined
-  ); const [showUserDropdown, setShowUserDropdown] = useState(false);
+  );
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
@@ -295,7 +296,7 @@ export const ViewSchedule = () => {
 
   // Ref to track if we've already restored state from URL parameters
   const hasRestoredState = useRef(false);
-
+  
   // Dynamic table height state and ref
   // const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
@@ -303,18 +304,18 @@ export const ViewSchedule = () => {
   // Initialize state from URL parameters on component mount
   useEffect(() => {
     const urlParams = getUrlParams();
-
+    
     if (!hasRestoredState.current && urlParams.showSchedule && urlParams.clientId && urlParams.addressId) {
       // Restore schedule view state
       setShowScheduleTable(true);
-
+      
       // Find the client data from the sessions
       if (clientSessions && Array.isArray(clientSessions)) {
-        const clientSession = clientSessions.find(session =>
-          session.clientId === parseInt(urlParams.clientId!) &&
+        const clientSession = clientSessions.find(session => 
+          session.clientId === parseInt(urlParams.clientId!) && 
           session.addressId === parseInt(urlParams.addressId!)
         );
-
+        
         if (clientSession) {
           const clientData = {
             clientId: clientSession.clientId,
@@ -327,19 +328,19 @@ export const ViewSchedule = () => {
             pincode: clientSession.address.pincode,
             addresses: (clientSession.client as any)?.addresses || []
           };
-
+          
           setSelectedClient(clientData);
-
+          
           // Restore selected date if available
           if (urlParams.selectedDate) {
             setSelectedDate(urlParams.selectedDate);
             const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(urlParams.selectedDate));
             setCurrentWeekRange(weekRange);
-
+            
             // Trigger API call to fetch schedule data
             const formattedDate = convertDateFormat(urlParams.selectedDate);
             setTableLoading(true);
-
+            
             fetchScheduleData(clientSession.clientId, clientSession.addressId, formattedDate)
               .catch(error => {
                 console.error("Error fetching schedule data on refresh:", error);
@@ -353,7 +354,7 @@ export const ViewSchedule = () => {
                 setTableLoading(false);
               });
           }
-
+          
           // Mark that we've restored the state
           hasRestoredState.current = true;
         }
@@ -407,7 +408,7 @@ export const ViewSchedule = () => {
 
     setSelectedClient(clientData);
     setModalOpen(true);
-
+    
     // Remove URL parameter updates from here - they will be set in handleDateSubmit
   };
   const validateAndNavigate = async (newDate: string) => {
@@ -720,13 +721,13 @@ export const ViewSchedule = () => {
       searchable: true,
       searchType: 'text',
       width: "250px",
-      height: "40px",
-      render: (_: any, row: any) => {
+      height:"40px",
+       render: (_: any, row: any) => {
         const a = row;
         // const full = [a?.clientName??"" , a?.clientLastName??""].filter(Boolean).join(" ");
-        const full = a?.clientName ?? "";
+        const full = a?.clientName??"";
 
-        console.log("first name");
+        console.log("first name" );
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -815,24 +816,24 @@ export const ViewSchedule = () => {
 
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
-
+    
     // Check if the guard is already in the schedule table
     const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
-
+    
     // If guard is not in schedule table, fetch their existing shifts from API
     if (!guardExistsInSchedule && form.userId) {
       await fetchApiExistingShifts(Number(form.userId));
     }
-
+    
     // For "Apply All Week", we need custom validation
     if (applyAllWeek && currentWeekRange) {
       const weekErrors: { [key: string]: string } = {};
-
+      
       // Basic field validation
       if (!form.userId) weekErrors.userId = "Required";
       if (!form.starttime) weekErrors.starttime = "Required";
       if (!form.endtime) weekErrors.endtime = "Required";
-
+      
       // Time duration validation
       if (form.starttime && form.endtime) {
         const minutes = minutesDiffWithWrap(form.starttime, form.endtime);
@@ -840,7 +841,7 @@ export const ViewSchedule = () => {
           weekErrors.endtime = "End time must be at least 1 minute after start time";
         }
       }
-
+      
       // For "Apply All Week", we don't block submission if there are overlaps
       // Instead, we'll skip overlapping days during the actual shift addition
       setErrors(weekErrors);
@@ -1000,7 +1001,7 @@ export const ViewSchedule = () => {
               {
                 ...newShift,
                 date: form.date,
-                auto: auto
+                auto:auto
               },
             ],
             clientName: [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "Unknown Client",
@@ -1073,7 +1074,7 @@ export const ViewSchedule = () => {
       setIsPublishing(true);
 
       // Calculate week start and end dates from the selected date
-      const selectedDateObj = parseLocalYMD(selectedDate);
+      const selectedDateObj = parseLocalYMD(selectedDate); 
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       // Use local timezone formatting
       const startDate = toLocalYMD(weekRange.startOfWeek);
@@ -1175,7 +1176,7 @@ export const ViewSchedule = () => {
         const clientId = selectedClient?.clientId;
         const addressId = selectedClient?.addressId;
         const formattedDate = convertDateFormat(selectedDate);
-
+        
         if (clientId && addressId) {
           await fetchScheduleData(clientId, addressId, formattedDate);
         }
@@ -1190,10 +1191,10 @@ export const ViewSchedule = () => {
 
     } catch (error: any) {
       console.error("Error publishing schedule:", error);
-
+      
       // Handle different types of errors
       let errorMessage = "Failed to publish schedule. Please try again.";
-
+      
       if (error.message) {
         if (error.message.includes("No authentication token found")) {
           errorMessage = "Authentication token not found. Please log in again.";
@@ -1205,7 +1206,7 @@ export const ViewSchedule = () => {
           errorMessage = error.message;
         }
       }
-
+      
       toast({
         title: "Error",
         description: errorMessage,
@@ -1228,13 +1229,13 @@ export const ViewSchedule = () => {
     setScheduleData(prev => prev.map(item =>
       item.userId === userId
         ? {
-          ...item,
-          auto: enabled,
-          shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
-        }
+            ...item,
+            auto: enabled,
+            shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+          }
         : item
     ));
-
+  
     toast({
       title: "Success",
       description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user`,
@@ -1263,7 +1264,7 @@ export const ViewSchedule = () => {
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
     setTableLoading(false); // Reset local loading state
-
+    
     // Clear URL parameters
     updateUrlParams({
       clientId: null,
@@ -1388,10 +1389,10 @@ export const ViewSchedule = () => {
 
     } catch (error: any) {
       console.error("Error publishing actual time data:", error);
-
+      
       // Handle different types of errors
       let errorMessage = "Failed to publish actual time data. Please try again.";
-
+      
       if (error.message) {
         if (error.message.includes("No authentication token found")) {
           errorMessage = "Authentication token not found. Please log in again.";
@@ -1403,7 +1404,7 @@ export const ViewSchedule = () => {
           errorMessage = error.message;
         }
       }
-
+      
       toast({
         title: "Error",
         description: errorMessage,
@@ -1668,12 +1669,12 @@ export const ViewSchedule = () => {
     if (!session.clockIn || !session.clockOut) {
       return 0; // Return 0 if either time is missing
     }
-
+    
     // If clock-in equals clock-out, return 24 hours
     if (session.clockIn === session.clockOut) {
       return 24.0; // 24 hours
     }
-
+    
     // Otherwise use the calculated hours directly
     return calculateHours(session.clockIn, session.clockOut);
   };
@@ -1681,10 +1682,10 @@ export const ViewSchedule = () => {
   const handleActualTimeDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
-
+      
       // Transform actual time data to match schedule data format
       const transformedData = [];
-
+      
       // Get unique users from session data
       const uniqueUsers = new Map();
       sessionData.forEach(item => {
@@ -1703,12 +1704,12 @@ export const ViewSchedule = () => {
       uniqueUsers.forEach((user) => {
         // Group sessions by date for this user
         const sessionsByDate = new Map();
-
+        
         sessionData.forEach(session => {
           const scheduleItem = scheduleData.find(si =>
             si.shifts.some(shift => shift.id === session.shiftId)
           );
-
+          
           if (scheduleItem && scheduleItem.userId === user.id) {
             const shift = scheduleItem.shifts.find(s => s.id === session.shiftId);
             if (shift) {
@@ -1721,7 +1722,7 @@ export const ViewSchedule = () => {
               } else {
                 shiftDate = shift.date;
               }
-
+              
               if (!sessionsByDate.has(shiftDate)) {
                 sessionsByDate.set(shiftDate, []);
               }
@@ -1735,7 +1736,7 @@ export const ViewSchedule = () => {
           sessions.forEach(session => {
             // Check if we have both clock-in and clock-out times
             const hasCompleteTime = session.clockIn && session.clockOut;
-
+            
             transformedData.push({
               userId: user.id,
               userName: user.name,
@@ -1812,10 +1813,9 @@ export const ViewSchedule = () => {
       setIsPrinting(false);
     }
   };
-  const isClientAndAddressSelected = !!selectedClient?.clientId && !!selectedClient?.addressId;
 
   return (
-    <div className="w-full overflow-x-hidden p-6">
+    <div className="w-full overflow-x-hidden p-6 pb-6">
       {!showScheduleTable ? (
         <>
           {error ? (
@@ -1829,7 +1829,7 @@ export const ViewSchedule = () => {
               loading={loading}
               emptyMessage="No records found."
               searchable={true}
-            // tableHeight={tableHeight}
+              // tableHeight={tableHeight}
             />
           )}
 
@@ -1874,25 +1874,20 @@ export const ViewSchedule = () => {
                     <input
                       type="text"
                       value={userSearch}
-                      onFocus={() => {
-                        if (isClientAndAddressSelected) setShowUserDropdown(true);
-                      }}
+                      onFocus={() => setShowUserDropdown(true)}
                       onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
                       onChange={e => {
-                        if (isClientAndAddressSelected) {
-                          setUserSearch(e.target.value);
-                          setForm(f => ({ ...f, userId: "" }));
-                          setSelectedUser(null);
-                        }
+                        setUserSearch(e.target.value);
+                        setForm(f => ({ ...f, userId: "" }));
+                        setSelectedUser(null);
                       }}
                       placeholder="Guard Name"
-                      className={`${inputClasses} ${!isClientAndAddressSelected ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-                      disabled={!isClientAndAddressSelected}
+                      className={inputClasses}
                     />
                     {errors.userId && (
                       <span className="text-xs text-red-500">{errors.userId}</span>
                     )}
-                    <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1 && isClientAndAddressSelected}>
+                    <SearchResultsDropdown show={showUserDropdown && userSearch.length >= 1}>
                       {loadingUsers ? (
                         <div className="p-2 text-sm text-gray-500">Searching guards...</div>
                       ) : searchedUsers.length === 0 ? (
@@ -1918,12 +1913,8 @@ export const ViewSchedule = () => {
                         })
                       )}
                     </SearchResultsDropdown>
-                    {!isClientAndAddressSelected && (
-                      <div className="text-xs text-red-500 mt-1">
-                        Please select a client and address before searching for a guard.
-                      </div>
-                    )}
                   </div>
+
                   {/* Date */}
                   <div className="flex items-center">
                     <CustomDatePicker
@@ -2051,7 +2042,7 @@ export const ViewSchedule = () => {
 
 
           <div className="flex w-full justify-between items-center  my-0 py-2 px-4 rounded-t-lg bg-gray-50">
-            {selectedClient && (
+          {selectedClient && (
               <div className="text-left">
                 <div className="text-lg font-medium text-gray-800">
                   {selectedClient?.lastName && String(selectedClient?.name || "").trim().endsWith(String(selectedClient.lastName))
@@ -2137,7 +2128,7 @@ export const ViewSchedule = () => {
                   <p className="text-sm text-gray-500">
                     Are you sure you
                     would like to save
-                    changes?
+                    changes?                  
                   </p>
                 </div>
 
@@ -2181,7 +2172,7 @@ export const ViewSchedule = () => {
                   <p className="text-sm text-gray-500">
                     Are you sure you
                     would like to save
-                    changes?
+                    changes?                  
                   </p>
                 </div>
 
