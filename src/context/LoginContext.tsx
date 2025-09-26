@@ -32,12 +32,12 @@ type LoginUserResponse = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem("token"));
   const [roles, setRoles] = useState<string[]>(() => {
-    const storedRoles = localStorage.getItem("roles");
+    const storedRoles = sessionStorage.getItem("roles");
     return storedRoles ? JSON.parse(storedRoles) : [];
   });
-  const [role, setRole] = useState<string | null>(() => localStorage.getItem("role"));
+  const [role, setRole] = useState<string | null>(() => sessionStorage.getItem("role"));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -45,9 +45,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [token]);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedRole = localStorage.getItem("role");
-    const storedRoles = localStorage.getItem("roles");
+    const storedToken = sessionStorage.getItem("token");
+    const storedRole = sessionStorage.getItem("role");
+    const storedRoles = sessionStorage.getItem("roles");
     if (storedToken) setToken(storedToken);
     if (storedRole) setRole(storedRole);
     if (storedRoles) setRoles(JSON.parse(storedRoles));
@@ -65,12 +65,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setToken(token);
       setRoles(filteredRoles);
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("roles", JSON.stringify(filteredRoles));
-
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("roles", JSON.stringify(filteredRoles));
+      sessionStorage
   // Always return roles for selection, do not auto-select
   setRole(null);
-  localStorage.removeItem("role");
+  sessionStorage.removeItem("role");
   return { success: true, roles: filteredRoles };
   } catch (error: any) {
     console.error("Login failed:", error);
@@ -93,12 +93,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setRoles([]);
     setRole(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("roles");
-    localStorage.removeItem("role");
-    localStorage.removeItem("admin_portal_user");
-    localStorage.removeItem("scheduleData");
-    localStorage.clear();
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("roles");
+    sessionStorage.removeItem("role");
+    sessionStorage.removeItem("admin_portal_user");
+    sessionStorage.removeItem("scheduleData");
+    sessionStorage.clear();
     window.location.reload();
   };
 
@@ -113,8 +113,8 @@ const { token: newToken, role: apiRole, email } = response.accessTokenReGenerate
 
     setRole(apiRole);
     setToken(newToken);
-    localStorage.setItem("role", apiRole);
-    localStorage.setItem("token", newToken);
+    sessionStorage.setItem("role", apiRole);
+    sessionStorage.setItem("token", newToken);
     setGraphQLToken(newToken);
   } catch (error) {
     console.error("Failed to regenerate access token for role change:", error);

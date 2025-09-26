@@ -5,7 +5,7 @@ const AuthRedirect = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('admin_portal_user');
+    const storedUser = sessionStorage.getItem('admin_portal_user');
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
@@ -17,7 +17,7 @@ const AuthRedirect = () => {
           navigate('/login', { replace: true });
         }
       } catch {
-        localStorage.removeItem('admin_portal_user');
+        sessionStorage.removeItem('admin_portal_user');
         navigate('/login', { replace: true });
       }
     } else {

@@ -79,7 +79,7 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
     setError(null);
     try {
       // Get fresh token for each request
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }

@@ -262,7 +262,7 @@ export const PrepareSchedule = () => {
   };
 
   useEffect(() => {
-    const savedData = localStorage.getItem('scheduleData');
+    const savedData = sessionStorage.getItem('scheduleData');
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
@@ -295,10 +295,10 @@ export const PrepareSchedule = () => {
 
   useEffect(() => {
     if (scheduleData.length > 0) {
-      localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
+      sessionStorage.setItem('scheduleData', JSON.stringify(scheduleData));
     } else {
       // Remove the item from localStorage when scheduleData is empty
-      localStorage.removeItem('scheduleData');
+      sessionStorage.removeItem('scheduleData');
     }
   }, [scheduleData]);
   const handleChange = (field: keyof FormData, value: string) => {
@@ -476,7 +476,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
     setPublishLoader(true);
     try {
       // Get fresh token for each request
-      const freshToken = localStorage.getItem('token');
+      const freshToken = sessionStorage.getItem('token');
       if (!freshToken) {
         toast({
           title: "Error",
@@ -545,7 +545,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
 
       // Reset everything after successful API call
       setScheduleData([]);
-      localStorage.removeItem('scheduleData');
+      sessionStorage.removeItem('scheduleData');
       setIsPublished(false);
       setCurrentWeekRange(null);
       resetForm();

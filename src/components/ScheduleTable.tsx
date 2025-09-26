@@ -463,7 +463,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         }
       });
   
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       // delete each schedule session on server
 
       await Promise.all(

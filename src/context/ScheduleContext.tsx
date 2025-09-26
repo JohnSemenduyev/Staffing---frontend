@@ -72,7 +72,7 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
   const createSession = async (data: CreateSessionInput) => {
     try {
       // Get fresh token for each request
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -99,7 +99,7 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
   const fetchSessions = async (startDate: string) => {
     try {
       // Get fresh token for each request
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -125,7 +125,7 @@ export const ScheduleSessionProvider = ({ children }: { children: React.ReactNod
   ): Promise<WeekScheduleCheckResponse | null> => {
     try {
       // Get fresh token for each request
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }

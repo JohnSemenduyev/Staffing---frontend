@@ -17,13 +17,13 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEY);
+    const storedUser = sessionStorage.getItem(STORAGE_KEY);
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
         setAuthState({ user, isAuthenticated: true });
       } catch (error) {
-        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_KEY);
       }
     }
     setIsLoading(false);
@@ -42,7 +42,7 @@ export const useAuth = () => {
         isAuth: user.isAuth,
       };
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
       setAuthState({ user: authUser, isAuthenticated: true });
       return true;
     }
@@ -50,7 +50,7 @@ export const useAuth = () => {
   };
 
   const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     setAuthState({ user: null, isAuthenticated: false });
   };
 

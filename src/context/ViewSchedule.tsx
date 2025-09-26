@@ -183,7 +183,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await graphQLClient.request<{
         ScheduleSessionsByClientWeekForManager: ClientSession[];
       }>(
@@ -204,7 +204,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setScheduleLoading(true);
     setScheduleError(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await graphQLClient.request<{
         ScheduleSessionsByClientWeek: ScheduleData;
       }>(
@@ -230,7 +230,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
   const bulkUpsertScheduleSessions = async (input: ScheduleSessionInputExtended[]) => {
     setMutationLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -255,7 +255,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setSessionLoading(true);
     setSessionError(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       
       // Remove duplicates to avoid redundant API calls
       const uniqueScheduleSessionIds = [...new Set(scheduleSessionIds)];
@@ -302,7 +302,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     clockOut?: string | null;
   }>) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -356,7 +356,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
 
   const checkScheduleSession = async (clientId: number, addressId: number, userId: number, startDate: string) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }

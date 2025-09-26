@@ -226,7 +226,7 @@ function ClientList() {
   const confirmDeleteClient = async () => {
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       if (!token) {
         toast({
           title: "Error",
@@ -308,7 +308,7 @@ function ClientList() {
   const confirmSaveEdit = async () => {
     setIsSaving(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       if (!token) {
         toast({
           title: "Error",

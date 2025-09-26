@@ -52,7 +52,7 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
 
       const variables: any = { date, endDate };
       if (clientId) variables.clientId = clientId;
