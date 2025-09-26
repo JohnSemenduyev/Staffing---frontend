@@ -1337,7 +1337,7 @@ export const ViewSchedule = () => {
   };
 
   const confirmActualTimePublish = async () => {
-    if (!sessionData || sessionData.length === 0) {
+    if (!sessionData) {
       toast({
         title: "Error",
         description: "No actual time data available to publish!",
@@ -1365,15 +1365,15 @@ export const ViewSchedule = () => {
           return base;
         });
 
-      if (items.length === 0) {
-        toast({
-          title: "Error",
-          description: "No sessions to publish.",
-          variant: "destructive",
-        });
-        setIsActualTimePublishing(false);
-        return;
-      }
+      // if (items.length === 0) {
+      //   toast({
+      //     title: "Error",
+      //     description: "No sessions to publish.",
+      //     variant: "destructive",
+      //   });
+      //   setIsActualTimePublishing(false);
+      //   return;
+      // }
 
       // Log payload before API call
       console.log("=== PUBLISHING ACTUAL TIME ITEMS ===");

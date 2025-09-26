@@ -24,7 +24,7 @@ const roleOptions: RoleOption[] = [
 ];
 
 const Login = () => {
- const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,19 +35,24 @@ const Login = () => {
 
 
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-  const result = await login(username, password);
+    const result = await login(username, password);
     if (result.success) {
-      // If multiple roles, show selection screen
-      // if (result.roles && result.roles.length > 0) {
-        setPendingRoles(result.roles as RoleType[]);
-      // } else {
-      //   // Only one role, redirect immediately
-      //   handleRedirect(result.roles?.[0] || role);
-      // }
+      const allowed = (result.roles || []).filter(r => r === 'admin' || r === 'manager');
+      if (allowed.length === 0) {
+        toast({
+          title: "Access Restricted",
+          description: "This portal requires Admin or Management privilages.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      setPendingRoles(result.roles as RoleType[]);
+
       toast({
         title: "Success",
         description: "Login successful",
@@ -62,28 +67,28 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
     setIsLoading(false);
   };
-const handleRoleSelect = async (role: RoleType) => {
-  setIsLoading(true);
-  try {
-    await changeRoles?.(role); // Only call context function
-    setPendingRoles(null);
-    handleRedirect(role);
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Failed to regenerate access token.",
-      variant: "destructive"
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
+  const handleRoleSelect = async (role: RoleType) => {
+    setIsLoading(true);
+    try {
+      await changeRoles?.(role); // Only call context function
+      setPendingRoles(null);
+      handleRedirect(role);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to regenerate access token.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSignupRedirect = () => {
     navigate('/signup'); // Redirect to signup page
   };
-const handleRedirect = (role: string | null) => {
-  let redirectPath = '/';
+  const handleRedirect = (role: string | null) => {
+    let redirectPath = '/';
     if (role === 'admin') {
       redirectPath = '/assign-user-permission';
     } else if (role === 'manager') {
@@ -97,10 +102,10 @@ const handleRedirect = (role: string | null) => {
         {/* Left Side - Logo */}
         <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 h-[40vh] md:h-full">
           <div className="flex items-center justify-center w-full h-full">
-            <img 
+            <img
               src={img}
-              alt="Maximal Security - Complete Logo" 
-              className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
+              alt="Maximal Security - Complete Logo"
+              className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]"
             />
           </div>
         </div>
@@ -121,32 +126,41 @@ const handleRedirect = (role: string | null) => {
                 </Button>
               ))}
             </div>
+            
             <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-center text-sm text-white">
-              Don't have an account?{' '}
-              <Button 
-                onClick={handleSignupRedirect}
-                variant="primary"
+            <Button
+                  onClick={() => setPendingRoles(null)}
+                  variant="link"
+                  className="text-white hover:text-yellow-300 font-medium"
                 >
-                Sign Up
-              </Button>
-            </p>
+                  Back to Login
+                </Button>
+              <p className="text-center text-sm text-white">
+                
+                <Button
+                  onClick={handleSignupRedirect}
+                  variant="link"
+                  className="text-white hover:text-yellow-300 font-medium"
+                >
+                  Don't have an account?{' '}Sign Up
+                </Button>
+              </p>
+            </div>
           </div>
-          </div>
-          
+
         </div>
       </div>
     );
   }
-return (
+  return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left Side - Logo */}
       <div className="flex w-full md:w-[65%] bg-white flex-col items-center justify-center p-5 min-h-[40vh] md:min-h-screen">
         <div className="flex items-center justify-center w-full h-full">
-          <img 
+          <img
             src={img}
-            alt="Maximal Security - Complete Logo" 
-            className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]" 
+            alt="Maximal Security - Complete Logo"
+            className="w-[90%] md:w-[90%] h-auto object-contain max-h-[35vh] md:max-h-[80vh]"
           />
         </div>
       </div>
@@ -199,8 +213,8 @@ return (
                 Remember me
               </label>
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               variant="primary"
               size="lg"
               className="w-full"
@@ -227,7 +241,7 @@ return (
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-600">
               Don't have an account?{' '}
-              <button 
+              <button
                 onClick={handleSignupRedirect}
                 className="text-[#004175] hover:underline font-medium"
               >
