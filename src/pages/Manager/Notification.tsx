@@ -70,7 +70,7 @@ export const Notification = () => {
     const calculateTableHeight = () => {
       if (formRef.current) {
         const formHeight = formRef.current.offsetHeight;
-        const calculatedHeight = `calc(100vh - ${formHeight}px - 200px)`;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 170px)`;
         setTableHeight(calculatedHeight);
       }
     };

@@ -61,7 +61,7 @@ export const UniformCompliance = () => {
     const calculateTableHeight = () => {
       if (formRef.current) {
         const formHeight = formRef.current.offsetHeight;
-        const calculatedHeight = `calc(100vh - ${formHeight}px - 150px)`;
+        const calculatedHeight = `calc(100vh - ${formHeight}px - 170px)`;
         setTableHeight(calculatedHeight);
       }
     };
