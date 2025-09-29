@@ -91,7 +91,7 @@ export default function AssignmentNew() {
   const [showGuardDropdown, setShowGuardDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
-  const [notifiedUserEmail,setNotifiedUserEmail] = useState("");
+  const [notifiedUserEmail, setNotifiedUserEmail] = useState("");
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const accessDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -100,65 +100,65 @@ export default function AssignmentNew() {
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const debouncedGuardSearch = useDebounce(guardSearch, 300);
-  
+
   const { data: searchedClients = [], isLoading: loadingClients } =
     useSearchClient(debouncedClientSearch);
   const { data: searchedUsers = [], isLoading: loadingUsers } =
     useSearchUsers(debouncedUserSearch);
   const { data: searchedGuards = [], isLoading: loadingGuards } =
     useSearchUsers(debouncedGuardSearch);
-// const accessDropdownRef = useRef<HTMLDivElement>(null);
+  // const accessDropdownRef = useRef<HTMLDivElement>(null);
 
-// Access Dropdown
-useEffect(() => {
-  if (!showAccessDropdown) return;
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      accessDropdownRef.current &&
-      !accessDropdownRef.current.contains(event.target as Node)
-    ) {
-      setShowAccessDropdown(false);
-    }
-  };
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [showAccessDropdown]);
+  // Access Dropdown
+  useEffect(() => {
+    if (!showAccessDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        accessDropdownRef.current &&
+        !accessDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowAccessDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showAccessDropdown]);
 
-// Role Dropdown
-useEffect(() => {
-  if (!showRoleDropdown) return;
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      roleDropdownRef.current &&
-      !roleDropdownRef.current.contains(event.target as Node)
-    ) {
-      setShowRoleDropdown(false);
-    }
-  };
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [showRoleDropdown]);
+  // Role Dropdown
+  useEffect(() => {
+    if (!showRoleDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        roleDropdownRef.current &&
+        !roleDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowRoleDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showRoleDropdown]);
 
-// Notification Dropdown
-useEffect(() => {
-  if (!showNotificationDropdown) return;
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      notificationDropdownRef.current &&
-      !notificationDropdownRef.current.contains(event.target as Node)
-    ) {
-      setShowNotificationDropdown(false);
-    }
-  };
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [showNotificationDropdown]);
+  // Notification Dropdown
+  useEffect(() => {
+    if (!showNotificationDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationDropdownRef.current &&
+        !notificationDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowNotificationDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotificationDropdown]);
   const searchFields = useMemo<FieldConfig[]>(() => [
     { name: 'clientName', type: 'text', placeholder: 'Client Name' },
     { name: 'location', type: 'text', placeholder: 'Location' },
@@ -321,7 +321,7 @@ useEffect(() => {
     const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
     setUserSearch(fullName || user.name);
     setNotifiedUserEmail((user as any)?.email || "");
-    console.log("notifidsadf  "+notifiedUserEmail)
+    console.log("notifidsadf  " + notifiedUserEmail)
     setShowUserDropdown(false);
     setErrors({});
     setShowErrors(false);
@@ -421,11 +421,11 @@ useEffect(() => {
       } else {
         await createAssignment(input);
       }
-      if(sessionStorage.getItem("adminEmail") === notifiedUserEmail){
+      if (sessionStorage.getItem("adminEmail") === notifiedUserEmail) {
         const existing = sessionStorage.getItem("roles");
-        const arr=existing ? (JSON.parse(existing) as string[]) : [];
-        if(!arr.includes("manager")) arr.push("manager");
-        sessionStorage.setItem("roles",JSON.stringify(arr));
+        const arr = existing ? (JSON.parse(existing) as string[]) : [];
+        if (!arr.includes("manager")) arr.push("manager");
+        sessionStorage.setItem("roles", JSON.stringify(arr));
         syncRolesFromSession();
       }
       resetForm();
@@ -467,7 +467,7 @@ useEffect(() => {
     setSelectedAddressText(fullAddress);
     setUserSearch(record.user?.name + " " + record.user?.lastName || "");
     setGuardSearch(record.guard?.name + " " + record.guard?.lastName || "");
-    
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -864,7 +864,7 @@ useEffect(() => {
                       key={role}
                       className="p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700"
                       onClick={() => {
-                        setForm((prev) => ({ ...prev, role }));
+                        setForm((prev) => ({ ...prev, role, access: role === "Guard" ? "View" : prev.access }));
                         setShowRoleDropdown(false);
                       }}
                     >
@@ -901,8 +901,12 @@ useEffect(() => {
               <div
                 className={`${getFieldClasses(
                   "access"
-                )} cursor-pointer flex items-center justify-between`}
-                onClick={() => setShowAccessDropdown(!showAccessDropdown)}
+                )} cursor-pointer flex items-center justify-between ${form.role === "Guard" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
+                onClick={() => {
+                  if (form.role === "Guard") return;
+                  setShowAccessDropdown(!showAccessDropdown);
+                }}
+                aria-disabled={form.role === "Guard"}
               >
                 <div className="flex-1">
                   {form.access === "" ? (
@@ -1115,9 +1119,9 @@ useEffect(() => {
               </SubmitButton>
               {hasTextInput && (
                 <ResetButton
-                onClick={resetForm}
-                confirmTitle="Confirm Reset"
-                confirmMessage="This will clear the form. Proceed?"
+                  onClick={resetForm}
+                  confirmTitle="Confirm Reset"
+                  confirmMessage="This will clear the form. Proceed?"
                 />
               )}
             </div>

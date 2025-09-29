@@ -94,7 +94,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const createAssignment = async (data: Omit<Assignment, "id" | "createdAt">) => {
     try {
       const token = sessionStorage.getItem("token");
-      await graphQLClient.request(CREATE_ASSIGNMENT, { ...data }, { Authorization: `Bearer ${token}` });
+      const rest = await graphQLClient.request(CREATE_ASSIGNMENT, { ...data }, { Authorization: `Bearer ${token}` });
+      console.log(rest);
       fetchAssignments(currentPage);
       toast ({
         title: "SUCCESS",

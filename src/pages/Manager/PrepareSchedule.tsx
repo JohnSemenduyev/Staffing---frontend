@@ -519,14 +519,14 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
 
         // Calculate total weekly hours for this user
         const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
-
+      
         return {
           clientId: firstSchedule?.clientId,
           addressId: firstSchedule?.addressId,
           userId: user.id,
           startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
           endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
-
+          checkScheduleSessionId: checkScheduleSessionIdRef.current,
           weeklyHours: weeklyHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false
