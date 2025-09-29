@@ -191,7 +191,7 @@ export const ViewSchedule = () => {
   const [apiExistingShifts, setApiExistingShifts] = useState<Map<string, any[]>>(new Map());
 
   const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
-const [hasSessionChanges, setHasSessionChanges] = useState(false);
+  const [hasSessionChanges, setHasSessionChanges] = useState(false);
   // Function to fetch existing shifts from API for overlap checking
   const fetchApiExistingShifts = async (userId?: number) => {
     if (!currentWeekRange || !selectedClient) return;
@@ -704,23 +704,23 @@ const [hasSessionChanges, setHasSessionChanges] = useState(false);
   }, [apiSessionData]);
 
   // Add these useEffect hooks after the existing useEffect hooks (around line 700)
-useEffect(() => {
-  if (isScheduleEditMode && originalScheduleData.length > 0) {
-    const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
-    setHasScheduleChanges(hasChanges);
-  } else {
-    setHasScheduleChanges(false);
-  }
-}, [scheduleData, originalScheduleData, isScheduleEditMode]);
+  useEffect(() => {
+    if (isScheduleEditMode && originalScheduleData.length > 0) {
+      const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
+      setHasScheduleChanges(hasChanges);
+    } else {
+      setHasScheduleChanges(false);
+    }
+  }, [scheduleData, originalScheduleData, isScheduleEditMode]);
 
-useEffect(() => {
-  if (isActualTimeEditMode && originalSessionData.length > 0) {
-    const hasChanges = !sessionsEqual(sessionData, originalSessionData);
-    setHasSessionChanges(hasChanges);
-  } else {
-    setHasSessionChanges(false);
-  }
-}, [sessionData, originalSessionData, isActualTimeEditMode]);
+  useEffect(() => {
+    if (isActualTimeEditMode && originalSessionData.length > 0) {
+      const hasChanges = !sessionsEqual(sessionData, originalSessionData);
+      setHasSessionChanges(hasChanges);
+    } else {
+      setHasSessionChanges(false);
+    }
+  }, [sessionData, originalSessionData, isActualTimeEditMode]);
   // Update loading states from context
   useEffect(() => {
     setSessionLoading(apiSessionLoading);
@@ -839,7 +839,7 @@ useEffect(() => {
 
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
-
+    setSubmitLoader(true)
     // Check if the guard is already in the schedule table
     const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
 
@@ -1296,11 +1296,11 @@ useEffect(() => {
       showSchedule: null
     });
   };
-// Add this function after the schedulesEqual function (around line 1300)
-const sessionsEqual = (a: any[], b: any[]) => {
-  if (a.length !== b.length) return false;
-  return JSON.stringify(a.sort((x, y) => x.id - y.id)) === JSON.stringify(b.sort((x, y) => x.id - y.id));
-};
+  // Add this function after the schedulesEqual function (around line 1300)
+  const sessionsEqual = (a: any[], b: any[]) => {
+    if (a.length !== b.length) return false;
+    return JSON.stringify(a.sort((x, y) => x.id - y.id)) === JSON.stringify(b.sort((x, y) => x.id - y.id));
+  };
   // Helper: deep equality for schedule data (order-insensitive)
   const schedulesEqual = (a: ScheduleItem[], b: ScheduleItem[]) => {
     const normalize = (arr: ScheduleItem[]) =>
@@ -2049,17 +2049,24 @@ const sessionsEqual = (a: any[], b: any[]) => {
                       disabled={submitLoader}
                       className="w-20 inline-flex items-center justify-center px-3 h-[32px] border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:border-blue-300 disabled:text-blue-300 disabled:cursor-not-allowed font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap"
                     >
-                      {submitLoader ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <GoPlus className="w-4 h-4 mr-1" />
-                          Add
-                        </>
-                      )}
+                                         {submitLoader ? (
+                      <>
+                        <svg
+                          className="mr-2 h-4 w-4 animate-spin text-blue-600"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
+                        </svg>
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <GoPlus className="w-4 h-4 mr-1" />
+                        Add
+                      </>
+                    )}
                     </button>
                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
                       <button
