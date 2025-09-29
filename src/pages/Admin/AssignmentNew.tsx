@@ -1114,7 +1114,11 @@ useEffect(() => {
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>
               {hasTextInput && (
-                <ResetButton onClick={resetForm} disabled={submitLoader} />
+                <ResetButton
+                onClick={resetForm}
+                confirmTitle="Confirm Reset"
+                confirmMessage="This will clear the form. Proceed?"
+                />
               )}
             </div>
           </div>

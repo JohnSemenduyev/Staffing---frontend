@@ -202,14 +202,11 @@ export const GenericSearchForm: React.FC<GenericSearchFormProps> = ({
     <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold">Search Filters - {route}</h3>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-          title="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <ResetButton
+                  onClick={handleReset}
+                  confirmTitle="Confirm Reset"
+                  confirmMessage="This will clear the form. Proceed?"
+                />
       </div>
 
       <form onSubmit={handleSubmit} autoComplete="off">

@@ -135,6 +135,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { formatDateLocal, getWeekRangeFromDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
 import { useToast } from "../../hooks/use-toast";
+import ResetButton from "../../components/ui/ResetButton";
 
 interface FormData {
   clientId: string;
@@ -1172,14 +1173,19 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 )}
               </Button>
               {(form.date || form.starttime || form.endtime || form.userId || form.addressId || form.clientId || auto) && (
-                <Button
-                  type="button"
-                  onClick={resetForm}
-                  variant="secondary"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </Button>
+                // <Button
+                //   type="button"
+                //   onClick={resetForm}
+                //   variant="secondary"
+                // >
+                //   <RotateCcw className="w-4 h-4 mr-1" />
+                //   Reset
+                // </Button>
+                <ResetButton
+                onClick={resetForm}
+                confirmTitle="Confirm Reset"
+                confirmMessage="This will clear the form. Proceed?"
+                />
               )}
             </div>
           </div>

@@ -15,6 +15,7 @@ import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSear
 import { useToast } from "../../hooks/use-toast";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { Button } from "../../components/ui/button";
+import ResetButton from "../../components/ui/ResetButton";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -485,15 +486,11 @@ export const TimeSetup = () => {
                 {editId ? "Update" : "Add"}
               </SubmitButton>
               {hasInput && (
-                <Button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={submitLoader}
-                  variant="outline"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </Button>
+                                <ResetButton
+                                onClick={resetForm}
+                                confirmTitle="Confirm Reset"
+                                confirmMessage="This will clear the form. Proceed?"
+                              />
               )}
             </div>
           </div>

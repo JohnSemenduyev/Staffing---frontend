@@ -12,6 +12,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { Button } from "../../components/ui/button";
 import { twMerge } from "tailwind-merge";
+import ResetButton from "../../components/ui/ResetButton";
 
 export const inputClasses = twMerge(
   "w-full text-black  placeholder:text-gray-500 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
@@ -495,15 +496,12 @@ export const GeoLocationSetup = () => {
                 {isEditing ? "Update" : "Add"}
               </SubmitButton>
               {hasInput && (
-                <Button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={submitLoader}
-                  variant="outline"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Reset
-                </Button>
+                               <ResetButton
+                               onClick={resetForm}
+                               confirmTitle="Confirm Reset"
+                               confirmMessage="This will clear the form. Proceed?"
+                             />
+                 
               )}
             </div>
           </div>

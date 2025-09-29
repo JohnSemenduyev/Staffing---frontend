@@ -14,6 +14,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 import { Button } from "../../components/ui/button";
+import ResetButton from "../../components/ui/ResetButton";
 
 export const PostAssignment = () => {
   const [form, setForm] = useState({
@@ -70,7 +71,7 @@ export const PostAssignment = () => {
     };
 
     window.addEventListener('resize', handleResize);
-    
+
     // Use ResizeObserver to detect form height changes
     const resizeObserver = new ResizeObserver(() => {
       calculateTableHeight();
@@ -247,10 +248,10 @@ export const PostAssignment = () => {
       searchable: true,
       searchType: 'text',
       width: "250px",
-      height:"40px",
-       render: (_: any, row: any) => {
+      height: "40px",
+      render: (_: any, row: any) => {
         const a = row.client;
-        const full = [a?.name??"" , a?.lastName??""].filter(Boolean).join(" ");
+        const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -263,16 +264,16 @@ export const PostAssignment = () => {
 
       render: (_: any, row: any) => {
         const a = row.address;
-        
+
         if (!a) return <div>-</div>;
-        
+
         const streetAddress = a?.address ?? "";
         const city = a?.city ?? "";
         const state = a?.state ?? "";
         const pin = a?.pincode ?? "";
-        
+
         const full = [streetAddress, city, state, pin].filter(Boolean).join(", ");
-        
+
         // Format: street address, city (line 1), state, pin (line 2)
         // If any line is more than 50 chars, break it
         const formatAddressLine = (text: string) => {
@@ -280,7 +281,7 @@ export const PostAssignment = () => {
           const words = text.split(' ');
           const lines = [];
           let currentLine = '';
-          
+
           for (const word of words) {
             if ((currentLine + ' ' + word).trim().length <= 50) {
               currentLine = currentLine ? currentLine + ' ' + word : word;
@@ -292,13 +293,13 @@ export const PostAssignment = () => {
           if (currentLine) lines.push(currentLine);
           return lines;
         };
-        
+
         const line1 = [streetAddress, city].filter(Boolean).join(", ");
         const line2 = [state, pin].filter(Boolean).join(", ");
-        
+
         const line1Parts = formatAddressLine(line1);
         const line2Parts = formatAddressLine(line2);
-        
+
         return (
           <div className="space-y-1" title={full}>
             {line1Parts.map((part, index) => (
@@ -314,7 +315,7 @@ export const PostAssignment = () => {
           </div>
         );
       }
-    
+
     },
     {
       key: "post",
@@ -342,35 +343,35 @@ export const PostAssignment = () => {
       title: "Delete"
     }
   ];
-const handleSearch = (formData: { [key: string]: any }) => {
-  const filterEntries = Object.entries(formData).filter(
-    ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
-  );
+  const handleSearch = (formData: { [key: string]: any }) => {
+    const filterEntries = Object.entries(formData).filter(
+      ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
+    );
 
-  if (filterEntries.length === 0) {
+    if (filterEntries.length === 0) {
+      setCurrentPage(1);
+      fetchPostAssigns(1, null);
+      return;
+    }
+    const keyMapping: Record<string, string> = {
+      "address.address": "addressText",
+      "client.name": "clientName",
+      "post": "post"
+    };
+
+    const filter = Object.fromEntries(
+      filterEntries.map(([key, value]) => [keyMapping[key] || key, value])
+    );
+
     setCurrentPage(1);
-    fetchPostAssigns(1, null);
-    return;
-  }
-  const keyMapping: Record<string, string> = {
-    "address.address": "addressText",
-    "client.name": "clientName",
-    "post": "post"
+    fetchPostAssigns(1, filter);
   };
-
-  const filter = Object.fromEntries(
-    filterEntries.map(([key, value]) => [keyMapping[key] || key, value])
-  );
-
-  setCurrentPage(1);
-  fetchPostAssigns(1, filter);
-};
 
   return (
     <div className="w-full overflow-x-hidden p-6">
 
       <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
-        <h2 className="text-[18px] font-bold mb-2" style={{lineHeight: '28px'}}>
+        <h2 className="text-[18px] font-bold mb-2" style={{ lineHeight: '28px' }}>
           {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
         </h2>
         <form onSubmit={onSubmit} autoComplete="off">
@@ -484,15 +485,11 @@ const handleSearch = (formData: { [key: string]: any }) => {
               >
                 {isEditMode ? "Update" : "Add"}
               </SubmitButton>
-              {hasInput && <Button
-                type="button"
+              {hasInput && <ResetButton
                 onClick={resetForm}
-                disabled={submitLoader}
-                variant="outline"
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                Reset
-              </Button>}
+                confirmTitle="Confirm Reset"
+                confirmMessage="This will clear the form. Proceed?"
+              />}
 
             </div>
           </div>
@@ -505,7 +502,7 @@ const handleSearch = (formData: { [key: string]: any }) => {
         loading={loading}
         emptyMessage="No post assignment records found."
         searchable={true}
-        onSearch = {handleSearch}
+        onSearch={handleSearch}
         tableHeight={tableHeight}
       />
 
