@@ -74,6 +74,7 @@ interface ScheduleTableProps {
   hideActionButtons?: boolean; // Hide cancel, edit, download buttons
   existingShifts?: Shift[]; // Existing shifts from backend for overlap checking
   apiExistingShiftsData?: Map<string, any[]>; // API existing shifts for overlap checking
+  hasChanges?: boolean;
 }
 
 interface ExistingShiftFromAPI {
@@ -201,7 +202,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onScheduleAutoToggle,
   hideActionButtons = false,
   existingShifts = [], // Default empty array for existing shifts
-  apiExistingShiftsData = new Map() // Default empty Map for API existing shifts
+  apiExistingShiftsData = new Map(), // Default empty Map for API existing shifts
+  hasChanges
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -214,9 +216,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   // Drag and drop states
   const [draggedShift, setDraggedShift] = useState(null);
   const [dragOverCell, setDragOverCell] = useState(null);
+  const [deletingLastShift, setDeletingLastShift] = useState(false);
+  const [deleteLastShiftModal, setDeleteLastShiftModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
+const isLastShiftForUser = (userId: number, shiftId: number) => {
+  const userShifts = scheduleData
+    .filter(item => item.userId === userId)
+    .flatMap(item => item.shifts);
   
-  // Use the apiExistingShiftsData prop instead of local state
-
+  return userShifts.length === 1 && userShifts[0].id === shiftId;
+};
   // Helper function to check overlap with API existing shifts
   const checkOverlapWithApiShifts = (userId: number, clientId: number, addressId: number, date: string, startTime: string, endTime: string, excludeShiftId?: number) => {
     const key = `${clientId}-${addressId}-${userId}`;
@@ -318,6 +326,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   const confirmDeleteShift = () => {
     const { userId, date, shiftId } = deleteModal;
+      // Check if this is the last shift for the user
+  if (isLastShiftForUser(userId, shiftId)) {
+    // Close current modal and open the "delete last shift" modal
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+    setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
+    return;
+  }
+  
     const updatedData = scheduleData.map(item => {
       if (item.userId === userId && item.startDate === date) {
         return {
@@ -331,7 +347,59 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     onScheduleDataChange(updatedData);
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
   };
-
+  const confirmDeleteLastShift = async () => {
+    setDeletingLastShift(true);
+    const { userId } = deleteLastShiftModal;
+    
+    try {
+      // collect this user's scheduleSessionIds (unique) across the week
+      const sessionIds = new Set<number>();
+      scheduleData.forEach(item => {
+        if (item.userId === userId) {
+          item.shifts.forEach(s => { if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId); });
+        }
+      });
+      
+      const token = sessionStorage.getItem("token");
+      // delete each schedule session on server
+      
+      await Promise.all(
+        Array.from(sessionIds).map(id =>
+          graphQLClient.request(
+            DELETE_SCHEDULE_SESSION,
+            { deleteScheduleSessionId: id },
+            { Authorization: `Bearer ${token}` }
+          )
+        )
+      );
+      
+      // then remove this user's entries locally 
+      const updatedData = scheduleData.filter(item => item.userId !== userId);
+      onScheduleDataChange(updatedData);
+      // go to view mode
+      onToggleEditMode();
+      
+      hookToast({
+        title: "Success",
+        description: "Schedule deleted successfully!",
+      });
+      
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      hookToast({
+        title: "Error",
+        description: "Failed to delete schedule. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingLastShift(false);
+      setDeleteLastShiftModal({ isOpen: false, shiftId: null, userId: null, date: null });
+    }
+  };
+  
+  const cancelDeleteLastShift = () => {
+    setDeleteLastShiftModal({ isOpen: false, shiftId: null, userId: null, date: null });
+  };
   const cancelDeleteShift = () => {
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
   };
@@ -1010,7 +1078,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           <div className="flex gap-2">
             <button
               onClick={onPublish}
-              disabled={isPublishing}
+              disabled={isPublishing || !hasChanges}
               className="inline-flex items-center px-4 py-2 text-white bg-[#004175] hover:bg-[#00325d] disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
               title="Publish Schedule"
             >
@@ -1205,6 +1273,47 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           </div>
         </div>
       )}
+      {deleteLastShiftModal.isOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <div className="mb-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Entire Schedule</h3>
+        <p className="text-sm text-gray-500">
+          Deleting this shift will delete the entire schedule for this user as it's their only remaining shift. 
+          Are you sure you want to proceed?
+        </p>
+      </div>
+
+      <div className="flex space-x-3 justify-end">
+        <button
+          type="button"
+          onClick={cancelDeleteLastShift}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={confirmDeleteLastShift}
+          disabled={deletingLastShift}
+          className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+        >
+          {deletingLastShift ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              Deleting...
+            </>
+          ) : (
+            <>
+              <FaRegTrashAlt className="w-4 h-4 mr-2" />
+              Delete Schedule
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }; 

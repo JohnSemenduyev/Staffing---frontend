@@ -114,6 +114,7 @@ interface ActualTimeTableProps {
   isPublishing: boolean;
   isPrinting: boolean;
   loading?: boolean;
+  hasChanges?: boolean;
 }
 
 // Utility functions
@@ -355,7 +356,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   onToggleEditMode,
   isPublishing,
   isPrinting,
-  loading = false
+  loading = false,
+  hasChanges
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -884,7 +886,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
           <div className="flex gap-2">
             <button
               onClick={onPublish}
-              disabled={isPublishing}
+              disabled={isPublishing || !hasChanges}
               className="inline-flex items-center px-4 py-2 text-white bg-[#004175] hover:bg-[#00325d] disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
               title="Publish Actual Time"
             >

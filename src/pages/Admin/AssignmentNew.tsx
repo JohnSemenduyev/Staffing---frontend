@@ -5,6 +5,7 @@ import { X, RotateCcw, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useSearchUsers } from "../../hooks/useSearchUser";
+import { useAuth } from "../../context/LoginContext"
 import {
   GenericTable,
   TableAction,
@@ -57,6 +58,7 @@ export default function AssignmentNew() {
     deleteAssignment,
   } = useAssignment();
   const { toast } = useToast();
+  const { syncRolesFromSession } = useAuth();
   const [form, setForm] = useState({
     userId: "",
     guardId: "",
@@ -89,6 +91,7 @@ export default function AssignmentNew() {
   const [showGuardDropdown, setShowGuardDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
+  const [notifiedUserEmail,setNotifiedUserEmail] = useState("");
   const roleDropdownRef = useRef<HTMLDivElement>(null);
   const accessDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +100,7 @@ export default function AssignmentNew() {
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const debouncedGuardSearch = useDebounce(guardSearch, 300);
-
+  
   const { data: searchedClients = [], isLoading: loadingClients } =
     useSearchClient(debouncedClientSearch);
   const { data: searchedUsers = [], isLoading: loadingUsers } =
@@ -313,10 +316,12 @@ useEffect(() => {
     setSelectedAddressText(fullAddress);
   };
 
-  const handleUserSelect = (user: { id: string | number; name: string }) => {
+  const handleUserSelect = (user: { id: string | number; name: string; email?: string }) => {
     setForm((f) => ({ ...f, userId: String(user.id) }));
     const fullName = [user.name, (user as any)?.lastName].filter(Boolean).join(" ");
     setUserSearch(fullName || user.name);
+    setNotifiedUserEmail((user as any)?.email || "");
+    console.log("notifidsadf  "+notifiedUserEmail)
     setShowUserDropdown(false);
     setErrors({});
     setShowErrors(false);
@@ -415,6 +420,13 @@ useEffect(() => {
         await updateAssignment(editId, input);
       } else {
         await createAssignment(input);
+      }
+      if(sessionStorage.getItem("adminEmail") === notifiedUserEmail){
+        const existing = sessionStorage.getItem("roles");
+        const arr=existing ? (JSON.parse(existing) as string[]) : [];
+        if(!arr.includes("manager")) arr.push("manager");
+        sessionStorage.setItem("roles",JSON.stringify(arr));
+        syncRolesFromSession();
       }
       resetForm();
       fetchAssignments(currentPage)

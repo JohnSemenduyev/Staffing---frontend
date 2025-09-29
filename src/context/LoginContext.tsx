@@ -16,12 +16,12 @@ type AuthContextType = {
   role: string | null;
   changeRoles?: (newRole: string) => void;
   login: (email: string, password: string) => Promise<{
-  roles: string[] | undefined; 
+    roles: string[] | undefined;
     success: boolean;
     error?: string;
   }>;
   logout: () => void;
-  
+  syncRolesFromSession: ()=>void
 };
 type LoginUserResponse = {
   loginUser: {
@@ -44,6 +44,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setGraphQLToken(token);
   }, [token]);
 
+  const syncRolesFromSession = () => {
+    const storedRoles = sessionStorage.getItem("roles");
+    setRoles(storedRoles ? JSON.parse(storedRoles) : []);
+  };
+
   useEffect(() => {
     const storedToken = sessionStorage.getItem("token");
     const storedRole = sessionStorage.getItem("role");
@@ -59,8 +64,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const variables = { email, password };
       const data = await graphQLClient.request<LoginUserResponse>(LOGIN_USER, variables);
       const { token, roles } = data.loginUser;
-      const filteredRoles = roles.filter(role => [ 'admin', 'manager'].includes(role));
-            // const filteredRoles = roles;
+      const filteredRoles = roles.filter(role => ['admin', 'manager'].includes(role));
+      // const filteredRoles = roles;
 
       setToken(token);
       setRoles(filteredRoles);
@@ -68,15 +73,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       sessionStorage.setItem("token", token);
       sessionStorage.setItem("roles", JSON.stringify(filteredRoles));
       sessionStorage
-  // Always return roles for selection, do not auto-select
-  setRole(null);
-  sessionStorage.removeItem("role");
-  return { success: true, roles: filteredRoles };
-  } catch (error: any) {
-    console.error("Login failed:", error);
+      // Always return roles for selection, do not auto-select
+      setRole(null);
+      sessionStorage.removeItem("role");
+      return { success: true, roles: filteredRoles };
+    } catch (error: any) {
+      console.error("Login failed:", error);
 
 
-    let errorMessage = "Invalid credentials or server error";
+      let errorMessage = "Invalid credentials or server error";
       if (error.response?.errors && error.response.errors.length > 0) {
         const graphqlError = error.response.errors[0];
         if (graphqlError.message) {
@@ -86,8 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         errorMessage = error.message;
       }
       return { success: false, error: errorMessage, roles: [] };
-  }
-};
+    }
+  };
 
   const logout = () => {
     setToken(null);
@@ -97,33 +102,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem("roles");
     sessionStorage.removeItem("role");
     sessionStorage.removeItem("admin_portal_user");
+    sessionStorage.removeItem("adminEmail");
     sessionStorage.removeItem("scheduleData");
     sessionStorage.clear();
     window.location.reload();
   };
 
-const changeRoles = async (newRole: string) => {
-  try {
-    // Call the API to regenerate the token for the new role
-    const response = await graphQLClient.request<{ accessTokenReGenerate: { token: string; role: string; email: string } }>(
-  ACCESS_TOKEN_REGENERATE,
-  { role: newRole }
-);
-const { token: newToken, role: apiRole, email } = response.accessTokenReGenerate;
+  const changeRoles = async (newRole: string) => {
+    try {
+      // Call the API to regenerate the token for the new role
+      const response = await graphQLClient.request<{ accessTokenReGenerate: { token: string; role: string; email: string } }>(
+        ACCESS_TOKEN_REGENERATE,
+        { role: newRole }
+      );
+      const { token: newToken, role: apiRole, email } = response.accessTokenReGenerate;
 
-    setRole(apiRole);
-    setToken(newToken);
-    sessionStorage.setItem("role", apiRole);
-    sessionStorage.setItem("token", newToken);
-    setGraphQLToken(newToken);
-  } catch (error) {
-    console.error("Failed to regenerate access token for role change:", error);
-    // Optionally show a toast or error message here
-  }
-};
+      setRole(apiRole);
+      setToken(newToken);
+      sessionStorage.setItem("role", apiRole);
+      sessionStorage.setItem("token", newToken);
+      if(apiRole==="admin"){
+        sessionStorage.setItem("adminEmail",email)
+      }
+      setGraphQLToken(newToken);
+    } catch (error) {
+      console.error("Failed to regenerate access token for role change:", error);
+      // Optionally show a toast or error message here
+    }
+  };
 
   return (
-    <AuthContext.Provider value={{ token, role, roles, login, logout, isLoading, changeRoles }}>
+    <AuthContext.Provider value={{ token, role, roles, login, logout, isLoading, changeRoles, syncRolesFromSession }}>
       {children}
     </AuthContext.Provider>
   );

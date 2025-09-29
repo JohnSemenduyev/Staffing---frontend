@@ -190,6 +190,8 @@ export const ViewSchedule = () => {
   // State to store API existing shifts for overlap checking
   const [apiExistingShifts, setApiExistingShifts] = useState<Map<string, any[]>>(new Map());
 
+  const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
+const [hasSessionChanges, setHasSessionChanges] = useState(false);
   // Function to fetch existing shifts from API for overlap checking
   const fetchApiExistingShifts = async (userId?: number) => {
     if (!currentWeekRange || !selectedClient) return;
@@ -701,6 +703,24 @@ export const ViewSchedule = () => {
     }
   }, [apiSessionData]);
 
+  // Add these useEffect hooks after the existing useEffect hooks (around line 700)
+useEffect(() => {
+  if (isScheduleEditMode && originalScheduleData.length > 0) {
+    const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
+    setHasScheduleChanges(hasChanges);
+  } else {
+    setHasScheduleChanges(false);
+  }
+}, [scheduleData, originalScheduleData, isScheduleEditMode]);
+
+useEffect(() => {
+  if (isActualTimeEditMode && originalSessionData.length > 0) {
+    const hasChanges = !sessionsEqual(sessionData, originalSessionData);
+    setHasSessionChanges(hasChanges);
+  } else {
+    setHasSessionChanges(false);
+  }
+}, [sessionData, originalSessionData, isActualTimeEditMode]);
   // Update loading states from context
   useEffect(() => {
     setSessionLoading(apiSessionLoading);
@@ -1276,7 +1296,11 @@ export const ViewSchedule = () => {
       showSchedule: null
     });
   };
-
+// Add this function after the schedulesEqual function (around line 1300)
+const sessionsEqual = (a: any[], b: any[]) => {
+  if (a.length !== b.length) return false;
+  return JSON.stringify(a.sort((x, y) => x.id - y.id)) === JSON.stringify(b.sort((x, y) => x.id - y.id));
+};
   // Helper: deep equality for schedule data (order-insensitive)
   const schedulesEqual = (a: ScheduleItem[], b: ScheduleItem[]) => {
     const normalize = (arr: ScheduleItem[]) =>
@@ -2073,7 +2097,17 @@ export const ViewSchedule = () => {
               currentWeekRange={currentWeekRange}
             />
           </div>
-
+          {(scheduleLoading || tableLoading) && !hasApiData && (
+            <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="text-gray-600">
+                  <h3 className="text-lg font-medium mb-2">Loading Schedule Data</h3>
+                  <p className="text-sm">Please wait while we fetch the schedule information...</p>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Show no data message when no schedule exists or when we navigated to an empty week */}
           {!scheduleError && !scheduleLoading && !tableLoading && (scheduleData.length === 0 || !hasApiData) && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
@@ -2105,6 +2139,7 @@ export const ViewSchedule = () => {
                 onUserAutoToggle={handleUserAutoToggle}
                 onShiftAutoToggle={handleShiftAutoToggle}
                 apiExistingShiftsData={apiExistingShifts}
+                hasChanges={hasScheduleChanges}
               />
             </div>
           )}
@@ -2129,6 +2164,8 @@ export const ViewSchedule = () => {
                 isPublishing={isActualTimePublishing}
                 isPrinting={isPrinting}
                 loading={sessionLoading}
+                hasChanges={hasSessionChanges}
+
               />
             </div>
           )}
