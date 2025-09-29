@@ -1225,6 +1225,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             onScheduleAutoToggle={handleScheduleAutoToggle}
             hideActionButtons={true}
             existingShifts={existingShifts}
+            hasChanges={true}
           />
         </div>
       )}
