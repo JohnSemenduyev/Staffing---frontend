@@ -7,7 +7,6 @@ import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
-import { handleGraphQLError, isGraphQLSuccess } from "../../utils/graphqlErrorHandler";
 
 export const Client = () => {
   const { toast } = useToast();
@@ -64,7 +63,17 @@ export const Client = () => {
         await fetchClientAddresses(currentPage);
       } catch (error: any) {
         console.error("Error loading client data:", error);
-        const errorMessage = handleGraphQLError(error);
+        let errorMessage = "Failed to load client data. Please try again.";
+
+        if (error.message) {
+          if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+            errorMessage = "Network error. Please check your internet connection and try again.";
+          } else if (error.response?.errors && error.response.errors.length > 0) {
+            errorMessage = error.response.errors[0].message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        }
 
         toast({
           title: "Error",
@@ -135,22 +144,11 @@ export const Client = () => {
         return;
       }
 
-      const response = await graphQLClient.request(
+      await graphQLClient.request(
         DELETE_USER,
         { deleteUserId: deleteClientModal.clientId },
         { Authorization: `Bearer ${token}` }
       );
-
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(response)) {
-        const errorMessage = handleGraphQLError({ response });
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return;
-      }
 
       toast({
         title: "Success",
@@ -160,7 +158,17 @@ export const Client = () => {
       await fetchClientAddresses(currentPage);
     } catch (error: any) {
       console.error("Error deleting client:", error);
-      const errorMessage = handleGraphQLError(error);
+      let errorMessage = "Failed to delete client. Please try again.";
+
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
 
       toast({
         title: "Error",
@@ -210,7 +218,7 @@ export const Client = () => {
         return;
       }
 
-      const response = await graphQLClient.request(
+      await graphQLClient.request(
         UPDATE_USER_PROFILE,
         {
           name: editClientForm.name,
@@ -224,23 +232,11 @@ export const Client = () => {
         { Authorization: `Bearer ${token}` }
       );
 
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(response)) {
-        const errorMessage = handleGraphQLError({ response });
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return;
-      }
-
       toast({
         title: "Success",
         description: "Client updated successfully!",
       });
 
-      // Only reset form if the operation was successful
       setEditingClientId(null);
       setEditClientForm({
         name: "",
@@ -257,7 +253,17 @@ export const Client = () => {
       await fetchClientAddresses(currentPage);
     } catch (error: any) {
       console.error("Error updating client:", error);
-      const errorMessage = handleGraphQLError(error);
+      let errorMessage = "Failed to update client. Please try again.";
+
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
 
       toast({
         title: "Error",
@@ -1015,7 +1021,18 @@ export const Client = () => {
               await fetchClientAddresses(page);
             } catch (error: any) {
               console.error("Error changing page:", error);
-              const errorMessage = handleGraphQLError(error);
+
+              let errorMessage = "Failed to load page data. Please try again.";
+
+              if (error.message) {
+                if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+                  errorMessage = "Network error. Please check your internet connection and try again.";
+                } else if (error.response?.errors && error.response.errors.length > 0) {
+                  errorMessage = error.response.errors[0].message || errorMessage;
+                } else {
+                  errorMessage = error.message;
+                }
+              }
 
               toast({
                 title: "Error",

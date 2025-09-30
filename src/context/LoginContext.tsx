@@ -4,7 +4,6 @@ import { setGraphQLToken } from "../GraphqlClient";
 import { gql } from "graphql-request";
 import { LOGIN_USER } from "../graphql/mutation";
 import { ACCESS_TOKEN_REGENERATE } from "../graphql/mutation";
-import { handleGraphQLError, isGraphQLSuccess } from "../utils/graphqlErrorHandler";
 
 type RoleType = 'client' | 'admin' | 'manager' | 'guard';
 
@@ -64,13 +63,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const variables = { email, password };
       const data = await graphQLClient.request<LoginUserResponse>(LOGIN_USER, variables);
-      
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(data)) {
-        const errorMessage = handleGraphQLError({ response: data });
-        return { success: false, error: errorMessage, roles: [] };
-      }
-      
       const { token, roles } = data.loginUser;
       const filteredRoles = roles.filter(role => ['admin', 'manager'].includes(role));
       // const filteredRoles = roles;
@@ -87,7 +79,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: true, roles: filteredRoles };
     } catch (error: any) {
       console.error("Login failed:", error);
-      const errorMessage = handleGraphQLError(error);
+
+
+      let errorMessage = "Invalid credentials or server error";
+      if (error.response?.errors && error.response.errors.length > 0) {
+        const graphqlError = error.response.errors[0];
+        if (graphqlError.message) {
+          errorMessage = graphqlError.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       return { success: false, error: errorMessage, roles: [] };
     }
   };

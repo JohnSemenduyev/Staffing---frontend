@@ -7,7 +7,6 @@ import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
-import { handleGraphQLError, isGraphQLSuccess } from "../../utils/graphqlErrorHandler";
 
 export const Guard = () => {
   const { toast } = useToast();
@@ -144,22 +143,11 @@ export const Guard = () => {
         return;
       }
 
-      const response = await graphQLClient.request(
+      await graphQLClient.request(
         DELETE_USER,
         { deleteUserId: deleteGuardModal.userId },
         { Authorization: `Bearer ${token}` }
       );
-
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(response)) {
-        const errorMessage = handleGraphQLError({ response });
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return;
-      }
 
       toast({
         title: "Success",
@@ -169,7 +157,17 @@ export const Guard = () => {
       await fetchUsersByRole("guard", currentPage);
     } catch (error: any) {
       console.error("Error deleting guard:", error);
-      const errorMessage = handleGraphQLError(error);
+      let errorMessage = "Failed to delete guard. Please try again.";
+
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
 
       toast({
         title: "Error",
@@ -218,7 +216,7 @@ export const Guard = () => {
         return;
       }
 
-      const response = await graphQLClient.request(
+      await graphQLClient.request(
         UPDATE_USER_PROFILE,
         {
           name: editGuardForm.name,
@@ -232,23 +230,11 @@ export const Guard = () => {
         { Authorization: `Bearer ${token}` }
       );
 
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(response)) {
-        const errorMessage = handleGraphQLError({ response });
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return;
-      }
-
       toast({
         title: "Success",
         description: "Guard updated successfully!",
       });
 
-      // Only reset form if the operation was successful
       setEditingUserId(null);
       setEditGuardForm({
         name: "",
@@ -264,7 +250,17 @@ export const Guard = () => {
       await fetchUsersByRole("guard", currentPage);
     } catch (error: any) {
       console.error("Error updating guard:", error);
-      const errorMessage = handleGraphQLError(error);
+      let errorMessage = "Failed to update guard. Please try again.";
+
+      if (error.message) {
+        if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
 
       toast({
         title: "Error",

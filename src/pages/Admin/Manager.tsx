@@ -6,7 +6,6 @@ import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
-import { handleGraphQLError, isGraphQLSuccess } from "../../utils/graphqlErrorHandler";
 
 export const Manager = () => {
   const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
@@ -129,7 +128,7 @@ export const Manager = () => {
         return;
       }
 
-      const response = await graphQLClient.request(
+      await graphQLClient.request(
         UPDATE_USER_PROFILE,
         {
           name: editForm.name,
@@ -143,20 +142,12 @@ export const Manager = () => {
         { Authorization: `Bearer ${token}` }
       );
 
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(response)) {
-        const errorMessage = handleGraphQLError({ response });
-        toast({ title: "Error", description: errorMessage, variant: "destructive" });
-        return;
-      }
-
       toast({ title: "Success", description: "Manager updated successfully!" });
-      // Only reset form if the operation was successful
       setEditingUserId(null);
       await fetchUsersByRole("manager", currentPage);
     } catch (error: any) {
       console.error("Error updating manager:", error);
-      const errorMessage = handleGraphQLError(error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to update manager. Please try again.";
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
     }
   };
@@ -178,24 +169,17 @@ export const Manager = () => {
         return;
       }
       
-      const response = await graphQLClient.request(
+      await graphQLClient.request(
         DELETE_USER, 
         { deleteUserId: deleteModal.userId }, 
         { Authorization: `Bearer ${token}` }
       );
-
-      // Check if the GraphQL response contains errors
-      if (!isGraphQLSuccess(response)) {
-        const errorMessage = handleGraphQLError({ response });
-        toast({ title: "Error", description: errorMessage, variant: "destructive" });
-        return;
-      }
       
       toast({ title: "Success", description: `Manager "${deleteModal.userName}" deleted successfully!` });
       await fetchUsersByRole("manager", currentPage);
     } catch (error: any) {
       console.error("Error deleting manager:", error);
-      const errorMessage = handleGraphQLError(error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to delete manager. Please try again.";
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setDeleteModal({ isOpen: false, userId: null, userName: "" });
