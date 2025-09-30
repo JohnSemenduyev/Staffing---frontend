@@ -119,8 +119,38 @@ export const Admin = () => {
     });
   };
 
-  const handleSave = () => {
-    setEditingUserId(null);
+  const handleSave = async () => {
+    if (!editingUserId) return;
+    
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        toast({ title: "Error", description: "Authentication token not found. Please log in again.", variant: "destructive" });
+        return;
+      }
+
+      await graphQLClient.request(
+        UPDATE_USER_PROFILE,
+        {
+          name: editForm.name,
+          lastName: editForm.lastName,
+          phone: editForm.phone,
+          address: editForm.address,
+          city: editForm.city,
+          state: editForm.state,
+          zipcode: editForm.zipcode
+        },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      toast({ title: "Success", description: "Admin updated successfully!" });
+      setEditingUserId(null);
+      await fetchUsersByRole("admin", currentPage);
+    } catch (error: any) {
+      console.error("Error updating admin:", error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to update admin. Please try again.";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+    }
   };
 
   const handleCancel = () => {
@@ -139,12 +169,18 @@ export const Admin = () => {
         toast({ title: "Error", description: "Authentication token not found. Please log in again.", variant: "destructive" });
         return;
       }
-      // await graphQLClient.request(DELETE_USER, { deleteUserId: deleteModal.userId }, { Authorization: `Bearer ${token}` });
-      toast({ title: "Success", description: `User "${deleteModal.userName}" deleted successfully!` });
-      // await fetchUsersByRole("admin", currentPage);
+      
+      await graphQLClient.request(
+        DELETE_USER, 
+        { deleteUserId: deleteModal.userId }, 
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      toast({ title: "Success", description: `Admin "${deleteModal.userName}" deleted successfully!` });
+      await fetchUsersByRole("admin", currentPage);
     } catch (error: any) {
-      console.error("Error deleting user:", error);
-      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to delete user. Please try again.";
+      console.error("Error deleting admin:", error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to delete admin. Please try again.";
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setDeleteModal({ isOpen: false, userId: null, userName: "" });

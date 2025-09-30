@@ -5,6 +5,8 @@ import Pagination from "../../components/Pagination";
 import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
+import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
+import { handleGraphQLError, isGraphQLSuccess } from "../../utils/graphqlErrorHandler";
 
 export const Manager = () => {
   const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
@@ -117,8 +119,46 @@ export const Manager = () => {
     });
   };
 
-  const handleSave = () => {
-    setEditingUserId(null);
+  const handleSave = async () => {
+    if (!editingUserId) return;
+    
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        toast({ title: "Error", description: "Authentication token not found. Please log in again.", variant: "destructive" });
+        return;
+      }
+
+      const response = await graphQLClient.request(
+        UPDATE_USER_PROFILE,
+        {
+          name: editForm.name,
+          lastName: editForm.lastName,
+          phone: editForm.phone,
+          address: editForm.address,
+          city: editForm.city,
+          state: editForm.state,
+          zipcode: editForm.zipcode
+        },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      // Check if the GraphQL response contains errors
+      if (!isGraphQLSuccess(response)) {
+        const errorMessage = handleGraphQLError({ response });
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Success", description: "Manager updated successfully!" });
+      // Only reset form if the operation was successful
+      setEditingUserId(null);
+      await fetchUsersByRole("manager", currentPage);
+    } catch (error: any) {
+      console.error("Error updating manager:", error);
+      const errorMessage = handleGraphQLError(error);
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+    }
   };
 
   const handleCancel = () => {
@@ -137,12 +177,25 @@ export const Manager = () => {
         toast({ title: "Error", description: "Authentication token not found. Please log in again.", variant: "destructive" });
         return;
       }
-      // await graphQLClient.request(DELETE_USER, { deleteUserId: deleteModal.userId }, { Authorization: `Bearer ${token}` });
-      toast({ title: "Success", description: `User "${deleteModal.userName}" deleted successfully!` });
-      // await fetchUsersByRole("manager", currentPage);
+      
+      const response = await graphQLClient.request(
+        DELETE_USER, 
+        { deleteUserId: deleteModal.userId }, 
+        { Authorization: `Bearer ${token}` }
+      );
+
+      // Check if the GraphQL response contains errors
+      if (!isGraphQLSuccess(response)) {
+        const errorMessage = handleGraphQLError({ response });
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+        return;
+      }
+      
+      toast({ title: "Success", description: `Manager "${deleteModal.userName}" deleted successfully!` });
+      await fetchUsersByRole("manager", currentPage);
     } catch (error: any) {
-      console.error("Error deleting user:", error);
-      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to delete user. Please try again.";
+      console.error("Error deleting manager:", error);
+      const errorMessage = handleGraphQLError(error);
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setDeleteModal({ isOpen: false, userId: null, userName: "" });

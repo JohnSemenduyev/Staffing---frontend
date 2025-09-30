@@ -561,3 +561,30 @@ export const DELETE_SCHEDULE_SESSION = gql`
     }
   }
 `;
+
+// -------------------- USER MUTATIONS --------------------
+
+export const UPDATE_USER_PROFILE = gql`
+  mutation UpdateUserProfile($name: String, $lastName: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
+    updateUserProfile(name: $name, lastName: $lastName, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+      id
+      name
+      lastName
+      email
+      phone
+      address
+      city
+      state
+      zipcode
+    }
+  }
+`;
+
+export const DELETE_USER = gql`
+  mutation DeleteUser($deleteUserId: Int!) {
+    deleteUser(id: $deleteUserId) {
+      id
+      name
+    }
+  }
+`;
