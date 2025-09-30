@@ -1,32 +1,39 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useUsers } from "../../context/UserContext";
-import { GenericTable, TableColumn } from "../../components/GenericTable";
-import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
-import { Search } from "lucide-react";
-import { toast } from "sonner";
+import { Check, X } from "lucide-react";
+import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
+import { useUsers } from "../../context/UserContext";
+import { useToast } from '../../hooks/use-toast';
+import { graphQLClient } from "../../GraphqlClient";
 
 export const Manager = () => {
-  const { 
-    users, 
-    loading, 
-    error, 
-    currentPage, 
-    lastPage, 
-    fetchUsersByRole, 
-    setCurrentPage 
-  } = useUsers();
-  
-  const [showSearchForm, setShowSearchForm] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
+  const { toast } = useToast();
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
+
+  const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
+  const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: "asc" | "desc" }>({ key: null, direction: "asc" });
+
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zipcode: "",
+  });
+
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; userId: number | null; userName: string }>({ isOpen: false, userId: null, userName: "" });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchUsersByRole("manager", currentPage);
   }, [currentPage]);
 
-  // Calculate table height dynamically
   useEffect(() => {
     const calculateTableHeight = () => {
       if (formRef.current) {
@@ -35,124 +42,288 @@ export const Manager = () => {
         setTableHeight(calculatedHeight);
       }
     };
-
-    // Calculate on mount and when form content changes
     calculateTableHeight();
-
-    // Recalculate on window resize
-    const handleResize = () => {
-      calculateTableHeight();
-    };
-
+    const handleResize = () => calculateTableHeight();
     window.addEventListener('resize', handleResize);
-    
-    // Use ResizeObserver to detect form height changes
-    const resizeObserver = new ResizeObserver(() => {
-      calculateTableHeight();
-    });
-
+    const resizeObserver = new ResizeObserver(() => calculateTableHeight());
     if (formRef.current) {
       resizeObserver.observe(formRef.current);
     }
-
     return () => {
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
     };
-  }, [showSearchForm]);
-  const searchFields = useMemo<FieldConfig[]>(() => [
-    { name: "name", type: "text", placeholder: "First Name" },
-    { name: "lastName", type: "text", placeholder: "Last Name" },
-    { name: "email", type: "text", placeholder: "Email" },
-    { name: "phone", type: "text", placeholder: "Phone" },
-    { name: "address", type: "text", placeholder: "Street Address" },
-    { name: "city", type: "text", placeholder: "City" },
-    { name: "state", type: "text", placeholder: "State" },
-    { name: "zipcode", type: "text", placeholder: "Zipcode" }
-  ], []);
+  }, []);
 
-  const handleSearch = async (formData: { [key: string]: any }) => {
-      const filterEntries = Object.entries(formData).filter(([_, v]) => v !== undefined && v !== null && String(v).trim() !== "");
-      const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : null;
-      setCurrentPage(1);
-      await fetchUsersByRole("manager", 1, filter);
+  const getNestedValue = (obj: any, path: string) => {
+    return path.split('.').reduce((current, key) => {
+      return current && current[key] !== undefined ? current[key] : null;
+    }, obj);
   };
 
-  const tableColumns: TableColumn[] = [
-    {
-      key: "name",
-      label: "First Name",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap"
-    },
-    {
-      key: "lastName",
-      label: "Last Name",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap"
-    },
-    {
-      key: "email",
-      label: "Email",
-      sortable: true,
-      searchable: true,
-      className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
-      render: (value: string) => <div className="truncate" title={value}>{value || "-"}</div>
-    },
-    {
-      key: "phone",
-      label: "Phone",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "address",
-      label: "Street Address",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "city",
-      label: "City",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "state",
-      label: "State",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap",
-    },
-    {
-      key: "zipcode",
-      label: "Zipcode",
-      sortable: true,
-      searchable: true,
-      className: "whitespace-nowrap",
-    },
-  ];
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const filteredAndSortedData = useMemo(() => {
+    let filtered = (users || []).filter((record) => {
+      const fields = ["name", "lastName", "email", "phone", "address", "city", "state", "zipcode"] as const;
+      for (const field of fields) {
+        if (searchTerms[field]) {
+          const value = getNestedValue(record, field);
+          if (!value || !String(value).toLowerCase().includes(searchTerms[field].toLowerCase())) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        const aValue = getNestedValue(a, sortConfig.key!);
+        const bValue = getNestedValue(b, sortConfig.key!);
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        let aCompare: any = aValue;
+        let bCompare: any = bValue;
+        if (typeof aCompare === "string" && typeof bCompare === "string") {
+          aCompare = aCompare.toLowerCase();
+          bCompare = bCompare.toLowerCase();
+        }
+        if (aCompare < bCompare) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aCompare > bCompare) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [users, searchTerms, sortConfig]);
+
+  const handleEdit = (user: any) => {
+    setEditingUserId(user.id);
+    setEditForm({
+      name: user.name || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      address: user.address || "",
+      city: user.city || "",
+      state: user.state || "",
+      zipcode: user.zipcode || "",
+    });
+  };
+
+  const handleSave = () => {
+    setEditingUserId(null);
+  };
+
+  const handleCancel = () => {
+    setEditingUserId(null);
+  };
+
+  const handleDelete = (userId: number, userName: string) => {
+    setDeleteModal({ isOpen: true, userId, userName });
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        toast({ title: "Error", description: "Authentication token not found. Please log in again.", variant: "destructive" });
+        return;
+      }
+      // await graphQLClient.request(DELETE_USER, { deleteUserId: deleteModal.userId }, { Authorization: `Bearer ${token}` });
+      toast({ title: "Success", description: `User "${deleteModal.userName}" deleted successfully!` });
+      // await fetchUsersByRole("manager", currentPage);
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      const errorMessage = error?.response?.errors?.[0]?.message || error?.message || "Failed to delete user. Please try again.";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+    } finally {
+      setDeleteModal({ isOpen: false, userId: null, userName: "" });
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => setDeleteModal({ isOpen: false, userId: null, userName: "" });
+
+  if (error) {
+    return (
+      <div className="min-h-screen p-6 font-sans">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full overflow-x-hidden p-6">
       <div ref={formRef} className="mb-4">
         <h2 className="text-lg font-semibold text-gray-800">Manager List</h2>
       </div>
-      <GenericTable
-        data={users || []}
-        columns={tableColumns}
-        actions={[]}
-        loading={loading}
-        emptyMessage="No records found matching your search criteria."
-        searchable={true}
-        onSearch = {handleSearch}
-        tableHeight={tableHeight}
-      />
+
+      <div className="w-full mt-3">
+        <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl bg-white" style={{ height: tableHeight, minHeight: "400px" }}>
+          <div className="w-full h-full overflow-auto bg-white rounded-t-2xl custom-scrollbar">
+            <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans">
+              <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
+                <tr className="h-[41px]" style={{ lineHeight: '16px' }}>
+                  <th className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: "120px" }}>Actions</th>
+                  {[
+                    { key: "name", label: "First Name", width: "200px" },
+                    { key: "lastName", label: "Last Name", width: "200px" },
+                    { key: "email", label: "Email", width: "200px" },
+                    { key: "phone", label: "Phone", width: "200px" },
+                    { key: "address", label: "Street Address", width: "200px" },
+                    { key: "city", label: "City", width: "200px" },
+                    { key: "state", label: "State", width: "200px" },
+                    { key: "zipcode", label: "Zipcode", width: "200px" },
+                  ].map((col) => (
+                    <th key={col.key} className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: col.width }}>
+                      <div className="flex items-center">
+                        {col.label}
+                        <div className="pl-1 cursor-pointer" onClick={() => handleSort(col.key)}>
+                          <span className={`cursor-pointer ${sortConfig.key === col.key && sortConfig.direction === "asc" ? "text-white" : "text-white/40"}`}>
+                            <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" className="-mb-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path>
+                            </svg>
+                          </span>
+                          <span className={`cursor-pointer ${sortConfig.key === col.key && sortConfig.direction === "desc" ? "text-white" : "text-white/40"}`}>
+                            <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                              <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18-39.62z"></path>
+                            </svg>
+                          </span>
+                        </div>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+
+                <tr className="bg-white text-gray-700 font-sans w-full">
+                  <th className="px-4 py-2 text-left" style={{ width: "120px" }}></th>
+                  {[
+                    { key: "name", width: "200px", placeholder: "Search first name" },
+                    { key: "lastName", width: "200px", placeholder: "Search last name" },
+                    { key: "email", width: "200px", placeholder: "Search email" },
+                    { key: "phone", width: "200px", placeholder: "Search phone" },
+                    { key: "address", width: "200px", placeholder: "Search street address" },
+                    { key: "city", width: "200px", placeholder: "Search city" },
+                    { key: "state", width: "200px", placeholder: "Search state" },
+                    { key: "zipcode", width: "200px", placeholder: "Search zipcode" },
+                  ].map((col) => (
+                    <th key={col.key} className="px-4 py-2 text-left" style={{ width: col.width }}>
+                      <input
+                        placeholder={col.placeholder}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
+                        type="text"
+                        value={searchTerms[col.key] || ''}
+                        onChange={(e) => setSearchTerms(prev => ({ ...prev, [col.key]: e.target.value }))}
+                        style={{ maxWidth: '100%', minWidth: `calc(${col.width} - 32px)` }}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody className="relative">
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="relative p-0" style={{ height: "calc(400px - 150px)" }}>
+                      <div className="absolute inset-0 flex items-center justify-center bg-white">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-gray-500">Loading...</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {filteredAndSortedData.map((record: any, index: number) => {
+                      const isEditing = editingUserId === record.id;
+                      return (
+                        <tr key={`manager-${record.id ?? index}`} className={`hover:bg-blue-50 bg-white ${isEditing ? 'bg-blue-50' : ''}`}>
+                          <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: "120px" }}>
+                            <div className="flex items-center gap-2">
+                              {isEditing ? (
+                                <>
+                                  <button onClick={handleSave} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded" title="Save changes">
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={handleCancel} className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded" title="Cancel editing">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded" title="Edit manager">
+                                    <FaRegEdit className="w-4 h-4" color="blue" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(record.id, [record.name, record.lastName].filter(Boolean).join(' '))}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                                    title="Delete manager"
+                                  >
+                                    <FaRegTrashAlt className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                          {[
+                            { key: "name", width: "200px", placeholder: "First name" },
+                            { key: "lastName", width: "200px", placeholder: "Last name" },
+                            { key: "email", width: "200px", placeholder: "Email" },
+                            { key: "phone", width: "200px", placeholder: "Phone" },
+                            { key: "address", width: "200px", placeholder: "Address" },
+                            { key: "city", width: "200px", placeholder: "City" },
+                            { key: "state", width: "200px", placeholder: "State" },
+                            { key: "zipcode", width: "200px", placeholder: "Zipcode" },
+                          ].map((col) => (
+                            <td key={col.key} className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: col.width }}>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={(editForm as any)[col.key]}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, [col.key]: e.target.value }))}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
+                                  placeholder={col.placeholder}
+                                />
+                              ) : (
+                                col.key === 'email' ? (
+                                  <div className="truncate" title={record[col.key] || "-"}>{record[col.key] || "-"}</div>
+                                ) : (
+                                  record[col.key] || "-"
+                                )
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+
+                    {filteredAndSortedData.length === 0 && (
+                      <tr>
+                        <td colSpan={9} className="relative p-0" style={{ height: "calc(400px - 150px)" }}>
+                          <div className="absolute inset-0 flex items-center justify-center bg-white">
+                            <span className="text-gray-500 text-center">No manager records found.</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-6">
         <Pagination
@@ -165,6 +336,42 @@ export const Manager = () => {
           loading={loading}
         />
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete manager "{deleteModal.userName}"?
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDelete}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                ) : (
+                  <FaRegTrashAlt className="w-4 h-4 mr-2" />
+                )}
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

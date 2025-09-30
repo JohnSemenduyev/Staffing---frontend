@@ -207,6 +207,7 @@ export const GET_ADMIN_USERS = gql`
   query AdminUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
     adminUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
       data {
+        id
         name
         lastName
         email
@@ -228,6 +229,7 @@ export const GET_MANAGER_USERS = gql`
   query ManagerUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
     managerUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
       data {
+        id
         name
         lastName
         email
@@ -247,6 +249,7 @@ export const GET_GUARD_USERS = gql`
   query GuardUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
     guardUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
       data {
+        id
         name
         lastName
         email
