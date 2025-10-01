@@ -182,6 +182,9 @@ export const ViewSchedule = () => {
 
   // Keep original shifts snapshot per user to detect changes on publish
   const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
+  
+  // Ref to store checkScheduleSessionId for publish
+  const checkScheduleSessionIdRef = useRef<number | null>(null);
 
   // Session data state for actual time tracking (local state for UI)
   const [sessionData, setSessionData] = useState([]);
@@ -218,9 +221,25 @@ export const ViewSchedule = () => {
 
           if (result?.shifts) {
             newApiShifts.set(combination, result.shifts);
+            // Store checkScheduleSessionId from the result
+            if (result.id) {
+              checkScheduleSessionIdRef.current = result.id;
+            }
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Failed to fetch shifts for user ${userId}:`, error);
+          
+          // Show error to user if it's a permission/assignment error
+          if (error?.response?.errors && error.response.errors.length > 0) {
+            const errorMessage = error.response.errors[0].message;
+            if (errorMessage.includes("Assign permission") || errorMessage.includes("not found")) {
+              toast({
+                title: "Assignment Required",
+                description: errorMessage,
+                variant: "destructive",
+              });
+            }
+          }
         }
       } else {
         // Fetch for all users in schedule data (for edit mode)
@@ -245,9 +264,25 @@ export const ViewSchedule = () => {
 
               if (result?.shifts) {
                 newApiShifts.set(combination, result.shifts);
+                // Store checkScheduleSessionId from the result
+                if (result.id) {
+                  checkScheduleSessionIdRef.current = result.id;
+                }
               }
-            } catch (error) {
+            } catch (error: any) {
               console.error(`Failed to fetch shifts for user ${userId}:`, error);
+              
+              // Show error to user if it's a permission/assignment error
+              if (error?.response?.errors && error.response.errors.length > 0) {
+                const errorMessage = error.response.errors[0].message;
+                if (errorMessage.includes("Assign permission") || errorMessage.includes("not found")) {
+                  toast({
+                    title: "Assignment Required",
+                    description: errorMessage,
+                    variant: "destructive",
+                  });
+                }
+              }
             }
           })
         );
@@ -1177,7 +1212,8 @@ export const ViewSchedule = () => {
         return {
           ...userSchedule,
           weeklyHours: parseFloat(weeklyHours.toFixed(2)),
-          change: changed
+          change: changed,
+          checkScheduleSessionId: checkScheduleSessionIdRef.current
         };
       });
 
