@@ -182,7 +182,7 @@ export const ViewSchedule = () => {
 
   // Keep original shifts snapshot per user to detect changes on publish
   const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
-  
+
   // Ref to store checkScheduleSessionId for publish
   const checkScheduleSessionIdRef = useRef<number | null>(null);
 
@@ -198,7 +198,7 @@ export const ViewSchedule = () => {
   const [hasSessionChanges, setHasSessionChanges] = useState(false);
   // Function to fetch existing shifts from API for overlap checking
   const fetchApiExistingShifts = async (userId?: number) => {
-    if (!currentWeekRange || !selectedClient) return;
+    if (!currentWeekRange || !selectedClient) return null;
 
     try {
       const startDate = formatDateLocal(new Date(currentWeekRange.startOfWeek));
@@ -219,16 +219,31 @@ export const ViewSchedule = () => {
             formattedStartDate
           );
 
-          if (result?.shifts) {
-            newApiShifts.set(combination, result.shifts);
+          // Check for GraphQL errors in the response
+          if (result?.errors && result.errors.length > 0) {
+            const errorMessage = result.errors[0].message;
+            console.error(`GraphQL error for user ${userId}:`, errorMessage);
+
+            if (errorMessage.includes("Assign permission") || errorMessage.includes("not found")) {
+              toast({
+                title: "Assignment Required",
+                description: errorMessage,
+                variant: "destructive",
+              });
+            }
+            return null; // Exit early if there are errors
+          }
+
+          if (result?.data?.checkScheduleSession?.shifts) {
+            newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
             // Store checkScheduleSessionId from the result
-            if (result.id) {
-              checkScheduleSessionIdRef.current = result.id;
+            if (result.data.checkScheduleSession.id) {
+              checkScheduleSessionIdRef.current = result.data.checkScheduleSession.id;
             }
           }
         } catch (error: any) {
           console.error(`Failed to fetch shifts for user ${userId}:`, error);
-          
+
           // Show error to user if it's a permission/assignment error
           if (error?.response?.errors && error.response.errors.length > 0) {
             const errorMessage = error.response.errors[0].message;
@@ -239,6 +254,7 @@ export const ViewSchedule = () => {
                 variant: "destructive",
               });
             }
+            return null;
           }
         }
       } else {
@@ -262,16 +278,31 @@ export const ViewSchedule = () => {
                 formattedStartDate
               );
 
-              if (result?.shifts) {
-                newApiShifts.set(combination, result.shifts);
+              // Check for GraphQL errors in the response
+              if (result?.errors && result.errors.length > 0) {
+                const errorMessage = result.errors[0].message;
+                console.error(`GraphQL error for user ${userId}:`, errorMessage);
+
+                if (errorMessage.includes("Assign permission") || errorMessage.includes("not found")) {
+                  toast({
+                    title: "Assignment Required",
+                    description: errorMessage,
+                    variant: "destructive",
+                  });
+                }
+                return null; // Skip this combination if there are errors
+              }
+
+              if (result?.data?.checkScheduleSession?.shifts) {
+                newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
                 // Store checkScheduleSessionId from the result
-                if (result.id) {
-                  checkScheduleSessionIdRef.current = result.id;
+                if (result.data.checkScheduleSession.id) {
+                  checkScheduleSessionIdRef.current = result.data.checkScheduleSession.id;
                 }
               }
             } catch (error: any) {
               console.error(`Failed to fetch shifts for user ${userId}:`, error);
-              
+
               // Show error to user if it's a permission/assignment error
               if (error?.response?.errors && error.response.errors.length > 0) {
                 const errorMessage = error.response.errors[0].message;
@@ -282,6 +313,7 @@ export const ViewSchedule = () => {
                     variant: "destructive",
                   });
                 }
+                return null;
               }
             }
           })
@@ -880,9 +912,14 @@ export const ViewSchedule = () => {
     const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
 
     // If guard is not in schedule table, fetch their existing shifts from API
-    if (!guardExistsInSchedule && form.userId) {
-      await fetchApiExistingShifts(Number(form.userId));
-    }
+    // if (!guardExistsInSchedule && form.userId) {
+      const result = await fetchApiExistingShifts(Number(form.userId));
+      console.log("result from fetchApiExistingShifts:", JSON.stringify(result));
+      if (result === null) {
+        setSubmitLoader(false);
+        return;
+      }
+    // }
 
     // For "Apply All Week", we need custom validation
     if (applyAllWeek && currentWeekRange) {
@@ -909,10 +946,13 @@ export const ViewSchedule = () => {
       // Single date validation
       const formErrors = validateForm(form, scheduleData, undefined, apiExistingShifts);
       setErrors(formErrors);
-      if (Object.keys(formErrors).length > 0) return;
+      if (Object.keys(formErrors).length > 0) {
+        setSubmitLoader(false); // Add this line
+        return;
+      }
     }
 
-    setSubmitLoader(true);
+    // setSubmitLoader(true);
 
     try {
       // Get user details from state or the search results as fallback
@@ -956,6 +996,7 @@ export const ViewSchedule = () => {
             .flatMap(item => item.shifts);
 
           const hasLocalOverlap = existingShiftsForDate.some(existingShift => {
+
             return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
           });
 
@@ -1495,172 +1536,6 @@ export const ViewSchedule = () => {
     }));
   };
 
-  // Export functionality for Schedule Table
-  const generateScheduleExcelData = () => {
-    const excelData = [];
-
-    // Add header row - match UI table headers exactly (no phone column)
-    const headerRow = ['Employee Name'];
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        // Format date as MM-DD-YYYY for headers
-        const formattedDate = date.toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        });
-        headerRow.push(formattedDate);
-      }
-    }
-    headerRow.push('Total');
-    excelData.push(headerRow);
-
-    // Get unique users and sort by name to match UI
-    const uniqueUsers = new Map();
-    scheduleData.forEach(item => {
-      if (!uniqueUsers.has(item.userId)) {
-        uniqueUsers.set(item.userId, {
-          id: item.userId,
-          name: item.userName,
-          phone: item.userPhone
-        });
-      }
-    });
-
-    // Sort users by name to match UI table order
-    const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-    // Add data rows - fill first row completely before moving to next row
-    sortedUsers.forEach(user => {
-      // Get all shifts for this user across the week
-      const userShifts = [];
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = toLocalYMD(date);
-
-          const daySchedules = scheduleData.filter(
-            item => item.userId === user.id && item.startDate === dateStr
-          );
-          const shifts = daySchedules.flatMap(s => s.shifts);
-
-          shifts.forEach(shift => {
-            userShifts.push({
-              ...shift,
-              dayIndex: i,
-              dateStr: dateStr
-            });
-          });
-        }
-      }
-
-      // Sort shifts by day and time
-      userShifts.sort((a, b) => {
-        if (a.dayIndex !== b.dayIndex) {
-          return a.dayIndex - b.dayIndex;
-        }
-        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-      });
-
-      // Group shifts by day
-      const shiftsByDay = new Map();
-      userShifts.forEach(shift => {
-        if (!shiftsByDay.has(shift.dayIndex)) {
-          shiftsByDay.set(shift.dayIndex, []);
-        }
-        shiftsByDay.get(shift.dayIndex).push(shift);
-      });
-
-      // Find max shifts per day for this user
-      const maxShiftsPerDay = Math.max(...Array.from(shiftsByDay.values()).map(shifts => shifts.length), 1);
-
-      // Create rows - fill first row completely, then next row, etc.
-      for (let shiftIndex = 0; shiftIndex < maxShiftsPerDay; shiftIndex++) {
-        const row = [
-          shiftIndex === 0 ? user.name : '', // Only show name on first row
-        ];
-
-        // Fill all days in this row
-        if (currentWeekRange) {
-          const startDate = new Date(currentWeekRange.startOfWeek);
-          for (let i = 0; i < 7; i++) {
-            const dayShifts = shiftsByDay.get(i) || [];
-            const shift = dayShifts[shiftIndex];
-
-            if (shift) {
-              row.push(`${shift.startTime} - ${shift.endTime}`);
-            } else {
-              row.push('');
-            }
-          }
-        }
-
-        // Add per-row total count only on first row
-        if (shiftIndex === 0) {
-          const userTotalHours = scheduleData
-            .filter(item => item.userId === user.id)
-            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-          row.push(String(parseFloat(userTotalHours.toFixed(2))));
-        } else {
-          row.push('');
-        }
-
-        excelData.push(row);
-      }
-
-      // Add per-guard totals row
-      const userTotalsRow = [` Total`];
-      let userGrandTotal = 0;
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = toLocalYMD(date);
-
-          const dayTotal = scheduleData
-            .filter(item => item.userId === user.id && item.startDate === dateStr)
-            .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-
-          userTotalsRow.push(String(parseFloat(dayTotal.toFixed(2))));
-          userGrandTotal += dayTotal;
-        }
-      }
-      userTotalsRow.push(String(userGrandTotal));
-      excelData.push(userTotalsRow);
-    });
-
-    // Add totals row
-    const totalsRow = ['Grand Total'];
-    let grandTotal = 0;
-
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const dateStr = toLocalYMD(date);
-
-        // Calculate total hours for this day across all users
-        const dayTotal = scheduleData
-          .filter(item => item.startDate === dateStr)
-          .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
-
-        totalsRow.push(String(parseFloat(dayTotal.toFixed(2))));
-        grandTotal += dayTotal;
-      }
-    }
-
-    totalsRow.push(String(parseFloat(grandTotal.toFixed(2))));
-    excelData.push(totalsRow);
-
-    return excelData;
-  };
 
   const handleSchedulePrint = async () => {
     try {
