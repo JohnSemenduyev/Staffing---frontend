@@ -184,13 +184,12 @@ export const ViewSchedule = () => {
   const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
 
   // Ref to store checkScheduleSessionId for publish
-  const checkScheduleSessionIdRef = useRef<number | null>(null);
 
   // Session data state for actual time tracking (local state for UI)
   const [sessionData, setSessionData] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState(null);
-
+  const [checkScheduleSessionIdMap, setCheckScheduleSessionIdMap] = useState<Map<string, number>>(new Map());
   // State to store API existing shifts for overlap checking
   const [apiExistingShifts, setApiExistingShifts] = useState<Map<string, any[]>>(new Map());
 
@@ -234,12 +233,19 @@ export const ViewSchedule = () => {
             return null; // Exit early if there are errors
           }
 
+          // Store checkScheduleSessionId from the result (regardless of shifts)
+          if (result.data.checkScheduleSession.id) {
+            // Use combination of parameters as key since API doesn't return scheduleSessionId
+            const mapKey = `${selectedClient.clientId}-${selectedClient.addressId}-${userId}`;
+            checkScheduleSessionIdMap.set(mapKey, result.data.checkScheduleSession.id);
+            console.log(`Stored mapping: ${mapKey} -> ${result.data.checkScheduleSession.id}`);
+          }
+
           if (result?.data?.checkScheduleSession?.shifts) {
             newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
-            // Store checkScheduleSessionId from the result
-            if (result.data.checkScheduleSession.id) {
-              checkScheduleSessionIdRef.current = result.data.checkScheduleSession.id;
-            }
+            console.log("Shifts found and stored:", result.data.checkScheduleSession.shifts);
+          } else {
+            console.log("No shifts found in result:", result?.data?.checkScheduleSession);
           }
         } catch (error: any) {
           console.error(`Failed to fetch shifts for user ${userId}:`, error);
@@ -293,12 +299,19 @@ export const ViewSchedule = () => {
                 return null; // Skip this combination if there are errors
               }
 
+              // Store checkScheduleSessionId from the result (regardless of shifts)
+              if (result.data.checkScheduleSession.id) {
+                // Use combination of parameters as key since API doesn't return scheduleSessionId
+                const mapKey = `${clientId}-${addressId}-${userId}`;
+                checkScheduleSessionIdMap.set(mapKey, result.data.checkScheduleSession.id);
+                console.log(`Stored mapping (all users): ${mapKey} -> ${result.data.checkScheduleSession.id}`);
+              }
+
               if (result?.data?.checkScheduleSession?.shifts) {
                 newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
-                // Store checkScheduleSessionId from the result
-                if (result.data.checkScheduleSession.id) {
-                  checkScheduleSessionIdRef.current = result.data.checkScheduleSession.id;
-                }
+                console.log("Shifts found and stored (all users):", result.data.checkScheduleSession.shifts);
+              } else {
+                console.log("No shifts found in result (all users):", result?.data?.checkScheduleSession);
               }
             } catch (error: any) {
               console.error(`Failed to fetch shifts for user ${userId}:`, error);
@@ -1250,15 +1263,21 @@ export const ViewSchedule = () => {
           }
         }
 
+        // Use the same key format as the mapping: clientId-addressId-userId
+        const mapKey = `${userSchedule.clientId}-${userSchedule.addressId}-${userSchedule.userId}`;
+        const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
+        console.log(`User ${userSchedule.userId}: mapKey=${mapKey}, mapped checkScheduleSessionId=${mappedCheckScheduleSessionId}`);
+        
         return {
           ...userSchedule,
           weeklyHours: parseFloat(weeklyHours.toFixed(2)),
           change: changed,
-          checkScheduleSessionId: checkScheduleSessionIdRef.current
+          checkScheduleSessionId: mappedCheckScheduleSessionId
         };
       });
 
       console.log("=== PUBLISHING SCHEDULE DATA ===");
+      console.log("checkScheduleSessionIdMap:", checkScheduleSessionIdMap);
       console.log("Schedule Input:", JSON.stringify(scheduleInput, null, 2));
       console.log("Total Users:", scheduleInput.length);
       console.log("Week Range:", { startDate, endDate });

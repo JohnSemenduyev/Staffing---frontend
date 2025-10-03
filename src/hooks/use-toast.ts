@@ -163,8 +163,8 @@ function toast({ ...props }: Toast) {
     typeof (props as any)?.duration === "number"
       ? (props as any).duration
       : props?.variant === "destructive"
-        ? 3000
-        : 1000
+        ? 5000
+        : 5000
 
   setTimeout(() => {
     dismiss()

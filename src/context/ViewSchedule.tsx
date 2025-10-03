@@ -369,7 +369,12 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         { Authorization: `Bearer ${token}` }
       );
       
-      return response.checkScheduleSession;
+      // Return the response in the expected format with data property
+      return {
+        data: {
+          checkScheduleSession: response.checkScheduleSession
+        }
+      };
     } catch (error) {
       console.error('checkScheduleSession:', error);
       throw error;

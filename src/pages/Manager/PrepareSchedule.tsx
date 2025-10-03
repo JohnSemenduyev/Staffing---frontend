@@ -202,7 +202,7 @@ export const PrepareSchedule = () => {
 
   // Publish confirmation modal
   const [publishModal, setPublishModal] = useState({ isOpen: false });
-  const checkScheduleSessionIdRef = useRef<number | null>(null);
+  const checkScheduleSessionIdMapRef = useRef(new Map<string, number>());
 
   const [existingShifts, setExistingShifts] = useState<Shift[]>([]);
 
@@ -520,13 +520,17 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         // Calculate total weekly hours for this user
         const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
       
+        // Get the checkScheduleSessionId from the map
+        const mapKey = `${firstSchedule?.clientId}-${firstSchedule?.addressId}-${user.id}`;
+        const checkScheduleSessionId = checkScheduleSessionIdMapRef.current.get(mapKey) || null;
+        
         return {
           clientId: firstSchedule?.clientId,
           addressId: firstSchedule?.addressId,
           userId: user.id,
           startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
           endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
-          checkScheduleSessionId: checkScheduleSessionIdRef.current,
+          checkScheduleSessionId: checkScheduleSessionId,
           weeklyHours: weeklyHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false
@@ -534,6 +538,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       });
 
       console.log('Backend Data Structure:', backendData);
+      console.log('CheckScheduleSessionIdMap contents:', Array.from(checkScheduleSessionIdMapRef.current.entries()));
 
       // Send data to backend
       const response = await graphQLClient.request(
@@ -595,9 +600,6 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
     setPublishModal({ isOpen: false });
   };
 
-  // add a variable to hold id (todo marker above it)
-  // TODO: use this id later when creating/publishing sessions
-  let checkScheduleSessionId: number | null = null;
 
   // update handleCheck signature and logic
   const handleCheck = async (
@@ -617,7 +619,12 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
 
       // message === null -> allowed (same as previous overlap === true)
       if (result ) {
-        checkScheduleSessionIdRef.current = result.id ?? null; // store id for later use
+        // Store id in map using combination of parameters as key
+        const mapKey = `${clientId}-${addressId}-${userId}`;
+        if (result.id) {
+          checkScheduleSessionIdMapRef.current.set(mapKey, result.id);
+          console.log(`Stored mapping: ${mapKey} -> ${result.id}`);
+        }
         setExistingShifts(result.shifts);
         console.log("Existing Shifts:", JSON.stringify(result.shifts));
         return result; // Return the full result object
