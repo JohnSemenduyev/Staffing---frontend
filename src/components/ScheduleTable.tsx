@@ -218,6 +218,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   const [dragOverCell, setDragOverCell] = useState(null);
   const [deletingLastShift, setDeletingLastShift] = useState(false);
   const [deleteLastShiftModal, setDeleteLastShiftModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
+  // Edit mode confirmation modal
+  const [editModeConfirmModal, setEditModeConfirmModal] = useState({ isOpen: false });
 const isLastShiftForUser = (userId: number, shiftId: number) => {
   const userShifts = scheduleData
     .filter(item => item.userId === userId)
@@ -363,7 +365,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       const token = sessionStorage.getItem("token");
       // delete each schedule session on server
       
-      await Promise.all(
+      const deleteResults = await Promise.allSettled(
         Array.from(sessionIds).map(id =>
           graphQLClient.request(
             DELETE_SCHEDULE_SESSION,
@@ -372,6 +374,44 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           )
         )
       );
+      
+      // Check if any deletions failed
+      const failedDeletions = deleteResults.filter(result => result.status === 'rejected');
+      
+      if (failedDeletions.length > 0) {
+        console.error("Some deletions failed:", failedDeletions);
+        hookToast({
+          title: "Error",
+          description: "Some schedule sessions could not be deleted. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check for GraphQL errors in successful responses
+      const graphQLErrors = deleteResults
+        .filter(result => result.status === 'fulfilled')
+        .map(result => {
+          if (result.status === 'fulfilled') {
+            const response = result.value as any;
+            return response?.errors;
+          }
+          return null;
+        })
+        .filter(errors => errors && errors.length > 0)
+        .flat();
+      
+      if (graphQLErrors.length > 0) {
+        console.error("GraphQL errors in delete response:", graphQLErrors);
+        // Use the first error message from GraphQL response
+        const errorMessage = graphQLErrors[0]?.message || "Failed to delete schedule";
+        hookToast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
       
       // then remove this user's entries locally 
       const updatedData = scheduleData.filter(item => item.userId !== userId);
@@ -399,6 +439,24 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
   
   const cancelDeleteLastShift = () => {
     setDeleteLastShiftModal({ isOpen: false, shiftId: null, userId: null, date: null });
+  };
+
+  // Handle edit mode toggle with confirmation
+  const handleEditModeToggle = () => {
+    if (hasChanges) {
+      setEditModeConfirmModal({ isOpen: true });
+    } else {
+      onToggleEditMode();
+    }
+  };
+
+  const confirmEditModeToggle = () => {
+    setEditModeConfirmModal({ isOpen: false });
+    onToggleEditMode();
+  };
+
+  const cancelEditModeToggle = () => {
+    setEditModeConfirmModal({ isOpen: false });
   };
   const cancelDeleteShift = () => {
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
@@ -534,7 +592,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       const token = sessionStorage.getItem("token");
       // delete each schedule session on server
 
-      await Promise.all(
+      const deleteResults = await Promise.allSettled(
         Array.from(sessionIds).map(id =>
           graphQLClient.request(
             DELETE_SCHEDULE_SESSION,
@@ -543,15 +601,64 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           )
         )
       );
+      
+      // Check if any deletions failed
+      const failedDeletions = deleteResults.filter(result => result.status === 'rejected');
+      
+      if (failedDeletions.length > 0) {
+        console.error("Some deletions failed:", failedDeletions);
+        hookToast({
+          title: "Error",
+          description: "Some schedule sessions could not be deleted. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check for GraphQL errors in successful responses
+      const graphQLErrors = deleteResults
+        .filter(result => result.status === 'fulfilled')
+        .map(result => {
+          if (result.status === 'fulfilled') {
+            const response = result.value as any;
+            return response?.errors;
+          }
+          return null;
+        })
+        .filter(errors => errors && errors.length > 0)
+        .flat();
+      
+      if (graphQLErrors.length > 0) {
+        console.error("GraphQL errors in delete response:", graphQLErrors);
+        // Use the first error message from GraphQL response
+        const errorMessage = graphQLErrors[0]?.message || "Failed to delete schedule";
+        hookToast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
   
       // then remove this user's entries locally 
-      
       const updatedData = scheduleData.filter(item => item.userId !== userId);
       onScheduleDataChange(updatedData);
-        // go to view mode
-        onToggleEditMode();
+      // go to view mode
+      onToggleEditMode();
+      
+      hookToast({
+        title: "Success",
+        description: "Schedule deleted successfully!",
+      });
 
-      } finally {
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      hookToast({
+        title: "Error",
+        description: "Failed to delete schedule. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setDeletingUser(false);
       setDeleteUserModal({ isOpen: false, userId: null });
     }
@@ -1144,7 +1251,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
              </button>
 
              <button
-               onClick={onToggleEditMode}
+               onClick={handleEditModeToggle}
                className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                  isEditMode 
                    ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
@@ -1314,6 +1421,37 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     </div>
   </div>
 )}
+
+      {/* Edit Mode Confirmation Modal */}
+      {editModeConfirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Unsaved Changes</h3>
+              <p className="text-sm text-gray-500">
+                You have unsaved changes. Switching edit mode will reset your changes. Are you sure you want to continue?
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelEditModeToggle}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmEditModeToggle}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }; 

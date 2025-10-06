@@ -364,6 +364,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   // Modal states
   const [deleteAllModal, setDeleteAllModal] = useState({ isOpen: false, shiftId: null as number | null });
   const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
+  // Edit mode confirmation modal
+  const [editModeConfirmModal, setEditModeConfirmModal] = useState({ isOpen: false });
 
   // Edit dialog for a shift's sessions
   const [editShiftModal, setEditShiftModal] = useState({ isOpen: false, userId: null as number | null, date: null as string | null, shiftId: null as number | null });
@@ -605,6 +607,24 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     setDeleteAllModal({ isOpen: false, shiftId: null });
   };
   const cancelDeleteAllForShift = () => setDeleteAllModal({ isOpen: false, shiftId: null });
+
+  // Handle edit mode toggle with confirmation
+  const handleEditModeToggle = () => {
+    if (hasChanges) {
+      setEditModeConfirmModal({ isOpen: true });
+    } else {
+      onToggleEditMode();
+    }
+  };
+
+  const confirmEditModeToggle = () => {
+    setEditModeConfirmModal({ isOpen: false });
+    onToggleEditMode();
+  };
+
+  const cancelEditModeToggle = () => {
+    setEditModeConfirmModal({ isOpen: false });
+  };
 
   // Drag & drop removed for Actual table per requirements
 
@@ -949,7 +969,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
            </button>
 
            <button
-             onClick={() => { logEditableCells(scheduleData); onToggleEditMode(); }}
+             onClick={() => { logEditableCells(scheduleData); handleEditModeToggle(); }}
              className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
                  ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
@@ -1047,6 +1067,37 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
               >
                 <FaRegTrashAlt  className="w-4 h-4 mr-2" />
                 Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Mode Confirmation Modal */}
+      {editModeConfirmModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Unsaved Changes</h3>
+              <p className="text-sm text-gray-500">
+                You have unsaved changes. Switching edit mode will reset your changes. Are you sure you want to continue?
+              </p>
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelEditModeToggle}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmEditModeToggle}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Continue
               </button>
             </div>
           </div>

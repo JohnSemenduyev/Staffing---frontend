@@ -1522,10 +1522,17 @@ export const ViewSchedule = () => {
           errorMessage = "Authentication token not found. Please log in again.";
         } else if (error.message.includes("Network Error") || error.message.includes("fetch")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
-        } else if (error.response?.errors && error.response.errors.length > 0) {
-          errorMessage = error.response.errors[0].message || errorMessage;
         } else {
-          errorMessage = error.message;
+          // Check for GraphQL errors in the response
+          if (error.response?.errors && error.response.errors.length > 0) {
+            errorMessage = error.response.errors[0].message || errorMessage;
+          } else if (error.response?.data?.errors && error.response.data.errors.length > 0) {
+            errorMessage = error.response.data.errors[0].message || errorMessage;
+          } else if (error.errors && error.errors.length > 0) {
+            errorMessage = error.errors[0].message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
         }
       }
 
