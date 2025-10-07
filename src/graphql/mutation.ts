@@ -565,17 +565,10 @@ export const DELETE_SCHEDULE_SESSION = gql`
 // -------------------- USER MUTATIONS --------------------
 
 export const UPDATE_USER_PROFILE = gql`
-  mutation UpdateUserProfile($name: String, $lastName: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
-    updateUserProfile(name: $name, lastName: $lastName, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
-      id
+  mutation UpdateUserProfile($updateUserProfileId: Int!, $name: String, $lastName: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
+    updateUserProfile(id: $updateUserProfileId, name: $name, lastName: $lastName, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
       name
-      lastName
-      email
-      phone
-      address
-      city
-      state
-      zipcode
+      id
     }
   }
 `;

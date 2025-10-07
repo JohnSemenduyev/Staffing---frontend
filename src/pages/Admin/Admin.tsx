@@ -132,6 +132,7 @@ export const Admin = () => {
       await graphQLClient.request(
         UPDATE_USER_PROFILE,
         {
+          updateUserProfileId: editingUserId,
           name: editForm.name,
           lastName: editForm.lastName,
           phone: editForm.phone,

@@ -219,6 +219,7 @@ export const Guard = () => {
       await graphQLClient.request(
         UPDATE_USER_PROFILE,
         {
+          updateUserProfileId: editingUserId,
           name: editGuardForm.name,
           lastName: editGuardForm.lastName,
           phone: editGuardForm.phone,
