@@ -73,6 +73,7 @@ export const CREATE_ASSIGNMENT = gql`
     $guardId: Int!,
     $clientId: Int!,
     $notification: [String!]!,
+    $notificationSubCat: [String!]!, 
     $addressId: Int!,
     $role: String!,
     $access: String!
@@ -83,6 +84,7 @@ export const CREATE_ASSIGNMENT = gql`
       clientId: $clientId,
       notification: $notification,
       addressId: $addressId,
+      notificationSubCat: $notificationSubCat,
       role: $role,
       access: $access
     ) {

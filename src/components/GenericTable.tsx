@@ -129,6 +129,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     }
     return [];
   };
+
+  
   useEffect(() => {
     if (memoizedOnSearch) {
       const cleanSearchTerms = Object.fromEntries(

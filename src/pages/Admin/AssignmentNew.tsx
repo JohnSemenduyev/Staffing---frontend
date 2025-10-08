@@ -43,6 +43,49 @@ const notificationMapping = {
 
 };
 
+const notificationCategories = [
+  {
+    label: "Geolocation",
+    value: "Geolocation",
+    subCategories: [
+      { label: "Guard Absent", value: "guard_absent" },
+      { label: "Proximity Alert", value: "proximity_alert" },
+      { label: "Late Check-In", value: "late_checkin" },
+      { label: "Early Departure", value: "early_departure" },
+      { label: "Return On-Site", value: "return_onsite" },
+      { label: "Untracked Logout", value: "untracked_logout" },
+      { label: "Reconnected On-Site", value: "reconnected_onsite" }
+    ]
+  },
+  {
+    label: "Time Deviation",
+    value: "Time Deviation",
+    subCategories: [] // none yet
+  },
+  {
+    label: "Weekly Hours",
+    value: "Weekly Hours",
+    subCategories: [
+      { label: "Assigned Hours Discrepancy", value: "assigned_hours_discrepancy" },
+      { label: "Worked Hours Discrepancy", value: "worked_hours_discrepancy" }
+    ]
+  },
+  {
+    label: "Schedule",
+    value: "Schedule",
+    subCategories: [
+      { label: "Schedule Published", value: "schedule_published" },
+      { label: "Schedule Unconfirmed", value: "schedule_unconfirmed" },
+      { label: "Schedule Rejection", value: "schedule_rejection" },
+      { label: "Schedule Accepted", value: "schedule_accepted" },
+      { label: "Enroute Confirmation", value: "enroute_confirmation" },
+      { label: "Enroute Unconfirmed", value: "enroute_unconfirmed" },
+      { label: "Enroute Rejected", value: "enroute_rejected" }
+    ]
+  }
+];
+
+
 export default function AssignmentNew() {
   const {
     assignments,
@@ -66,7 +109,8 @@ export default function AssignmentNew() {
     addressId: "",
     role: "",
     access: "",
-    notification: [] as NotificationOption[],
+    notification: [] as string[],
+    notificationSubCat: [] as string[]
   });
   const [showAccessDropdown, setShowAccessDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -336,7 +380,7 @@ export default function AssignmentNew() {
     setShowErrors(false);
   };
 
-  const handleCheckbox = (option: NotificationOption) => {
+  const handleCheckbox = (option: any) => {
     setForm((f) =>
       f.notification.includes(option)
         ? { ...f, notification: f.notification.filter((n) => n !== option) }
@@ -345,6 +389,8 @@ export default function AssignmentNew() {
     setErrors({});
     setShowErrors(false);
   };
+
+  
 
   const getFieldClasses = (fieldName: string) => {
     const hasError = showErrors && errors[fieldName];
@@ -385,6 +431,7 @@ export default function AssignmentNew() {
       role: "",
       access: "",
       notification: [],
+      notificationSubCat: [] as string[]
     });
     setClientSearch("");
     setSelectedAddressText("");
@@ -412,8 +459,9 @@ export default function AssignmentNew() {
       role: form.role,
       access: form.access,
       notification: form.notification,
+      notificationSubCat: form.notificationSubCat
     };
-
+    console.log("input", input)
     try {
       setSubmitLoader(true);
       if (isEditing && editId !== null) {
@@ -428,7 +476,7 @@ export default function AssignmentNew() {
         sessionStorage.setItem("roles", JSON.stringify(arr));
         syncRolesFromSession();
       }
-      resetForm();
+      // resetForm();
       fetchAssignments(currentPage)
     } catch (error: any) {
       console.error("Error submitting assignment:", error);
@@ -446,6 +494,10 @@ export default function AssignmentNew() {
       ? record.notification.map(notif => notificationMapping[notif] || notif)
       : [];
 
+      const mappedSubCats = Array.isArray(record.notificationSubCat)
+  ? record.notificationSubCat.map((notif: string) => notif)
+  : [];
+
     setForm({
       clientId: String(record.client?.id || ""),
       addressId: String(record.address?.id || ""),
@@ -454,6 +506,7 @@ export default function AssignmentNew() {
       role: record.role || "",
       access: record.access || "",
       notification: mappedNotifications,
+      notificationSubCat: mappedSubCats
     });
     setClientSearch(record.client?.name || "");
     const fullAddress = [
@@ -474,6 +527,55 @@ export default function AssignmentNew() {
   const handleDelete = (record: any) => {
     setDeleteModal({ isOpen: true, record });
   };
+
+  const handleCategoryToggle = (category: string, subCategories: { value: string }[]) => {
+  setForm((prev:any) => {
+    const alreadySelected = prev.notification.includes(category);
+    let updatedCategories: string[];
+    let updatedSubCats: string[];
+
+    if (alreadySelected) {
+      // Remove category + its subcats
+      updatedCategories = prev.notification.filter((c) => c !== category);
+      updatedSubCats = prev.notificationSubCat.filter(
+        (sub) => !subCategories.some((s) => s.value === sub)
+      );
+    } else {
+      // Add category + all subcats
+      updatedCategories = [...prev.notification, category];
+      updatedSubCats = [...prev.notificationSubCat, ...subCategories.map((s) => s.value)];
+    }
+
+    return { ...prev, notification: updatedCategories, notificationSubCat: updatedSubCats };
+  });
+};
+
+const handleSubCategoryToggle = (
+  subCat: string,
+  parentCategory: string,
+  subCategories: { value: string }[]
+) => {
+  setForm((prev) => {
+    const alreadySelected = prev.notificationSubCat.includes(subCat);
+    let updatedSubCats: string[];
+
+    if (alreadySelected) {
+      updatedSubCats = prev.notificationSubCat.filter((s) => s !== subCat);
+    } else {
+      updatedSubCats = [...prev.notificationSubCat, subCat];
+    }
+
+    // 🔥 NEW: if at least 1 subcategory is selected → mark parent checked
+    const anySelected = subCategories.some((s) => updatedSubCats.includes(s.value));
+    const updatedCategories = anySelected
+      ? [...new Set([...prev.notification, parentCategory])]
+      : prev.notification.filter((c) => c !== parentCategory);
+
+    return { ...prev, notification: updatedCategories, notificationSubCat: updatedSubCats };
+  });
+};
+
+
 
   const confirmDelete = async () => {
     if (!deleteModal.record) return;
@@ -1058,7 +1160,7 @@ export default function AssignmentNew() {
 
               </div>
 
-              {showNotificationDropdown && (
+              {/* {showNotificationDropdown && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
                   {notificationOptions.map((option) => (
                     <label
@@ -1082,7 +1184,46 @@ export default function AssignmentNew() {
                     </label>
                   ))}
                 </div>
-              )}
+              )} */}
+
+              {showNotificationDropdown && (
+  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-64 overflow-y-auto z-50">
+    {notificationCategories.map((cat) => (
+      <div key={cat.value} className="border-b p-2">
+        {/* Category checkbox */}
+        <label className="flex items-center font-medium">
+          <input
+            type="checkbox"
+            checked={form.notification.includes(cat.value)}
+            onChange={() => handleCategoryToggle(cat.value, cat.subCategories)}
+            className="mr-2"
+          />
+          {cat.label}
+        </label>
+
+        {/* Subcategories */}
+        {cat.subCategories.length > 0 && (
+          <div className="ml-6 mt-1 space-y-1">
+            {cat.subCategories.map((sub) => (
+              <label key={sub.value} className="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.notificationSubCat.includes(sub.value)}
+                  onChange={() =>
+                    handleSubCategoryToggle(sub.value, cat.value, cat.subCategories)
+                  }
+                  className="mr-2"
+                />
+                {sub.label}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+)}
+
 
               {showErrors && errors.notification && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
