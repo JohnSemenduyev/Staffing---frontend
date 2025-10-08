@@ -45,6 +45,7 @@ interface GenericTableProps {
   onSearch?: (searchTerms: { [key: string]: string }) => void
 }
 
+
 export const GenericTable: React.FC<GenericTableProps> = ({
   data,
   columns,
@@ -64,7 +65,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
     direction: "asc",
   });
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
-  const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
+  const [searchTerms, setSearchTerms] = useState<{ [key: string]: string | string[] }>({});
   const debouncedSearchTerms = useDebounce(searchTerms, 500);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
@@ -131,43 +132,79 @@ export const GenericTable: React.FC<GenericTableProps> = ({
   };
 
   
-  useEffect(() => {
-    if (memoizedOnSearch) {
-      const cleanSearchTerms = Object.fromEntries(
-        Object.entries(debouncedSearchTerms).filter(([_, v]) => v && v.trim() !== "")
-      );
-      memoizedOnSearch(cleanSearchTerms);
-    }
-  }, [debouncedSearchTerms, memoizedOnSearch]);
+ useEffect(() => {
+  if (memoizedOnSearch) {
+    const cleanSearchTerms = Object.fromEntries(
+      Object.entries(debouncedSearchTerms).map(([k, v]) => [
+        k,
+        Array.isArray(v) ? v.join(",") : v,
+      ]),
+    );
+    memoizedOnSearch(cleanSearchTerms);
+  }
+}, [debouncedSearchTerms, memoizedOnSearch]);
+
 
 const filteredAndSortedData = useMemo(() => {
   let filtered = data;
 
   // Local search: filter data if no onSearch prop
+  // if (!onSearch) {
+  //   Object.entries(searchTerms).forEach(([key, value]) => {
+  //     if (!value) return;
+  //     filtered = filtered.filter((row) => {
+  //       // Support nested keys like "client.name"
+  //       const keys = key.split(".");
+  //       let cellValue = row;
+  //       for (const k of keys) {
+  //         cellValue = cellValue?.[k];
+  //       }
+  //       if (typeof cellValue === "string") {
+  //         return cellValue.toLowerCase().includes(value.toLowerCase());
+  //       }
+  //       if (Array.isArray(cellValue)) {
+  //         return cellValue.some((v) =>
+  //           String(v).toLowerCase().includes(value.toLowerCase())
+  //         );
+  //       }
+  //       return cellValue !== undefined && cellValue !== null
+  //         ? String(cellValue).toLowerCase().includes(value.toLowerCase())
+  //         : false;
+  //     });
+  //   });
+  // }
+
   if (!onSearch) {
-    Object.entries(searchTerms).forEach(([key, value]) => {
-      if (!value) return;
-      filtered = filtered.filter((row) => {
-        // Support nested keys like "client.name"
-        const keys = key.split(".");
-        let cellValue = row;
-        for (const k of keys) {
-          cellValue = cellValue?.[k];
-        }
-        if (typeof cellValue === "string") {
-          return cellValue.toLowerCase().includes(value.toLowerCase());
-        }
-        if (Array.isArray(cellValue)) {
-          return cellValue.some((v) =>
-            String(v).toLowerCase().includes(value.toLowerCase())
-          );
-        }
-        return cellValue !== undefined && cellValue !== null
-          ? String(cellValue).toLowerCase().includes(value.toLowerCase())
-          : false;
-      });
+  Object.entries(searchTerms).forEach(([key, value]) => {
+    if (!value) return;
+
+    const searchValue = String(value).toLowerCase();
+
+    filtered = filtered.filter((row) => {
+      // Support nested keys like "client.name"
+      const keys = key.split(".");
+      let cellValue = row;
+
+      for (const k of keys) {
+        cellValue = cellValue?.[k];
+      }
+
+      if (typeof cellValue === "string") {
+        return cellValue.toLowerCase().includes(searchValue);
+      }
+
+      if (Array.isArray(cellValue)) {
+        return cellValue.some((v) =>
+          String(v).toLowerCase().includes(searchValue)
+        );
+      }
+
+      return cellValue !== undefined && cellValue !== null
+        ? String(cellValue).toLowerCase().includes(searchValue)
+        : false;
     });
-  }
+  });
+}
 
   // Sorting
   if (sortConfig.key) {
@@ -205,76 +242,153 @@ const filteredAndSortedData = useMemo(() => {
     setSearchTerms({});
   };
   const hasSearchValues = Object.values(searchTerms).some(
-    (val) => val !== undefined && val !== null && String(val).trim() !== ""
+    (val) => val !== undefined && val !== null && String(val)?.trim() !== ""
   );
+  
+const handleCategoryToggle = (
+  columnKey: string,
+  categoryValue: string,
+  subCategories: any[],
+) => {
+  setSearchTerms((prev) => {
+    const current = (prev[columnKey] as string[]) || [];
+    const exists = current.includes(categoryValue);
+
+    if (exists) {
+      // Remove category and all its subcategories
+      return {
+        ...prev,
+        [columnKey]: current.filter(
+          (val) =>
+            val !== categoryValue &&
+            !subCategories.some((sub) => sub.value === val),
+        ),
+      };
+    } else {
+      // Add category and subcategories
+      return {
+        ...prev,
+        [columnKey]: [
+          ...current,
+          categoryValue,
+          ...subCategories.map((s) => s.value),
+        ],
+      };
+    }
+  });
+};
+
+const handleSubCategoryToggle = (
+  columnKey: string,
+  subValue: string,
+  categoryValue: string,
+  subCategories: any[],
+) => {
+  setSearchTerms((prev) => {
+    const current = (prev[columnKey] as string[]) || [];
+    const exists = current.includes(subValue);
+
+    let updatedValues = [...current];
+
+    if (exists) {
+      // 🗑️ Remove the subcategory
+      updatedValues = updatedValues.filter((val) => val !== subValue);
+
+      // If no subcategories remain selected, uncheck parent
+      const anySubSelected = subCategories.some((sub) =>
+        updatedValues.includes(sub.value),
+      );
+      if (!anySubSelected) {
+        updatedValues = updatedValues.filter((val) => val !== categoryValue);
+      }
+    } else {
+      // ✅ Add the subcategory
+      updatedValues.push(subValue);
+
+      // Automatically check the parent if not already
+      if (!updatedValues.includes(categoryValue)) {
+        updatedValues.push(categoryValue);
+      }
+    }
+
+    return { ...prev, [columnKey]: updatedValues };
+  });
+};
+
+
 
   const renderSearchField = (column: TableColumn) => {
     if (!column.searchable) return null;
+    // update this
+    if (column.searchType === "dropdown" && column.key === "notification" || column.key === "notificationType") {
+  const options = column.searchOptions || getColumnSearchOptions(column);
+  const selectedValues = Array.isArray(searchTerms[column.key])
+    ? (searchTerms[column.key] as string[])
+    : [];
 
-    if (column.searchType === "dropdown" && column.key === "notification") {
-      const options = column.searchOptions || getColumnSearchOptions(column);
-      const selectedValues = searchTerms[column.key]
-        ? searchTerms[column.key].split(",")
-        : [];
-
-      const handleCheckbox = (optionValue: string) => {
-        let updatedValues: string[];
-        if (selectedValues.includes(optionValue)) {
-          updatedValues = selectedValues.filter((v) => v !== optionValue);
-        } else {
-          updatedValues = [...selectedValues, optionValue];
-        }
-
-        setSearchTerms((prev) => ({
-          ...prev,
-          [column.key]: updatedValues.join(","), // store as comma-separated string
-        }));
-      };
-
-      return (
-        <div className="relative" ref={notificationDropdownRef}>
-          <div
-            className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
-            onClick={() =>
-              setShowNotificationDropdown(!showNotificationDropdown)
-            }
-          >
-            <div className="flex flex-wrap gap-1 flex-1">
-              <span className="text-gray-400">All {column.label}</span>
-            </div>
-            <ChevronDown className="w-4 h-4 text-gray-400" />
-          </div>
-
-          {/* Dropdown with checkboxes */}
-          {showNotificationDropdown && (
-            <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
-              {options.map((opt) => (
-                <label
-                  key={opt.value}
-                  className="flex items-center p-2 font-medium hover:bg-gray-50 cursor-pointer text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedValues.includes(opt.value)}
-                    onChange={() => handleCheckbox(opt.value)}
-                    className="mr-3 text-[#004175] focus:ring-[#004175] focus:ring-2"
-                  />
-                  <span
-                    className={
-                      selectedValues.includes(opt.value)
-                        ? "text-blue-800"
-                        : "text-gray-600"
-                    }
-                  >
-                    {opt.label}
-                  </span>
-                </label>
-              ))}
-            </div>
+  return (
+    <div className="relative" ref={notificationDropdownRef}>
+      {/* Dropdown Trigger */}
+      <div
+        className="w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer"
+        onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+      >
+        <div className="flex flex-wrap gap-1 flex-1">
+          {selectedValues.length > 0 ? (
+            <span className="text-gray-900">
+              {selectedValues.length} Selected
+            </span>
+          ) : (
+            <span className="text-gray-400">All {column.label}</span>
           )}
         </div>
-      );
-    }
+        <ChevronDown className="w-4 h-4 text-gray-400" />
+      </div>
+
+      {/* Dropdown Menu */}
+      {showNotificationDropdown && (
+        <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-64 overflow-y-auto z-50">
+          {options.map((cat) => (
+            <div key={cat.value} className="border-b p-2">
+              {/* Category */}
+              <label className="flex items-center font-medium">
+                <input
+                  type="checkbox"
+                  checked={selectedValues.includes(cat.value)}
+                  onChange={() =>
+                    handleCategoryToggle(column.key, cat.value, cat.subCategories || [])
+                  }
+                  className="mr-2 accent-blue-600"
+                />
+                {cat.label}
+              </label>
+
+              {/* Subcategories */}
+              {cat.subCategories?.length > 0 && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {cat.subCategories.map((sub) => (
+                    <label key={sub.value} className="flex items-center text-sm font-normal">
+                      <input
+                        type="checkbox"
+                        checked={selectedValues.includes(sub.value)}
+                        onChange={() =>
+                          handleSubCategoryToggle(column.key, sub.value, cat.value, cat.subCategories || [])
+                        }
+                        className="mr-2 accent-blue-600"
+                      />
+                      {sub.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
     if (column.searchType === "dropdown") {
       const options = getColumnSearchOptions(column);

@@ -31,6 +31,25 @@ const notificationOptions = [
 ] as const;
 type NotificationOption = (typeof notificationOptions)[number];
 
+const flattenNotificationCategories = (categories) => {
+  const flattened = [];
+  categories.forEach((cat) => {
+    // Add parent as group label if needed
+    flattened.push({ label: cat.label, value: cat.value });
+
+    // Add subcategories (with clear prefix for UI clarity)
+    if (Array.isArray(cat.subCategories)) {
+      cat.subCategories.forEach((sub) => {
+        flattened.push({
+          label: `— ${cat.label} / ${sub.label}`, // visually nested
+          value: sub.value,
+        });
+      });
+    }
+  });
+  return flattened;
+};
+
 const notificationMapping = {
   'geo_location': 'Geolocation',
   'time_clock': 'Time Clock',
@@ -43,7 +62,7 @@ const notificationMapping = {
 
 };
 
-const notificationCategories = [
+export const notificationCategories = [
   {
     label: "Geolocation",
     value: "Geolocation",
@@ -597,15 +616,44 @@ const handleSubCategoryToggle = (
     setDeleteModal({ isOpen: false, record: null });
     setDeleteLoader(false);
   };
+  // const formatNotificationText = (notification: string): string => {
+  //   if (notification == "geo_location") {
+  //     return "GeoLocation"
+  //   }
+  //   return notification
+  //     .replace(/_/g, ' ')
+  //     .replace(/\b\w/g, (char) => char.toUpperCase());
+  // };
   const formatNotificationText = (notification: string): string => {
-    if (notification == "geo_location") {
-      return "GeoLocation"
-    }
-    return notification
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+  if (!notification) return "-";
+
+  // 1️⃣ Handle known special cases first
+  const specialCases: Record<string, string> = {
+    geo_location: "Geo Location",
+    otp_alert: "OTP Alert",
+    sms_marketing: "SMS Marketing",
   };
 
+  if (specialCases[notification]) {
+    return specialCases[notification];
+  }
+
+  // 2️⃣ Replace underscores or dots with spaces and clean up
+  let formatted = notification.replace(/[_\.]/g, " ");
+
+  // 3️⃣ Capitalize each word properly
+  formatted = formatted.replace(/\b\w/g, (char) => char.toUpperCase());
+
+  // 4️⃣ Optional: handle nested keys like "email.welcome" => "Email / Welcome"
+  formatted = formatted.replace(/\s*\.\s*/g, " / ");
+
+  // 5️⃣ Trim any extra spaces
+  return formatted.trim();
+};
+
+
+  const flattenedCategories = flattenNotificationCategories(notificationCategories);
+  console.log({flattenedCategories})
   const tableColumns: TableColumn[] = [
     {
       key: "client.name",
@@ -741,22 +789,32 @@ const handleSubCategoryToggle = (
       searchable: true,
       searchType: 'dropdown',
       width: "400px",
-      searchOptions: [ // Add this
-        { label: 'Geolocation', value: 'geo_location' },
-        { label: 'Time Clock', value: 'time_clock' },
-        { label: 'Weekly Hours', value: 'weekly_Hours' },
-        { label: 'Schedule', value: 'schedule' }
-      ],
+      // searchOptions: [ // Add this // TODO: 
+      //   { label: 'Geolocation', value: 'geo_location' },
+      //   { label: 'Time Clock', value: 'time_clock' },
+      //   { label: 'Weekly Hours', value: 'weekly_Hours' },
+      //   { label: 'Schedule', value: 'schedule' }
+      // ],
+      // searchOptions: notificationCategories.map((cat) => ({
+      //   label: cat.label,
+      //   value: cat.value,
+      //   subCategories: cat.subCategories.map((sub) => ({
+      //     label: sub.label,
+      //     value: sub.value
+      //   }))
+      // })),
+      searchOptions: notificationCategories,
       render: (value: NotificationOption[] | string[] | null | undefined) => {
         if (!value || !Array.isArray(value) || value.length === 0) {
           return "-";
         }
 
         // Transform backend format to display format
+        console.log({ value })
         const formattedNotifications = value.map((notification: string) =>
           formatNotificationText(notification)
         );
-
+        // return formattedNotifications.join(", ");
         return formattedNotifications.join(", ");
       },
     },
@@ -1130,6 +1188,7 @@ const handleSubCategoryToggle = (
                 }
               >
                 <div className="flex flex-wrap gap-1 flex-1">
+                  {/* Take reference from here */}
                   {form.notification.length === 0 ? (
                     <span className="text-gray-500">
                       Select notifications...

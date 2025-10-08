@@ -15,6 +15,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { Button } from "../../components/ui/button";
 import Pagination from "../../components/Pagination";
+import { notificationCategories } from "../Admin/AssignmentNew";
 
 
 const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
@@ -34,6 +35,7 @@ export const Notification = () => {
     Startdate: "",
     Enddate: "",
     notification: [] as NotificationOption[],
+    notificationSubCat: [] as string[]
   });
 
   const { data, loading, error, lastPage, currentPage, setCurrentPage, fetchNotifications } = useNotifications();
@@ -412,14 +414,9 @@ export const Notification = () => {
       sortable: true,
       searchable: true,
       searchType: 'dropdown',
-      searchOptions: [
-        { label: 'Geolocation', value: 'geo_location' },
-        { label: 'Time Clock', value: 'time_clock' },
-        { label: 'Weekly Hours', value: 'weekly_Hours' },
-        { label: 'Schedule', value: 'schedule' },
-      ],
+      searchOptions: notificationCategories,
       width: "200px",
-      className: "min-w-[120px]",
+      className: "min-w-[180px]",
       render: (value: string) => {
         const formattedType = value ? formatNotificationText(value) : "Unknown";
         return (
@@ -456,6 +453,54 @@ export const Notification = () => {
       }
     }
   ];
+
+    const handleCategoryToggle = (category: string, subCategories: { value: string }[]) => {
+  setForm((prev:any) => {
+    const alreadySelected = prev.notification.includes(category);
+    let updatedCategories: string[];
+    let updatedSubCats: string[];
+
+    if (alreadySelected) {
+      // Remove category + its subcats
+      updatedCategories = prev.notification.filter((c) => c !== category);
+      updatedSubCats = prev.notificationSubCat.filter(
+        (sub) => !subCategories.some((s) => s.value === sub)
+      );
+    } else {
+      // Add category + all subcats
+      updatedCategories = [...prev.notification, category];
+      updatedSubCats = [...prev.notificationSubCat, ...subCategories.map((s) => s.value)];
+    }
+
+    return { ...prev, notification: updatedCategories, notificationSubCat: updatedSubCats };
+  });
+};
+
+const handleSubCategoryToggle = (
+  subCat: string,
+  parentCategory: string,
+  subCategories: { value: string }[]
+) => {
+  setForm((prev) => {
+    const alreadySelected = prev.notificationSubCat.includes(subCat);
+    let updatedSubCats: string[];
+
+    if (alreadySelected) {
+      updatedSubCats = prev.notificationSubCat.filter((s) => s !== subCat);
+    } else {
+      updatedSubCats = [...prev.notificationSubCat, subCat];
+    }
+
+    // 🔥 NEW: if at least 1 subcategory is selected → mark parent checked
+    const anySelected = subCategories.some((s) => updatedSubCats.includes(s.value));
+    const updatedCategories = anySelected
+      ? [...new Set([...prev.notification, parentCategory])]
+      : prev.notification.filter((c) => c !== parentCategory);
+
+    return { ...prev, notification: updatedCategories, notificationSubCat: updatedSubCats };
+  });
+};
+
   return (
     <div className="w-full overflow-x-hidden p-6 ">
       <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
@@ -638,6 +683,7 @@ export const Notification = () => {
                   {form.notification.length === 0 ? (
                     <span className="text-gray-500">Select notifications...</span>
                   ) : (
+                    // make changes here
                     form.notification.map(option => (
                       <span
                         key={option}
@@ -667,7 +713,7 @@ export const Notification = () => {
                 </div>
               </div>
 
-              {showNotificationDropdown && (
+              {/* {showNotificationDropdown && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
                   {notificationOptions.map(option => (
                     <label key={option} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer text-sm">
@@ -683,7 +729,44 @@ export const Notification = () => {
                     </label>
                   ))}
                 </div>
-              )}
+              )} */}
+              {showNotificationDropdown && (
+  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-64 overflow-y-auto z-50">
+    {notificationCategories.map((cat) => (
+      <div key={cat.value} className="border-b p-2">
+        {/* Category checkbox */}
+        <label className="flex items-center font-medium">
+          <input
+            type="checkbox"
+            checked={form.notification.includes(cat.value)}
+            onChange={() => handleCategoryToggle(cat.value, cat.subCategories)}
+            className="mr-2"
+          />
+          {cat.label}
+        </label>
+
+        {/* Subcategories */}
+        {cat.subCategories.length > 0 && (
+          <div className="ml-6 mt-1 space-y-1">
+            {cat.subCategories.map((sub) => (
+              <label key={sub.value} className="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.notificationSubCat.includes(sub.value)}
+                  onChange={() =>
+                    handleSubCategoryToggle(sub.value, cat.value, cat.subCategories)
+                  }
+                  className="mr-2"
+                />
+                {sub.label}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+)}
 
               {showErrors && errors.notification && (
                 <div className="mt-1 flex items-center text-sm text-red-600">
