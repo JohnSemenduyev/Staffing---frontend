@@ -207,7 +207,7 @@ export const Notification = () => {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    console.log({NotificationForm: form});
     if (!validate()) {
       setShowErrors(true);
       return;
@@ -224,6 +224,7 @@ export const Notification = () => {
         ...(form.addressId && { addressId: Number(form.addressId) }),
         userId: Number(form.userId),
         notificationType: form.notification.map(n => notificationTypeMap[n]),
+        subcategory: form.notificationSubCat,
         page: currentPage,
       });
 

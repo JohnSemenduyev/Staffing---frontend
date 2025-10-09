@@ -133,6 +133,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     userId?: number;
     shiftId?: number;
     notificationType?: string[];
+    subcategory: string[];
   }) => {
     setLoading(true);
     setError(null);
@@ -151,6 +152,9 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         if (v.shiftId) out.shiftId = v.shiftId;
         if (Array.isArray(v.notificationType) && v.notificationType.length > 0) {
           out.notificationType = v.notificationType;
+        }
+        if (Array.isArray(v.subcategory) && v.subcategory.length > 0) {
+          out.subcategory = v.subcategory;
         }
         return out;
       };

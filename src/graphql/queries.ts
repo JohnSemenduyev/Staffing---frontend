@@ -562,6 +562,7 @@ export const GET_NOTIFICATIONS = gql`
     $addressId: Int
     $userId: Int
     $notificationType: [String!]
+    $subcategory: [String!]
   ) {
     notifications(
       startDate: $startDate
