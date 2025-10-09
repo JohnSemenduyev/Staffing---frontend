@@ -48,6 +48,7 @@ export type NotificationEntry = {
   notificationType: string;
   message: string;
   shiftTime?: string;
+  subcategory?: string;
 };
 
 type NotificationsContextType = {
@@ -192,6 +193,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         notificationType: n.notificationType,
         message: n.message,
         shiftTime: n.shift?.startTime || undefined,
+        subcategory: n.subcategory,
       }));
 
       setData(transformed);

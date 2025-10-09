@@ -573,6 +573,7 @@ export const GET_NOTIFICATIONS = gql`
       addressId: $addressId
       userId: $userId
       notificationType: $notificationType
+      subcategory: $subcategory
     ) {
       lastPage
       data {
@@ -581,6 +582,7 @@ export const GET_NOTIFICATIONS = gql`
         addressId
         userId
         notificationType
+        subcategory
         scheduleSessionId
         message
         managerId

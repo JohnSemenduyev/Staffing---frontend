@@ -16,15 +16,17 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { Button } from "../../components/ui/button";
 import Pagination from "../../components/Pagination";
 import { notificationCategories } from "../Admin/AssignmentNew";
+import { NOTIFICATION_MAP } from "../../utils/notificationMap";
 
 
-const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling"] as const;
+const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", 'Schedule'] as const;
 type NotificationOption = (typeof notificationOptions)[number];
 const notificationTypeMap: Record<NotificationOption, string> = {
   "Geolocation": "geo_location",
   "Time Clock": "time_clock",
   "Weekly Hours": "weekly_Hours",
-  "Scheduling": "schedule"
+  "Scheduling": "schedule",
+  "Schedule": "schedule",
 };
 
 export const Notification = () => {
@@ -39,6 +41,7 @@ export const Notification = () => {
   });
 
   const { data, loading, error, lastPage, currentPage, setCurrentPage, fetchNotifications } = useNotifications();
+  console.log({notificationData:data});
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
   const debouncedClientSearch = useDebounce(clientSearch, 300);
@@ -215,7 +218,7 @@ export const Notification = () => {
 
     setSubmitLoader(true);
     setErrors({});
-
+    console.log({notificatoinFormData: form})
     try {
       await fetchNotifications({
         startDate: toMDY(form.Startdate),
@@ -426,6 +429,16 @@ export const Notification = () => {
           </div>
         );
       }
+    },
+     {
+      key: "subcategory",
+      label: "Notification SubCategory",
+      sortable: true,
+      searchable: true,
+      searchType: 'text',
+      width: "250px",
+      height:"40px",
+       render: (value: string) => NOTIFICATION_MAP[value] || "-"
     },
     {
       key: "message",
