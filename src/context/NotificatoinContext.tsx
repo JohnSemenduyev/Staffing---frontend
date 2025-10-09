@@ -70,6 +70,7 @@ type NotificationsContextType = {
       userId?: number;
       shiftId?: number;
       notificationType?: string[];
+      subcategory?: string[];
     }
   ) => Promise<void>;
 };
@@ -135,7 +136,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     userId?: number;
     shiftId?: number;
     notificationType?: string[];
-    subcategory: string[];
+    subcategory?: string[];
   }) => {
     setLoading(true);
     setError(null);
