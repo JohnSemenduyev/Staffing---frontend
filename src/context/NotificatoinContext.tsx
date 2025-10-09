@@ -30,6 +30,7 @@ type RawNotification = {
   createdAt: string;
   endDate: string;
   shift?: NotificationShift;
+  subcategory?: string;
 };
 
 // Final frontend format
