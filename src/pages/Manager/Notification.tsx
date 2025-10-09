@@ -19,7 +19,7 @@ import { notificationCategories } from "../Admin/AssignmentNew";
 import { NOTIFICATION_MAP } from "../../utils/notificationMap";
 
 
-const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", 'Schedule'] as const;
+const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", 'Schedule'] as any;
 type NotificationOption = (typeof notificationOptions)[number];
 const notificationTypeMap: Record<NotificationOption, string> = {
   "Geolocation": "geo_location",
@@ -192,6 +192,7 @@ export const Notification = () => {
       Startdate: "",
       Enddate: "",
       notification: [],
+      notificationSubCat: [],
     });
     setClientSearch("");
     setUserSearch("");

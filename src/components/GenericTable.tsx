@@ -12,6 +12,7 @@ import ResetButton from "./ui/ResetButton";
 export interface SearchOption {
 	label: string;
 	value: any;
+	subCategories?: SearchOption[];
 }
 
 export interface TableColumn {
@@ -147,7 +148,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 				Object.entries(debouncedSearchTerms).map(([k, v]) => [
 					k,
 					Array.isArray(v) ? v.join(",") : v,
-				]),
+				])
 			);
 			memoizedOnSearch(cleanSearchTerms);
 		}
@@ -203,7 +204,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 
 					if (Array.isArray(cellValue)) {
 						return cellValue.some((v) =>
-							String(v).toLowerCase().includes(searchValue),
+							String(v).toLowerCase().includes(searchValue)
 						);
 					}
 
@@ -223,8 +224,10 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 				if (bValue === null || bValue === undefined) return -1;
 				let aCompare: any = aValue;
 				let bCompare: any = bValue;
-				if (Array.isArray(aValue)) aCompare = aValue.length > 0 ? aValue[0] : "";
-				if (Array.isArray(bValue)) bCompare = bValue.length > 0 ? bValue[0] : "";
+				if (Array.isArray(aValue))
+					aCompare = aValue.length > 0 ? aValue[0] : "";
+				if (Array.isArray(bValue))
+					bCompare = bValue.length > 0 ? bValue[0] : "";
 				if (typeof aCompare === "string" && typeof bCompare === "string") {
 					aCompare = aCompare.toLowerCase();
 					bCompare = bCompare.toLowerCase();
@@ -250,13 +253,13 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 		setSearchTerms({});
 	};
 	const hasSearchValues = Object.values(searchTerms).some(
-		(val) => val !== undefined && val !== null && String(val)?.trim() !== "",
+		(val) => val !== undefined && val !== null && String(val)?.trim() !== ""
 	);
 
 	const handleCategoryToggle = (
 		columnKey: string,
 		categoryValue: string,
-		subCategories: any[],
+		subCategories: any[]
 	) => {
 		setSearchTerms((prev) => {
 			const current = (prev[columnKey] as string[]) || [];
@@ -268,7 +271,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 					...prev,
 					[columnKey]: current.filter(
 						(val) =>
-							val !== categoryValue && !subCategories.some((sub) => sub.value === val),
+							val !== categoryValue &&
+							!subCategories.some((sub) => sub.value === val)
 					),
 				};
 			} else {
@@ -289,14 +293,14 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 		columnKey: string,
 		subValue: string,
 		categoryValue: string,
-		subCategories: any[],
+		subCategories: any[]
 	) => {
 		setSearchTerms((prev) => {
 			const current = (prev[columnKey] as string[]) || [];
 			const exists = current.includes(subValue);
 
 			let updatedValues = [...current];
-			let updatedSubCats = (prev.subCategories as string[]) || [];
+			let updatedSubCats = (prev.subCategories as any) || [];
 
 			if (exists) {
 				// 🗑️ Remove the subcategory
@@ -305,7 +309,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 
 				// If no subcategories remain selected, uncheck parent
 				const anySubSelected = subCategories.some((sub) =>
-					updatedValues.includes(sub.value),
+					updatedValues.includes(sub.value)
 				);
 				if (!anySubSelected) {
 					updatedValues = updatedValues.filter((val) => val !== categoryValue);
@@ -349,11 +353,15 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 					{/* Dropdown Trigger */}
 					<div
 						className='w-full px-2 py-1 text-sm border text-gray-400 border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer'
-						onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+						onClick={() =>
+							setShowNotificationDropdown(!showNotificationDropdown)
+						}
 					>
 						<div className='flex flex-wrap gap-1 flex-1'>
 							{selectedValues.length > 0 ? (
-								<span className='text-gray-900'>{selectedValues.length} Selected</span>
+								<span className='text-gray-900'>
+									{selectedValues.length} Selected
+								</span>
 							) : (
 								<span className='text-gray-400'>All {column.label}</span>
 							)}
@@ -372,7 +380,11 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 											type='checkbox'
 											checked={selectedValues.includes(cat.value)}
 											onChange={() =>
-												handleCategoryToggle(column.key, cat.value, cat.subCategories || [])
+												handleCategoryToggle(
+													column.key,
+													cat.value,
+													cat.subCategories || []
+												)
 											}
 											className='mr-2 accent-blue-600'
 										/>
@@ -395,7 +407,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 																column.key,
 																sub.value,
 																cat.value,
-																cat.subCategories || [],
+																cat.subCategories || []
 															)
 														}
 														className='mr-2 accent-blue-600'
@@ -466,7 +478,10 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 									key={opt.value}
 									className='p-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-500'
 									onClick={() => {
-										setSearchTerms((prev) => ({ ...prev, [column.key]: opt.value }));
+										setSearchTerms((prev) => ({
+											...prev,
+											[column.key]: opt.value,
+										}));
 										setShowDropdown(false);
 									}}
 								>
@@ -562,7 +577,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 												>
 													<span
 														className={`cursor-pointer ${
-															sortConfig.key === column.key && sortConfig.direction === "asc"
+															sortConfig.key === column.key &&
+															sortConfig.direction === "asc"
 																? "text-white"
 																: "text-white/40"
 														}`}
@@ -582,7 +598,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 													</span>
 													<span
 														className={`cursor-pointer ${
-															sortConfig.key === column.key && sortConfig.direction === "desc"
+															sortConfig.key === column.key &&
+															sortConfig.direction === "desc"
 																? "text-white"
 																: "text-white/40"
 														}`}
@@ -613,7 +630,10 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 									{actions.length > 0 && (
 										<th className='px-4 py-2 text-left'>
 											{hasSearchValues && (
-												<ResetButton onClick={resetSearch} disabled={!hasSearchValues} />
+												<ResetButton
+													onClick={resetSearch}
+													disabled={!hasSearchValues}
+												/>
 											)}
 										</th>
 									)}
@@ -650,7 +670,8 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 															key={actionIndex}
 															onClick={() => action.onClick(record)}
 															className={
-																action.className || "text-blue-500 hover:text-blue-700"
+																action.className ||
+																"text-blue-500 hover:text-blue-700"
 															}
 															title={action.title || action.label}
 														>
@@ -673,7 +694,9 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 														minWidth: column.width || "auto",
 													}}
 												>
-													{column.render ? column.render(value, record) : value || "-"}
+													{column.render
+														? column.render(value, record)
+														: value || "-"}
 												</td>
 											);
 										})}
@@ -686,11 +709,15 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 										colSpan={columns.length + (actions.length > 0 ? 1 : 0)}
 										className='relative p-0'
 										style={{
-											height: `calc(${tableHeight} - ${searchable ? "150px" : "100px"})`,
+											height: `calc(${tableHeight} - ${
+												searchable ? "150px" : "100px"
+											})`,
 										}}
 									>
 										<div className='absolute inset-0 flex items-center justify-center bg-white'>
-											<span className='text-gray-500 text-center'>{emptyMessage}</span>
+											<span className='text-gray-500 text-center'>
+												{emptyMessage}
+											</span>
 										</div>
 									</td>
 								</tr>
