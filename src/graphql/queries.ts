@@ -117,6 +117,7 @@ export const GET_ASSIGNMENTS = gql`
         role
         access
         notification
+        notificationSubCat
         createdAt
         user {
           id

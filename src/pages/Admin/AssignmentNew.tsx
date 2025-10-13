@@ -31,6 +31,7 @@ import {
 const notificationOptions = [
 	"Geolocation",
 	"Time Clock",
+	"Time Deviation",
 	"Weekly Hours",
 	"Scheduling",
 ] as const;
@@ -58,10 +59,12 @@ const flattenNotificationCategories = (categories) => {
 const notificationMapping = {
 	geo_location: "Geolocation",
 	time_clock: "Time Clock",
+	time_deviation: "Time Deviation",
 	weekly_Hours: "Weekly Hours",
 	schedule: "Scheduling",
 	Geolocation: "Geolocation",
 	"Time Clock": "Time Clock",
+	"Time Deviation": "Time Deviation",
 	"Weekly Hours": "Weekly Hours",
 	Scheduling: "Scheduling",
 };
@@ -129,6 +132,7 @@ export const notificationCategories = [
 const filterMap = {
   'Geolocation': 'geolocation',
   'Time Clock': 'time_clock',
+  'Time Deviation': 'time_deviation',
   'Weekly Hours': 'weekly_hours',
   'Scheduling': 'schedule'
 };

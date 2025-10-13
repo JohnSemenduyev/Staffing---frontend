@@ -16,6 +16,7 @@ export interface Assignment {
   role: string;
   access: string;
   notification: string[];
+  notificationSubCat?: string[];
   createdAt: string;
   user?: { id: number; name: string };
   guard?: { id: number; name: string };

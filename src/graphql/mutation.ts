@@ -108,6 +108,7 @@ export const UPDATE_ASSIGNMENT = gql`
     $guardId: Int!,
     $clientId: Int!,
     $notification: [String!]!,
+    $notificationSubCat: [String!]!,
     $addressId: Int!,
     $role: String!,
     $access: String!
@@ -118,6 +119,7 @@ export const UPDATE_ASSIGNMENT = gql`
       guardId: $guardId,
       clientId: $clientId,
       notification: $notification,
+      notificationSubCat: $notificationSubCat,
       addressId: $addressId,
       role: $role,
       access: $access
