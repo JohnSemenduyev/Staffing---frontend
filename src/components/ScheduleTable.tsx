@@ -64,6 +64,7 @@ interface ScheduleTableProps {
   onPrint: () => void;
   onDownloadExcel: () => void;
   onToggleEditMode: () => void;
+  onDeleteSuccess?: () => void | Promise<void>;
   isPublishing: boolean;
   isPrinting: boolean;
   readOnly?: boolean;
@@ -193,6 +194,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onPrint,
   onDownloadExcel,
   onToggleEditMode,
+  onDeleteSuccess,
   isPublishing,
   isPrinting,
   readOnly = false,
@@ -424,6 +426,11 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         description: "Schedule deleted successfully!",
       });
       
+      // Refresh data from server after successful deletion
+      if (onDeleteSuccess) {
+        await onDeleteSuccess();
+      }
+      
     } catch (error) {
       console.error("Error deleting schedule:", error);
       hookToast({
@@ -650,6 +657,11 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         title: "Success",
         description: "Schedule deleted successfully!",
       });
+
+      // Refresh data from server after successful deletion
+      if (onDeleteSuccess) {
+        await onDeleteSuccess();
+      }
 
     } catch (error) {
       console.error("Error deleting schedule:", error);
