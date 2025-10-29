@@ -193,7 +193,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onPublish,
   onPrint,
   onDownloadExcel,
-  onToggleEditMode,
+  onToggleEditMode, 
   onDeleteSuccess,
   isPublishing,
   isPrinting,
