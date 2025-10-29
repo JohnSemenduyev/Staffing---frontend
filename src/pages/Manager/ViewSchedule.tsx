@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
@@ -114,6 +115,7 @@ const DateNavigation = ({
 
 export const ViewSchedule = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // URL parameter handling functions
   const getUrlParams = () => {
@@ -377,6 +379,8 @@ export const ViewSchedule = () => {
 
   // Track where navigation originated: 'week' | 'modal'
   const [navigationSource, setNavigationSource] = useState<"week" | "modal" | null>(null);
+  // track if the modal was opened via the "View" (eye) action
+  const [openedFromViewButton, setOpenedFromViewButton] = useState(false);
   // Bump key to remount tables and reset any internal component state
   const [viewKey, setViewKey] = useState(0);
 
@@ -494,12 +498,15 @@ export const ViewSchedule = () => {
 
     setSelectedClient(clientData);
     setModalOpen(true);
+  setOpenedFromViewButton(true);
 
     // Remove URL parameter updates from here - they will be set in handleDateSubmit
   };
   const validateAndNavigate = async (newDate: string) => {
     console.log("validateAndNavigate called with:", newDate);
     setNavigationSource("week");
+    // this is a week navigation (not the modal view flow)
+    setOpenedFromViewButton(false);
 
     const clientId = selectedClient?.clientId;
     const addressId = selectedClient?.addressId;
@@ -654,7 +661,21 @@ export const ViewSchedule = () => {
           year: 'numeric'
         }) : "";
         //this toast should appear only when clicker on enter on Preiod end date modal 
-        if (navigationSource === "modal") {
+        if (navigationSource === "modal" && openedFromViewButton) {
+          // Close modal and redirect user to PrepareSchedule so they can create a schedule
+          setModalOpen(false);
+          if (selectedClient && selectedDate) {
+            // Show error toast then navigate to prepare schedule with same client/address and selectedDate
+            toast({
+              title: "No Schedule Found",
+              description: `No schedule found for this week. Redirecting to Prepare Schedule to create one.`,
+              variant: "destructive",
+            });
+            navigate(`/prepare-schedule?clientId=${selectedClient.clientId}&addressId=${selectedClient.addressId}&selectedDate=${selectedDate}`);
+            setOpenedFromViewButton(false);
+            return; // stop further handling in this effect
+          }
+          // fallback toast if we can't navigate
           toast({
             title: "No Schedule Found",
             description: `No schedule found for this week. Please prepare a schedule first.`,
@@ -793,6 +814,22 @@ export const ViewSchedule = () => {
       setHasScheduleChanges(false);
     }
   }, [scheduleData, originalScheduleData, isScheduleEditMode]);
+
+  // Minimal handler to refresh schedule data after child reports a successful delete
+  const handleDeleteSuccess = async () => {
+    if (!selectedClient || !selectedDate) return;
+    setTableLoading(true);
+    try {
+      const formattedDate = convertDateFormat(selectedDate);
+      await fetchScheduleData(selectedClient.clientId, selectedClient.addressId, formattedDate);
+      toast({ title: "Success", description: "Schedule refreshed after delete." });
+    } catch (err) {
+      console.error("Error refreshing schedule after delete:", err);
+      toast({ title: "Error", description: "Failed to refresh schedule after delete.", variant: "destructive" });
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isActualTimeEditMode && originalSessionData.length > 0) {
@@ -2076,6 +2113,7 @@ export const ViewSchedule = () => {
                 onPrint={handleSchedulePrint}
                 onDownloadExcel={handleScheduleDownloadExcel}
                 onToggleEditMode={toggleScheduleEditMode}
+                onDeleteSuccess={handleDeleteSuccess}
                 isPublishing={isPublishing}
                 isPrinting={isPrinting}
                 loading={scheduleLoading || tableLoading}
