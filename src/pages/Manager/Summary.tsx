@@ -547,7 +547,6 @@ export const Summary = () => {
       className: "whitespace-nowrap max-w-[200px]",
       render: (_: any, row: any) => {
         const a = row.Client;
-        console.log(1, a)
         const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
@@ -560,7 +559,6 @@ export const Summary = () => {
       className: "break-words max-w-[200px] sm:max-w-[300px] lg:max-w-[400px]",
       render: (_: any, row: any) => {
         const a = row.address;
-        console.log(1, a)
         
         if (!a) return <div>-</div>;
         

@@ -538,8 +538,8 @@ export const CHECK_SCHEDULE_SESSION = gql`
 // -------------------- CLIENT MUTATIONS --------------------
 
 export const DELETE_CLIENT = gql`
-  mutation DeleteClient($deleteClientId: Int!) {
-    deleteClient(id: $deleteClientId) {
+ mutation DeleteClient($deleteClientId: Int!, $addressId: Int!) {
+  deleteClient(id: $deleteClientId, addressId: $addressId)  {
       id
       name
       email

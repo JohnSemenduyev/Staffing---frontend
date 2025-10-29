@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { ChevronDown, Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
@@ -11,9 +11,10 @@ import { Search } from "lucide-react";
 import { graphQLClient } from "../../GraphqlClient";
 import { DELETE_CLIENT, UPDATE_CLIENT_WITH_ADDRESS } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
+import { downloadClientAddressesPdf } from "../../PDF/ClientListPdf";
 
 interface NewClientData {
-  clientName: string;
+  clientName: string; 
   industry: string;
   contractHour: string;
   address: string;
@@ -58,7 +59,13 @@ function ClientList() {
   const formRef = useRef<HTMLDivElement>(null);
 
   // Client edit/delete modals
-  const [deleteClientModal, setDeleteClientModal] = useState({ isOpen: false, clientId: null, clientName: "" });
+  // const [deleteClientModal, setDeleteClientModal] = useState({ isOpen: false, clientId: null, clientName: "" });
+const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; clientId: number | null; addressId: number | null; clientName: string }>({
+   isOpen: false,
+   clientId: null,
+   addressId: null,
+   clientName: ""
+ });
   const [saveEditModal, setSaveEditModal] = useState({ isOpen: false, clientData: null });
   const [cancelEditModal, setCancelEditModal] = useState({ isOpen: false });
 
@@ -218,10 +225,15 @@ function ClientList() {
   };
 
   // Handle delete client
-  const handleDeleteClient = (clientId: number, clientName: string) => {
-    console.log("Delete client clicked:", clientId, clientName);
-    setDeleteClientModal({ isOpen: true, clientId, clientName });
-  };
+  // const handleDeleteClient = (clientId: number, clientName: string) => {
+  //   console.log("Delete client clicked:", clientId, clientName);
+  //   setDeleteClientModal({ isOpen: true, clientId, clientName });
+  // };
+
+  const handleDeleteClient = (clientId: number, addressId: number, clientName: string) => {
+   console.log("Delete client clicked:", clientId, addressId, clientName);
+   setDeleteClientModal({ isOpen: true, clientId, addressId, clientName });
+ };
 
   const confirmDeleteClient = async () => {
     setIsDeleting(true);
@@ -238,7 +250,7 @@ function ClientList() {
 
       await graphQLClient.request(
         DELETE_CLIENT,
-        { deleteClientId: deleteClientModal.clientId },
+        { deleteClientId: deleteClientModal.clientId , addressId: deleteClientModal.addressId},
         { Authorization: `Bearer ${token}` }
       );
 
@@ -271,13 +283,13 @@ function ClientList() {
         variant: "destructive",
       });
     } finally {
-      setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" });
+      setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" , addressId: null});
       setIsDeleting(false);
     }
   };
 
   const cancelDeleteClient = () => {
-    setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" });
+    setDeleteClientModal({ isOpen: false, clientId: null, clientName: "" , addressId: null});
   };
 
   // Handle edit client (inline editing)
@@ -299,6 +311,14 @@ function ClientList() {
 
 
   };
+
+    const handleExportToPDF = async (data: any) =>{
+   await downloadClientAddressesPdf(data, {
+  title: "Clients List",
+  fileName: "clients.pdf",
+});
+
+  }
 
   const handleSaveEdit = (clientData: any) => {
     console.log("Save edit clicked:", clientData);
@@ -504,8 +524,8 @@ function ClientList() {
     setIsCreating(true);
     try {
       const input = {
-        name: firstName,
-        lastName: lastName || null,
+        name: newClientData.clientName.trim(),
+       lastName: null,  
         addresses: [{
           address: newClientData.address,
           city: newClientData.city,
@@ -1145,6 +1165,7 @@ function ClientList() {
                                   <button
                                     onClick={() => handleDeleteClient(
                                       getNestedValue(record, "client.id"),
+                                      getNestedValue(record, "id"),
                                       [getNestedValue(record, "client.name"), getNestedValue(record, "client.lastName")].filter(Boolean).join(' ')
                                     )}
                                     className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
@@ -1166,13 +1187,13 @@ function ClientList() {
                                   className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                   placeholder="First name"
                                 />
-                                <input
+                                {/* <input
                                   type="text"
                                   value={editClientForm.lastName}
                                   onChange={(e) => setEditClientForm(prev => ({ ...prev, lastName: e.target.value }))}
                                   className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                                   placeholder="Last name"
-                                />
+                                /> */}
                               </div>
                             ) : (
                               [
@@ -1431,7 +1452,8 @@ function ClientList() {
       )}
 
       {/* Pagination */}
-      <div className="mt-6">
+         <div className="mt-6 flex items-center justify-between">
+
         <Pagination
           currentPage={currentPage}
           lastPage={lastPage}
@@ -1463,6 +1485,14 @@ function ClientList() {
           }}
           loading={loading}
         />
+
+        <button
+    onClick={() => handleExportToPDF(scheduleSessions)}
+    className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+    title="Export to PDF"
+  >
+    <FaFilePdf className="w-5 h-5" />
+  </button>
       </div>
     </div>
   );

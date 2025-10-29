@@ -7,6 +7,9 @@ import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
+import { FaFilePdf } from "react-icons/fa";
+import { downloadListPdf } from "../../PDF/admin";
+
 
 export const Guard = () => {
   const { toast } = useToast();
@@ -124,6 +127,14 @@ export const Guard = () => {
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
+
+  const handleExportToPDF = async (data: any) =>{
+   await downloadListPdf(data, {
+  title: "Guards",
+  fileName: "guards.pdf",
+});
+
+  }
 
   // Handle delete guard
   const handleDeleteGuard = (userId: number, userName: string) => {
@@ -961,39 +972,49 @@ export const Guard = () => {
       )}
 
       {/* Pagination */}
-      <div className="mt-6">
-        <Pagination
-          currentPage={currentPage}
-          lastPage={lastPage}
-          onPageChange={async (page) => {
-            try {
-              setCurrentPage(page);
-              await fetchUsersByRole("guard", page);
-            } catch (error: any) {
-              console.error("Error changing page:", error);
+   <div className="mt-6 flex items-center justify-between">
+  {/* Left side — pagination info + controls */}
+  <Pagination
+    currentPage={currentPage}
+    lastPage={lastPage}
+    onPageChange={async (page) => {
+      try {
+        setCurrentPage(page);
+        await fetchUsersByRole("guard", page);
+      } catch (error: any) {
+        console.error("Error changing page:", error);
+        let errorMessage = "Failed to load page data. Please try again.";
 
-              let errorMessage = "Failed to load page data. Please try again.";
+        if (error.message) {
+          if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+            errorMessage = "Network error. Please check your internet connection and try again.";
+          } else if (error.response?.errors && error.response.errors.length > 0) {
+            errorMessage = error.response.errors[0].message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        }
 
-              if (error.message) {
-                if (error.message.includes("Network Error") || error.message.includes("fetch")) {
-                  errorMessage = "Network error. Please check your internet connection and try again.";
-                } else if (error.response?.errors && error.response.errors.length > 0) {
-                  errorMessage = error.response.errors[0].message || errorMessage;
-                } else {
-                  errorMessage = error.message;
-                }
-              }
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    }}
+    loading={loading}
+  />
 
-              toast({
-                title: "Error",
-                description: errorMessage,
-                variant: "destructive",
-              });
-            }
-          }}
-          loading={loading}
-        />
-      </div>
+  {/* Right side — PDF export icon */}
+  <button
+    onClick={() => handleExportToPDF(users)}
+    className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+    title="Export to PDF"
+  >
+    <FaFilePdf className="w-5 h-5" />
+  </button>
+</div>
+
     </div>
   );
 };

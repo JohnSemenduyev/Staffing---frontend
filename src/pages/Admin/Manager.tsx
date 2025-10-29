@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Check, X } from "lucide-react";
-import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
 import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
+import { downloadListPdf } from "../../PDF/admin";
 
 export const Manager = () => {
   const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
@@ -156,6 +157,14 @@ export const Manager = () => {
   const handleCancel = () => {
     setEditingUserId(null);
   };
+
+    const handleExportToPDF = async (data: any) =>{
+     await downloadListPdf(data, {
+  title: "Managers",
+  fileName: "managers.pdf",
+});
+  
+    }
 
   const handleDelete = (userId: number, userName: string) => {
     setDeleteModal({ isOpen: true, userId, userName });
@@ -363,7 +372,7 @@ export const Manager = () => {
         </div>
       </div>
 
-      <div className="mt-6">
+   <div className="mt-6 flex items-center justify-between">
         <Pagination
           currentPage={currentPage}
           lastPage={lastPage}
@@ -373,6 +382,13 @@ export const Manager = () => {
           }}
           loading={loading}
         />
+         <button
+            onClick={() => handleExportToPDF(users)}
+            className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
       </div>
 
       {/* Delete Confirmation Modal */}

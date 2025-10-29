@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useAddresses } from "../../context/AddressContext";
@@ -7,6 +7,8 @@ import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
+import { downloadListPdf } from "../../PDF/admin";
+import { downloadClientsPdf } from "../../PDF/guard";
 
 export const Client = () => {
   const { toast } = useToast();
@@ -110,6 +112,14 @@ export const Client = () => {
       resizeObserver.disconnect();
     };
   }, []);
+
+    const handleExportToPDF = async (data: any) =>{
+   await downloadClientsPdf(data, {
+  title: "Clients",
+  fileName: "clients.pdf",
+});
+
+  }
 
   // Helper function to get nested values
   const getNestedValue = (obj: any, path: string) => {
@@ -1012,7 +1022,7 @@ export const Client = () => {
       )}
 
       {/* Pagination */}
-      <div className="mt-6">
+   <div className="mt-6 flex items-center justify-between">
         <Pagination
           currentPage={currentPage}
           lastPage={lastPage}
@@ -1044,6 +1054,14 @@ export const Client = () => {
           }}
           loading={loading}
         />
+
+        <button
+    onClick={() => handleExportToPDF(addresses)}
+    className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+    title="Export to PDF"
+  >
+    <FaFilePdf className="w-5 h-5" />
+  </button>
       </div>
     </div>
   );
