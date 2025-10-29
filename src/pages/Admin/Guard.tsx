@@ -126,7 +126,7 @@ export const Guard = () => {
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
-  };
+  }; 
 
   const handleExportToPDF = async (data: any) =>{
    await downloadListPdf(data, {
