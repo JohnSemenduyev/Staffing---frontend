@@ -1,12 +1,13 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Check, X } from "lucide-react";
-import { FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaFilePdf, FaFileExport, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
 import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { downloadListPdf } from "../../PDF/admin";
+import { exportUserListToExcel } from "../../utils/adminExcel";
 
 export const Manager = () => {
   const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
@@ -165,6 +166,36 @@ export const Manager = () => {
 });
   
     }
+
+    const handleExportToExcel = async (data: any) => {
+      try {
+        console.log('Exporting Excel - Data received:', data);
+        console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
+        console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
+        
+        const result = await exportUserListToExcel(data, 'managers', false);
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: `Excel file exported successfully: ${result.filename}`,
+            variant: "default"
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to export Excel file",
+            variant: "destructive"
+          });
+        }
+      } catch (error: any) {
+        console.error("Error exporting to Excel:", error);
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to export Excel file",
+          variant: "destructive"
+        });
+      }
+    };
 
   const handleDelete = (userId: number, userName: string) => {
     setDeleteModal({ isOpen: true, userId, userName });
@@ -382,13 +413,24 @@ export const Manager = () => {
           }}
           loading={loading}
         />
-         <button
-            onClick={() => handleExportToPDF(users)}
-            className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Export to PDF"
-          >
-            <FaFilePdf className="w-5 h-5" />
-          </button>
+        {users && users.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExportToPDF(users)}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Export to PDF"
+            >
+              <FaFilePdf className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleExportToExcel(users)}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Export to Excel"
+            >
+              <FaFileExport className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

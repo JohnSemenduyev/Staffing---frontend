@@ -4,6 +4,7 @@ import { setGraphQLToken } from "../GraphqlClient";
 import { gql } from "graphql-request";
 import { LOGIN_USER } from "../graphql/mutation";
 import { ACCESS_TOKEN_REGENERATE } from "../graphql/mutation";
+import { useToast } from '../hooks/use-toast';
 
 type RoleType = 'client' | 'admin' | 'manager' | 'guard';
 
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
   const [role, setRole] = useState<string | null>(() => sessionStorage.getItem("role"));
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     setGraphQLToken(token);
@@ -111,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const changeRoles = async (newRole: string) => {
     try {
       // Call the API to regenerate the token for the new role
-      const response = await graphQLClient.request<{ accessTokenReGenerate: { token: string; role: string; email: string } }>(
+      const response : any= await graphQLClient.request<{ accessTokenReGenerate: { token: string; role: string; email: string } }>(
         ACCESS_TOKEN_REGENERATE,
         { role: newRole }
       );
@@ -127,8 +129,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setGraphQLToken(newToken);
     } catch (error) {
       console.error("Failed to regenerate access token for role change:", error);
-      // Optionally show a toast or error message here
-    }
+      const msgs = error?.response?.errors?.map((e: any) => e?.message).filter(Boolean);
+       toast({
+    title: "Error",
+    description: msgs,
+    variant: "destructive",
+  });
+     }
   };
 
   return (

@@ -39,6 +39,7 @@ import { NotificationsProvider } from "./context/NotificatoinContext";
 import Signup from "./pages/Signup";
 import { UserRegistrationProvider } from "./context/SignupContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminVerify from "./pages/AdminVerify";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
                                         <Route path="/" element={<AuthRedirect />} />
                                         <Route path="/login" element={<Login />} />
                                         <Route path="/signup" element={<Signup />} />
+                                        <Route path="/api/admin/verify" element={<AdminVerify />} />
 
                                         <Route element={<AppLayout />}>
                                           <Route path="/assign-user-permission" element={<ProtectedRoute allowedRoles={["admin"]}>  <AssignmentNew /> </ProtectedRoute>

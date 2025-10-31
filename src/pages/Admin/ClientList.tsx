@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaFilePdf, FaFileExport, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { ChevronDown, Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
@@ -12,6 +12,7 @@ import { graphQLClient } from "../../GraphqlClient";
 import { DELETE_CLIENT, UPDATE_CLIENT_WITH_ADDRESS } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
 import { downloadClientAddressesPdf } from "../../PDF/ClientListPdf";
+import { exportClientListToExcel } from "../../utils/clientExcel";
 
 interface NewClientData {
   clientName: string; 
@@ -319,6 +320,36 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
 });
 
   }
+
+  const handleExportToExcel = async (data: any) => {
+    try {
+      console.log('Exporting Excel - Data received:', data);
+      console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
+      console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
+      
+      const result = await exportClientListToExcel(data, 'clients');
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Excel file exported successfully: ${result.filename}`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to export Excel file",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to export Excel file",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSaveEdit = (clientData: any) => {
     console.log("Save edit clicked:", clientData);
@@ -1486,13 +1517,24 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
           loading={loading}
         />
 
-        <button
-    onClick={() => handleExportToPDF(scheduleSessions)}
-    className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-    title="Export to PDF"
-  >
-    <FaFilePdf className="w-5 h-5" />
-  </button>
+        {scheduleSessions && scheduleSessions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExportToPDF(scheduleSessions)}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Export to PDF"
+            >
+              <FaFilePdf className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleExportToExcel(scheduleSessions)}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Export to Excel"
+            >
+              <FaFileExport className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

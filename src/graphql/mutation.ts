@@ -585,3 +585,9 @@ export const DELETE_USER = gql`
     }
   }
 `;
+
+export const APPROVE_ADMIN_BY_TOKEN = gql`
+  mutation ApproveAdminByToken($token: String!) {
+    approveAdminByToken(token: $token)
+  }
+`;

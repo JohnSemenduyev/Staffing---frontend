@@ -1,12 +1,30 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Check, X } from "lucide-react";
-import { FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaFilePdf, FaFileExport, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
 import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { downloadListPdf } from "../../PDF/admin";
+import { exportUserListToExcel } from "../../utils/adminExcel";
+
+const StatusBadge = ({ value }: { value: boolean | null | undefined }) => {
+  const isApproved = !!value;
+  return (
+    <span
+      className={[
+        "inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border",
+        isApproved
+          ? "bg-green-100 text-green-700 border-green-200"
+          : "bg-amber-100 text-amber-700 border-amber-200", // “mustard-ish” using amber
+      ].join(" ")}
+    >
+      {isApproved ? "Approved" : "Pending"}
+    </span>
+  );
+};
+
 
 export const Admin = () => {
   const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
@@ -65,6 +83,36 @@ export const Admin = () => {
 });
 
   }
+
+  const handleExportToExcel = async (data: any) => {
+    try {
+      console.log('Exporting Excel - Data received:', data);
+      console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
+      console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
+      
+      const result = await exportUserListToExcel(data, 'admins');
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Excel file exported successfully: ${result.filename}`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to export Excel file",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to export Excel file",
+        variant: "destructive"
+      });
+    }
+  };
 
   const getNestedValue = (obj: any, path: string) => {
     return path.split('.').reduce((current, key) => {
@@ -232,6 +280,7 @@ export const Admin = () => {
                     { key: "city", label: "City", width: "200px" },
                     { key: "state", label: "State", width: "200px" },
                     { key: "zipcode", label: "Zipcode", width: "200px" },
+                    { key: "status", label: "Approval", width: "200px" },
                   ].map((col) => (
                     <th key={col.key} className="px-4 py-1 text-left border-b border-gray-300 whitespace-nowrap" style={{ width: col.width }}>
                       <div className="flex items-center">
@@ -324,7 +373,7 @@ export const Admin = () => {
                               )}
                             </div>
                           </td>
-                          {[
+                          {/* {[
                             { key: "name", width: "200px", placeholder: "First name" },
                             { key: "lastName", width: "200px", placeholder: "Last name" },
                             { key: "email", width: "200px", placeholder: "Email" },
@@ -333,6 +382,8 @@ export const Admin = () => {
                             { key: "city", width: "200px", placeholder: "City" },
                             { key: "state", width: "200px", placeholder: "State" },
                             { key: "zipcode", width: "200px", placeholder: "Zipcode" },
+                            { key: "status", label: "Approval", width: "200px" },
+
                           ].map((col) => (
                             <td key={col.key} className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: col.width }}>
                               {isEditing ? (
@@ -351,7 +402,45 @@ export const Admin = () => {
                                 )
                               )}
                             </td>
-                          ))}
+                          ))} */}
+
+                          {[
+  { key: "name", width: "200px", placeholder: "First name" },
+  { key: "lastName", width: "200px", placeholder: "Last name" },
+  { key: "email", width: "200px", placeholder: "Email" },
+  { key: "phone", width: "200px", placeholder: "Phone" },
+  { key: "address", width: "200px", placeholder: "Address" },
+  { key: "city", width: "200px", placeholder: "City" },
+  { key: "state", width: "200px", placeholder: "State" },
+  { key: "zipcode", width: "200px", placeholder: "Zipcode" },
+  { key: "status", label: "Approval", width: "200px" },
+].map((col) => (
+  <td key={col.key} className="px-4 py-3 border-b border-gray-100 whitespace-nowrap" style={{ width: col.width }}>
+    {isEditing ? (
+      // keep status read-only when editing
+      col.key === "status" ? (
+        <StatusBadge value={record.status} />
+      ) : (
+        <input
+          type="text"
+          value={(editForm as any)[col.key]}
+          onChange={(e) => setEditForm(prev => ({ ...prev, [col.key]: e.target.value }))}
+          className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
+          placeholder={col.placeholder}
+        />
+      )
+    ) : (
+      col.key === "email" ? (
+        <div className="truncate" title={record[col.key] || "-"}>{record[col.key] || "-"}</div>
+      ) : col.key === "status" ? (
+        <StatusBadge value={record.status} />
+      ) : (
+        record[col.key] || "-"
+      )
+    )}
+  </td>
+))}
+
                         </tr>
                       );
                     })}
@@ -384,13 +473,24 @@ export const Admin = () => {
           loading={loading}
         />
 
-        <button
-            onClick={() => handleExportToPDF(users)}
-            className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Export to PDF"
-          >
-            <FaFilePdf className="w-5 h-5" />
-          </button>
+        {users && users.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExportToPDF(users)}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Export to PDF"
+            >
+              <FaFilePdf className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleExportToExcel(users)}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Export to Excel"
+            >
+              <FaFileExport className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

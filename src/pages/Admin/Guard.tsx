@@ -7,8 +7,9 @@ import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
-import { FaFilePdf } from "react-icons/fa";
+import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { downloadListPdf } from "../../PDF/admin";
+import { exportUserListToExcel } from "../../utils/adminExcel";
 
 
 export const Guard = () => {
@@ -135,6 +136,36 @@ export const Guard = () => {
 });
 
   }
+
+  const handleExportToExcel = async (data: any) => {
+    try {
+      console.log('Exporting Excel - Data received:', data);
+      console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
+      console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
+      
+      const result = await exportUserListToExcel(data, 'securityguards', false);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Excel file exported successfully: ${result.filename}`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to export Excel file",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to export Excel file",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Handle delete guard
   const handleDeleteGuard = (userId: number, userName: string) => {
@@ -1005,14 +1036,25 @@ export const Guard = () => {
     loading={loading}
   />
 
-  {/* Right side — PDF export icon */}
-  <button
-    onClick={() => handleExportToPDF(users)}
-    className="ml-4 inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-    title="Export to PDF"
-  >
-    <FaFilePdf className="w-5 h-5" />
-  </button>
+  {/* Right side — PDF and Excel export icons */}
+  {users && users.length > 0 && (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => handleExportToPDF(users)}
+        className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+        title="Export to PDF"
+      >
+        <FaFilePdf className="w-5 h-5" />
+      </button>
+      <button
+        onClick={() => handleExportToExcel(users)}
+        className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+        title="Export to Excel"
+      >
+        <FaFileExport className="w-5 h-5" />
+      </button>
+    </div>
+  )}
 </div>
 
     </div>
