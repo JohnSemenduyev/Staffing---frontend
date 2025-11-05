@@ -1,4 +1,12 @@
-import { formatDateLocal, toLocalYMD } from "../lib/utils";
+import { formatDateLocal } from "../lib/utils";
+// utils.ts
+export const toLocalYMD = (date: Date) => {
+ const year = date.getUTCFullYear();
+const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+const day = String(date.getUTCDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
 
 interface ScheduleItem {
   id: number;
@@ -169,6 +177,7 @@ export const generateSchedulePrintableTable = (
         .filter(shift => {
           const shiftDate = shift.date.includes('T') ? 
             toLocalYMD(new Date(shift.date)) : shift.date;
+            
           return shiftDate === dateStr;
         });
       
@@ -456,15 +465,7 @@ export const generateActualTimePrintableTable = (
         const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
         if (!shift) return false;
         
-        let shiftDate: string;
-        if (shift.date.includes('T') && shift.date.includes('Z')) {
-          shiftDate = shift.date.split('T')[0];
-        } else if (shift.date.includes('T')) {
-          shiftDate = toLocalYMD(new Date(shift.date));
-        } else {
-          shiftDate = shift.date;
-        }
-        
+        const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
         return shiftDate === dateStr;
       });
       
@@ -498,15 +499,7 @@ export const generateActualTimePrintableTable = (
         const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
         if (!shift) return false;
         
-        let shiftDate: string;
-        if (shift.date.includes('T') && shift.date.includes('Z')) {
-          shiftDate = shift.date.split('T')[0];
-        } else if (shift.date.includes('T')) {
-          shiftDate = toLocalYMD(new Date(shift.date));
-        } else {
-          shiftDate = shift.date;
-        }
-        
+        const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
         return shiftDate === dateStr;
       })
       .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
@@ -619,15 +612,7 @@ export const generateActualTimePrintableTable = (
             const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
             if (!shift) return false;
             
-            let shiftDate: string;
-            if (shift.date.includes('T') && shift.date.includes('Z')) {
-              shiftDate = shift.date.split('T')[0];
-            } else if (shift.date.includes('T')) {
-              shiftDate = toLocalYMD(new Date(shift.date));
-            } else {
-              shiftDate = shift.date;
-            }
-            
+            const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
             return shiftDate === dateStr;
           });
 
@@ -667,15 +652,7 @@ export const generateActualTimePrintableTable = (
             const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
             if (!shift) return false;
             
-            let shiftDate: string;
-            if (shift.date.includes('T') && shift.date.includes('Z')) {
-              shiftDate = shift.date.split('T')[0];
-            } else if (shift.date.includes('T')) {
-              shiftDate = toLocalYMD(new Date(shift.date));
-            } else {
-              shiftDate = shift.date;
-            }
-            
+            const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
             return shiftDate === dateStr;
           });
           
@@ -726,15 +703,7 @@ export const generateActualTimePrintableTable = (
             const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
             if (!shift) return false;
             
-            let shiftDate: string;
-            if (shift.date.includes('T') && shift.date.includes('Z')) {
-              shiftDate = shift.date.split('T')[0];
-            } else if (shift.date.includes('T')) {
-              shiftDate = toLocalYMD(new Date(shift.date));
-            } else {
-              shiftDate = shift.date;
-            }
-            
+            const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
             return shiftDate === dateStr;
           })
           .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
