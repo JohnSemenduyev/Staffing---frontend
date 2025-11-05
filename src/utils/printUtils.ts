@@ -1,3 +1,4 @@
+import { format } from "path";
 import { formatDateLocal } from "../lib/utils";
 // utils.ts
 export const toLocalYMD = (date: Date) => {
@@ -148,7 +149,7 @@ export const generateSchedulePrintableTable = (
         <strong>Client Name:</strong> ${selectedClient ? getFullClientName(selectedClient) : 'All Clients'}
       </td>
       <td colspan="5" style="padding: 0px 0px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
-        <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
+        <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, formatStateWithAbbr(selectedClient.state), selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
       <td colspan="2" style="padding: 0px 10px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
@@ -555,7 +556,7 @@ export const generateActualTimePrintableTable = (
         <strong>Client Name:</strong> ${selectedClient ? getFullClientName(selectedClient) : 'All Clients'}
       </td>
       <td colspan="4" style="padding: 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
-        <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(', ') : '-'}
+        <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, formatStateWithAbbr(selectedClient.state), selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
       <td colspan="3" style="padding: 0px 15px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
@@ -909,4 +910,14 @@ export const handlePrint = async (
     console.error("Error in print operation:", error);
     onError?.("Failed to generate print content");
   }
+};
+// US state name -> abbreviation map
+const STATE_ABBR: Record<string, string> = {
+  'Alabama': 'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY','American Samoa':'AS','District of Columbia':'DC','Guam':'GU','Northern Mariana Islands':'MP','Puerto Rico':'PR','Trust Territories':'TT','Virgin Islands':'VI'
+};
+
+const formatStateWithAbbr = (state?: string) => {
+  if (!state) return '';
+  const abbr = STATE_ABBR[state.trim()];
+  return abbr ? `${abbr}` : state;
 };
