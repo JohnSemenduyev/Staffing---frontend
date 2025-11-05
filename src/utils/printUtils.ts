@@ -276,7 +276,8 @@ export const generateSchedulePrintableTable = (
             .filter(item => item.userId === user.id)
             .flatMap(item => item.shifts)
             .filter(shift => {
-              const shiftDate =  shift.date;
+              const shiftDate = shift.date.includes('T') ? 
+          toLocalYMD(new Date(shift.date)) : shift.date;
               return shiftDate === dateStr;
             });
           
