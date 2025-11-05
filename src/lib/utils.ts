@@ -56,9 +56,7 @@ export function getWeekRangeFromDateLocal(base: Date) {
 export const getWeekRangeFromDateUTC = getWeekRangeFromDateLocal; 
 
 export function toLocalYMD(d: Date) {
-  // Use UTC getters so conversion is timezone-agnostic and consistent across environments.
-   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 export function parseLocalYMD(ymd: string) {

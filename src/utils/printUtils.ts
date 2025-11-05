@@ -2,12 +2,12 @@ import { format } from "path";
 import { formatDateLocal } from "../lib/utils";
 // utils.ts
 export const toLocalYMD = (date: Date) => {
- const year = date.getUTCFullYear();
-const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-const day = String(date.getUTCDate()).padStart(2, '0');
-
+  const year = date.getFullYear(); // local year
+  const month = String(date.getMonth() + 1).padStart(2, '0'); 
+  const day = String(date.getDate()).padStart(2, '0'); 
   return `${year}-${month}-${day}`;
 };
+
 
 interface ScheduleItem {
   id: number;
@@ -176,8 +176,7 @@ export const generateSchedulePrintableTable = (
         .filter(item => item.userId === userId)
         .flatMap(item => item.shifts)
         .filter(shift => {
-          const shiftDate = shift.date.includes('T') ? 
-            toLocalYMD(new Date(shift.date)) : shift.date;
+          const shiftDate = shift.date;
             
           return shiftDate === dateStr;
         });
@@ -197,8 +196,7 @@ export const generateSchedulePrintableTable = (
     return scheduleData
       .flatMap(item => item.shifts)
       .filter(shift => {
-        const shiftDate = shift.date.includes('T') ? 
-          toLocalYMD(new Date(shift.date)) : shift.date;
+        const shiftDate = shift.date;
         return shiftDate === dateStr;
       })
       .reduce((total, shift) => total + shift.hours, 0);
@@ -249,8 +247,7 @@ export const generateSchedulePrintableTable = (
             .filter(item => item.userId === user.id)
             .flatMap(item => item.shifts)
             .filter(shift => {
-              const shiftDate = shift.date.includes('T') ? 
-                toLocalYMD(new Date(shift.date)) : shift.date;
+              const shiftDate =  shift.date;
               return shiftDate === dateStr;
             })
             .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
@@ -279,8 +276,7 @@ export const generateSchedulePrintableTable = (
             .filter(item => item.userId === user.id)
             .flatMap(item => item.shifts)
             .filter(shift => {
-              const shiftDate = shift.date.includes('T') ? 
-                toLocalYMD(new Date(shift.date)) : shift.date;
+              const shiftDate =  shift.date;
               return shiftDate === dateStr;
             });
           
@@ -318,8 +314,7 @@ export const generateSchedulePrintableTable = (
           .filter(item => item.userId === user.id)
           .flatMap(item => item.shifts)
           .filter(shift => {
-            const shiftDate = shift.date.includes('T') ? 
-              toLocalYMD(new Date(shift.date)) : shift.date;
+            const shiftDate = shift.date;
             return shiftDate === dateStr;
           })
           .reduce((total, shift) => total + shift.hours, 0);

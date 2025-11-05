@@ -1606,8 +1606,14 @@ export const ViewSchedule = () => {
 
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
-
-      const tableContent = generateSchedulePrintableTable(scheduleData, currentWeekRange, selectedClient);
+      const cleanScheduleData = scheduleData.map(item => ({
+        ...item,
+        shifts: item.shifts.map(shift => ({
+          ...shift,
+          date: shift.date.split("T")[0],
+        })),
+      }));
+      const tableContent = generateSchedulePrintableTable(cleanScheduleData, currentWeekRange, selectedClient);
 
       // Compute meta details for header
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
