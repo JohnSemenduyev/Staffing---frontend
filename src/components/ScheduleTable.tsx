@@ -686,9 +686,15 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       // Use the parent component's handler if provided
       onUserAutoToggle(userId, enabled);
     } else {
-      // Fallback to local state update
+      // Fallback to local state update: set row auto and all child shifts auto to match
       const updatedData = scheduleData.map(item =>
-        item.userId === userId ? { ...item, auto: enabled, shifts: item.shifts.map(s => ({ ...s, confirm: false, reject: false })) } : item
+        item.userId === userId
+          ? {
+              ...item,
+              auto: enabled,
+              shifts: item.shifts.map(s => ({ ...s, auto: enabled, confirm: false, reject: false }))
+            }
+          : item
       );
       onScheduleDataChange(updatedData);
     }
@@ -1067,13 +1073,12 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                         if (onShiftAutoToggle) {
                                           onShiftAutoToggle(user.id as number, dateCol.date, shift.id, enabled);
                                         } else {
-                                          // fallback local update
+                                          // fallback local update: update shift auto and sync row auto
                                           const updated = scheduleData.map(item => {
                                             if (item.userId === user.id && item.startDate === dateCol.date) {
-                                              return {
-                                                ...item,
-                                                shifts: item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled, confirm: false, reject: false } : s)
-                                              };
+                                              const newShifts = item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled, confirm: false, reject: false } : s);
+                                              const anyOn = newShifts.some(s => s.auto === true);
+                                              return { ...item, auto: anyOn, shifts: newShifts };
                                             }
                                             return item;
                                           });
@@ -1125,7 +1130,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                             <div className="flex items-center justify-center">
                               <ToggleSwitch
                                 size="medium"
-                                enabled={scheduleData.find(item => item.userId === user.id)?.auto || false}
+                                enabled={scheduleData.some(item => item.userId === user.id && item.shifts.some(s => s.auto))}
                                 disabled={!isEditMode || readOnly}
                                 onToggle={readOnly || !isEditMode ? undefined : (enabled => handleUserAutoToggle(user.id, enabled))}
                               />

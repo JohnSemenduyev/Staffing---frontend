@@ -56,6 +56,24 @@ const makeShiftKey = (shift: { date: string; startTime: string; endTime: string 
   return `${normalizedDate}|${shift.startTime}|${shift.endTime}`;
 };
 
+// Detect if auto flags changed for a given user (schedule-level or per-shift)
+const autoChangedForUser = (userId: number, scheduleDataParam: ScheduleItem[], originalScheduleDataParam: ScheduleItem[]) => {
+  const cur = scheduleDataParam.filter(i => i.userId === userId);
+  const org = originalScheduleDataParam.filter(i => i.userId === userId);
+  const orgByDate = new Map(org.map(i => [i.startDate, i]));
+  for (const c of cur) {
+    const p = orgByDate.get(c.startDate);
+    if (!p) return true;
+    if (!!c.auto !== !!p.auto) return true;
+    const byId = new Map(p.shifts.map(s => [s.id, s]));
+    for (const s of c.shifts) {
+      const ps = byId.get(s.id);
+        if (ps && (!!s.auto !== !!ps.auto)) return true;
+    }
+  }
+  return false;
+};
+
 const DateNavigation = ({
   selectedDate,
   onDateChange,
@@ -1298,6 +1316,10 @@ export const ViewSchedule = () => {
           for (const k of currentSet) {
             if (!originalSet.has(k)) { changed = true; break; }
           }
+        }
+        // Also mark changed if auto flags differ
+        if (!changed && autoChangedForUser(userSchedule.userId, scheduleData, originalScheduleData)) {
+          changed = true;
         }
 
         // Use the same key format as the mapping: clientId-addressId-userId
