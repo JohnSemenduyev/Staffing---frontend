@@ -295,10 +295,10 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
 
   // Update or create session times
   const updateSessionTimes = async (sessionUpdates: Array<{
-    sessionId: number; // Changed back to sessionId to match GraphQL input type
+    sessionId?: number | null; // Optional for deleted sessions
     shiftId: number;
     scheduleSessionId: number;
-    clockIn: string;
+    clockIn?: string; // Optional for deleted sessions
     clockOut?: string | null;
   }>) => {
     try {
@@ -310,11 +310,17 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       // Transform the data to match the expected GraphQL input
       const transformedUpdates = sessionUpdates.map(update => {
         const base: any = {
-          sessionId: update.sessionId,
           shiftId: update.shiftId,
           scheduleSessionId: update.scheduleSessionId,
-          clockIn: update.clockIn,
         };
+        // Only include sessionId if it exists (for deleted sessions, it won't)
+        if (update.sessionId !== undefined && update.sessionId !== null) {
+          base.sessionId = update.sessionId;
+        }
+        // Only include clockIn/clockOut if they exist (for deleted sessions, they won't)
+        if (update.clockIn) {
+          base.clockIn = update.clockIn;
+        }
         if (update.clockOut) {
           base.clockOut = update.clockOut; // omit when null/undefined
         }

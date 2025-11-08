@@ -1552,7 +1552,8 @@ export const ViewSchedule = () => {
     try {
       setIsActualTimePublishing(true);
 
-      const items = sessionData
+      // Prepare updated/new sessions (with clockIn)
+      const updatedItems = sessionData
         .filter(s => s.clockIn)
         .map(s => {
           const isNew = s.id > 1700000000000;
@@ -1567,6 +1568,26 @@ export const ViewSchedule = () => {
           }
           return base;
         });
+
+      // Find deleted sessions (exist in originalSessionData but not in current sessionData)
+      const deletedItems: any[] = [];
+      if (isActualTimeEditMode && originalSessionData.length > 0) {
+        const currentSessionIds = new Set(sessionData.map(s => s.id));
+        originalSessionData.forEach(originalSession => {
+          // Only include sessions that had a real ID (not temporary IDs > 1700000000000)
+          // and are no longer in the current sessionData
+          if (originalSession.id <= 1700000000000 && !currentSessionIds.has(originalSession.id)) {
+            deletedItems.push({
+              shiftId: originalSession.shiftId,
+              scheduleSessionId: originalSession.scheduleSessionId,
+              // No sessionId, clockIn, or clockOut for deleted sessions
+            });
+          }
+        });
+      }
+
+      // Combine updated/new sessions with deleted sessions
+      const items = [...updatedItems, ...deletedItems];
 
       // if (items.length === 0) {
       //   toast({
