@@ -527,7 +527,7 @@ export const generateActualTimePrintableTable = (
 
   const columnWidths = [
     '20%',   // Officer Name
-    '5%',   // Empty column
+    '3%',   // Empty column
     '10%',   // Day 1
     '10%',   // Day 2
     '10%',   // Day 3
@@ -535,7 +535,7 @@ export const generateActualTimePrintableTable = (
     '10%',   // Day 5
     '10%',   // Day 6
     '10%',   // Day 7
-    '5%'    // Total
+    '7%'    // Total
   ];
 
   const headerRow = headers.map((header, index) => {
@@ -551,10 +551,10 @@ export const generateActualTimePrintableTable = (
       <td colspan="3" style="padding: 0px 12px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Client Name:</strong> ${selectedClient ? getFullClientName(selectedClient) : 'All Clients'}
       </td>
-      <td colspan="4" style="padding: 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
+      <td colspan="5" style="padding: 0px 0px 0px 12px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Address:</strong> ${selectedClient ? [selectedClient.address, selectedClient.city, formatStateWithAbbr(selectedClient.state), selectedClient.pincode].filter(Boolean).join(', ') : '-'}
       </td>
-      <td colspan="3" style="padding: 0px 15px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
+      <td colspan="2" style="padding: 0px 10px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
           month: '2-digit',
           day: '2-digit',

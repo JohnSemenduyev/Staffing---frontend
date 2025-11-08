@@ -850,7 +850,9 @@ export const ViewSchedule = () => {
   };
 
   useEffect(() => {
-    if (isActualTimeEditMode && originalSessionData.length > 0) {
+    if (isActualTimeEditMode) {
+      // If we're in edit mode, check for changes regardless of originalSessionData length
+      // This handles cases where we start with no sessions and add new ones
       const hasChanges = !sessionsEqual(sessionData, originalSessionData);
       setHasSessionChanges(hasChanges);
     } else {
@@ -1455,7 +1457,28 @@ export const ViewSchedule = () => {
   // Add this function after the schedulesEqual function (around line 1300)
   const sessionsEqual = (a: any[], b: any[]) => {
     if (a.length !== b.length) return false;
-    return JSON.stringify(a.sort((x, y) => x.id - y.id)) === JSON.stringify(b.sort((x, y) => x.id - y.id));
+    
+    // Create normalized copies to avoid mutating original arrays
+    // Only compare source data fields, not derived fields like workedTime
+    const normalizeSession = (s: any) => ({
+      shiftId: s.shiftId || null,
+      scheduleSessionId: s.scheduleSessionId || null,
+      clockIn: s.clockIn || null,
+      clockOut: s.clockOut || null,
+    });
+    
+    // Sort by shiftId, then clockIn for stable comparison
+    const sortedA = [...a].sort((x, y) => {
+      if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
+      return (x.clockIn || '').localeCompare(y.clockIn || '');
+    }).map(normalizeSession);
+    
+    const sortedB = [...b].sort((x, y) => {
+      if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
+      return (x.clockIn || '').localeCompare(y.clockIn || '');
+    }).map(normalizeSession);
+    
+    return JSON.stringify(sortedA) === JSON.stringify(sortedB);
   };
   // Helper: deep equality for schedule data (order-insensitive)
   const schedulesEqual = (a: ScheduleItem[], b: ScheduleItem[]) => {
