@@ -399,6 +399,15 @@ export const ViewSchedule = () => {
   const [navigationSource, setNavigationSource] = useState<"week" | "modal" | null>(null);
   // track if the modal was opened via the "View" (eye) action
   const [openedFromViewButton, setOpenedFromViewButton] = useState(false);
+  // Confirmation modal state for no schedule found
+  const [noScheduleConfirmModal, setNoScheduleConfirmModal] = useState({
+    isOpen: false,
+    clientName: "",
+    formattedDate: "",
+    clientId: null as number | null,
+    addressId: null as number | null,
+    selectedDate: ""
+  });
   // Bump key to remount tables and reset any internal component state
   const [viewKey, setViewKey] = useState(0);
 
@@ -516,9 +525,24 @@ export const ViewSchedule = () => {
 
     setSelectedClient(clientData);
     setModalOpen(true);
-  setOpenedFromViewButton(true);
+    setOpenedFromViewButton(true);
 
     // Remove URL parameter updates from here - they will be set in handleDateSubmit
+  };
+
+  // Handler to close the period modal and reset related state
+  const handleClosePeriodModal = () => {
+    setModalOpen(false);
+    setOpenedFromViewButton(false);
+    // Also close confirmation modal if it's open
+    setNoScheduleConfirmModal({
+      isOpen: false,
+      clientName: "",
+      formattedDate: "",
+      clientId: null,
+      addressId: null,
+      selectedDate: ""
+    });
   };
   const validateAndNavigate = async (newDate: string) => {
     console.log("validateAndNavigate called with:", newDate);
@@ -612,6 +636,19 @@ export const ViewSchedule = () => {
     setOriginalSessionData([]);
     setTableLoading(true);
 
+    // Ensure confirmation modal is closed before making a new request
+    // This allows the modal to show again if the same date has no schedule
+    if (noScheduleConfirmModal.isOpen) {
+      setNoScheduleConfirmModal({
+        isOpen: false,
+        clientName: "",
+        formattedDate: "",
+        clientId: null,
+        addressId: null,
+        selectedDate: ""
+      });
+    }
+
     const formattedDate = convertDateFormat(weekStartStr);
     clearScheduleData();
 
@@ -621,11 +658,40 @@ export const ViewSchedule = () => {
       await fetchScheduleData(clientId, addressId, formattedDate);
     } catch (e) {
       toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
+      // On error, close the modal
+      setModalOpen(false);
     } finally {
       setTableLoading(false);
-      // Close modal after loading is complete (success or error)
-      setModalOpen(false);
+      // Don't close modal here - let the useEffect handle it based on whether data exists
+      // If no data exists, the confirmation modal will be shown and period modal will stay open
     }
+  };
+
+  // Handler for confirmation modal - Yes button (navigate to prepare schedule)
+  const handleConfirmPrepareSchedule = () => {
+    const { clientId, addressId, selectedDate } = noScheduleConfirmModal;
+    if (clientId && addressId && selectedDate) {
+      // Close both modals
+      setNoScheduleConfirmModal({ isOpen: false, clientName: "", formattedDate: "", clientId: null, addressId: null, selectedDate: "" });
+      setModalOpen(false);
+      // Reset openedFromViewButton since we're navigating away
+      setOpenedFromViewButton(false);
+      // Navigate to prepare schedule
+      navigate(`/prepare-schedule/`);
+    }
+  };
+
+  // Handler for confirmation modal - No button (keep period modal open)
+  const handleCancelPrepareSchedule = () => {
+    // Just close the confirmation modal, keep the period modal open
+    setNoScheduleConfirmModal(
+      {  isOpen: false,
+        clientName: "",
+        formattedDate: "",
+        clientId: null as number | null,
+        addressId: null as number | null,
+        selectedDate: ""
+       });
   };
 
   useEffect(() => {
@@ -657,7 +723,6 @@ export const ViewSchedule = () => {
   }, [clientSessions]);
 
   // Transform API data when it arrives - FIXED VERSION
-  // Transform API data when it arrives - FIXED VERSION
   useEffect(() => {
     console.log("useEffect triggered with:", {
       apiScheduleData: apiScheduleData?.length,
@@ -678,22 +743,25 @@ export const ViewSchedule = () => {
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        //this toast should appear only when clicker on enter on Preiod end date modal 
+        //this toast should appear only when clicked on enter on Period end date modal 
         if (navigationSource === "modal" && openedFromViewButton) {
-          // Close modal and redirect user to PrepareSchedule so they can create a schedule
-          setModalOpen(false);
+          // Show confirmation modal instead of directly navigating
           if (selectedClient && selectedDate) {
-            // Show error toast then navigate to prepare schedule with same client/address and selectedDate
-            toast({
-              title: "No Schedule Found",
-              description: `No schedule found for this week. Redirecting to Prepare Schedule to create one.`,
-              variant: "destructive",
-            });
-            navigate(`/prepare-schedule?clientId=${selectedClient.clientId}&addressId=${selectedClient.addressId}&selectedDate=${selectedDate}`);
-            setOpenedFromViewButton(false);
+            // Only show modal if it's not already open (avoid duplicate modals)
+            if (!noScheduleConfirmModal.isOpen) {
+              setNoScheduleConfirmModal({
+                isOpen: true,
+                clientName,
+                formattedDate,
+                clientId: selectedClient.clientId,
+                addressId: selectedClient.addressId,
+                selectedDate
+              });
+            }
+            // Don't set openedFromViewButton to false here - keep it true so modal can show again if user clicks "No"
             return; // stop further handling in this effect
           }
-          // fallback toast if we can't navigate
+          // fallback toast if we can't show modal
           toast({
             title: "No Schedule Found",
             description: `No schedule found for this week. Please prepare a schedule first.`,
@@ -731,7 +799,12 @@ export const ViewSchedule = () => {
         // Don't update selectedDate here since it's already updated in validateAndNavigate
         if (!showScheduleTable) setShowScheduleTable(true);
         if (navigationSource === "modal") {
-          setModalOpen(false); // close only when data exists
+          // Close period modal only when data exists and confirmation modal is not open
+          if (!noScheduleConfirmModal.isOpen) {
+            setModalOpen(false);
+            // Reset openedFromViewButton when period modal closes with data found
+            setOpenedFromViewButton(false);
+          }
         }
         // Reset UI when week change is applied
         if (navigationSource === "week") {
@@ -1910,10 +1983,43 @@ export const ViewSchedule = () => {
 
           <PeriodEndDateModal
             isOpen={isModalOpen}
-            onClose={() => setModalOpen(false)}
+            onClose={handleClosePeriodModal}
             onSubmit={handleDateSubmit}
             isLoading={tableLoading}
           />
+
+          {/* No Schedule Found Confirmation Modal */}
+          {noScheduleConfirmModal.isOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="mb-6">
+                  {/* <h3 className="text-lg font-medium text-gray-900 mb-2">No Schedule Found</h3> */}
+                  <p className="text-sm text-gray-500">
+                    No schedule found for {noScheduleConfirmModal.clientName} on this week range.
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2 font-medium">
+                    Do you want to prepare a schedule?
+                  </p>
+                </div>
+                <div className="flex space-x-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCancelPrepareSchedule}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmPrepareSchedule}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#004175] border border-transparent rounded-md hover:bg-[#00325d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+                  >
+                    Yes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="w-full">

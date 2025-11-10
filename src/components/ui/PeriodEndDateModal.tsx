@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CustomDatePicker } from "../CustomDatePicker";
 import { Button } from "./button";
 import { PeriodEndDateModalProps } from "../../pages/Manager/ViewSchedule/types";
@@ -10,6 +10,13 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
   isLoading = false 
 }) => {
   const [selectedDate, setSelectedDate] = useState("");
+
+  // Reset the date when the modal opens so it doesn't keep previous selection
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate("");
+    }
+  }, [isOpen]);
 
   const handleSubmit = () => {
     if (selectedDate && !isLoading) {
@@ -33,6 +40,12 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
     const dayOfMonth = String(startOfWeek.getDate()).padStart(2, '0');
     const formatted = `${year}-${month}-${dayOfMonth}`;
     setSelectedDate(formatted);
+  };
+
+  const handleReturn = () => {
+    if (isLoading) return;
+    setSelectedDate("");
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -74,7 +87,7 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
             Current Week
           </Button>
           <Button
-            onClick={onClose}
+            onClick={handleReturn}
             disabled={isLoading}
             variant="primary"
             className="w-[48%]"
