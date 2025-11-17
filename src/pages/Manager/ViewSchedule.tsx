@@ -716,7 +716,12 @@ export const ViewSchedule = () => {
         addressId: session.addressId,
         clientId: session.clientId
       }));
-      setTableData(flatData);
+
+      const sortedData = [...flatData].sort((a, b) =>
+        a.clientName.localeCompare(b.clientName, undefined, { sensitivity: "base" })
+      );
+
+      setTableData(sortedData);
     } else {
       setTableData([]);
     }

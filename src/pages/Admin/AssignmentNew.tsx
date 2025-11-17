@@ -449,6 +449,17 @@ export default function AssignmentNew() {
 	// 	console.log("✅ Final Filter:", filter);
 	// 	await fetchAssignments(1, filter);
 	// };
+	const toArray = (value: unknown) => {
+		if (Array.isArray(value)) return value.filter(Boolean) as string[];
+		if (typeof value === "string") {
+			return value
+				.split(",")
+				.map((item) => item.trim())
+				.filter((item) => item.length > 0);
+		}
+		return value ? [String(value)] : [];
+	};
+
 	const handleSearch = async (searchData: { [key: string]: any }) => {
 		console.log("📥 Raw searchData:", searchData);
 
@@ -479,63 +490,44 @@ export default function AssignmentNew() {
 				const mappedKey = keyMapping[key] || key;
 
 				if (mappedKey === "notification") {
-					if (Array.isArray(value)) {
-						return [mappedKey, value];
-					}
-					// Split comma-separated string into array
-					const notificationArray =
-						typeof value === "string"
-							? value
-									.split(",")
-									.map((item) => item.trim())
-									.filter((item) => item.length > 0)
-							: [value];
-					return [mappedKey, notificationArray];
+					return [mappedKey, toArray(value)];
 				}
 
 				return [mappedKey, value];
 			}),
 		);
 
-		// Step 2️⃣ - Remove subCategories from notification array
-		console.log({ step2: filter });
+		// Step 2️⃣ - normalize notification + sub-category selections
+		const notificationSelections = toArray(filter.notification);
+		const providedSubCats = toArray(filter.subCategories);
 
-		// if there is any notification
-    filter.notificationSubCat = filter.subCategories;
-		if (filter.notification) {
-			filter.notification = filter.notification.filter(
-				(item: string) => !NotificationSubCategories.includes(item),
-			);
-		}
+		const notificationSubCat =
+			providedSubCats.length > 0
+				? providedSubCats
+				: notificationSelections.filter((item) =>
+						NotificationSubCategories.includes(item),
+				  );
 
-		console.log({ step2Updated: filter });
+		const normalizedNotification = notificationSelections.filter(
+			(item) => !NotificationSubCategories.includes(item),
+		);
 
-		if (filter.notificationSubCat && Array.isArray(filter.notification)) {
-			console.log("🧹 Before cleanup:", filter.notification, filter.notificationSubCat);
+		filter.notificationSubCat = notificationSubCat.length > 0 ? notificationSubCat : null;
+		filter.notification = normalizedNotification.length > 0 ? normalizedNotification : null;
+		delete filter.subCategories;
 
-			if (Array.isArray(filter.notificationSubCat)) {
-				// if subCategories is an array
-				filter.notification = filter.notification.filter(
-					(item: string) => !filter.notificationSubCat.includes(item),
-				);
-			} else {
-				// if it's a single string
-				filter.notification = filter.notification.filter(
-					(item: string) => item !== filter.notificationSubCat,
-				);
-			}
-
-			console.log("✅ After cleanup:", filter.notification);
-		}
-
-		// Step 3️⃣ - send final payload
+		// Step 3️⃣ - final payload prep
 		setCurrentPage(1);
-    // update filter string to array
-    const filterString = filter.notificationSubCat.split(',') || [];
-    filter.notificationSubCat = filterString;
 
-    filter.notification = filter.notification.map(n => filterMap[n]);
-    delete filter.subCategories;
+		if (Array.isArray(filter.notification)) {
+	filter.notification = filter.notification
+		.map((n: string) => filterMap[n] || n)
+		.filter(Boolean);
+
+	if (filter.notification.length === 0) {
+		filter.notification = null;
+	}
+}
 		console.log("🚀 Final Payload:", filter);
 		await fetchAssignments(1, filter);
 	};
