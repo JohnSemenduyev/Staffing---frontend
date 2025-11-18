@@ -137,6 +137,18 @@ const filterMap = {
   'Scheduling': 'schedule'
 };
 
+const formatRoleLabel = (role: string) =>
+  role
+    ? role
+        .replace(/_/g, " ")
+        .split(" ")
+        .filter(Boolean)
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ")
+    : "";
+
 export default function AssignmentNew() {
 	const {
 		assignments,
@@ -694,7 +706,7 @@ export default function AssignmentNew() {
 				sessionStorage.setItem("roles", JSON.stringify(arr));
 				syncRolesFromSession();
 			}
-			// resetForm();
+			resetForm();
 			fetchAssignments(currentPage);
 		} catch (error: any) {
 			console.error("Error submitting assignment:", error);
@@ -978,6 +990,7 @@ export default function AssignmentNew() {
 				{ label: "Client", value: "Client" },
 			],
 			width: "250px",
+			render: (value: string) => formatRoleLabel(value),
 		},
 		{
 			key: "access",
@@ -1237,7 +1250,9 @@ export default function AssignmentNew() {
 									{form.role === "" ? (
 										<span className='text-gray-500'>Select role...</span>
 									) : (
-										<span className='text-gray-900'>{form.role}</span>
+										<span className='text-gray-900'>
+											{formatRoleLabel(form.role)}
+										</span>
 									)}
 								</div>
 							</div>
@@ -1258,7 +1273,7 @@ export default function AssignmentNew() {
 												setShowRoleDropdown(false);
 											}}
 										>
-											{role}
+											{formatRoleLabel(role)}
 										</div>
 									))}
 								</div>

@@ -24,31 +24,47 @@ const minutesDiffWithWrap = (start: string, end: string) => {
   return diff;
 };
 
-const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
-  // Convert times to ranges in minutes, handling wrap-around
-  const toRanges = (s: string, e: string): Array<[number, number]> => {
-    const ss = timeToMinutes(s);
-    const ee = timeToMinutes(e);
-    if (ss === ee) return [[0, 24 * 60]];
-    if (ee > ss) return [[ss, ee]];
-    return [[ss, 24 * 60], [0, ee]];
-  };
+type ShiftInterval = { start: Date; end: Date };
 
-  const ranges1 = toRanges(start1, end1);
-  const ranges2 = toRanges(start2, end2);
-
-  for (const a of ranges1) {
-    for (const b of ranges2) {
-      const aStart = a[0], aEnd = a[1];
-      const bStart = b[0], bEnd = b[1];
-      // if start1===end1 or start2===end2, they cover full day and always overlap
-      if (aStart === aEnd || bStart === bEnd) return true;
-      const hasRequiredGap = (aEnd + 1 <= bStart) || (bEnd + 1 <= aStart);
-      if (!hasRequiredGap) return true;
-    }
-  }
-  return false;
+const toDateWithTime = (dateStr: string, timeStr: string) => {
+  const baseDate = parseLocalYMD(dateStr);
+  if (!baseDate || Number.isNaN(baseDate.getTime())) return null;
+  const [hours = 0, minutes = 0] = (timeStr || "00:00").split(":").map(Number);
+  baseDate.setHours(hours, minutes, 0, 0);
+  return baseDate;
 };
+
+const buildShiftInterval = (dateStr: string, startTime: string, endTime: string): ShiftInterval | null => {
+  const start = toDateWithTime(dateStr, startTime);
+  const end = toDateWithTime(dateStr, endTime);
+  if (!start || !end) return null;
+
+  if (end <= start) {
+    // Treat equal times as a 24-hour span
+    end.setDate(end.getDate() + 1);
+  }
+
+  return { start, end };
+};
+
+const getShiftIntervalFromShift = (shift: { date: string; startTime: string; endTime: string }): ShiftInterval | null => {
+  const normalizedDate = shift.date.includes("T") ? shift.date.split("T")[0] : shift.date;
+  if (!normalizedDate) return null;
+  return buildShiftInterval(normalizedDate, shift.startTime, shift.endTime);
+};
+
+const intervalsOverlap = (a: ShiftInterval | null, b: ShiftInterval | null) => {
+  if (!a || !b) return false;
+  return a.start < b.end && a.end > b.start;
+};
+
+const intervalToLogPayload = (interval: ShiftInterval | null) =>
+  interval
+    ? {
+        start: interval.start.toISOString(),
+        end: interval.end.toISOString(),
+      }
+    : undefined;
 
 const convertDateFormat = (dateStr: string) => {
   const [year, month, day] = dateStr.split('-');
@@ -101,6 +117,91 @@ const getUniqueUsers = (scheduleData: ScheduleItem[]) => {
     }
   });
   return Array.from(userMap.values());
+};
+
+const logOverlapEvent = (source: string, details: Record<string, unknown>) => {
+  console.warn(`[PrepareSchedule][Overlap] ${source}`, details);
+};
+
+/**
+ * Shift interval helpers convert a shift's base date + times into absolute Date ranges
+ * so wrap-around spans only block the actual calendar minutes they cover.
+ * Example: a shift starting Nov 20 @ 18:00 and ending Nov 21 @ 06:00 only blocks
+ * Nov 20 18:00-23:59 and Nov 21 00:00-06:00, allowing another Nov 20 shift at 00:00-06:00.
+ */
+const shiftSpansNextDay = (start: string, end: string) => {
+  if (!start || !end) return false;
+  if (start === end) return true; // treated as full-day shift
+  return timeToMinutes(end) <= timeToMinutes(start);
+};
+
+const normalizeShiftDate = (dateStr: string) => {
+  if (!dateStr) return dateStr;
+  return dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+};
+
+const getAdjustedDate = (dateStr: string, offset: number) => {
+  if (!dateStr) return dateStr;
+  const baseDate = parseLocalYMD(dateStr);
+  if (!baseDate || Number.isNaN(baseDate.getTime())) return dateStr;
+  baseDate.setDate(baseDate.getDate() + offset);
+  return formatDateLocal(baseDate);
+};
+
+const getLocalShiftCandidates = (
+  scheduleItems: ScheduleItem[],
+  userId: number,
+  dateStr: string,
+  newShiftWraps: boolean
+) => {
+  const candidates: Shift[] = [];
+  const pushShifts = (targetDate: string | undefined, filter: (shift: Shift) => boolean) => {
+    if (!targetDate) return;
+    scheduleItems
+      .filter(item => item.userId === userId && item.startDate === targetDate)
+      .forEach(item => {
+        item.shifts
+          .filter(filter)
+          .forEach(shift => {
+            candidates.push(shift);
+          });
+      });
+  };
+
+  // Always check the selected day, include previous-day spillovers, and if the new shift wraps,
+  // also consider next-day shifts since the new coverage extends into that calendar day.
+  pushShifts(dateStr, () => true);
+  const prevDate = getAdjustedDate(dateStr, -1);
+  pushShifts(prevDate, (shift) => shiftSpansNextDay(shift.startTime, shift.endTime));
+
+  if (newShiftWraps) {
+    const nextDate = getAdjustedDate(dateStr, 1);
+    pushShifts(nextDate, () => true);
+  }
+
+  return candidates;
+};
+
+const getServerShiftCandidates = (
+  shifts: any[],
+  dateStr: string,
+  newShiftWraps: boolean
+) => {
+  const normalizedDate = normalizeShiftDate(dateStr);
+  const prevDate = getAdjustedDate(normalizedDate, -1);
+  const nextDate = newShiftWraps ? getAdjustedDate(normalizedDate, 1) : undefined;
+
+  return shifts.filter(shift => {
+    const shiftDate = normalizeShiftDate(shift.date);
+    if (shiftDate === normalizedDate) return true;
+    if (prevDate && shiftDate === prevDate) {
+      return shiftSpansNextDay(shift.startTime, shift.endTime);
+    }
+    if (nextDate && shiftDate === nextDate) {
+      return true;
+    }
+    return false;
+  });
 };
 
 // Local type definitions for PrepareSchedule
@@ -235,9 +336,14 @@ export const PrepareSchedule = () => {
 
     // Check for overlapping shifts
     if (form.userId && form.date && form.starttime && form.endtime) {
-      const existingShifts = scheduleData
-        .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
-        .flatMap(item => item.shifts);
+      const newInterval = buildShiftInterval(form.date, form.starttime, form.endtime);
+      const newShiftWraps = shiftSpansNextDay(form.starttime, form.endtime);
+      const existingShifts = getLocalShiftCandidates(
+        scheduleData,
+        Number(form.userId),
+        form.date,
+        newShiftWraps
+      );
 
       const newStartTime = form.starttime;
       const newEndTime = form.endtime;
@@ -246,11 +352,23 @@ export const PrepareSchedule = () => {
         // Skip validation for editing since the main component handles it
         // if (shift.id === editingShiftId) continue; // Only skip if editing this specific shift
 
-        const existingStart = shift.startTime;
-        const existingEnd = shift.endTime;
+        const existingInterval = getShiftIntervalFromShift(shift);
 
         // Check if new shift overlaps or touches existing shift (requires 1-minute gap)
-        if (doTimesOverlap(newStartTime, newEndTime, shift.startTime, shift.endTime)) {
+        if (newInterval && intervalsOverlap(newInterval, existingInterval)) {
+          logOverlapEvent("validate", {
+            userId: form.userId,
+            date: form.date,
+            newShift: { start: newStartTime, end: newEndTime },
+            newInterval: intervalToLogPayload(newInterval),
+            conflictingShift: {
+              id: shift.id,
+              date: shift.date,
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+            },
+            conflictingInterval: intervalToLogPayload(existingInterval),
+          });
           e.overlap = "Shift time overlaps with existing shift for this user and date";
           break;
         }
@@ -697,16 +815,33 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       
       // OK → proceed
       setHasOverlapError(false);
+      const newShiftWraps = shiftSpansNextDay(form.starttime, form.endtime);
+      const newInterval = buildShiftInterval(form.date, form.starttime, form.endtime);
       
       // Check for local overlap before proceeding
-      const localOverlap = scheduleData
-        .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
-        .flatMap(item => item.shifts)
-        .some(shift => {
-          return doTimesOverlap(form.starttime, form.endtime, shift.startTime, shift.endTime);
-        });
+      const localCandidates = getLocalShiftCandidates(
+        scheduleData,
+        Number(form.userId),
+        form.date,
+        newShiftWraps
+      );
+      const localOverlapShift = localCandidates.find(shift => {
+        const shiftInterval = getShiftIntervalFromShift(shift);
+        return newInterval && intervalsOverlap(newInterval, shiftInterval);
+      });
+      const hasLocalOverlap = Boolean(localOverlapShift);
       
-      if (localOverlap) {
+      if (hasLocalOverlap) {
+        logOverlapEvent("submit-local-check", {
+          userId: form.userId,
+          date: form.date,
+          newShift: { start: form.starttime, end: form.endtime },
+          newInterval: intervalToLogPayload(newInterval),
+          conflictingShift: localOverlapShift,
+          conflictingInterval: intervalToLogPayload(
+            localOverlapShift ? getShiftIntervalFromShift(localOverlapShift) : null
+          ),
+        });
         toast({
           title: "Overlapping Shift",
           description: "Shift time overlaps with existing local shift for this user and date",
@@ -727,23 +862,65 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);
           
-          // Check if shift overlaps with server-side existing shifts
-          const serverOverlap = currentExistingShifts.some(shift => {
-            const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
-            const dateMatch = shiftDateStr === dateStr;
-            const timeOverlap = form.starttime < shift.endTime && form.endtime > shift.startTime;
-            return dateMatch && timeOverlap;
+          const loopInterval = buildShiftInterval(dateStr, form.starttime, form.endtime);
+          
+          // Check if shift overlaps with server-side existing shifts, including adjacent-day spans
+          const serverCandidates = getServerShiftCandidates(
+            currentExistingShifts,
+            dateStr,
+            newShiftWraps
+          );
+          let serverConflictInterval: ShiftInterval | null = null;
+          const serverConflict = serverCandidates.find(shift => {
+            const candidateInterval = getShiftIntervalFromShift(shift);
+            const hasOverlap = loopInterval && intervalsOverlap(loopInterval, candidateInterval);
+            if (hasOverlap) {
+              serverConflictInterval = candidateInterval;
+            }
+            return hasOverlap;
           });
+          const hasServerOverlap = Boolean(serverConflict);
           
-          // Check if shift overlaps with local existing shifts
-          const localOverlap = scheduleData
-            .filter(item => item.userId === Number(form.userId) && item.startDate === dateStr)
-            .flatMap(item => item.shifts)
-            .some(shift => {
-              return doTimesOverlap(form.starttime, form.endtime, shift.startTime, shift.endTime);
+          // Check if shift overlaps with local existing shifts plus adjacent-day spans
+          const localCandidatesForDate = getLocalShiftCandidates(
+            scheduleData,
+            Number(form.userId),
+            dateStr,
+            newShiftWraps
+          );
+          let localConflictInterval: ShiftInterval | null = null;
+          const localConflict = localCandidatesForDate.find(shift => {
+            const candidateInterval = getShiftIntervalFromShift(shift);
+            const hasOverlap = loopInterval && intervalsOverlap(loopInterval, candidateInterval);
+            if (hasOverlap) {
+              localConflictInterval = candidateInterval;
+            }
+            return hasOverlap;
+          });
+          const hasLocalOverlapPerDate = Boolean(localConflict);
+          
+          if (hasServerOverlap) {
+            logOverlapEvent("apply-all-week-server", {
+              userId: form.userId,
+              date: dateStr,
+              newShift: { start: form.starttime, end: form.endtime },
+              newInterval: intervalToLogPayload(loopInterval),
+              conflictingShift: serverConflict,
+              conflictingInterval: intervalToLogPayload(serverConflictInterval),
             });
+          }
+          if (hasLocalOverlapPerDate) {
+            logOverlapEvent("apply-all-week-local", {
+              userId: form.userId,
+              date: dateStr,
+              newShift: { start: form.starttime, end: form.endtime },
+              newInterval: intervalToLogPayload(loopInterval),
+              conflictingShift: localConflict,
+              conflictingInterval: intervalToLogPayload(localConflictInterval),
+            });
+          }
           
-          if (serverOverlap || localOverlap){
+          if (hasServerOverlap || hasLocalOverlapPerDate){
             toast({
               title: "Overlapping Shift",
               description: "Shift time overlaps with existing shift for this user and date",
@@ -810,23 +987,63 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         // Update the schedule data with merged shifts
         setScheduleData(updatedScheduleData);
       } else {
-        // Check if shift overlaps with server-side existing shifts
-        const serverOverlap = currentExistingShifts.some(shift => {
-          const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
-          const dateMatch = shiftDateStr === form.date;
-          const timeOverlap = form.starttime < shift.endTime && form.endtime > shift.startTime;
-          return dateMatch && timeOverlap;
+        // Check if shift overlaps with server-side existing shifts (including adjacent spans)
+        const serverCandidates = getServerShiftCandidates(
+          currentExistingShifts,
+          form.date,
+          newShiftWraps
+        );
+        let serverConflictInterval: ShiftInterval | null = null;
+        const serverConflict = serverCandidates.find(shift => {
+          const candidateInterval = getShiftIntervalFromShift(shift);
+          const hasOverlap = newInterval && intervalsOverlap(newInterval, candidateInterval);
+          if (hasOverlap) {
+            serverConflictInterval = candidateInterval;
+          }
+          return hasOverlap;
         });
+        const hasServerOverlap = Boolean(serverConflict);
         
-        // Check if shift overlaps with local existing shifts
-        const localOverlap = scheduleData
-          .filter(item => item.userId === Number(form.userId) && item.startDate === form.date)
-          .flatMap(item => item.shifts)
-          .some(shift => {
-            return doTimesOverlap(form.starttime, form.endtime, shift.startTime, shift.endTime);
+        // Check if shift overlaps with local existing shifts (including adjacent spans)
+        const localCandidatesSingleDay = getLocalShiftCandidates(
+          scheduleData,
+          Number(form.userId),
+          form.date,
+          newShiftWraps
+        );
+        let localConflictInterval: ShiftInterval | null = null;
+        const localConflict = localCandidatesSingleDay.find(shift => {
+          const candidateInterval = getShiftIntervalFromShift(shift);
+          const hasOverlap = newInterval && intervalsOverlap(newInterval, candidateInterval);
+          if (hasOverlap) {
+            localConflictInterval = candidateInterval;
+          }
+          return hasOverlap;
+        });
+        const hasLocalOverlapSingleDay = Boolean(localConflict);
+        
+        if (hasServerOverlap) {
+          logOverlapEvent("single-day-server", {
+            userId: form.userId,
+            date: form.date,
+            newShift: { start: form.starttime, end: form.endtime },
+            newInterval: intervalToLogPayload(newInterval),
+            conflictingShift: serverConflict,
+            conflictingInterval: intervalToLogPayload(serverConflictInterval),
           });
+        }
+        if (hasLocalOverlapSingleDay) {
+          logOverlapEvent("single-day-local", {
+            userId: form.userId,
+            date: form.date,
+            newShift: { start: form.starttime, end: form.endtime },
+            newInterval: intervalToLogPayload(newInterval),
+            conflictingShift: localConflict,
+            conflictingInterval: intervalToLogPayload(localConflictInterval),
+          });
+        }
         
-        if (serverOverlap || localOverlap) {
+        if (hasServerOverlap || hasLocalOverlapSingleDay) {
           toast({
             title: "Overlapping Shift",
             description: "Shift time overlaps with existing shift for this user and date",

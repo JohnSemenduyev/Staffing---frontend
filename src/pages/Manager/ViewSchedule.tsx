@@ -414,9 +414,10 @@ export const ViewSchedule = () => {
   // Ref to track if we've already restored state from URL parameters
   const hasRestoredState = useRef(false);
 
-  // Dynamic table height state and ref
-  // const [tableHeight, setTableHeight] = useState<string>("400px");
+  // Dynamic table height state and refs
+  const [tableHeight, setTableHeight] = useState<string>("500px");
   const formRef = useRef<HTMLDivElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Initialize state from URL parameters on component mount
   useEffect(() => {
@@ -1965,6 +1966,27 @@ export const ViewSchedule = () => {
       setIsPrinting(false);
     }
   };
+
+  // Dynamically size the client table to reach the bottom of the viewport
+  useEffect(() => {
+    if (showScheduleTable) return;
+
+    const updateTableHeight = () => {
+      if (!tableContainerRef.current) return;
+      const { top } = tableContainerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const paddingBottom = 32; // allow some breathing room at the bottom
+      const available = Math.max(viewportHeight - top - paddingBottom, 320);
+      setTableHeight(`${available}px`);
+    };
+
+    updateTableHeight();
+    window.addEventListener("resize", updateTableHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateTableHeight);
+    };
+  }, [showScheduleTable]);
   const isClientAndAddressSelected = !!selectedClient?.clientId && !!selectedClient?.addressId;
 
   return (
@@ -1974,16 +1996,18 @@ export const ViewSchedule = () => {
           {error ? (
             <p className="text-red-500">Error loading data: {error}</p>
           ) : (
-            <GenericTable
-              key={viewKey}
-              data={tableData}
-              columns={tableColumns}
-              actions={tableActions}
-              loading={loading}
-              emptyMessage="No records found."
-              searchable={true}
-            // tableHeight={tableHeight}
-            />
+            <div ref={tableContainerRef}>
+              <GenericTable
+                key={viewKey}
+                data={tableData}
+                columns={tableColumns}
+                actions={tableActions}
+                loading={loading}
+                emptyMessage="No records found."
+                searchable={true}
+                tableHeight={tableHeight}
+              />
+            </div>
           )}
 
           <PeriodEndDateModal
