@@ -44,6 +44,19 @@ import {
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 
+ export const updateUrlParams = (updates: Record<string, string | boolean | null>) => {
+    const params = new URLSearchParams(window.location.search);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  };
+
 // Normalize a shift key for comparison (YYYY-MM-DD|start|end)
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
   // Handle UTC dates properly - treat as local date
@@ -74,7 +87,7 @@ const autoChangedForUser = (userId: number, scheduleDataParam: ScheduleItem[], o
   return false;
 };
 
-const DateNavigation = ({
+export const DateNavigation = ({
   selectedDate,
   onDateChange,
   currentWeekRange
@@ -142,22 +155,14 @@ export const ViewSchedule = () => {
       clientId: params.get('clientId'),
       addressId: params.get('addressId'),
       selectedDate: params.get('selectedDate'),
-      showSchedule: params.get('showSchedule') === 'true'
+      showSchedule: params.get('showSchedule') === 'true',
+      viewClient: params.get('view-client') === 'true',
+      viewEmployee: params.get('view-employee') === 'true',
+      userId: params.get('userid')
     };
   };
 
-  const updateUrlParams = (updates: Record<string, string | boolean | null>) => {
-    const params = new URLSearchParams(window.location.search);
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null) {
-        params.delete(key);
-      } else {
-        params.set(key, String(value));
-      }
-    });
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, '', newUrl);
-  };
+
 
   const {
     clientSessions,
@@ -183,6 +188,15 @@ export const ViewSchedule = () => {
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserDisplayName, setSelectedUserDisplayName] = useState<string>("");
+
+  useEffect(() => {
+    return () => {
+      setSelectedUserId(null);
+      setSelectedUserDisplayName("");
+    };
+  }, []);
   const [showScheduleTable, setShowScheduleTable] = useState(false);
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
@@ -477,6 +491,37 @@ export const ViewSchedule = () => {
           hasRestoredState.current = true;
         }
       }
+    } else if (
+      !hasRestoredState.current &&
+      urlParams.userId
+    ) {
+      const parsedUserId = parseInt(urlParams.userId, 10);
+      if (!Number.isNaN(parsedUserId)) {
+        setSelectedUserId(parsedUserId);
+        setSelectedUserDisplayName("");
+        setShowScheduleTable(true);
+        const userSelectedDate = urlParams.selectedDate || toLocalYMD(new Date());
+        setSelectedDate(userSelectedDate);
+        const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(userSelectedDate));
+        setCurrentWeekRange(weekRange);
+
+        const formattedDate = convertDateFormat(userSelectedDate);
+        setTableLoading(true);
+
+        fetchScheduleData(undefined, undefined, formattedDate, parsedUserId)
+          .catch(error => {
+            console.error("Error fetching schedule data for employee:", error);
+            toast({
+              title: "Error",
+              description: "Failed to load schedule data for this employee!",
+              variant: "destructive",
+            });
+          })
+          .finally(() => {
+            setTableLoading(false);
+            hasRestoredState.current = true;
+          });
+      }
     }
   }, [clientSessions]); // Remove fetchScheduleData from dependencies
 
@@ -525,6 +570,8 @@ export const ViewSchedule = () => {
     };
 
     setSelectedClient(clientData);
+    setSelectedUserId(null);
+    setSelectedUserDisplayName("");
     setModalOpen(true);
     setOpenedFromViewButton(true);
 
@@ -594,7 +641,11 @@ export const ViewSchedule = () => {
     clearScheduleData();
 
     try {
-      await fetchScheduleData(clientId, addressId, formattedDate);
+      if (selectedUserId) {
+        await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
+      } else {
+        await fetchScheduleData(clientId, addressId, formattedDate);
+      }
     } catch (error) {
       console.error("Error fetching schedule data:", error);
       toast({
@@ -623,12 +674,21 @@ export const ViewSchedule = () => {
     setCurrentWeekRange(weekRange);
 
     // Set ALL URL parameters here after clicking Enter button
-    updateUrlParams({
-      clientId: String(selectedClient?.clientId),
-      addressId: String(selectedClient?.addressId),
+    const urlUpdates: Record<string, string | boolean | null> = {
       selectedDate: weekStartStr,
       showSchedule: true
-    });
+    };
+
+    if (selectedUserId) {
+      urlUpdates.userid = String(selectedUserId);
+      urlUpdates.clientId = null;
+      urlUpdates.addressId = null;
+    } else {
+      urlUpdates.clientId = selectedClient?.clientId ? String(selectedClient.clientId) : null;
+      urlUpdates.addressId = selectedClient?.addressId ? String(selectedClient.addressId) : null;
+    }
+
+    updateUrlParams(urlUpdates);
 
     // Reset UI for navigation (but don't close modal yet)
     setIsScheduleEditMode(false);
@@ -654,9 +714,13 @@ export const ViewSchedule = () => {
     clearScheduleData();
 
     try {
-      const clientId = selectedClient?.clientId!;
-      const addressId = selectedClient?.addressId!;
-      await fetchScheduleData(clientId, addressId, formattedDate);
+      if (selectedUserId) {
+        await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
+      } else {
+        const clientId = selectedClient?.clientId!;
+        const addressId = selectedClient?.addressId!;
+        await fetchScheduleData(clientId, addressId, formattedDate);
+      }
     } catch (e) {
       toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
       // On error, close the modal
@@ -822,8 +886,22 @@ export const ViewSchedule = () => {
 
       // Transform the API data
       const keyedByUserDate = new Map();
+      let derivedClientInfo: any = null;
 
       apiScheduleData.forEach((group: any) => {
+        if (!derivedClientInfo) {
+          derivedClientInfo = {
+            clientId: group.clientId,
+            addressId: group.addressId,
+            name: group.client?.name ?? "",
+            lastName: (group.client as any)?.lastName ?? "",
+            address: group.address?.address ?? "",
+            city: group.address?.city ?? "",
+            state: group.address?.state ?? "",
+            pincode: group.address?.pincode ?? "",
+            addresses: (group.client as any)?.addresses || []
+          };
+        }
         const userId = group.user?.id;
         group.shifts?.forEach(shift => {
           if (!shift?.date || userId == null) return;
@@ -874,6 +952,38 @@ export const ViewSchedule = () => {
       const transformedData = Array.from(keyedByUserDate.values());
       setScheduleData(transformedData);
 
+      if (!selectedClient && transformedData.length > 0) {
+        const first = transformedData[0];
+        setSelectedClient({
+          clientId: first.clientId,
+          addressId: first.addressId,
+          name: first.clientName ?? "",
+          lastName: "",
+          address: first.address ?? "",
+          city: "",
+          state: "",
+          pincode: "",
+          addresses: []
+        });
+      }
+
+      if (selectedUserId) {
+        const match = transformedData.find(item => item.userId === selectedUserId);
+        if (match) {
+          setSelectedUserDisplayName(match.userName ?? "");
+        }
+      }
+
+      if (selectedUserId === null && transformedData.length > 0) {
+        const firstUserId = transformedData[0]?.userId ?? null;
+        setSelectedUserId(firstUserId);
+        setSelectedUserDisplayName(transformedData[0]?.userName ?? "");
+      }
+
+      if (!selectedClient && derivedClientInfo) {
+        setSelectedClient(derivedClientInfo);
+      }
+
       // Capture original snapshot of shifts per user to detect changes on publish
       const baseMap = new Map<number, Set<string>>();
       transformedData.forEach(item => {
@@ -914,11 +1024,15 @@ export const ViewSchedule = () => {
 
   // Minimal handler to refresh schedule data after child reports a successful delete
   const handleDeleteSuccess = async () => {
-    if (!selectedClient || !selectedDate) return;
+    if (!selectedDate) return;
     setTableLoading(true);
     try {
       const formattedDate = convertDateFormat(selectedDate);
-      await fetchScheduleData(selectedClient.clientId, selectedClient.addressId, formattedDate);
+      if (selectedUserId) {
+        await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
+      } else if (selectedClient) {
+        await fetchScheduleData(selectedClient.clientId, selectedClient.addressId, formattedDate);
+      }
       toast({ title: "Success", description: "Schedule refreshed after delete." });
     } catch (err) {
       console.error("Error refreshing schedule after delete:", err);
@@ -1437,7 +1551,9 @@ export const ViewSchedule = () => {
         const addressId = selectedClient?.addressId;
         const formattedDate = convertDateFormat(selectedDate);
 
-        if (clientId && addressId) {
+        if (selectedUserId) {
+          await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
+        } else if (clientId && addressId) {
           await fetchScheduleData(clientId, addressId, formattedDate);
         }
         setIsPublishing(false);
@@ -1514,8 +1630,26 @@ export const ViewSchedule = () => {
   };
 
   const resetScheduleView = () => {
+    // Check URL parameters to determine where to redirect
+    const urlParams = getUrlParams();
+    
+    // If view-client=true, redirect to ViewClientSummary
+    if (urlParams.viewClient) {
+      navigate('/view-client-summary');
+      return;
+    }
+    
+    // If view-employee=true, redirect to ViewEmployeeSummary
+    if (urlParams.viewEmployee) {
+      navigate('/view-employee-summary');
+      return;
+    }
+    
+    // Default behavior: reset the view
     setShowScheduleTable(false);
     setSelectedClient(null);
+    setSelectedUserId(null);
+    setSelectedUserDisplayName("");
     setModalOpen(false);
     setScheduleData([]);
     setSessionData([]);
@@ -1530,7 +1664,10 @@ export const ViewSchedule = () => {
       clientId: null,
       addressId: null,
       selectedDate: null,
-      showSchedule: null
+      showSchedule: null,
+      'view-client': null,
+      'view-employee': null,
+      userid: null
     });
   };
   // Add this function after the schedulesEqual function (around line 1300)
@@ -1967,6 +2104,8 @@ export const ViewSchedule = () => {
     }
   };
 
+  console.log("selectedUserId", selectedUserId , scheduleData);
+
   // Dynamically size the client table to reach the bottom of the viewport
   useEffect(() => {
     if (showScheduleTable) return;
@@ -2269,13 +2408,15 @@ export const ViewSchedule = () => {
             {selectedClient && (
               <div className="text-left">
                 <div className="text-lg font-medium text-gray-800">
-                  {selectedClient?.lastName && String(selectedClient?.name || "").trim().endsWith(String(selectedClient.lastName))
-                    ? selectedClient.name
-                    : [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(" ")}
+                {selectedUserId
+                  ? (selectedUserDisplayName || "Employee")
+                  : (selectedClient?.lastName && String(selectedClient?.name || "").trim().endsWith(String(selectedClient.lastName))
+                    ? selectedClient?.name
+                    : [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(" "))}
                 </div>
-                <div className="text-sm text-gray-500">
+               {selectedUserId ? null : <div className="text-sm text-gray-500">
                   {[selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(", ")}
-                </div>
+                </div>}
               </div>
             )}
             <DateNavigation
@@ -2328,6 +2469,7 @@ export const ViewSchedule = () => {
                 onShiftAutoToggle={handleShiftAutoToggle}
                 apiExistingShiftsData={apiExistingShifts}
                 hasChanges={hasScheduleChanges}
+                selectedUserId={selectedUserId}
               />
             </div>
           )}
@@ -2353,7 +2495,7 @@ export const ViewSchedule = () => {
                 isPrinting={isPrinting}
                 loading={sessionLoading}
                 hasChanges={hasSessionChanges}
-
+                selectedUserId={selectedUserId}
               />
             </div>
           )}

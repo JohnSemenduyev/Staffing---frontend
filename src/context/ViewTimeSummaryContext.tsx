@@ -9,7 +9,7 @@ type Shift = {
   hours: number;
 };
 
-const formatToMMDDYYYY = (dateStr: string): string => {
+export const formatToMMDDYYYY = (dateStr: string): string => {
   if (!dateStr) return "";
   const [year, month, day] = dateStr.split("-");
   return `${month}-${day}-${year}`;

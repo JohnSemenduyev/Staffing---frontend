@@ -11,7 +11,6 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState("");
 
-  // Reset the date when the modal opens so it doesn't keep previous selection
   useEffect(() => {
     if (isOpen) {
       setSelectedDate("");
@@ -21,7 +20,6 @@ export const PeriodEndDateModal: React.FC<PeriodEndDateModalProps> = ({
   const handleSubmit = () => {
     if (selectedDate && !isLoading) {
       onSubmit(selectedDate);
-      // Modal will remain open while loading, parent component will close it on success/error
     }
   };
 

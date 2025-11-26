@@ -133,7 +133,12 @@ type ClientSessionContextType = {
   scheduleData: ScheduleData | null;
   scheduleLoading: boolean;
   scheduleError: string | null;
-  fetchScheduleData: (clientId: number, addressId: number, date: string) => Promise<void>;
+  fetchScheduleData: (
+    clientId?: number | null,
+    addressId?: number | null,
+    date?: string,
+    userid?: number | null
+  ) => Promise<void>;
   clearScheduleData: () => void;
 
   bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<any>;
@@ -200,7 +205,12 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     }
   };
 
-  const fetchScheduleData = async (clientId: number, addressId: number, date: string) => {
+  const fetchScheduleData = async (
+    clientId?: number | null,
+    addressId?: number | null,
+    date?: string,
+    userid?: number | null
+  ) => {
     setScheduleLoading(true);
     setScheduleError(null);
     try {
@@ -209,7 +219,12 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         ScheduleSessionsByClientWeek: ScheduleData;
       }>(
         SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
-        { clientId, addressId, date },
+        {
+          ...(clientId !== undefined && clientId !== null ? { clientId } : {}),
+          ...(addressId !== undefined && addressId !== null ? { addressId } : {}),
+          ...(date ? { date } : {}),
+          ...(userid !== undefined && userid !== null ? { userid } : {})
+        },
         { Authorization: `Bearer ${token}` }
       );
       setScheduleData(response.ScheduleSessionsByClientWeek);

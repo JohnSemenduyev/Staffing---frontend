@@ -115,6 +115,7 @@ interface ActualTimeTableProps {
   isPrinting: boolean;
   loading?: boolean;
   hasChanges?: boolean;
+  selectedUserId?: number;
 }
 
 // Utility functions
@@ -357,7 +358,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   isPublishing,
   isPrinting,
   loading = false,
-  hasChanges
+  hasChanges,
+  selectedUserId
+  
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -411,7 +414,9 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
         userMap.set(item.userId, {
           id: item.userId,
           name: item.userName,
-          phone: item.userPhone
+          phone: item.userPhone,
+          clientName: item.clientName,
+          address: item.address
         });
       }
     });
@@ -744,7 +749,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
             <tr className="h-[41px]" style={{ lineHeight: '16px' }}>
               <th className="px-4 py-2 text-left border border-gray-300 whitespace-nowrap">
-                Employee Name
+                {selectedUserId ? "Client Name" : "Employee Name"}
               </th>
               {dateColumns.map(dateCol => (
                 <th key={dateCol.date} className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap relative" style={{ minWidth: '120px' }}>
@@ -775,8 +780,8 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                           className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
                           rowSpan={rowCount}
                         >
-                          <div className="font-medium text-gray-800">{user.name}</div>
-                          <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
+                          <div className="font-medium text-gray-800">{selectedUserId ? user.clientName : user.name}</div>
+                          <div className="text-xs text-gray-500">{selectedUserId ? user.address : formatUSPhone(user.phone)}</div>
                         </td>
                       )}
 

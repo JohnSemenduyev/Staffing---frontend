@@ -39,8 +39,8 @@ export const formatTimeDisplay = (timeString: string): string => {
   return timeString;
 };
 
-export function getWeekRangeFromDateLocal(base: Date) {
-
+export function getWeekRangeFromDateLocal(base: any) {
+  base = new Date(base);
   const day = base.getDay();
   const daysSinceThursday = (day + 3) % 7; // Thu..Wed week
   const start = new Date(base);

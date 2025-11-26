@@ -506,8 +506,8 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
   }
 `;
 export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
-  query ScheduleSessionsByClientWeek($clientId: Int, $addressId: Int, $date: String) {
-    ScheduleSessionsByClientWeek(clientId: $clientId, addressId: $addressId, date: $date) {
+  query ScheduleSessionsByClientWeek($clientId: Int, $addressId: Int, $date: String , $userid : Int) {
+    ScheduleSessionsByClientWeek(clientId: $clientId, addressId: $addressId, date: $date, userid: $userid) {
     
     shifts {
         startTime
@@ -674,6 +674,40 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
         id
         date
       }
+    }
+  }
+`;
+
+export const GET_USER_HOURS_SUMMARY = gql`
+  query UserHoursSummary($date: String!) {
+    UserHoursSummary(date: $date) {
+      userId
+      userName
+      scheduledHours
+      actualHours
+      diffScheduledMinusActual
+      overTimeSchedule
+      overTimeActualHours
+      overTimediffScheduledMinusActual
+    }
+  }
+`;
+
+export const GET_CLIENT_HOURS_SUMMARY = gql`
+  query ScheduleSessionsByClientWeekHoursdetails($date: String) {
+    ScheduleSessionsByClientWeekHoursdetails(date: $date) {
+      clientId
+      addressId
+      clientName
+      address
+      contractHours
+      totalWeeklyHours
+      totalActualHours
+      unconfirmedHours
+      rejectedHours
+      diffContractMinusScheduled
+      diffScheduledMinusActual
+      diffContractMinusActual
     }
   }
 `;

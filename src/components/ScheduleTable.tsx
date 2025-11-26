@@ -68,6 +68,7 @@ interface ScheduleTableProps {
   isPublishing: boolean;
   isPrinting: boolean;
   readOnly?: boolean;
+  selectedUserId?: number;
   loading?: boolean;
   onUserAutoToggle?: (userId: number, enabled: boolean) => void;
   onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
@@ -78,19 +79,6 @@ interface ScheduleTableProps {
   hasChanges?: boolean;
 }
 
-interface ExistingShiftFromAPI {
-  startTime: string;
-  endTime: string;
-  date: string;
-}
-
-// Utility functions
-const timeToMinutes = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-};
-
-// Check if times don't match exactly (for highlighting)
 const hasTimeMismatch = (shift: Shift, session?: { clockIn?: string; clockOut?: string }): boolean => {
   if (!session) return false;
   
@@ -205,7 +193,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   hideActionButtons = false,
   existingShifts = [], // Default empty array for existing shifts
   apiExistingShiftsData = new Map(), // Default empty Map for API existing shifts
-  hasChanges
+  hasChanges,
+  selectedUserId
 }) => {
   const { toast: hookToast } = useToast();
 
@@ -229,22 +218,14 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
   
   return userShifts.length === 1 && userShifts[0].id === shiftId;
 };
-  // Helper function to check overlap with API existing shifts
   const checkOverlapWithApiShifts = (userId: number, clientId: number, addressId: number, date: string, startTime: string, endTime: string, excludeShiftId?: number) => {
     const key = `${clientId}-${addressId}-${userId}`;
     const userShifts = apiExistingShiftsData.get(key) || [];
-    
-    console.log(`Checking API overlap for key: ${key}, date: ${date}, time: ${startTime}-${endTime}`);
-    console.log(`Available API shifts:`, userShifts);
-    
-    // Find the first overlapping shift
     const overlappingShift = userShifts.find(shift => {
       // Convert API date to local format for comparison
       const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
       const dateMatch = shiftDateStr === date;
-      
-      console.log(`Comparing dates: ${shiftDateStr} === ${date} = ${dateMatch}`);
-      
+          
       if (!dateMatch) return false;
       
       // Check for time overlap
@@ -314,7 +295,9 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         userMap.set(item.userId, {
           id: item.userId,
           name: item.userName,
-          phone: item.userPhone
+          phone: item.userPhone,
+          clientName: item.clientName,
+          address: item.address
         });
       }
     });
@@ -949,6 +932,8 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     setDragOverCell(null);
   };
 
+  console.log("selectedUserId11", selectedUserId , scheduleData);
+
   return (
     <div className="relative w-full  border border-gray-200 shadow-xl rounded-2xl overflow-hidden">
       {loading && (
@@ -963,7 +948,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
             <tr className="h-[41px]"  style={{ lineHeight: '16px' }}>
               <th className="px-4 py-2 text-left border border-gray-300 whitespace-nowrap">
-                Employee Name
+               {selectedUserId ? "Client Name" : "Employee Name"}
               </th>
               {dateColumns.map(dateCol => (
                 <th key={dateCol.date} className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
@@ -995,8 +980,8 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                           className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
                           rowSpan={rowCount}
                         >
-                                                   <div className="font-medium text-gray-800">{user.name}</div>
-                          <div className="text-xs text-gray-500">{formatUSPhone(user.phone)}</div>
+                                                   <div className="font-medium text-gray-800">{selectedUserId ? user.clientName : user.name}</div>
+                          <div className="text-xs text-gray-500">{selectedUserId ? user.address : formatUSPhone(user.phone)}</div>
                         </td>
                       )}
 

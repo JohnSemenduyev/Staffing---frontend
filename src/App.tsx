@@ -18,6 +18,8 @@ import { ViewSchedule } from "./pages/Manager/ViewSchedule";
 import { Summary } from "./pages/Manager/Summary";
 import { UniformCompliance } from "./pages/Manager/UniformCompliance";
 import { Notification } from "./pages/Manager/Notification";
+import { ViewClientSummary } from "./pages/Manager/ViewClientSummary";
+import { ViewEmployeeSummary } from "./pages/Manager/ViewEmployeeSummary";
 import { PostAssignProvider } from "./context/PostAssignm";
 import AssignmentNew from "./pages/Admin/AssignmentNew";
 import { AssignmentProvider } from "./context/Assignment";
@@ -35,6 +37,8 @@ import { ScheduleSessionProviderClient } from "./context/ClientList";
 import { UniformComplianceProvider } from "./context/unifromCompliace";
 import { AuthProvider } from "./context/LoginContext";
 import { ViewTimeSummaryProvider } from "./context/ViewTimeSummaryContext";
+import { ViewEmployeeSummaryProvider } from "./context/ViewEmployeeSummaryContext";
+import { ViewClientSummaryProvider } from "./context/ViewClientSummaryContext";
 import { NotificationsProvider } from "./context/NotificatoinContext";
 import Signup from "./pages/Signup";
 import { UserRegistrationProvider } from "./context/SignupContext";
@@ -57,12 +61,14 @@ const App = () => (
                     <PostAssignProvider>
                       <ClientSessionProvider>
                         <ViewTimeSummaryProvider>
-                          <ScheduleSessionProviderClient>
-                            <UniformComplianceProvider>
-                              <AuthProvider>
-                                <UserRegistrationProvider>
-                                  <NotificationsProvider>
-                                    <BrowserRouter>
+                          <ViewEmployeeSummaryProvider>
+                            <ViewClientSummaryProvider>
+                              <ScheduleSessionProviderClient>
+                                <UniformComplianceProvider>
+                                  <AuthProvider>
+                                    <UserRegistrationProvider>
+                                      <NotificationsProvider>
+                                        <BrowserRouter>
                                       <Routes>
                                         <Route path="/" element={<AuthRedirect />} />
                                         <Route path="/login" element={<Login />} />
@@ -154,6 +160,22 @@ const App = () => (
                                             }
                                           />
                                           <Route
+                                            path="/view-client-summary"
+                                            element={
+                                              <ProtectedRoute allowedRoles={["manager"]}>
+                                                <ViewClientSummary />
+                                              </ProtectedRoute>
+                                            }
+                                          />
+                                          <Route
+                                            path="/view-employee-summary"
+                                            element={
+                                              <ProtectedRoute allowedRoles={["manager"]}>
+                                                <ViewEmployeeSummary />
+                                              </ProtectedRoute>
+                                            }
+                                          />
+                                          <Route
                                             path="/view-time-summary"
                                             element={
                                               <ProtectedRoute allowedRoles={["manager"]}>
@@ -181,12 +203,14 @@ const App = () => (
 
                                         <Route path="*" element={<NotFound />} />
                                       </Routes>
-                                    </BrowserRouter>
-                                  </NotificationsProvider>
-                                </UserRegistrationProvider>
-                              </AuthProvider>
-                            </UniformComplianceProvider>
-                          </ScheduleSessionProviderClient>
+                                        </BrowserRouter>
+                                      </NotificationsProvider>
+                                    </UserRegistrationProvider>
+                                  </AuthProvider>
+                                </UniformComplianceProvider>
+                              </ScheduleSessionProviderClient>
+                            </ViewClientSummaryProvider>
+                          </ViewEmployeeSummaryProvider>
                         </ViewTimeSummaryProvider>
                       </ClientSessionProvider>
                     </PostAssignProvider>

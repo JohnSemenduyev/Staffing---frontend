@@ -26,6 +26,8 @@ import { useAuth } from '../context/LoginContext';
 const managerTabs = [
   { id: 'prepare-schedule', label: 'Prepare Schedule', icon: FileText, path: '/prepare-schedule' },
   { id: 'view-schedule', label: 'View Schedule', icon: Eye, path: '/view-schedule' },
+  { id: 'view-client-summary', label: 'View Client Summary', icon: Briefcase, path: '/view-client-summary' },
+  { id: 'view-employee-summary', label: 'View Employee Summary', icon: Users, path: '/view-employee-summary' },
   { id: 'view-time-summary', label: 'View Time Summary', icon: BarChart3, path: '/view-time-summary' },
   { id: 'uniform-compliance', label: 'Uniform Compliance', icon: Shield, path: '/uniform-compliance' },
   { id: 'notification', label: 'Notification', icon: Bell, path: '/notification' },
