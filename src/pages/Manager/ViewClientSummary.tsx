@@ -144,6 +144,11 @@ export const ViewClientSummary = () => {
     fetchClientSummary(weekStartStr);
   }, [today, fetchClientSummary]);
 
+  const formatValue = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "-";
+    return Number(value).toFixed(2);
+  };
+
   const rows = useMemo(
     () =>
       (data || []).map((item) => ({
@@ -151,17 +156,14 @@ export const ViewClientSummary = () => {
         addressId: item.addressId,
         clientName: item.clientName || "-",
         location: item.address || "-",
-        contractHours: item.contractHours ?? "-",
-        totalWeeklyHours: item.totalWeeklyHours ?? "-",
-        // difference1: item.diffContractMinusScheduled ?? "-",
-        diffContractMinusScheduled: item.diffContractMinusScheduled ?? "-",
-        unconfirmedHours: item.unconfirmedHours ?? "-",
+        contractHours: formatValue(item.contractHours),
+        totalWeeklyHours: formatValue(item.totalWeeklyHours),
+        diffContractMinusScheduled: formatValue(item.diffContractMinusScheduled),
+        unconfirmedHours: formatValue(item.unconfirmedHours),
         rejectedHours: item.rejectedHours ?? "-",
-        totalActualHours: item.totalActualHours ?? "-",
-        // difference2: item.diffScheduledMinusActual ?? "-",
-        diffScheduledMinusActual: item.diffScheduledMinusActual ?? "-",
-        diffContractMinusActual: item.diffContractMinusActual ?? "-",
-        // difference3: item.diffContractMinusActual ?? "-",
+        totalActualHours: formatValue(item.totalActualHours),
+        diffScheduledMinusActual: formatValue(item.diffScheduledMinusActual),
+        diffContractMinusActual: formatValue(item.diffContractMinusActual),
       })),
     [data]
   );
