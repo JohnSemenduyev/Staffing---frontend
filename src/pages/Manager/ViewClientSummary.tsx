@@ -10,6 +10,9 @@ import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
 import { formatToMMDDYYYY } from "../../context/ViewTimeSummaryContext";
 import { DateNavigation } from "./ViewSchedule";
 import { getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/utils";
+import { graphQLClient } from "../../GraphqlClient";
+import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -52,6 +55,12 @@ const tableColumns: TableColumn[] = [
     searchable: true,
   },
   {
+    key: "scheduledHoursActual",
+    label: "Scheduled Hours",
+    sortable: true,
+    searchable: true,
+  },
+  {
     key: "totalActualHours",
     label: "Actual Hours",
     sortable: true,
@@ -60,6 +69,18 @@ const tableColumns: TableColumn[] = [
   {
     key: "diffScheduledMinusActual",
     label: "Difference",
+    sortable: true,
+    searchable: true,
+  },
+  {
+    key: "contractHoursActual",
+    label: "Contract Hours",
+    sortable: true,
+    searchable: true,
+  },
+  {
+    key: "totalActualHoursContract",
+    label: "Actual Hours",
     sortable: true,
     searchable: true,
   },
@@ -84,6 +105,20 @@ export const ViewClientSummary = () => {
   const { data, loading, error, fetchClientSummary } = useClientSummary();
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [showDateModal, setShowDateModal] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [noScheduleModal, setNoScheduleModal] = useState<{
+    isOpen: boolean;
+    clientName: string;
+    clientId: number | null;
+    addressId: number | null;
+    selectedDate: string;
+  }>({
+    isOpen: false,
+    clientName: "",
+    clientId: null,
+    addressId: null,
+    selectedDate: ""
+  });
   const [date, setDate] = useState(today);
   const [selectedDate, setSelectedDate] = useState("");
   const [currentWeekRange, setCurrentWeekRange] = useState<any>(null);
@@ -96,13 +131,17 @@ export const ViewClientSummary = () => {
     setShowDateModal(true);
   };
 
-  const handleDateSubmit = (value: string) => {
+  const formatDateForApi = (ymd: string) => {
+    if (!ymd) return "";
+    const [year, month, day] = ymd.split("-");
+    return `${month}-${day}-${year}`;
+  };
+
+  const handleDateSubmit = async (value: string) => {
     if (!selectedRow) {
       console.error("No row selected");
       return;
     }
-
-    // Get clientId and addressId from the selected row
     const clientId = selectedRow.clientId;
     const addressId = selectedRow.addressId;
 
@@ -110,19 +149,44 @@ export const ViewClientSummary = () => {
       console.error("Missing clientId or addressId");
       return;
     }
-
-    // Get the date from the PeriodEndDateModal (value parameter is in YYYY-MM-DD format)
-    // PeriodEndDateModal returns the date as a string in YYYY-MM-DD format
     const dateToUse = value || selectedDate || toLocalYMD(new Date());
-    // Navigate with dynamic values
-    navigate(
-      `/view-schedule?clientId=${clientId}&addressId=${addressId}&selectedDate=${dateToUse}&showSchedule=true&view-client=true`
-    );
-    
-    // Reset the selected row after navigation
-    setSelectedRow(null);
-    setShowDateModal(false);
-  }
+    const week = getWeekRangeFromDateLocal(parseLocalYMD(dateToUse));
+    const weekStartStr = toLocalYMD(week.startOfWeek);
+
+    setModalLoading(true);
+    try {
+      const { ScheduleSessionsByClientWeek = [] } = await graphQLClient.request<{
+        ScheduleSessionsByClientWeek: any[];
+      }>(SCHEDULE_SESSIONS_BY_CLIENT_WEEK, {
+        clientId,
+        addressId,
+        date: formatDateForApi(weekStartStr),
+      });
+
+      if (!ScheduleSessionsByClientWeek.length) {
+        setShowDateModal(false);
+        setNoScheduleModal({
+          isOpen: true,
+          clientName: selectedRow?.clientName || "",
+          clientId,
+          addressId,
+          selectedDate: weekStartStr,
+        });
+        return;
+      }
+
+      navigate(
+        `/view-schedule?clientId=${clientId}&addressId=${addressId}&selectedDate=${weekStartStr}&showSchedule=true&view-client=true`
+      );
+      setSelectedRow(null);
+      setShowDateModal(false);
+    } catch (error) {
+      console.error("Failed to load schedule data:", error);
+      toast.error("Failed to load schedule data. Please try again.");
+    } finally {
+      setModalLoading(false);
+    }
+  };
 
   const tableActions: TableAction[] = [
     {
@@ -160,9 +224,12 @@ export const ViewClientSummary = () => {
         totalWeeklyHours: formatValue(item.totalWeeklyHours),
         diffContractMinusScheduled: formatValue(item.diffContractMinusScheduled),
         unconfirmedHours: formatValue(item.unconfirmedHours),
-        rejectedHours: item.rejectedHours ?? "-",
+        rejectedHours: formatValue(item.rejectedHours),
+        scheduledHoursActual: formatValue(item.totalWeeklyHours),
         totalActualHours: formatValue(item.totalActualHours),
         diffScheduledMinusActual: formatValue(item.diffScheduledMinusActual),
+        contractHoursActual: formatValue(item.contractHours),
+        totalActualHoursContract: formatValue(item.totalActualHours),
         diffContractMinusActual: formatValue(item.diffContractMinusActual),
       })),
     [data]
@@ -232,7 +299,7 @@ export const ViewClientSummary = () => {
       case "scheduledVsActual":
         additionalColumns.push(
           {
-            key: "totalWeeklyHours",
+            key: "scheduledHoursActual",
             label: "Scheduled Hours",
             sortable: true,
             searchable: true,
@@ -254,13 +321,13 @@ export const ViewClientSummary = () => {
       case "contractVsActual":
         additionalColumns.push(
           {
-            key: "contractHours",
+            key: "contractHoursActual",
             label: "Contract Hours",
             sortable: true,
             searchable: true,
           },
           {
-            key: "totalActualHours",
+            key: "totalActualHoursContract",
             label: "Actual Hours",
             sortable: true,
             searchable: true,
@@ -319,16 +386,54 @@ export const ViewClientSummary = () => {
         loading={loading}
       />
 
-            {showDateModal && (
-              <PeriodEndDateModal 
-                isOpen={showDateModal} 
-                onClose={() => {
-                  setShowDateModal(false);
-                  setSelectedRow(null);
-                }} 
-                onSubmit={handleDateSubmit} 
-              />
-            )}
+      {showDateModal && (
+        <div className = "mt-[-20px]">
+        <PeriodEndDateModal
+          isOpen={showDateModal}
+          onClose={() => setShowDateModal(false)}
+          onSubmit={handleDateSubmit}
+          isLoading={modalLoading}
+        />
+        </div>
+      )}
+      {noScheduleModal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <p className="text-gray-700 text-base">
+              No schedule found for <span className="font-semibold">{noScheduleModal.clientName}</span> on this week
+              range.
+            </p>
+            <p className="text-sm text-gray-500 mt-3">Do you want to prepare a schedule?</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setNoScheduleModal({ isOpen: false, clientName: "", clientId: null, addressId: null, selectedDate: "" })
+                }
+              >
+                No
+              </Button>
+              <Button
+                onClick={() => {
+                  const { clientId, addressId, selectedDate } = noScheduleModal;
+                  setNoScheduleModal({
+                    isOpen: false,
+                    clientName: "",
+                    clientId: null,
+                    addressId: null,
+                    selectedDate: ""
+                  });
+                  if (clientId && addressId) {
+                    navigate(`/prepare-schedule`);
+                  }
+                }}
+              >
+                Yes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
     </div>
   );

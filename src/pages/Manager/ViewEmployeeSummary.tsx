@@ -9,6 +9,9 @@ import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
 import { useNavigate } from "react-router-dom";
 import { getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/utils";
 import { DateNavigation } from "./ViewSchedule";
+import { graphQLClient } from "../../GraphqlClient";
+import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
+import { toast } from "sonner";
 
 type EmployeeSummaryRow = {
   userId?: string | number;
@@ -29,8 +32,14 @@ export const ViewEmployeeSummary = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [currentWeekRange, setCurrentWeekRange] = useState<any>(null);
   
-  const [showDateModal,setShowDateModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState<EmployeeSummaryRow | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [noScheduleModal, setNoScheduleModal] = useState({
+    isOpen: false,
+    userName: "",
+    selectedDate: ""
+  });
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -43,7 +52,13 @@ export const ViewEmployeeSummary = () => {
     fetchEmployeeSummary(weekStartStr);
   }, [today, fetchEmployeeSummary]);
 
-  const handleDateSubmit = (value: string) =>{
+  const formatDateForApi = (ymd: string) => {
+    if (!ymd) return "";
+    const [year, month, day] = ymd.split("-");
+    return `${month}-${day}-${year}`;
+  };
+
+  const handleDateSubmit = async (value: string) =>{
     if (!selectedRow) {
       console.error("No employee selected");
       return;
@@ -56,11 +71,41 @@ export const ViewEmployeeSummary = () => {
     }
 
     const dateToUse = value || selectedDate || toLocalYMD(new Date());
+    const week = getWeekRangeFromDateLocal(parseLocalYMD(dateToUse));
+    const weekStartStr = toLocalYMD(week.startOfWeek);
 
-    navigate(`/view-schedule?userid=${userId}&selectedDate=${dateToUse}&showSchedule=true&view-employee=true`);
+    setModalLoading(true);
+    try {
+      const { ScheduleSessionsByClientWeek = [] } = await graphQLClient.request<{
+        ScheduleSessionsByClientWeek: any[];
+      }>(SCHEDULE_SESSIONS_BY_CLIENT_WEEK, {
+        userid: Number(userId),
+        date: formatDateForApi(weekStartStr),
+      });
+      if (!ScheduleSessionsByClientWeek.length) {
+        setShowDateModal(false);
+        setNoScheduleModal({
+          isOpen: true,
+          userName: selectedRow.employeeName || "",
+          selectedDate: weekStartStr,
+        });
+        return;
+      }
 
-    setSelectedRow(null);
-    setShowDateModal(false);
+      navigate(`/view-schedule?userid=${userId}&selectedDate=${weekStartStr}&showSchedule=true&view-employee=true`);
+
+      setSelectedRow(null);
+      setShowDateModal(false);
+    } catch (error) {
+      console.error("Failed to load schedule data", error);
+      // toast({
+      //   title: "No schedule found",
+      //   description: "Unable to load schedule for this week.",
+      //   variant: "destructive",
+      // });
+    } finally {
+      setModalLoading(false);
+    }
   }
 
   const formatValue = (value: number | null | undefined) => {
@@ -124,23 +169,7 @@ export const ViewEmployeeSummary = () => {
           Track employee total regular and overtime hours.
         </p>
        <div className="flex justify-between items-center"> 
-        {/* <form
-          onSubmit={handleRun}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-[12px]"
-        >
-          <CustomDatePicker
-            value={today}
-            onChange={handleDateChange}
-            placeholder="Date"
-            fieldName="date"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#004175]"
-          />
-          <div className="flex items-center">
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-              {loading ? "Loading..." : "Run"}
-            </Button>
-          </div>
-        </form> */}
+        
         <div></div>
          <DateNavigation
                       selectedDate={selectedDate}
@@ -155,7 +184,7 @@ export const ViewEmployeeSummary = () => {
           <table className="min-w-full text-sm text-gray-800">
             <thead>
               <tr className="bg-[#004175] text-white text-xs uppercase tracking-wide">
-                <th className="px-4 py-3 text-center border-r-2 border-black w-16">Action</th>
+                <th className="px-4 py-3 text-center border-black w-16">Action</th>
                 <th className="px-4 py-3 text-left border-r-2 border-black">
                   Employee Name
                 </th>
@@ -264,6 +293,7 @@ export const ViewEmployeeSummary = () => {
         </div>
       </div>
       {showDateModal && (
+        <div className="mt-[-20px]">
         <PeriodEndDateModal
           isOpen={showDateModal}
           onClose={() => {
@@ -271,7 +301,36 @@ export const ViewEmployeeSummary = () => {
             setSelectedRow(null);
           }}
           onSubmit={handleDateSubmit}
+          isLoading={modalLoading}
         />
+        </div>
+      )}
+      {noScheduleModal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <p className="text-gray-700 text-base">
+              No schedule found for <span className="font-semibold">{noScheduleModal.userName}</span> on this week
+              range.
+            </p>
+            <p className="text-sm text-gray-500 mt-3">Do you want to prepare a schedule?</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setNoScheduleModal({ isOpen: false, userName: "", selectedDate: "" })}
+              >
+                No
+              </Button>
+              <Button
+                onClick={() => {
+                  setNoScheduleModal({ isOpen: false, userName: "", selectedDate: "" });
+                  navigate(`/prepare-schedule`);
+                }}
+              >
+                Yes
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useClientSessions } from "../../context/ViewSchedule";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
@@ -11,7 +11,6 @@ import { RotateCcw, Calendar, ChevronLeft, ChevronRight, Send } from "lucide-rea
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import { generateScheduleStyledExcel } from "../../utils/excel/excelGenerators";
-
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -55,11 +54,8 @@ import ResetButton from "../../components/ui/ResetButton";
     });
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
-  };
-
-// Normalize a shift key for comparison (YYYY-MM-DD|start|end)
+  }
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
-  // Handle UTC dates properly - treat as local date
   let normalizedDate: string;
   if (shift.date.includes('T') && shift.date.includes('Z')) {
     normalizedDate = shift.date.split('T')[0];
@@ -147,6 +143,7 @@ export const DateNavigation = ({
 export const ViewSchedule = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // URL parameter handling functions
   const getUrlParams = () => {
@@ -169,14 +166,12 @@ export const ViewSchedule = () => {
     loading,
     error,
     fetchClientSessions,
-    // Add these new properties from the updated context
     scheduleData: apiScheduleData,
     scheduleLoading,
     scheduleError,
     fetchScheduleData,
     clearScheduleData,
-    bulkUpsertScheduleSessions, // Updated: Added bulkUpsertScheduleSessions
-    // Session data from context
+    bulkUpsertScheduleSessions, 
     sessionData: apiSessionData,
     sessionLoading: apiSessionLoading,
     sessionError: apiSessionError,
@@ -197,8 +192,20 @@ export const ViewSchedule = () => {
       setSelectedUserDisplayName("");
     };
   }, []);
-  const [showScheduleTable, setShowScheduleTable] = useState(false);
+  const [showScheduleTable, setShowScheduleTable] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.location.search.length > 0;
+  });
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
+  // When the URL query changes, toggle table visibility and clear any stale data
+  useEffect(() => {
+    const hasQuery = location.search.length > 0;
+    setShowScheduleTable(hasQuery);
+    // Clear existing schedule/actual data whenever URL params change so old rows are not shown
+    setScheduleData([]);
+    setSessionData([]);
+    setHasApiData(false);
+  }, [location.search]);
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
@@ -496,6 +503,7 @@ export const ViewSchedule = () => {
       urlParams.userId
     ) {
       const parsedUserId = parseInt(urlParams.userId, 10);
+      console.log(22,parsedUserId)
       if (!Number.isNaN(parsedUserId)) {
         setSelectedUserId(parsedUserId);
         setSelectedUserDisplayName("");
@@ -557,6 +565,7 @@ export const ViewSchedule = () => {
     setHasApiData(false);
     setIsNavigationAttempt(false);
     setTargetDate("");
+
 
     const clientData = {
       clientId: rowData.clientId,
@@ -629,8 +638,11 @@ export const ViewSchedule = () => {
       selectedDate: weekStartStr
     });
 
-    // Reset UI for week navigation attempt
+    // Reset UI for week navigation attempt and clear stale data
     resetUIForWeekNavigation();
+    setHasApiData(false);
+    setScheduleData([]);
+    setSessionData([]);
 
     setTableLoading(true); // Set local loading state
 
@@ -690,11 +702,14 @@ export const ViewSchedule = () => {
 
     updateUrlParams(urlUpdates);
 
-    // Reset UI for navigation (but don't close modal yet)
+    // Reset UI for navigation (but don't close modal yet) and clear stale data
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
     setOriginalScheduleData([]);
     setOriginalSessionData([]);
+    setHasApiData(false);
+    setScheduleData([]);
+    setSessionData([]);
     setTableLoading(true);
 
     // Ensure confirmation modal is closed before making a new request
@@ -766,10 +781,6 @@ export const ViewSchedule = () => {
   const [tableData, setTableData] = useState([]);
 
   useEffect(() => {
-    console.log(tableData);
-  }, [tableData])
-
-  useEffect(() => {
     if (clientSessions && Array.isArray(clientSessions)) {
       const flatData = clientSessions.map(session => ({
         clientName: [session.client.name, session.client.lastName].filter(Boolean).join(' '),
@@ -794,18 +805,9 @@ export const ViewSchedule = () => {
 
   // Transform API data when it arrives - FIXED VERSION
   useEffect(() => {
-    console.log("useEffect triggered with:", {
-      apiScheduleData: apiScheduleData?.length,
-      isNavigationAttempt,
-      targetDate,
-      selectedDate,
-      hasApiData
-    });
-
+   
     if (apiScheduleData && Array.isArray(apiScheduleData)) {
-      console.log("API Schedule Data received:", apiScheduleData.length, "items");
 
-      // Check if we have any data
       if (apiScheduleData.length === 0) {
         const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
         const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
@@ -952,18 +954,31 @@ export const ViewSchedule = () => {
       const transformedData = Array.from(keyedByUserDate.values());
       setScheduleData(transformedData);
 
-      if (!selectedClient && transformedData.length > 0) {
+      if (transformedData.length > 0) {
         const first = transformedData[0];
-        setSelectedClient({
-          clientId: first.clientId,
-          addressId: first.addressId,
-          name: first.clientName ?? "",
-          lastName: "",
-          address: first.address ?? "",
-          city: "",
-          state: "",
-          pincode: "",
-          addresses: []
+        setSelectedClient(prev => {
+          const next = {
+            clientId: first.clientId,
+            addressId: first.addressId,
+            name: first.clientName ?? prev?.name ?? "",
+            lastName: prev?.lastName ?? "",
+            address: first.address ?? prev?.address ?? "",
+            city: prev?.city ?? "",
+            state: prev?.state ?? "",
+            pincode: prev?.pincode ?? "",
+            addresses: prev?.addresses ?? []
+          };
+
+          if (
+            !prev ||
+            prev.clientId !== next.clientId ||
+            prev.addressId !== next.addressId ||
+            prev.name !== next.name ||
+            prev.address !== next.address
+          ) {
+            return next;
+          }
+          return prev;
         });
       }
 
@@ -974,8 +989,11 @@ export const ViewSchedule = () => {
         }
       }
 
-      if (selectedUserId === null && transformedData.length > 0) {
+      // Only auto-select first user when not in view-employee mode and no userId in URL
+      const urlParams = getUrlParams();
+      if (urlParams.viewEmployee && selectedUserId === null && transformedData.length > 0) {
         const firstUserId = transformedData[0]?.userId ?? null;
+        console.log(33,firstUserId)
         setSelectedUserId(firstUserId);
         setSelectedUserDisplayName(transformedData[0]?.userName ?? "");
       }
@@ -1061,12 +1079,6 @@ export const ViewSchedule = () => {
     setSessionError(apiSessionError);
   }, [apiSessionError]);
 
-  // Debug loading states
-  useEffect(() => {
-    console.log('Loading states:', { scheduleLoading, tableLoading, sessionLoading });
-  }, [scheduleLoading, tableLoading, sessionLoading]);
-
-
   const tableColumns: TableColumn[] = [
     {
       key: "clientName",
@@ -1078,10 +1090,7 @@ export const ViewSchedule = () => {
       height: "40px",
       render: (_: any, row: any) => {
         const a = row;
-        // const full = [a?.clientName??"" , a?.clientLastName??""].filter(Boolean).join(" ");
         const full = a?.clientName ?? "";
-
-        console.log("first name");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
@@ -2104,9 +2113,6 @@ export const ViewSchedule = () => {
     }
   };
 
-  console.log("selectedUserId", selectedUserId , scheduleData);
-
-  // Dynamically size the client table to reach the bottom of the viewport
   useEffect(() => {
     if (showScheduleTable) return;
 
@@ -2114,7 +2120,7 @@ export const ViewSchedule = () => {
       if (!tableContainerRef.current) return;
       const { top } = tableContainerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      const paddingBottom = 32; // allow some breathing room at the bottom
+      const paddingBottom = 32;
       const available = Math.max(viewportHeight - top - paddingBottom, 320);
       setTableHeight(`${available}px`);
     };
@@ -2127,7 +2133,7 @@ export const ViewSchedule = () => {
     };
   }, [showScheduleTable]);
   const isClientAndAddressSelected = !!selectedClient?.clientId && !!selectedClient?.addressId;
-
+  console.log(11, selectedUserId)
   return (
     <div className="w-full overflow-x-hidden p-6">
       {!showScheduleTable ? (
@@ -2156,12 +2162,10 @@ export const ViewSchedule = () => {
             isLoading={tableLoading}
           />
 
-          {/* No Schedule Found Confirmation Modal */}
           {noScheduleConfirmModal.isOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                 <div className="mb-6">
-                  {/* <h3 className="text-lg font-medium text-gray-900 mb-2">No Schedule Found</h3> */}
                   <p className="text-sm text-gray-500">
                     No schedule found for {noScheduleConfirmModal.clientName} on this week range.
                   </p>
@@ -2191,12 +2195,9 @@ export const ViewSchedule = () => {
         </>
       ) : (
         <div className="w-full">
-          {/* Header with reset button and date navigation */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold"></h2>
             <div className="flex items-center space-x-4">
-              {/* Date Navigation Component */}
-
               <Button
                 onClick={resetScheduleView}
                 variant="outline"
@@ -2207,8 +2208,6 @@ export const ViewSchedule = () => {
               </Button>
             </div>
           </div>
-
-          {/* Add New Guard Form */}
           {!scheduleLoading && !scheduleError && isScheduleEditMode && (
             <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-4">
               <h3 className="text-lg font-semibold mb-3 text-gray-800">
@@ -2217,8 +2216,6 @@ export const ViewSchedule = () => {
 
               <form onSubmit={onSubmitAddGuard} autoComplete="off">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-
-                  {/* User Search */}
                   <div className="relative">
                     <input
                       type="text"
@@ -2273,7 +2270,6 @@ export const ViewSchedule = () => {
                       </div>
                     )}
                   </div>
-                  {/* Date */}
                   <div className="flex items-center">
                     <CustomDatePicker
                       value={form.date}
@@ -2308,9 +2304,7 @@ export const ViewSchedule = () => {
                         All Week
                       </label>
                     </div>
-                  </div>
-
-                  {/* Start Time */}
+                  </div>=
                   <div>
                     <input
                       type={form.starttime ? "time" : "text"}
@@ -2333,8 +2327,6 @@ export const ViewSchedule = () => {
                       <span className="text-xs text-red-500">{errors.starttime}</span>
                     )}
                   </div>
-
-                  {/* End Time */}
                   <div>
                     <input
                       type={form.endtime ? "time" : "text"}
@@ -2359,8 +2351,6 @@ export const ViewSchedule = () => {
                       <span className="text-xs text-red-500">{errors.overlap}</span>
                     )}
                   </div>
-
-                  {/* Auto Toggle and Buttons */}
                   <div className="flex items-center justify-center h-[32px] border border-none ">
                     <ToggleSwitch enabled={auto} onToggle={setAuto} label="Auto" />
                   </div>
@@ -2390,7 +2380,6 @@ export const ViewSchedule = () => {
                       )}
                     </button>
                     {(form.date || form.starttime || form.endtime || form.userId || auto) && (
-
                       <ResetButton
                         onClick={resetAddGuardForm}
                         confirmTitle="Confirm Reset"
@@ -2402,10 +2391,8 @@ export const ViewSchedule = () => {
               </form>
             </div>
           )}
-
-
           <div className="flex w-full justify-between items-center  my-0 py-2 px-4 rounded-t-lg bg-gray-50">
-            {selectedClient && (
+            {selectedClient && !scheduleLoading && !tableLoading &&  (
               <div className="text-left">
                 <div className="text-lg font-medium text-gray-800">
                 {selectedUserId
@@ -2419,6 +2406,7 @@ export const ViewSchedule = () => {
                 </div>}
               </div>
             )}
+            <div></div>
             <DateNavigation
               selectedDate={selectedDate}
               onDateChange={validateAndNavigate}
@@ -2436,7 +2424,6 @@ export const ViewSchedule = () => {
               </div>
             </div>
           )}
-          {/* Show no data message when no schedule exists or when we navigated to an empty week */}
           {!scheduleError && !scheduleLoading && !tableLoading && (scheduleData.length === 0 || !hasApiData) && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
               <div className="text-gray-500">
@@ -2444,8 +2431,6 @@ export const ViewSchedule = () => {
               </div>
             </div>
           )}
-
-          {/* Only render ScheduleTable when we have data */}
           {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <div key={`schedule-${viewKey}`} className="mt-8">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">Scheduled Time</h3>
@@ -2473,8 +2458,6 @@ export const ViewSchedule = () => {
               />
             </div>
           )}
-
-          {/* Actual Time Table Section - only when we have schedule data */}
           {!scheduleError && hasApiData && scheduleData.length > 0 && (
             <div key={`actual-${viewKey}`} className="mt-8">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">Actual Time</h3>
@@ -2499,8 +2482,6 @@ export const ViewSchedule = () => {
               />
             </div>
           )}
-
-          {/* Schedule Publish Confirmation Modal */}
           {schedulePublishModal.isOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -2543,8 +2524,6 @@ export const ViewSchedule = () => {
               </div>
             </div>
           )}
-
-          {/* Actual Time Publish Confirmation Modal */}
           {actualTimePublishModal.isOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
