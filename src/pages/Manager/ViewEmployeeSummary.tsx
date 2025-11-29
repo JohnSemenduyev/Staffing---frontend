@@ -15,6 +15,8 @@ import { DateNavigation } from "./ViewSchedule";
 import { graphQLClient } from "../../GraphqlClient";
 import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
 import ResetButton from "../../components/ui/ResetButton";
+import Pagination from "../../components/Pagination";
+import { useDebounce } from "../../hooks/useDebounce";
 
 type EmployeeSummaryRow = {
   userId?: string | number;
@@ -28,7 +30,7 @@ type EmployeeSummaryRow = {
 };
 
 export const ViewEmployeeSummary: React.FC = () => {
-  const { data, loading, error, fetchEmployeeSummary } = useEmployeeSummary();
+  const { data, loading, error, fetchEmployeeSummary, currentPage, lastPage, setCurrentPage } = useEmployeeSummary();
   const today = useMemo(
     () => new Date().toISOString().split("T")[0],
     []
@@ -50,11 +52,11 @@ export const ViewEmployeeSummary: React.FC = () => {
     userName: "",
     selectedDate: "",
   });
-  const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>(
-    {}
-  );
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [tableHeight, setTableHeight] = useState<string>("500px");
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
   const navigate = useNavigate();
 
   // initial load
@@ -68,8 +70,9 @@ export const ViewEmployeeSummary: React.FC = () => {
 
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
-    fetchEmployeeSummary(weekStartStr);
-  }, [today, fetchEmployeeSummary]);
+    setCurrentPage(1);
+    fetchEmployeeSummary(weekStartStr, 1, 10);
+  }, [today, fetchEmployeeSummary, setCurrentPage]);
 
   const formatDateForApi = (ymd: string) => {
     if (!ymd) return "";
@@ -144,29 +147,14 @@ export const ViewEmployeeSummary: React.FC = () => {
     }));
   }, [data]);
 
-  const filteredRows = useMemo(() => {
-    let filtered = rows;
-    Object.entries(searchTerms).forEach(([key, value]) => {
-      if (!value) return;
-      const searchValue = String(value).toLowerCase();
-      filtered = filtered.filter((row) => {
-        const cellValue = row[key as keyof EmployeeSummaryRow];
-        if (cellValue === null || cellValue === undefined) {
-          return false;
-        }
-        return String(cellValue).toLowerCase().includes(searchValue);
-      });
-    });
-    return filtered;
-  }, [rows, searchTerms]);
+  // No client-side filtering needed - server handles it
+  const filteredRows = rows;
 
   const resetSearch = () => {
-    setSearchTerms({});
+    setSearchTerm("");
   };
 
-  const hasSearchValues = Object.values(searchTerms).some(
-    (val) => val !== undefined && val !== null && String(val)?.trim() !== ""
-  );
+  const hasSearchValues = searchTerm.trim() !== "";
 
   const validateAndNavigate = async (newDate: string) => {
     console.log("validateAndNavigate called with:", newDate);
@@ -178,8 +166,24 @@ export const ViewEmployeeSummary: React.FC = () => {
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
     setDate(week.startOfWeek);
-    await fetchEmployeeSummary(weekStartStr);
+    setCurrentPage(1);
+    await fetchEmployeeSummary(weekStartStr, 1, 10, debouncedSearchTerm.trim() || undefined);
   };
+
+  // Handle search term changes - reset to page 1 and fetch
+  useEffect(() => {
+    // Skip on initial mount - initial load handles the first fetch
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    if (selectedDate) {
+      setCurrentPage(1);
+      fetchEmployeeSummary(selectedDate, 1, 10, debouncedSearchTerm.trim() || undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchTerm]);
 
   // dynamic table height
   useEffect(() => {
@@ -228,14 +232,14 @@ export const ViewEmployeeSummary: React.FC = () => {
         <div className="h-full overflow-auto">
           <table className="w-full text-sm text-gray-800 table-fixed">
             <colgroup>
-              <col style={{ width: "80px" }} />
+              <col style={{ width: "100px" }} />
               <col style={{ width: "200px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "120px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "110px" }} />
             </colgroup>
 
             {/* STICKY HEADER */}
@@ -254,7 +258,7 @@ export const ViewEmployeeSummary: React.FC = () => {
                   Total Regular Hours
                 </th>
                 <th
-                  className="px-4 py-3 text-center border-l-2 border-black"
+                  className="px-4 py-3 text-center border-l-2  border-black"
                   colSpan={3}
                 >
                   Total Overtime Hours
@@ -262,33 +266,6 @@ export const ViewEmployeeSummary: React.FC = () => {
               </tr>
 
               <tr className="bg-[#e8f1fb] text-[#004175] text-xs font-semibold">
-                <th className="px-4 py-2 text-center border-t border-b border-black">
-                  &nbsp;
-                </th>
-                <th className="px-4 py-2 text-left border-t border-b border-black">
-                  &nbsp;
-                </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Scheduled
-                </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Actual
-                </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Difference
-                </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Scheduled
-                </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Actual
-                </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Difference
-                </th>
-              </tr>
-
-              <tr className="bg-white text-gray-700 font-sans w-full h-[41px] border-t border-black">
                 <th className="px-4 py-2 text-center border-t border-b border-black">
                   {hasSearchValues && (
                     <ResetButton
@@ -302,98 +279,27 @@ export const ViewEmployeeSummary: React.FC = () => {
                     placeholder="Search employee name..."
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                     type="text"
-                    value={searchTerms.employeeName || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        employeeName: e.target.value,
-                      }))
-                    }
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </th>
                 <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  <input
-                    placeholder="Search scheduled..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
-                    type="text"
-                    value={searchTerms.regularScheduled || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        regularScheduled: e.target.value,
-                      }))
-                    }
-                  />
+                  Scheduled
                 </th>
                 <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  <input
-                    placeholder="Search actual..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
-                    type="text"
-                    value={searchTerms.regularActual || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        regularActual: e.target.value,
-                      }))
-                    }
-                  />
+                  Actual
                 </th>
                 <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  <input
-                    placeholder="Search difference..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
-                    type="text"
-                    value={searchTerms.regularDifference || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        regularDifference: e.target.value,
-                      }))
-                    }
-                  />
+                  Difference
                 </th>
                 <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  <input
-                    placeholder="Search scheduled..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
-                    type="text"
-                    value={searchTerms.overtimeScheduled || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        overtimeScheduled: e.target.value,
-                      }))
-                    }
-                  />
+                  Scheduled
                 </th>
                 <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  <input
-                    placeholder="Search actual..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
-                    type="text"
-                    value={searchTerms.overtimeActual || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        overtimeActual: e.target.value,
-                      }))
-                    }
-                  />
+                  Actual
                 </th>
                 <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  <input
-                    placeholder="Search difference..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
-                    type="text"
-                    value={searchTerms.overtimeDifference || ""}
-                    onChange={(e) =>
-                      setSearchTerms((prev) => ({
-                        ...prev,
-                        overtimeDifference: e.target.value,
-                      }))
-                    }
-                  />
+                  Difference
                 </th>
               </tr>
             </thead>
@@ -465,6 +371,25 @@ export const ViewEmployeeSummary: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {lastPage > 1 && (
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+          <Pagination
+            currentPage={currentPage}
+            lastPage={lastPage}
+            onPageChange={async (page) => {
+              try {
+                setCurrentPage(page);
+                await fetchEmployeeSummary(selectedDate, page, 10, debouncedSearchTerm);
+              } catch (error) {
+                console.error("Error changing page:", error);
+              }
+            }}
+            loading={loading}
+          />
+        </div>
+      )}
 
       {showDateModal && (
         <div className="mt-[-20px]">

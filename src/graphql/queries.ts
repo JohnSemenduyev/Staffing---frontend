@@ -679,16 +679,19 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
 `;
 
 export const GET_USER_HOURS_SUMMARY = gql`
-  query UserHoursSummary($date: String!) {
-    UserHoursSummary(date: $date) {
-      userId
-      userName
-      scheduledHours
-      actualHours
-      diffScheduledMinusActual
-      overTimeSchedule
-      overTimeActualHours
-      overTimediffScheduledMinusActual
+  query UserHoursSummary($date: String!, $page: Int, $limit: Int, $userName: String) {
+    UserHoursSummary(date: $date, page: $page, limit: $limit, userName: $userName) {
+      lastPage
+      data {
+        userId
+        userName
+        scheduledHours
+        actualHours
+        diffScheduledMinusActual
+        overTimeSchedule
+        overTimeActualHours
+        overTimediffScheduledMinusActual
+      }
     }
   }
 `;

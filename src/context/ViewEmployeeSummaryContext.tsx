@@ -23,7 +23,10 @@ type EmployeeSummaryContextType = {
   data: EmployeeHoursSummary[];
   loading: boolean;
   error: string | null;
-  fetchEmployeeSummary: (date: string) => Promise<void>;
+  currentPage: number;
+  lastPage: number;
+  fetchEmployeeSummary: (date: string, page?: number, limit?: number, userName?: string) => Promise<void>;
+  setCurrentPage: (page: number) => void;
 };
 
 const ViewEmployeeSummaryContext =
@@ -43,29 +46,40 @@ export const ViewEmployeeSummaryProvider = ({
   const [data, setData] = useState<EmployeeHoursSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastPage, setLastPage] = useState<number>(1);
 
   const fetchEmployeeSummary = useCallback(
-    async (date: string) => {
+    async (date: string, page: number = 1, limit: number = 10, userName?: string) => {
       setLoading(true);
       setError(null);
       try {
         const token = sessionStorage.getItem("token");
 
         const response = await graphQLClient.request<{
-          UserHoursSummary: EmployeeHoursSummary[];
+          UserHoursSummary: {
+            lastPage: number;
+            data: EmployeeHoursSummary[];
+          };
         }>(
           GET_USER_HOURS_SUMMARY,
           {
             date: toApiDate(date),
+            page,
+            limit,
+            userName: userName && userName.trim() ? userName.trim() : undefined,
           },
           token ? { Authorization: `Bearer ${token}` } : undefined
         );
 
-        setData(response.UserHoursSummary || []);
+        setData(response.UserHoursSummary?.data || []);
+        setLastPage(response.UserHoursSummary?.lastPage || 1);
+        setCurrentPage(page);
       } catch (err) {
         console.error("Failed to fetch employee summary", err);
         setError("Failed to load employee summary.");
         setData([]);
+        setLastPage(1);
       } finally {
         setLoading(false);
       }
@@ -75,7 +89,15 @@ export const ViewEmployeeSummaryProvider = ({
 
   return (
     <ViewEmployeeSummaryContext.Provider
-      value={{ data, loading, error, fetchEmployeeSummary }}
+      value={{ 
+        data, 
+        loading, 
+        error, 
+        currentPage,
+        lastPage,
+        fetchEmployeeSummary,
+        setCurrentPage
+      }}
     >
       {children}
     </ViewEmployeeSummaryContext.Provider>
