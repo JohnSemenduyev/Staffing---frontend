@@ -2133,7 +2133,6 @@ export const ViewSchedule = () => {
     };
   }, [showScheduleTable]);
   const isClientAndAddressSelected = !!selectedClient?.clientId && !!selectedClient?.addressId;
-  console.log(11, selectedUserId)
   return (
     <div className="w-full overflow-x-hidden p-6">
       {!showScheduleTable ? (

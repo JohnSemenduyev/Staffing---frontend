@@ -141,3 +141,13 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* Hide scrollbar for filter tags but keep scrolling functionality */
+.filter-tags-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.filter-tags-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}

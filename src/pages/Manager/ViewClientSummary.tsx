@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiEye } from "react-icons/fi";
+import { ChevronDown, X } from "lucide-react";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { Button } from "../../components/ui/button";
@@ -13,93 +14,131 @@ import { getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/
 import { graphQLClient } from "../../GraphqlClient";
 import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
+
+const splitAddress = (address: string) => {
+  if (!address || address === "-") {
+    return { left: address || "-", right: "" };
+  }
+  const parts = address.split(",");
+  if (parts.length <= 2) {
+    return { left: address, right: "" }; 
+  }
+  const left = parts.slice(0, -2).join(",") + ",";
+  const right = parts.slice(-2).map(p => p.trim()).join(", ");
+  return { left, right };
+};
 
 const tableColumns: TableColumn[] = [
   { key: "clientName", label: "Client Name", sortable: true, searchable: true },
-  { key: "location", label: "Location", sortable: true, searchable: true },
+  { 
+    key: "location", 
+    label: "Location", 
+    sortable: true, 
+    searchable: true,
+    render: (value: string) => {
+      const { left, right } = splitAddress(value);
+      return (
+        <div className="flex flex-col">
+          {left && <span>{left}</span>}
+          {right && <span>{right}</span>}
+        </div>
+      );
+    }
+  },
   {
     key: "contractHours",
     label: "Contract Hours",
     sortable: true,
     searchable: true,
+    className: "bg-blue-100",
   },
   {
     key: "totalWeeklyHours",
     label: "Scheduled Hours",
     sortable: true,
     searchable: true,
+    className: "bg-blue-100",
   },
   {
     key: "diffContractMinusScheduled",
     label: "Difference",
     sortable: true,
     searchable: true,
+    className: "bg-blue-100",
   },
   {
     key: "unconfirmedHours",
     label: "Unconfirmed Hours",
     sortable: true,
     searchable: true,
+    className: "bg-green-100",
   },
   {
     key: "rejectedHours",
     label: "Rejected Hours",
     sortable: true,
     searchable: true,
+    className: "bg-green-100",
   },
   {
     key: "scheduledHoursActual",
     label: "Scheduled Hours",
     sortable: true,
     searchable: true,
+    className: "bg-red-100",
   },
   {
     key: "totalActualHours",
     label: "Actual Hours",
     sortable: true,
     searchable: true,
+    className: "bg-red-100",
   },
   {
     key: "diffScheduledMinusActual",
     label: "Difference",
     sortable: true,
     searchable: true,
+    className: "bg-red-100",
   },
   {
     key: "contractHoursActual",
     label: "Contract Hours",
     sortable: true,
     searchable: true,
+    className: "bg-yellow-100",
   },
   {
     key: "totalActualHoursContract",
     label: "Actual Hours",
     sortable: true,
     searchable: true,
+    className: "bg-yellow-100",
   },
   {
     key: "diffContractMinusActual",
     label: "Difference",
     sortable: true,
     searchable: true,
+    className: "bg-yellow-100",
   },
 ];
 
 
 type FilterOption = 
-  | "all" 
   | "contractVsScheduled" 
   | "unconfirmed" 
   | "rejected" 
   | "scheduledVsActual" 
   | "contractVsActual";
+
+const filterOptions: { value: FilterOption; label: string }[] = [
+  { value: "contractVsScheduled", label: "Contract vs Scheduled" },
+  { value: "unconfirmed", label: "Unconfirmed" },
+  { value: "rejected", label: "Rejected" },
+  { value: "scheduledVsActual", label: "Scheduled vs Actual" },
+  { value: "contractVsActual", label: "Contract vs Actual" },
+];
 
 export const ViewClientSummary = () => {
   const { data, loading, error, fetchClientSummary } = useClientSummary();
@@ -119,10 +158,15 @@ export const ViewClientSummary = () => {
     addressId: null,
     selectedDate: ""
   });
+  const [tableHeight, setTableHeight] = useState<string>("500px");
+  const formRef = useRef<HTMLDivElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   const [date, setDate] = useState(today);
   const [selectedDate, setSelectedDate] = useState("");
   const [currentWeekRange, setCurrentWeekRange] = useState<any>(null);
-  const [filterOption, setFilterOption] = useState<FilterOption>("all");
+  const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>([]);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const navigate = useNavigate();
 
@@ -198,6 +242,43 @@ export const ViewClientSummary = () => {
     }
   ];
 
+  // Handle filter toggle
+  const handleFilterToggle = (filter: FilterOption) => {
+    setSelectedFilters((prev) => {
+      if (prev.includes(filter)) {
+        return prev.filter((f) => f !== filter);
+      } else {
+        return [...prev, filter];
+      }
+    });
+  };
+
+  // Handle "All Fields" toggle
+  const handleAllFieldsToggle = () => {
+    if (selectedFilters.length === filterOptions.length) {
+      setSelectedFilters([]);
+    } else {
+      setSelectedFilters(filterOptions.map((opt) => opt.value));
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showFilterDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowFilterDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showFilterDropdown]);
+
   useEffect(() => {
     const { startOfWeek } = getWeekRangeFromDateLocal(formatToMMDDYYYY(today));
     const weekStartStr = toLocalYMD(startOfWeek);
@@ -244,148 +325,255 @@ export const ViewClientSummary = () => {
     await fetchClientSummary(weekStartStr);
   };
 
-  // Filter columns based on selected option
+  // Filter columns based on selected options
   const filteredColumns = useMemo(() => {
     const baseColumns: TableColumn[] = [
       { key: "clientName", label: "Client Name", sortable: true, searchable: true },
-      { key: "location", label: "Location", sortable: true, searchable: true },
+      { 
+        key: "location", 
+        label: "Location", 
+        sortable: true, 
+        searchable: true,
+        render: (value: string) => {
+          const { left, right } = splitAddress(value);
+          return (
+            <div className="flex flex-col">
+              {left && <span>{left}</span>}
+              {right && <span>{right}</span>}
+            </div>
+          );
+        }
+      },
     ];
 
-    if (filterOption === "all") {
+    // If all filters are selected or no filters selected, show all columns
+    if (selectedFilters.length === 0 || selectedFilters.length === filterOptions.length) {
       return tableColumns;
     }
 
     const additionalColumns: TableColumn[] = [];
 
-    switch (filterOption) {
-      case "contractVsScheduled":
-        additionalColumns.push(
-          {
-            key: "contractHours",
-            label: "Contract Hours",
+    // Add columns based on selected filters
+    selectedFilters.forEach((filter) => {
+      switch (filter) {
+        case "contractVsScheduled":
+          additionalColumns.push(
+            {
+              key: "contractHours",
+              label: "Contract Hours",
+              sortable: true,
+              searchable: true,
+              className: "bg-blue-100",
+            },
+            {
+              key: "totalWeeklyHours",
+              label: "Scheduled Hours",
+              sortable: true,
+              searchable: true,
+              className: "bg-blue-100",
+            },
+            {
+              key: "diffContractMinusScheduled",
+              label: "Difference",
+              sortable: true,
+              searchable: true,
+              className: "bg-blue-100",
+            }
+          );
+          break;
+        case "unconfirmed":
+          additionalColumns.push({
+            key: "unconfirmedHours",
+            label: "Unconfirmed Hours",
             sortable: true,
             searchable: true,
-          },
-          {
-            key: "totalWeeklyHours",
-            label: "Scheduled Hours",
+            className: "bg-green-100"
+          });
+          break;
+        case "rejected":
+          additionalColumns.push({
+            key: "rejectedHours",
+            label: "Rejected Hours",
             sortable: true,
             searchable: true,
-          },
-          {
-            key: "diffContractMinusScheduled",
-            label: "Difference",
-            sortable: true,
-            searchable: true,
-          }
-        );
-        break;
-      case "unconfirmed":
-        additionalColumns.push({
-          key: "unconfirmedHours",
-          label: "Unconfirmed Hours",
-          sortable: true,
-          searchable: true,
-        });
-        break;
-      case "rejected":
-        additionalColumns.push({
-          key: "rejectedHours",
-          label: "Rejected Hours",
-          sortable: true,
-          searchable: true,
-        });
-        break;
-      case "scheduledVsActual":
-        additionalColumns.push(
-          {
-            key: "scheduledHoursActual",
-            label: "Scheduled Hours",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "totalActualHours",
-            label: "Actual Hours",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "diffScheduledMinusActual",
-            label: "Difference",
-            sortable: true,
-            searchable: true,
-          }
-        );
-        break;
-      case "contractVsActual":
-        additionalColumns.push(
-          {
-            key: "contractHoursActual",
-            label: "Contract Hours",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "totalActualHoursContract",
-            label: "Actual Hours",
-            sortable: true,
-            searchable: true,
-          },
-          {
-            key: "diffContractMinusActual",
-            label: "Difference",
-            sortable: true,
-            searchable: true,
-          }
-        );
-        break;
-    }
+            className: "bg-green-100"
+          });
+          break;
+        case "scheduledVsActual":
+          additionalColumns.push(
+            {
+              key: "scheduledHoursActual",
+              label: "Scheduled Hours",
+              sortable: true,
+              searchable: true,
+              className: "bg-red-100"
+            },
+            {
+              key: "totalActualHours",
+              label: "Actual Hours",
+              sortable: true,
+              searchable: true,
+              className: "bg-red-100"
+            },
+            {
+              key: "diffScheduledMinusActual",
+              label: "Difference",
+              sortable: true,
+              searchable: true,
+              className: "bg-red-100"
+            }
+          );
+          break;
+        case "contractVsActual":
+          additionalColumns.push(
+            {
+              key: "contractHoursActual",
+              label: "Contract Hours",
+              sortable: true,
+              searchable: true,
+              className: "bg-yellow-100"
+            },
+            {
+              key: "totalActualHoursContract",
+              label: "Actual Hours",
+              sortable: true,
+              searchable: true,
+              className: "bg-yellow-100"
+            },
+            {
+              key: "diffContractMinusActual",
+              label: "Difference",
+              sortable: true,
+              searchable: true,
+              className: "bg-yellow-100"
+            }
+          );
+          break;
+      }
+    });
 
     return [...baseColumns, ...additionalColumns];
-  }, [filterOption]);
+  }, [selectedFilters]);
+
+  useEffect(() => {
+    if (filteredColumns) return;
+
+    const updateTableHeight = () => {
+      if (!tableContainerRef.current) return;
+      const { top } = tableContainerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const paddingBottom = 32;
+      const available = Math.max(viewportHeight - top - paddingBottom, 320);
+      setTableHeight(`${available}px`);
+    };
+
+    updateTableHeight();
+    window.addEventListener("resize", updateTableHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateTableHeight);
+    };
+  }, [filteredColumns]);
 
   return (
     <div className="w-full p-6 space-y-4">
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 space-y-4">
-        <h1 className="text-xl font-semibold text-gray-800">View Client Summary</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Review client-level hour totals, confirmation status, and variances.
-        </p>
         <div className="flex justify-between items-center">
+        <h1 className="text-xl font-semibold text-gray-800">View Client Summary</h1>
           <div className="flex items-center gap-4">
-            <Select value={filterOption} onValueChange={(value) => setFilterOption(value as FilterOption)}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Fields</SelectItem>
-                <SelectItem value="contractVsScheduled">Contract vs Scheduled</SelectItem>
-                <SelectItem value="unconfirmed">Unconfirmed</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="scheduledVsActual">Scheduled vs Actual</SelectItem>
-                <SelectItem value="contractVsActual">Contract vs Actual</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative" ref={filterDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              className="w-[250px] h-[40px] px-3 py-2 text-sm border border-gray-300 rounded-md bg-white flex items-center gap-2 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#004175]"
+            >
+              <div 
+                className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden filter-tags-scrollbar"
+              >
+                {selectedFilters.length === 0 ? (
+                  <span className="text-gray-400 text-sm whitespace-nowrap">Select columns...</span>
+                ) : selectedFilters.length === filterOptions.length ? (
+                  <span className="text-gray-900 text-sm whitespace-nowrap">All Fields</span>
+                ) : (
+                  <div className="flex gap-1 items-center" style={{ width: 'max-content' }}>
+                    {selectedFilters.map((filter) => {
+                      const option = filterOptions.find((opt) => opt.value === filter);
+                      return (
+                        <span
+                          key={filter}
+                          className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs whitespace-nowrap flex-shrink-0"
+                        >
+                          {option?.label}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFilterToggle(filter);
+                            }}
+                            className="hover:bg-blue-200 rounded-full p-0.5 flex-shrink-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            </button>
+
+            {showFilterDropdown && (
+              <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-64 overflow-y-auto z-50">
+                <div className="p-2 border-b">
+                  <label className="flex items-center font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.length === filterOptions.length}
+                      onChange={handleAllFieldsToggle}
+                      className="mr-2 accent-blue-600"
+                    />
+                    <span>All Fields</span>
+                  </label>
+                </div>
+                {filterOptions.map((option) => (
+                  <div key={option.value} className="p-2 border-b last:border-b-0">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedFilters.includes(option.value)}
+                        onChange={() => handleFilterToggle(option.value)}
+                        className="mr-2 accent-blue-600"
+                      />
+                      <span className={selectedFilters.includes(option.value) ? "text-blue-800 font-medium" : "text-gray-700"}>
+                        {option.label}
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <DateNavigation
             selectedDate={selectedDate}
             onDateChange={validateAndNavigate}
             currentWeekRange={currentWeekRange}
           />
+          </div>
         </div>
         {error && <ErrorMessage message={error} />}
       </div>
 
+      <div ref={tableContainerRef}>
       <GenericTable
         data={rows}
         columns={filteredColumns}
         actions={tableActions}
-        tableHeight="60vh"
+        tableHeight={tableHeight}
         emptyMessage="No client summary records available."
         loading={loading}
       />
-
+      </div>
       {showDateModal && (
         <div className = "mt-[-20px]">
         <PeriodEndDateModal
