@@ -249,31 +249,42 @@ export const ViewEmployeeSummary: React.FC = () => {
         className="flex items-center justify-center gap-1 w-full font-semibold text-current"
       >
         <span>{label}</span>
-        <span className="flex flex-col leading-[8px] text-[10px] text-current">
-          <svg
-            stroke="currentColor"
-            fill="currentColor"
-            strokeWidth="0"
-            viewBox="0 0 512 512"
-            className={isActive && isAscending ? "text-[#004175]" : "text-gray-400"}
-            height="0.9em"
-            width="0.9em"
-            xmlns="http://www.w3.org/2000/svg"
+        <span className="pl-1 flex flex-col leading-[8px] text-[10px] text-current">
+          <span
+            className={`cursor-pointer ${
+              isActive && isAscending ? "text-[#004175]" : "text-gray-400"
+            }`}
           >
-            <path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path>
-          </svg>
-          <svg
-            stroke="currentColor"
-            fill="currentColor"
-            strokeWidth="0"
-            viewBox="0 0 512 512"
-            className={isActive && !isAscending ? "text-[#004175]" : "text-gray-400"}
-            height="0.9em"
-            width="0.9em"
-            xmlns="http://www.w3.org/2000/svg"
+            <svg
+              stroke="currentColor"
+              fill="currentColor"
+              strokeWidth="0"
+              viewBox="0 0 512 512"
+              className="-mb-1"
+              height="1em"
+              width="1em"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path>
+            </svg>
+          </span>
+          <span
+            className={`cursor-pointer ${
+              isActive && !isAscending ? "text-[#004175]" : "text-gray-400"
+            }`}
           >
-            <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path>
-          </svg>
+            <svg
+              stroke="currentColor"
+              fill="currentColor"
+              strokeWidth="0"
+              viewBox="0 0 512 512"
+              height="1em"
+              width="1em"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path>
+            </svg>
+          </span>
         </span>
       </button>
     );
@@ -500,19 +511,19 @@ export const ViewEmployeeSummary: React.FC = () => {
         <td className="px-4 py-3 text-center border-t border-l border-black">
           {totals.regularScheduled.toFixed(2)}
         </td>
-        <td className="px-4 py-3 text-center border-t border-l border-black">
+        <td className="px-4 py-3 text-center border-t  border-black">
           {totals.regularActual.toFixed(2)}
         </td>
-        <td className="px-4 py-3 text-center border-t border-l border-black">
+        <td className="px-4 py-3 text-center border-t  border-black">
           {totals.regularDifference.toFixed(2)}
         </td>
         <td className="px-4 py-3 text-center border-t border-l border-black">
           {totals.overtimeScheduled.toFixed(2)}
         </td>
-        <td className="px-4 py-3 text-center border-t border-l border-black">
+        <td className="px-4 py-3 text-center border-t  border-black">
           {totals.overtimeActual.toFixed(2)}
         </td>
-        <td className="px-4 py-3 text-center border-t border-l border-black">
+        <td className="px-4 py-3 text-center border-t  border-black">
           {totals.overtimeDifference.toFixed(2)}
         </td>
       </tr>

@@ -34,10 +34,17 @@ interface ScheduleItem {
   userPhone: string;
 }
 
-interface User {
+interface RowGroup {
+  // Unique row identifier (can be composite when viewing by employee)
   id: string | number;
+  // Always the actual user id
+  userId: number;
   name: string;
   phone?: string;
+  clientName: string;
+  address: string;
+  clientId: number;
+  addressId: number;
 }
 
 interface SessionItem {
@@ -133,8 +140,16 @@ const sortShiftsByTime = (shifts: Shift[]) => {
   });
 };
 
-const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]) => {
-  const userDays = scheduleData.filter(i => i.userId === userId);
+const getMaxShiftsPerDay = (
+  row: RowGroup,
+  scheduleData: ScheduleItem[],
+  groupByClient: boolean
+) => {
+  const userDays = scheduleData.filter((i) => {
+    if (i.userId !== row.userId) return false;
+    if (!groupByClient) return true;
+    return i.clientId === row.clientId && i.addressId === row.addressId;
+  });
   let max = 1;
   for (const d of userDays) max = Math.max(max, d.shifts.length);
   return max;
@@ -159,10 +174,26 @@ const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
   return parseFloat(total.toFixed(2));
 };
 
-const calculateUserTotal = (userId: number, scheduleData: ScheduleItem[]) => {
+const calculateRowTotal = (
+  row: RowGroup,
+  scheduleData: ScheduleItem[],
+  groupByClient: boolean
+) => {
   const total = scheduleData
-    .filter(item => item.userId === userId)
-    .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    .filter((item) => {
+      if (item.userId !== row.userId) return false;
+      if (!groupByClient) return true;
+      return item.clientId === row.clientId && item.addressId === row.addressId;
+    })
+    .reduce(
+      (total, item) =>
+        total +
+        item.shifts.reduce(
+          (shiftTotal, shift) => shiftTotal + shift.hours,
+          0
+        ),
+      0
+    );
   return parseFloat(total.toFixed(2));
 };
 
@@ -283,24 +314,36 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
 
   const dateColumns = generateDateColumns();
 
-  // Get unique users from schedule data
-  const getUniqueUsers = () => {
-    const userMap = new Map();
-    scheduleData.forEach(item => {
-      if (!userMap.has(item.userId)) {
-        userMap.set(item.userId, {
-          id: item.userId,
+  // Get row groups from schedule data.
+  // When viewing by client (default), we group by userId.
+  // When viewing by employee (selectedUserId is provided), we group by userId + clientId + addressId.
+  const getRowGroups = (): RowGroup[] => {
+    const groupByClient = Boolean(selectedUserId);
+    const rowMap = new Map<string | number, RowGroup>();
+
+    scheduleData.forEach((item) => {
+      const key = groupByClient
+        ? `${item.userId}-${item.clientId}-${item.addressId}`
+        : item.userId;
+
+      if (!rowMap.has(key)) {
+        rowMap.set(key, {
+          id: key,
+          userId: item.userId,
           name: item.userName,
           phone: item.userPhone,
           clientName: item.clientName,
-          address: item.address
+          address: item.address,
+          clientId: item.clientId,
+          addressId: item.addressId,
         });
       }
     });
-    return Array.from(userMap.values());
+
+    return Array.from(rowMap.values());
   };
 
-  const uniqueUsers = getUniqueUsers();
+  const rowGroups = getRowGroups();
 
   // Delete individual shift
   const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
@@ -894,7 +937,11 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       
       // Create new schedule
       console.log("No overlaps detected, creating new schedule");
-      const targetUser = uniqueUsers.find(u => u.id === targetUserId);
+      const groupByClient = Boolean(selectedUserId);
+      const targetGroupKey = groupByClient
+        ? `${targetUserId}-${sourceSchedule.clientId}-${sourceSchedule.addressId}`
+        : targetUserId;
+      const targetGroup = getRowGroups().find(g => g.id === targetGroupKey);
       const copiedShift = createCopiedShift();
       
       const newSchedule = {
@@ -907,8 +954,8 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         shifts: [copiedShift],
         clientName: sourceSchedule.clientName,
         address: sourceSchedule.address,
-        userName: targetUser?.name || sourceSchedule.userName,
-        userPhone: targetUser?.phone || sourceSchedule.userPhone,
+        userName: targetGroup?.name || sourceSchedule.userName,
+        userPhone: targetGroup?.phone || sourceSchedule.userPhone,
       };
   
       console.log("New schedule being added:", newSchedule);
@@ -960,15 +1007,16 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
             </tr>
           </thead>
           <tbody className="relative">
-            {uniqueUsers.map((user, userIndex) => {
-              const rowCount = getMaxShiftsPerDay(user.id, scheduleData);
+            {rowGroups.map((row, rowIndex) => {
+              const groupByClient = Boolean(selectedUserId);
+              const rowCount = getMaxShiftsPerDay(row, scheduleData, groupByClient);
 
               return (
-                <React.Fragment key={user.id}>
+                <React.Fragment key={row.id}>
                   {[...Array(rowCount)].map((_, rowIdx) => (
                     <tr
-                      key={`${user.id}-row-${rowIdx}`}
-                      className={`hover:bg-blue-50 transition-colors ${(userIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                      key={`${row.id}-row-${rowIdx}`}
+                      className={`hover:bg-blue-50 transition-colors ${(rowIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                         }`}
                     >
                       {rowIdx === 0 && (
@@ -976,8 +1024,12 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                           className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
                           rowSpan={rowCount}
                         >
-                                                   <div className="font-medium text-gray-800">{selectedUserId ? user.clientName : user.name}</div>
-                          <div className="text-xs text-gray-500">{selectedUserId ? user.address : formatUSPhone(user.phone)}</div>
+                          <div className="font-medium text-gray-800">
+                            {selectedUserId ? row.clientName : row.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {selectedUserId ? row.address : formatUSPhone(row.phone)}
+                          </div>
                         </td>
                       )}
 
@@ -985,7 +1037,11 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                         const daySchedules = scheduleData.filter(item => {
                           // Handle both local date format and ISO date format
                           const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
-                          return item.userId === user.id && itemDate === dateCol.date;
+                          const sameUser = item.userId === row.userId;
+                          const sameClientGroup = !groupByClient
+                            ? true
+                            : item.clientId === row.clientId && item.addressId === row.addressId;
+                          return sameUser && sameClientGroup && itemDate === dateCol.date;
                         });
                         const sortedShifts = sortShiftsByTime(
                           daySchedules.flatMap(s => s.shifts)
@@ -1000,15 +1056,15 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                           <td
                             key={dateCol.date + '-' + rowIdx}
                             className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                              !readOnly && dragOverCell?.userId === user.id && dragOverCell?.date === dateCol.date
+                              !readOnly && dragOverCell?.userId === row.userId && dragOverCell?.date === dateCol.date
                                 ? 'bg-blue-50 border-blue-300'
                                 : hasMismatch
                                 ? 'bg-red-100 border-red-300'
                                 : ''
                             }`}
-                            onDragOver={!readOnly ? (e => handleDragOver(e, user.id, dateCol.date, rowIdx)) : undefined}
+                            onDragOver={!readOnly ? (e => handleDragOver(e, row.userId, dateCol.date, rowIdx)) : undefined}
                             onDragLeave={!readOnly ? handleDragLeave : undefined}
-                            onDrop={!readOnly ? (e => handleDrop(e, user.id, dateCol.date, rowIdx)) : undefined}
+                            onDrop={!readOnly ? (e => handleDrop(e, row.userId, dateCol.date, rowIdx)) : undefined}
                           >
                             {shift ? (
                               <div className="relative group">
@@ -1017,14 +1073,14 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                     <div
                                       className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
                                       draggable
-                                      onDragStart={e => handleDragStart(e, shift, user.id, dateCol.date, rowIdx)}
+                                      onDragStart={e => handleDragStart(e, shift, row.userId, dateCol.date, rowIdx)}
                                       onDragEnd={handleDragEnd}
                                     >
                                       <GripVertical className="w-4 h-4" />
                                     </div>
                                      <button
                                        onClick={() => {
-                                         handleEditShift(user.id, dateCol.date, shift);
+                                         handleEditShift(row.userId, dateCol.date, shift);
                                        }}
                                        className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
                                        title="Edit shift"
@@ -1032,7 +1088,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                        <FaRegEdit className="w-4 h-4" color="blue" />
                                      </button>
                                      <button
-                                       onClick={() => handleDeleteShift(user.id, dateCol.date, shift.id)}
+                                       onClick={() => handleDeleteShift(row.userId, dateCol.date, shift.id)}
                                        className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
                                        title="Delete shift"
                                      >
@@ -1052,11 +1108,11 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                       onToggle={(enabled) => {
                                         if (readOnly || !isEditMode) return;
                                         if (onShiftAutoToggle) {
-                                          onShiftAutoToggle(user.id as number, dateCol.date, shift.id, enabled);
+                                      onShiftAutoToggle(row.userId as number, dateCol.date, shift.id, enabled);
                                         } else {
                                           // fallback local update: update shift auto and sync row auto
                                           const updated = scheduleData.map(item => {
-                                            if (item.userId === user.id && item.startDate === dateCol.date) {
+                                            if (item.userId === row.userId && item.startDate === dateCol.date) {
                                               const newShifts = item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled, confirm: false, reject: false } : s);
                                               const anyOn = newShifts.some(s => s.auto === true);
                                               return { ...item, auto: anyOn, shifts: newShifts };
@@ -1102,7 +1158,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                             className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
                             rowSpan={rowCount}
                           >
-                            {calculateUserTotal(user.id, scheduleData)}
+                            {calculateRowTotal(row, scheduleData, groupByClient)}
                           </td>
                           <td
                             className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
@@ -1111,9 +1167,21 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                             <div className="flex items-center justify-center">
                               <ToggleSwitch
                                 size="medium"
-                                enabled={scheduleData.some(item => item.userId === user.id && item.shifts.some(s => s.auto))}
+                                enabled={scheduleData.some(item => {
+                                  if (item.userId !== row.userId) return false;
+                                  if (!groupByClient) return item.shifts.some(s => s.auto);
+                                  return (
+                                    item.clientId === row.clientId &&
+                                    item.addressId === row.addressId &&
+                                    item.shifts.some(s => s.auto)
+                                  );
+                                })}
                                 disabled={!isEditMode || readOnly}
-                                onToggle={readOnly || !isEditMode ? undefined : (enabled => handleUserAutoToggle(user.id, enabled))}
+                                onToggle={
+                                  readOnly || !isEditMode
+                                    ? undefined
+                                    : (enabled => handleUserAutoToggle(row.userId, enabled))
+                                }
                               />
                             </div>
                           </td>
@@ -1122,7 +1190,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                     </tr>
                   ))}
 
-                  <tr className={`transition-colors ${userIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
+                  <tr className={`transition-colors ${rowIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                       Total
                     </td>
@@ -1130,7 +1198,11 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                       const daySchedules = scheduleData.filter(item => {
                         // Handle both local date format and ISO date format
                         const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
-                        return item.userId === user.id && itemDate === dateCol.date;
+                        const sameUser = item.userId === row.userId;
+                        const sameClientGroup = !groupByClient
+                          ? true
+                          : item.clientId === row.clientId && item.addressId === row.addressId;
+                        return sameUser && sameClientGroup && itemDate === dateCol.date;
                       });
                       const dayTotal = daySchedules.reduce(
                         (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
@@ -1144,12 +1216,12 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                       );
                     })}
                     <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                      {calculateUserTotal(user.id, scheduleData)}
+                      {calculateRowTotal(row, scheduleData, groupByClient)}
                     </td>
                       {isEditMode && (
                                             <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
 
-                        <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
+                        <button onClick={() => handleDeleteUser(row.userId)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
                           <FaRegTrashAlt  className="w-4 h-4" />
                         </button>
                         </td>

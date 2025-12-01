@@ -38,6 +38,18 @@ interface ScheduleItem {
   userPhone: string;
 }
 
+interface RowGroup {
+  // Unique row identifier for employee view (user + client + address)
+  id: string;
+  userId: number;
+  name: string;
+  phone?: string;
+  clientName: string;
+  address: string;
+  clientId: number;
+  addressId: number;
+}
+
 // Updated Session interface to match minimal GraphQL schema
 interface SessionItem {
   id: number;
@@ -404,7 +416,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
 
   const dateColumns = generateDateColumns();
 
-  // Get unique users from schedule data (mirror ScheduleTable structure)
+  // Get unique users from schedule data (normal manager/client view)
   const getUniqueUsers = () => {
     const userMap = new Map();
 
@@ -425,6 +437,32 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
   };
 
   const uniqueUsers = getUniqueUsers();
+
+  // For employee view, build row groups per client/address for that user
+  const rowGroups: RowGroup[] = useMemo(() => {
+    if (!selectedUserId) return [];
+
+    const map = new Map<string, RowGroup>();
+    scheduleData
+      .filter(item => item.userId === selectedUserId)
+      .forEach(item => {
+        const key = `${item.clientId}-${item.addressId}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            id: key,
+            userId: item.userId,
+            name: item.userName,
+            phone: item.userPhone,
+            clientName: item.clientName,
+            address: item.address,
+            clientId: item.clientId,
+            addressId: item.addressId,
+          });
+        }
+      });
+
+    return Array.from(map.values());
+  }, [scheduleData, selectedUserId]);
 
   // Sessions for a shift (allow multiple)
   const getSessionsForShift = (
@@ -736,6 +774,24 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
     return max;
   };
 
+  // For employee view: max shifts for this user+client/address per day
+  const getRowRowCount = (row: RowGroup, dateCols: { date: string }[]) => {
+    let max = 1;
+    for (const dc of dateCols) {
+      const dayShifts = scheduleData
+        .filter(
+          item =>
+            item.userId === row.userId &&
+            item.clientId === row.clientId &&
+            item.addressId === row.addressId &&
+            item.startDate === dc.date
+        )
+        .flatMap(item => item.shifts || []);
+      if (dayShifts.length > max) max = dayShifts.length;
+    }
+    return max;
+  };
+
   return (
     <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
       {loading && (
@@ -765,128 +821,412 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
             </tr>
           </thead>
           <tbody className="relative">
-            {uniqueUsers.map((user, userIndex) => {
-              const rowCount = getUserRowCount(user.id, dateColumns);
+            {/* Employee view: group rows per client/address for the selected user */}
+            {selectedUserId
+              ? rowGroups.map((row, rowIndex) => {
+                  const rowCount = getRowRowCount(row, dateColumns);
 
-              return (
-                <React.Fragment key={user.id}>
-                  {[...Array(rowCount)].map((_, rowIdx) => (
-                    <tr
-                      key={`${user.id}-row-${rowIdx}`}
-                      className={`hover:bg-blue-50 transition-colors ${(userIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
-                    >
-                      {rowIdx === 0 && (
-                        <td
-                          className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
-                          rowSpan={rowCount}
+                  return (
+                    <React.Fragment key={row.id}>
+                      {[...Array(rowCount)].map((_, rowIdx) => (
+                        <tr
+                          key={`${row.id}-row-${rowIdx}`}
+                          className={`hover:bg-blue-50 transition-colors ${
+                            (rowIndex + rowIdx) % 2 === 0 ? "bg-gray-50" : "bg-white"
+                          }`}
                         >
-                          <div className="font-medium text-gray-800">{selectedUserId ? user.clientName : user.name}</div>
-                          <div className="text-xs text-gray-500">{selectedUserId ? user.address : formatUSPhone(user.phone)}</div>
-                        </td>
-                      )}
-
-                      {dateColumns.map((dateCol, colIdx) => {
-                        const shift = buildUserDateShifts.get(user.id)?.get(dateCol.date)?.[rowIdx] || null;
-                        const sessions = shift ? getSessionsForShift(shift.id, shift.scheduleSessionId, dateCol.date, user.id) : [];
-                        const hasSessions = sessions.length > 0;
-                        
-                        // Check for time violations, mismatches, and overtime across all sessions in the cell
-                        // const hasViolation = shift ? sessions.some(s => hasTimeViolation(s, shift)) : false;
-                        const hasMismatch = shift ? hasTimeMismatch(shift, sessions) : false;
-                        // const hasOvertimeWorked = shift ? hasOvertime(shift, sessions) : false;
-
-                        return (
-                          <td
-                            key={`${dateCol.date}-${rowIdx}-${colIdx}`}
-                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                                hasMismatch
-                                 ? 'bg-red-100 border-red-300' // Red background for time mismatch
-                                 : ''
-                            }`}
-                            title={
-                               hasMismatch
-                                ? 'Time mismatch: Total actual time does not equal scheduled shift duration'
-                                :  ''
-                            }
-                          >
-                            {isEditMode && shift && (
-                              <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
-                                 <Button onClick={() => openEditShift(user.id, dateCol.date, shift.id)} variant="ghost" size="icon-sm" className="text-blue-600 p-0.5" title="Edit sessions">
-                                   <FaRegEdit className="w-4 h-4" color="blue" />
-                                 </Button>
-                                 {hasSessions && (
-                                   <Button onClick={() => setDeleteAllModal({ isOpen: true, shiftId: shift.id })} variant="ghost" size="icon-sm" className="text-red-600 p-0.5" title="Delete all sessions">
-                                     <FaRegTrashAlt className="w-4 h-4" />
-                                   </Button>
-                                 )}
+                          {rowIdx === 0 && (
+                            <td
+                              className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                              rowSpan={rowCount}
+                            >
+                              <div className="font-medium text-gray-800">
+                                {row.clientName}
                               </div>
-                            )}
-                            {hasSessions ? (
-                              <div className="flex flex-col items-center gap-1">
-                                {sessions.map(s => (
-                                  <span key={s.id} className="text-xs  px-2 py-0.5 rounded-md">
-                                    {(s.clockIn || 'N/A')} - {formatTimeDisplay(s.clockOut || 'N/A')}
-                                  </span>
-                                ))}
+                              <div className="text-xs text-gray-500">
+                                {row.address}
                               </div>
-                            ) : (
-                              <span className="text-gray-400">-</span>
+                            </td>
+                          )}
+
+                          {dateColumns.map((dateCol, colIdx) => {
+                            const dayShifts = scheduleData
+                              .filter(
+                                item =>
+                                  item.userId === row.userId &&
+                                  item.clientId === row.clientId &&
+                                  item.addressId === row.addressId &&
+                                  item.startDate === dateCol.date
+                              )
+                              .flatMap(item => item.shifts || [])
+                              .sort(
+                                (a, b) =>
+                                  timeToMinutes(a.startTime) -
+                                  timeToMinutes(b.startTime)
+                              );
+
+                            const shift = dayShifts[rowIdx] || null;
+                            const sessions = shift
+                              ? getSessionsForShift(
+                                  shift.id,
+                                  shift.scheduleSessionId,
+                                  dateCol.date,
+                                  row.userId
+                                )
+                              : [];
+                            const hasSessions = sessions.length > 0;
+                            const hasMismatch = shift
+                              ? hasTimeMismatch(shift, sessions)
+                              : false;
+
+                            return (
+                              <td
+                                key={`${dateCol.date}-${rowIdx}-${colIdx}`}
+                                className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
+                                  hasMismatch
+                                    ? "bg-red-100 border-red-300"
+                                    : ""
+                                }`}
+                                title={
+                                  hasMismatch
+                                    ? "Time mismatch: Total actual time does not equal scheduled shift duration"
+                                    : ""
+                                }
+                              >
+                                {isEditMode && shift && (
+                                  <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
+                                    <Button
+                                      onClick={() =>
+                                        openEditShift(
+                                          row.userId,
+                                          dateCol.date,
+                                          shift.id
+                                        )
+                                      }
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className="text-blue-600 p-0.5"
+                                      title="Edit sessions"
+                                    >
+                                      <FaRegEdit
+                                        className="w-4 h-4"
+                                        color="blue"
+                                      />
+                                    </Button>
+                                    {hasSessions && (
+                                      <Button
+                                        onClick={() =>
+                                          setDeleteAllModal({
+                                            isOpen: true,
+                                            shiftId: shift.id,
+                                          })
+                                        }
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className="text-red-600 p-0.5"
+                                        title="Delete all sessions"
+                                      >
+                                        <FaRegTrashAlt className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                                {hasSessions ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    {sessions.map(s => (
+                                      <span
+                                        key={s.id}
+                                        className="text-xs  px-2 py-0.5 rounded-md"
+                                      >
+                                        {(s.clockIn || "N/A")} -{" "}
+                                        {formatTimeDisplay(
+                                          s.clockOut || "N/A"
+                                        )}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                            {calculateRowTotal(
+                              row.userId,
+                              rowIdx,
+                              sessionData.filter(item => {
+                                const scheduleItem = scheduleData.find(si =>
+                                  si.shifts.some(
+                                    shift => shift.id === item.shiftId
+                                  )
+                                );
+                                return (
+                                  scheduleItem &&
+                                  scheduleItem.userId === row.userId &&
+                                  scheduleItem.clientId === row.clientId &&
+                                  scheduleItem.addressId === row.addressId
+                                );
+                              }),
+                              scheduleData,
+                              dateColumns
                             )}
                           </td>
-                        );
-                      })}
+                          {rowIdx === 0 && (
+                            <td
+                              className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
+                              rowSpan={rowCount}
+                            >
+                              {/* reserved for future row actions in employee view */}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
 
-                      <td
-                        className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
+                      <tr
+                        className={`transition-colors ${
+                          rowIndex % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
+                        }`}
                       >
-                        {calculateRowTotal(user.id, rowIdx, sessionData, scheduleData, dateColumns)}
-                      </td>
-                      {rowIdx === 0 && (
-                        <td
-                          className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
-                          rowSpan={rowCount}
-                        >
-                            {/* {isEditMode && (
-                              <button
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="text-red-600 hover:text-red-800 p-1"
-                                title="Delete all data for this user"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )} */}
+                        <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+                          Total
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        {dateColumns.map(dateCol => {
+                          const dayTotal = calculateDayTotal(
+                            dateCol.date,
+                            sessionData.filter(item => {
+                              const scheduleItem = scheduleData.find(si =>
+                                si.shifts.some(
+                                  shift => shift.id === item.shiftId
+                                )
+                              );
+                              return (
+                                scheduleItem &&
+                                scheduleItem.userId === row.userId &&
+                                scheduleItem.clientId === row.clientId &&
+                                scheduleItem.addressId === row.addressId
+                              );
+                            })
+                          );
+                          return (
+                            <td
+                              key={dateCol.date}
+                              className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                            >
+                              {dayTotal > 0 ? dayTotal : "-"}
+                            </td>
+                          );
+                        })}
+                        <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                          {calculateUserTotal(
+                            row.userId,
+                            sessionData.filter(item => {
+                              const scheduleItem = scheduleData.find(si =>
+                                si.shifts.some(
+                                  shift => shift.id === item.shiftId
+                                )
+                              );
+                              return (
+                                scheduleItem &&
+                                scheduleItem.userId === row.userId &&
+                                scheduleItem.clientId === row.clientId &&
+                                scheduleItem.addressId === row.addressId
+                              );
+                            }),
+                            scheduleData
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
+                          {/* Empty cell for alignment */}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
+              : // Normal view: one block per user (all clients combined)
+                uniqueUsers.map((user, userIndex) => {
+                  const rowCount = getUserRowCount(user.id, dateColumns);
 
-                  <tr className={`transition-colors ${userIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
-                      Total
-                    </td>
-                    {dateColumns.map(dateCol => {
-                      const dayTotal = calculateDayTotal(dateCol.date, sessionData.filter(item => {
-                        const scheduleItem = scheduleData.find(si =>
-                          si.shifts.some(shift => shift.id === item.shiftId)
-                        );
-                        return scheduleItem?.userId === user.id;
-                      }));
-                      return (
-                        <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
-                          {dayTotal > 0 ? dayTotal : '-'}
+                  return (
+                    <React.Fragment key={user.id}>
+                      {[...Array(rowCount)].map((_, rowIdx) => (
+                        <tr
+                          key={`${user.id}-row-${rowIdx}`}
+                          className={`hover:bg-blue-50 transition-colors ${
+                            (userIndex + rowIdx) % 2 === 0
+                              ? "bg-gray-50"
+                              : "bg-white"
+                          }`}
+                        >
+                          {rowIdx === 0 && (
+                            <td
+                              className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                              rowSpan={rowCount}
+                            >
+                              <div className="font-medium text-gray-800">
+                                {user.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {formatUSPhone(user.phone)}
+                              </div>
+                            </td>
+                          )}
+
+                          {dateColumns.map((dateCol, colIdx) => {
+                            const shift =
+                              buildUserDateShifts
+                                .get(user.id)
+                                ?.get(dateCol.date)?.[rowIdx] || null;
+                            const sessions = shift
+                              ? getSessionsForShift(
+                                  shift.id,
+                                  shift.scheduleSessionId,
+                                  dateCol.date,
+                                  user.id
+                                )
+                              : [];
+                            const hasSessions = sessions.length > 0;
+                            const hasMismatch = shift
+                              ? hasTimeMismatch(shift, sessions)
+                              : false;
+
+                            return (
+                              <td
+                                key={`${dateCol.date}-${rowIdx}-${colIdx}`}
+                                className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
+                                  hasMismatch
+                                    ? "bg-red-100 border-red-300"
+                                    : ""
+                                }`}
+                                title={
+                                  hasMismatch
+                                    ? "Time mismatch: Total actual time does not equal scheduled shift duration"
+                                    : ""
+                                }
+                              >
+                                {isEditMode && shift && (
+                                  <div className="flex items-center space-x-1 opacity-100 mb-1 justify-center">
+                                    <Button
+                                      onClick={() =>
+                                        openEditShift(
+                                          user.id,
+                                          dateCol.date,
+                                          shift.id
+                                        )
+                                      }
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className="text-blue-600 p-0.5"
+                                      title="Edit sessions"
+                                    >
+                                      <FaRegEdit
+                                        className="w-4 h-4"
+                                        color="blue"
+                                      />
+                                    </Button>
+                                    {hasSessions && (
+                                      <Button
+                                        onClick={() =>
+                                          setDeleteAllModal({
+                                            isOpen: true,
+                                            shiftId: shift.id,
+                                          })
+                                        }
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className="text-red-600 p-0.5"
+                                        title="Delete all sessions"
+                                      >
+                                        <FaRegTrashAlt className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                                {hasSessions ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    {sessions.map(s => (
+                                      <span
+                                        key={s.id}
+                                        className="text-xs  px-2 py-0.5 rounded-md"
+                                      >
+                                        {(s.clockIn || "N/A")} -{" "}
+                                        {formatTimeDisplay(
+                                          s.clockOut || "N/A"
+                                        )}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                            {calculateRowTotal(
+                              user.id,
+                              rowIdx,
+                              sessionData,
+                              scheduleData,
+                              dateColumns
+                            )}
+                          </td>
+                          {rowIdx === 0 && (
+                            <td
+                              className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
+                              rowSpan={rowCount}
+                            >
+                              {/* reserved for future row actions */}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+
+                      <tr
+                        className={`transition-colors ${
+                          userIndex % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
+                        }`}
+                      >
+                        <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+                          Total
                         </td>
-                      );
-                    })}
-                    <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                      {calculateUserTotal(user.id, sessionData, scheduleData)}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
-                      {/* Empty cell for alignment */}
-                    </td>
-                  </tr>
-                </React.Fragment>
-              );
-            })}
+                        {dateColumns.map(dateCol => {
+                          const dayTotal = calculateDayTotal(
+                            dateCol.date,
+                            sessionData.filter(item => {
+                              const scheduleItem = scheduleData.find(si =>
+                                si.shifts.some(
+                                  shift => shift.id === item.shiftId
+                                )
+                              );
+                              return scheduleItem?.userId === user.id;
+                            })
+                          );
+                          return (
+                            <td
+                              key={dateCol.date}
+                              className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                            >
+                              {dayTotal > 0 ? dayTotal : "-"}
+                            </td>
+                          );
+                        })}
+                        <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                          {calculateUserTotal(
+                            user.id,
+                            sessionData,
+                            scheduleData
+                          )}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
+                          {/* Empty cell for alignment */}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
             {/* Grand Total Row */}
             <tr className="bg-gray-50 font-medium">
               <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>

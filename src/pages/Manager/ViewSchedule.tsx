@@ -414,7 +414,6 @@ export const ViewSchedule = () => {
       urlParams.userId
     ) {
       const parsedUserId = parseInt(urlParams.userId, 10);
-      console.log(22,parsedUserId)
       if (!Number.isNaN(parsedUserId)) {
         setSelectedUserId(parsedUserId);
         setSelectedUserDisplayName("");
@@ -494,7 +493,6 @@ export const ViewSchedule = () => {
     });
   };
   const validateAndNavigate = async (newDate: string) => {
-    console.log("validateAndNavigate called with:", newDate);
     setNavigationSource("week");
     setOpenedFromViewButton(false);
 
@@ -813,8 +811,6 @@ export const ViewSchedule = () => {
         });
       }
 
-      console.log("transformedData in useEffect", transformedData);
-
       if (selectedUserId) {
         const match = transformedData.find(item => item.userId === selectedUserId);
         if (match) {
@@ -824,7 +820,6 @@ export const ViewSchedule = () => {
       const urlParams = getUrlParams();
       if (urlParams.viewEmployee && transformedData.length > 0) {
         const firstUserId = transformedData[0]?.userId ?? null;
-        console.log(33,transformedData[0])
         setSelectedUserId(firstUserId);
         setSelectedUserDisplayName(transformedData[0]?.userName ?? "");
       }
@@ -840,8 +835,20 @@ export const ViewSchedule = () => {
       });
       originalShiftsRef.current = baseMap;
       if (transformedData.length > 0) {
-        const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
-        fetchSessionData(scheduleSessionIds);
+        // Collect ALL scheduleSessionIds from all shifts (across all clients)
+        const scheduleSessionIds = Array.from(
+          new Set(
+            transformedData.flatMap(item =>
+              item.shifts
+                .map(s => s.scheduleSessionId)
+                .filter((id): id is number => typeof id === "number")
+            )
+          )
+        );
+
+        if (scheduleSessionIds.length > 0) {
+          fetchSessionData(scheduleSessionIds);
+        }
       }
 
     } else if (apiScheduleData === null) {
