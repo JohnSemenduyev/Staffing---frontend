@@ -253,10 +253,6 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     
     return false;
   };
-
-  // Use the parent's toggle edit mode handler
-
-  // Generate date columns for the schedule table
   const generateDateColumns = () => {
     if (!currentWeekRange) return [];
 

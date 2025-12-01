@@ -29,6 +29,14 @@ type EmployeeSummaryRow = {
   overtimeDifference: number | string;
 };
 
+type SortKey =
+  | "regularScheduled"
+  | "regularActual"
+  | "regularDifference"
+  | "overtimeScheduled"
+  | "overtimeActual"
+  | "overtimeDifference";
+
 export const ViewEmployeeSummary: React.FC = () => {
   const { data, loading, error, fetchEmployeeSummary, currentPage, lastPage, setCurrentPage } = useEmployeeSummary();
   const today = useMemo(
@@ -58,6 +66,13 @@ export const ViewEmployeeSummary: React.FC = () => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
   const navigate = useNavigate();
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   // initial load
   useEffect(() => {
@@ -150,11 +165,119 @@ export const ViewEmployeeSummary: React.FC = () => {
   // No client-side filtering needed - server handles it
   const filteredRows = rows;
 
+  const sortedRows = useMemo(() => {
+    if (!sortConfig.key) {
+      return filteredRows;
+    }
+  
+    const key = sortConfig.key;
+    const directionMultiplier = sortConfig.direction === "asc" ? 1 : -1;
+  
+    const parseValue = (value: number | string) => {
+      if (value === "-" || value === null || value === undefined) return null;
+      const numeric = Number(value);
+      if (!Number.isNaN(numeric)) return numeric;
+      return String(value).toLowerCase();
+    };
+  
+    return [...filteredRows].sort((a, b) => {
+      const aValue = parseValue(a[key]);
+      const bValue = parseValue(b[key]);
+  
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return (aValue - bValue) * directionMultiplier;
+      }
+  
+      const aStr = String(aValue ?? "");
+      const bStr = String(bValue ?? "");
+      if (aStr === bStr) return 0;
+      return aStr.localeCompare(bStr) * directionMultiplier;
+    });
+  }, [filteredRows, sortConfig]);
+
+  const totals = useMemo(() => {
+    const sumField = (key: keyof EmployeeSummaryRow) =>
+      sortedRows.reduce((sum, row) => {
+        const raw = row[key];
+        const num =
+          typeof raw === "number"
+            ? raw
+            : raw === "-" || raw === null || raw === undefined
+            ? 0
+            : Number(raw);
+        return sum + (Number.isNaN(num) ? 0 : num);
+      }, 0);
+
+    return {
+      regularScheduled: sumField("regularScheduled"),
+      regularActual: sumField("regularActual"),
+      regularDifference: sumField("regularDifference"),
+      overtimeScheduled: sumField("overtimeScheduled"),
+      overtimeActual: sumField("overtimeActual"),
+      overtimeDifference: sumField("overtimeDifference"),
+    };
+  }, [sortedRows]);
+
+  
+
   const resetSearch = () => {
     setSearchTerm("");
   };
 
   const hasSearchValues = searchTerm.trim() !== "";
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const renderSortableLabel = (label: string, key: SortKey) => {
+    const isActive = sortConfig.key === key;
+    const isAscending = sortConfig.direction === "asc";
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(key)}
+        className="flex items-center justify-center gap-1 w-full font-semibold text-current"
+      >
+        <span>{label}</span>
+        <span className="flex flex-col leading-[8px] text-[10px] text-current">
+          <svg
+            stroke="currentColor"
+            fill="currentColor"
+            strokeWidth="0"
+            viewBox="0 0 512 512"
+            className={isActive && isAscending ? "text-[#004175]" : "text-gray-400"}
+            height="0.9em"
+            width="0.9em"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M414 321.94 274.22 158.82a24 24 0 0 0-36.44 0L98 321.94c-13.34 15.57-2.28 39.62 18.22 39.62h279.6c20.5 0 31.56-24.05 18.18-39.62z"></path>
+          </svg>
+          <svg
+            stroke="currentColor"
+            fill="currentColor"
+            strokeWidth="0"
+            viewBox="0 0 512 512"
+            className={isActive && !isAscending ? "text-[#004175]" : "text-gray-400"}
+            height="0.9em"
+            width="0.9em"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="m98 190.06 139.78 163.12a24 24 0 0 0 36.44 0L414 190.06c13.34-15.57 2.28-39.62-18.22-39.62h-279.6c-20.5 0-31.56 24.05-18.18 39.62z"></path>
+          </svg>
+        </span>
+      </button>
+    );
+  };
 
   const validateAndNavigate = async (newDate: string) => {
     console.log("validateAndNavigate called with:", newDate);
@@ -225,12 +348,15 @@ export const ViewEmployeeSummary: React.FC = () => {
 
       {/* TABLE WRAPPER */}
       <div
-        ref={tableContainerRef}
-        className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden"
-        style={{ height: tableHeight, maxHeight: tableHeight }}
+         ref={tableContainerRef}
+  className="bg-white rounded-2xl shadow-md border border-gray-100"
       >
-        <div className="h-full overflow-auto">
-          <table className="w-full text-sm text-gray-800 table-fixed">
+         <div
+    className="overflow-auto"
+    style={{ maxHeight: tableHeight }}
+  >
+    <table className="w-full text-sm text-gray-800  border-separate border-spacing-0">
+
             <colgroup>
               <col style={{ width: "100px" }} />
               <col style={{ width: "200px" }} />
@@ -248,24 +374,24 @@ export const ViewEmployeeSummary: React.FC = () => {
                 <th className="px-4 py-3 text-center border-black">
                   Action
                 </th>
-                <th className="px-4 py-3 text-left border-r-2 border-black">
+                <th className="px-4 py-3 text-left border-r border-black">
                   Employee Name
                 </th>
                 <th
-                  className="px-4 py-3 text-center border-l-2 border-r-2 border-black"
+                  className="px-4 py-3 text-center border-l border-r border-black"
                   colSpan={3}
                 >
                   Total Regular Hours
                 </th>
                 <th
-                  className="px-4 py-3 text-center border-l-2  border-black"
+                  className="px-4 py-3 text-center border-l  border-black"
                   colSpan={3}
                 >
                   Total Overtime Hours
                 </th>
               </tr>
 
-              <tr className="bg-[#e8f1fb] text-[#004175] text-xs font-semibold">
+              <tr className="bg-gray-100 text-[#004175] text-xs font-semibold border-b border-black">
                 <th className="px-4 py-2 text-center border-t border-b border-black">
                   {hasSearchValues && (
                     <ResetButton
@@ -274,7 +400,7 @@ export const ViewEmployeeSummary: React.FC = () => {
                     />
                   )}
                 </th>
-                <th className="px-4 py-2 text-left border-t border-b border-black">
+                <th className="px-4 py-2 text-left border-t border-b border-black ">
                   <input
                     placeholder="Search employee name..."
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
@@ -283,91 +409,118 @@ export const ViewEmployeeSummary: React.FC = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Scheduled
+                <th className="px-4 py-2 text-center text-black border-t border-b border-l border-black bg-gray-100">
+                  {renderSortableLabel("Scheduled", "regularScheduled")}
                 </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Actual
+                <th className="px-4 py-2 text-center text-black border-t border-b border-black bg-gray-100">
+                  {renderSortableLabel("Actual", "regularActual")}
                 </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Difference
+                <th className="px-4 py-2 text-center text-black border-t border-b  border-black bg-gray-100">
+                  {renderSortableLabel("Difference", "regularDifference")}
                 </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Scheduled
+                <th className="px-4 py-2 text-center text-black border-t border-b border-l border-black ">
+                  {renderSortableLabel("Scheduled", "overtimeScheduled")}
                 </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Actual
+                <th className="px-4 py-2 text-center text-black border-t border-b  border-black ">
+                  {renderSortableLabel("Actual", "overtimeActual")}
                 </th>
-                <th className="px-4 py-2 text-center border-t border-b border-l border-black">
-                  Difference
+                <th className="px-4 py-2 text-center text-black border-t border-b  border-black ">
+                  {renderSortableLabel("Difference", "overtimeDifference")}
                 </th>
               </tr>
             </thead>
-
-            {/* BODY */}
             <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-10 text-center text-gray-500 border-t border-black"
-                  >
-                    Loading employee summary...
-                  </td>
-                </tr>
-              ) : filteredRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-10 text-center text-gray-500 border-t border-black"
-                  >
-                    No employee summary records available.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((row, index) => (
-                  <tr
-                    key={row.employeeName + index}
-                    className="border-t border-black even:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 text-center border-t border-black">
-                      <button
-                        type="button"
-                        className="text-blue-500 hover:text-green-700 px-1"
-                        aria-label="View details"
-                        onClick={() => {
-                          setSelectedRow(row);
-                          setShowDateModal(true);
-                        }}
-                      >
-                        <FiEye className="w-4 h-4" />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900 border-t border-black">
-                      {row.employeeName}
-                    </td>
-                    <td className="px-4 py-3 text-center border-t border-black border-l border-black">
-                      {row.regularScheduled}
-                    </td>
-                    <td className="px-4 py-3 text-center border-t border-black border-l border-black">
-                      {row.regularActual}
-                    </td>
-                    <td className="px-4 py-3 text-center border-t border-black border-l border-black">
-                      {row.regularDifference}
-                    </td>
-                    <td className="px-4 py-3 text-center border-t border-black border-l border-black">
-                      {row.overtimeScheduled}
-                    </td>
-                    <td className="px-4 py-3 text-center border-t border-black border-l border-black">
-                      {row.overtimeActual}
-                    </td>
-                    <td className="px-4 py-3 text-center border-t border-black border-l border-black">
-                      {row.overtimeDifference}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
+  {loading ? (
+    <tr>
+      <td
+        colSpan={8}
+        className="px-4 py-10 text-center text-gray-500 border-t border-black"
+      >
+        Loading employee summary...
+      </td>
+    </tr>
+  ) : filteredRows.length === 0 ? (
+    <tr>
+      <td
+        colSpan={8}
+        className="px-4 py-10 text-center text-gray-500 border-t border-black"
+      >
+        No employee summary records available.
+      </td>
+    </tr>
+  ) : (
+    <>
+      {sortedRows.map((row, index) => (
+        <tr
+          key={row.employeeName + index}
+        >
+          <td className="px-4 py-3 text-center border-b border-black bg-white">
+            <button
+              type="button"
+              className="text-blue-500 hover:text-green-700 px-1"
+              aria-label="View details"
+              onClick={() => {
+                setSelectedRow(row);
+                setShowDateModal(true);
+              }}
+            >
+              <FiEye className="w-4 h-4" />
+            </button>
+          </td>
+          <td className="px-4 py-3 font-medium text-gray-900 border-b border-black bg-white">
+            {row.employeeName}
+          </td>
+          <td className="px-4 py-3 text-center border-b border-black border-l border-black bg-gray-100">
+            {row.regularScheduled}
+          </td>
+          <td className="px-4 py-3 text-center border-b border-black  border-black bg-gray-100">
+            {row.regularActual}
+          </td>
+          <td className="px-4 py-3 text-center border-b border-black  border-black bg-gray-100">
+            {row.regularDifference}
+          </td>
+          <td className="px-4 py-3 text-center border-b border-black border-l border-black bg-white">
+            {row.overtimeScheduled}
+          </td>
+          <td className="px-4 py-3 text-center border-b border-black  border-black bg-white">
+            {row.overtimeActual}
+          </td>
+          <td className="px-4 py-3 text-center border-b border-black  border-black bg-white">
+            {row.overtimeDifference}
+          </td>
+        </tr>
+      ))}
+
+      {/* STICKY TOTAL ROW */}
+      <tr className="sticky bottom-0 bg-gray-100 font-semibold">
+        <td className="px-4 py-3 text-center border-t border-black" />
+        <td className="px-4 py-3 text-left border-t border-black">
+          Total
+        </td>
+        <td className="px-4 py-3 text-center border-t border-l border-black">
+          {totals.regularScheduled.toFixed(2)}
+        </td>
+        <td className="px-4 py-3 text-center border-t border-l border-black">
+          {totals.regularActual.toFixed(2)}
+        </td>
+        <td className="px-4 py-3 text-center border-t border-l border-black">
+          {totals.regularDifference.toFixed(2)}
+        </td>
+        <td className="px-4 py-3 text-center border-t border-l border-black">
+          {totals.overtimeScheduled.toFixed(2)}
+        </td>
+        <td className="px-4 py-3 text-center border-t border-l border-black">
+          {totals.overtimeActual.toFixed(2)}
+        </td>
+        <td className="px-4 py-3 text-center border-t border-l border-black">
+          {totals.overtimeDifference.toFixed(2)}
+        </td>
+      </tr>
+    </>
+  )}
+</tbody>
+
+
           </table>
         </div>
       </div>

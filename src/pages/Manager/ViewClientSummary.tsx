@@ -140,6 +140,40 @@ const filterOptions: { value: FilterOption; label: string }[] = [
   { value: "contractVsActual", label: "Contract vs Actual" },
 ];
 
+const columnGroups = [
+  {
+    filters: ["contractVsScheduled"] as FilterOption[],
+    columns: [
+      { key: "contractHours", filter: "contractVsScheduled" as FilterOption },
+      { key: "totalWeeklyHours", filter: "contractVsScheduled" as FilterOption },
+      { key: "diffContractMinusScheduled", filter: "contractVsScheduled" as FilterOption },
+    ],
+  },
+  {
+    filters: ["unconfirmed", "rejected"] as FilterOption[],
+    columns: [
+      { key: "unconfirmedHours", filter: "unconfirmed" as FilterOption },
+      { key: "rejectedHours", filter: "rejected" as FilterOption },
+    ],
+  },
+  {
+    filters: ["scheduledVsActual"] as FilterOption[],
+    columns: [
+      { key: "scheduledHoursActual", filter: "scheduledVsActual" as FilterOption },
+      { key: "totalActualHours", filter: "scheduledVsActual" as FilterOption },
+      { key: "diffScheduledMinusActual", filter: "scheduledVsActual" as FilterOption },
+    ],
+  },
+  {
+    filters: ["contractVsActual"] as FilterOption[],
+    columns: [
+      { key: "contractHoursActual", filter: "contractVsActual" as FilterOption },
+      { key: "totalActualHoursContract", filter: "contractVsActual" as FilterOption },
+      { key: "diffContractMinusActual", filter: "contractVsActual" as FilterOption },
+    ],
+  },
+];
+
 export const ViewClientSummary = () => {
   const { data, loading, error, fetchClientSummary } = useClientSummary();
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
@@ -255,7 +289,9 @@ export const ViewClientSummary = () => {
 
   // Handle "All Fields" toggle
   const handleAllFieldsToggle = () => {
-    if (selectedFilters.length === filterOptions.length) {
+    // When all fields are effectively selected (either explicitly or by default),
+    // clicking "All Fields" will clear explicit selections and rely on the default.
+    if (selectedFilters.length === 0 || selectedFilters.length === filterOptions.length) {
       setSelectedFilters([]);
     } else {
       setSelectedFilters(filterOptions.map((opt) => opt.value));
@@ -325,7 +361,14 @@ export const ViewClientSummary = () => {
     await fetchClientSummary(weekStartStr);
   };
 
-  // Filter columns based on selected options
+  const tableColumnMap = useMemo(() => {
+    const map = new Map<string, TableColumn>();
+    tableColumns.forEach((col) => {
+      map.set(col.key, col);
+    });
+    return map;
+  }, []);
+
   const filteredColumns = useMemo(() => {
     const baseColumns: TableColumn[] = [
       { key: "clientName", label: "Client Name", sortable: true, searchable: true },
@@ -334,6 +377,9 @@ export const ViewClientSummary = () => {
         label: "Location", 
         sortable: true, 
         searchable: true,
+        headerClassName: "border-r border-r-gray-800",
+        searchHeaderClassName: "border-r border-r-gray-800",   // ✅ already added
+        className: "border-r border-r-gray-800",
         render: (value: string) => {
           const { left, right } = splitAddress(value);
           return (
@@ -345,123 +391,78 @@ export const ViewClientSummary = () => {
         }
       },
     ];
+  
+    const allFilterValues = filterOptions.map((f) => f.value);
+    const activeFilterSet = new Set<FilterOption>(
+      selectedFilters.length === 0 || selectedFilters.length === filterOptions.length
+        ? allFilterValues
+        : selectedFilters
+    );
+  
+    const columns: TableColumn[] = [...baseColumns];
+    let groupColorIndex = 0;
+  
+    columnGroups.forEach((group) => {
+      const groupHasActive = group.filters.some((filter) =>
+        activeFilterSet.has(filter)
+      );
+      if (!groupHasActive) return;
+  
+      const activeColumnsInGroup = group.columns.filter(({ filter }) =>
+        activeFilterSet.has(filter)
+      );
+      if (activeColumnsInGroup.length === 0) return;
+  
+      const groupBg = groupColorIndex % 2 === 0 ? "bg-gray-100" : "bg-white";
+      groupColorIndex += 1;
+  
+      activeColumnsInGroup.forEach((colDef, idx) => {
+        const baseDef = tableColumnMap.get(colDef.key);
+        if (!baseDef) return;
+  
+        const borders: string[] = [];
+  
+        if (idx === 0) {
+          borders.push("border-l border-l-gray-400");
+        }
+        if (idx === activeColumnsInGroup.length - 1) {
+          borders.push("border-r border-r-gray-800");
+        }
+  
+        const borderClass = borders.join(" ");
 
-    // If all filters are selected or no filters selected, show all columns
-    if (selectedFilters.length === 0 || selectedFilters.length === filterOptions.length) {
-      return tableColumns;
-    }
-
-    const additionalColumns: TableColumn[] = [];
-
-    // Add columns based on selected filters
-    selectedFilters.forEach((filter) => {
-      switch (filter) {
-        case "contractVsScheduled":
-          additionalColumns.push(
-            {
-              key: "contractHours",
-              label: "Contract Hours",
-              sortable: true,
-              searchable: true,
-              className: "bg-blue-100",
-            },
-            {
-              key: "totalWeeklyHours",
-              label: "Scheduled Hours",
-              sortable: true,
-              searchable: true,
-              className: "bg-blue-100",
-            },
-            {
-              key: "diffContractMinusScheduled",
-              label: "Difference",
-              sortable: true,
-              searchable: true,
-              className: "bg-blue-100",
-            }
-          );
-          break;
-        case "unconfirmed":
-          additionalColumns.push({
-            key: "unconfirmedHours",
-            label: "Unconfirmed Hours",
-            sortable: true,
-            searchable: true,
-            className: "bg-green-100"
-          });
-          break;
-        case "rejected":
-          additionalColumns.push({
-            key: "rejectedHours",
-            label: "Rejected Hours",
-            sortable: true,
-            searchable: true,
-            className: "bg-green-100"
-          });
-          break;
-        case "scheduledVsActual":
-          additionalColumns.push(
-            {
-              key: "scheduledHoursActual",
-              label: "Scheduled Hours",
-              sortable: true,
-              searchable: true,
-              className: "bg-red-100"
-            },
-            {
-              key: "totalActualHours",
-              label: "Actual Hours",
-              sortable: true,
-              searchable: true,
-              className: "bg-red-100"
-            },
-            {
-              key: "diffScheduledMinusActual",
-              label: "Difference",
-              sortable: true,
-              searchable: true,
-              className: "bg-red-100"
-            }
-          );
-          break;
-        case "contractVsActual":
-          additionalColumns.push(
-            {
-              key: "contractHoursActual",
-              label: "Contract Hours",
-              sortable: true,
-              searchable: true,
-              className: "bg-yellow-100"
-            },
-            {
-              key: "totalActualHoursContract",
-              label: "Actual Hours",
-              sortable: true,
-              searchable: true,
-              className: "bg-yellow-100"
-            },
-            {
-              key: "diffContractMinusActual",
-              label: "Difference",
-              sortable: true,
-              searchable: true,
-              className: "bg-yellow-100"
-            }
-          );
-          break;
-      }
+        // Slight left padding for metric data cells only (not actions/client/location)
+        const combinedClassName = [groupBg, borderClass, "pl-10"]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+  
+        const combinedHeaderClassName = [baseDef.headerClassName, borderClass]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+  
+        columns.push({
+          ...baseDef,
+          className: combinedClassName,
+          headerClassName: combinedHeaderClassName || undefined,
+          searchHeaderClassName: combinedHeaderClassName || undefined, // 👈 ADD THIS
+        });
+      });
     });
+  
+    return columns;
+  }, [selectedFilters, tableColumnMap]);
+  
+  
 
-    return [...baseColumns, ...additionalColumns];
-  }, [selectedFilters]);
-
+  // Dynamically adjust table height based on viewport, similar to ViewSchedule
   useEffect(() => {
-    if (filteredColumns) return;
-
     const updateTableHeight = () => {
       if (!tableContainerRef.current) return;
       const { top } = tableContainerRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const viewportHeight =
+        window.innerHeight || document.documentElement.clientHeight;
       const paddingBottom = 32;
       const available = Math.max(viewportHeight - top - paddingBottom, 320);
       setTableHeight(`${available}px`);
@@ -490,9 +491,7 @@ export const ViewClientSummary = () => {
               <div 
                 className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden filter-tags-scrollbar"
               >
-                {selectedFilters.length === 0 ? (
-                  <span className="text-gray-400 text-sm whitespace-nowrap">Select columns...</span>
-                ) : selectedFilters.length === filterOptions.length ? (
+                {selectedFilters.length === 0 || selectedFilters.length === filterOptions.length ? (
                   <span className="text-gray-900 text-sm whitespace-nowrap">All Fields</span>
                 ) : (
                   <div className="flex gap-1 items-center" style={{ width: 'max-content' }}>
@@ -529,7 +528,10 @@ export const ViewClientSummary = () => {
                   <label className="flex items-center font-medium cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={selectedFilters.length === filterOptions.length}
+                      checked={
+                        selectedFilters.length === 0 ||
+                        selectedFilters.length === filterOptions.length
+                      }
                       onChange={handleAllFieldsToggle}
                       className="mr-2 accent-blue-600"
                     />
@@ -537,11 +539,14 @@ export const ViewClientSummary = () => {
                   </label>
                 </div>
                 {filterOptions.map((option) => (
-                  <div key={option.value} className="p-2 border-b last:border-b-0">
+                  <div key={option.value} className="p-2 ">
                     <label className="flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={selectedFilters.includes(option.value)}
+                        checked={
+                          selectedFilters.length === 0 ||
+                          selectedFilters.includes(option.value)
+                        }
                         onChange={() => handleFilterToggle(option.value)}
                         className="mr-2 accent-blue-600"
                       />

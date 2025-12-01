@@ -28,6 +28,7 @@ export interface TableColumn {
 	className?: string;
 	headerClassName?: string;
 	width?: string;
+	searchHeaderClassName?: string;
 	height?: string;
 }
 
@@ -518,15 +519,12 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 
 	return (
 		<div className={`w-full mt-2 ${className}`}>
-			<div
-				className='relative w-full rounded-t-2xl border border-gray-200 shadow-xl overflow-hidden'
-				style={{ height: tableHeight, minHeight: tableHeight }}
-			>
+			<div className='relative w-full rounded-t-2xl border border-gray-200 shadow-xl overflow-hidden'>
 				{loading && (
 					<div
 						className='absolute bg-white bg-opacity-10 flex items-center justify-center z-30 rounded-2xl'
 						style={{
-							top: searchable ? "82px" : "41px", // Start below the header
+							top: searchable ? "82px" : "41px",
 							left: 0,
 							right: 0,
 							bottom: 0,
@@ -541,8 +539,9 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 				<div
 					className='overflow-auto bg-white rounded-t-2xl'
 					style={{
-						height: tableHeight,
 						maxHeight: tableHeight,
+						// Ensure a comfortable viewport for the loader while data is fetching
+						minHeight: loading ? "260px" : undefined,
 					}}
 				>
 					<table className='w-auto min-w-full table-fixed text-sm text-gray-800 font-sans'>
@@ -623,45 +622,46 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 								))}
 							</tr>
 							{searchable && (
-								<tr
-									className='bg-white text-gray-700 font-sans w-full h-[41px] sticky top-[41px] z-20'
-									style={{ lineHeight: "16px" }}
-								>
-									{actions.length > 0 && (
-										<th className='px-4 py-2 text-left'>
-											{hasSearchValues && (
-												<ResetButton
-													onClick={resetSearch}
-													disabled={!hasSearchValues}
-												/>
-											)}
-										</th>
-									)}
-									{columns.map((column) => (
-										<th
-											key={`search-${column.key}`}
-											className='px-4 py-2 text-left'
-											style={{
-												width: column.width || "auto",
-												minWidth: column.width || "auto",
-											}}
-										>
-											{renderSearchField(column)}
-										</th>
-									))}
-								</tr>
-							)}
+  <tr
+    className='bg-white text-gray-700 font-sans w-full h-[41px] sticky top-[41px] z-20'
+    style={{ lineHeight: "16px" }}
+  >
+    {actions.length > 0 && (
+      <th className='px-4 py-2 text-left'>
+        {hasSearchValues && (
+          <ResetButton
+            onClick={resetSearch}
+            disabled={!hasSearchValues}
+          />
+        )}
+      </th>
+    )}
+    {columns.map((column) => (
+      <th
+        key={`search-${column.key}`}
+        className={`px-4 py-2 text-left ${column.searchHeaderClassName || ""}`}
+        style={{
+          width: column.width || "auto",
+          minWidth: column.width || "auto",
+        }}
+      >
+        {renderSearchField(column)}
+      </th>
+    ))}
+  </tr>
+)}
+
 						</thead>
 						<tbody className='relative'>
 							{!loading &&
 								filteredAndSortedData.map((record, index) => (
 									<tr
 										key={record.id || index}
-										className='hover:bg-blue-50 transition-colors bg-white'
+										className='group bg-white'
 									>
 										{actions.length > 0 && (
 											<td
-												className='px-4 py-3 whitespace-nowrap'
+												className='px-4 py-3 whitespace-nowrap transition-colors group-hover:bg-blue-50'
 												style={{ width: "100px", minWidth: "100px" }}
 											>
 												<div className='flex items-center gap-2'>
@@ -686,7 +686,7 @@ export const GenericTable: React.FC<GenericTableProps> = ({
 											return (
 												<td
 													key={column.key}
-													className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap ${
+													className={`px-4 py-3 border-b border-gray-100 whitespace-nowrap transition-colors group-hover:bg-blue-50 ${
 														column.className || ""
 													}`}
 													style={{

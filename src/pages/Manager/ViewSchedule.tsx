@@ -36,9 +36,7 @@ import {
 import {
   FormData,
   User,
-  Shift,
   ScheduleItem,
-  PeriodEndDateModalProps
 } from "./ViewSchedule/types";
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
@@ -64,8 +62,6 @@ const makeShiftKey = (shift: { date: string; startTime: string; endTime: string 
   }
   return `${normalizedDate}|${shift.startTime}|${shift.endTime}`;
 };
-
-// Detect if auto flags changed for a given user (schedule-level or per-shift)
 const autoChangedForUser = (userId: number, scheduleDataParam: ScheduleItem[], originalScheduleDataParam: ScheduleItem[]) => {
   const cur = scheduleDataParam.filter(i => i.userId === userId);
   const org = originalScheduleDataParam.filter(i => i.userId === userId);
@@ -106,7 +102,6 @@ export const DateNavigation = ({
     const { startOfWeek } = getWeekRangeFromDateLocal(next);
     await onDateChange(toLocalYMD(startOfWeek));
   };
-
   return (
     <div className="flex items-center space-x-2 bg-white border border-blue-200 rounded-lg px-3 py-2 shadow-sm">
       <Button
@@ -125,7 +120,6 @@ export const DateNavigation = ({
           {formatDateForDisplay(selectedDate)}
         </span>
       </div>
-
       <Button
         type="button"
         onClick={() => navigateWeek('next')}
@@ -139,13 +133,10 @@ export const DateNavigation = ({
     </div>
   );
 };
-
 export const ViewSchedule = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // URL parameter handling functions
   const getUrlParams = () => {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -158,9 +149,6 @@ export const ViewSchedule = () => {
       userId: params.get('userid')
     };
   };
-
-
-
   const {
     clientSessions,
     loading,
@@ -180,12 +168,10 @@ export const ViewSchedule = () => {
     updateSessionTimes,
     checkScheduleSession
   } = useClientSessions();
-
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [selectedUserDisplayName, setSelectedUserDisplayName] = useState<string>("");
-
   useEffect(() => {
     return () => {
       setSelectedUserId(null);
@@ -197,11 +183,9 @@ export const ViewSchedule = () => {
     return window.location.search.length > 0;
   });
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
-  // When the URL query changes, toggle table visibility and clear any stale data
   useEffect(() => {
     const hasQuery = location.search.length > 0;
     setShowScheduleTable(hasQuery);
-    // Clear existing schedule/actual data whenever URL params change so old rows are not shown
     setScheduleData([]);
     setSessionData([]);
     setHasApiData(false);
@@ -213,33 +197,20 @@ export const ViewSchedule = () => {
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
-  // Add state to store original data for cancel functionality
   const [originalScheduleData, setOriginalScheduleData] = useState<ScheduleItem[]>([]);
   const [originalSessionData, setOriginalSessionData] = useState([]);
-
-  // Publish confirmation modals
   const [schedulePublishModal, setSchedulePublishModal] = useState({ isOpen: false });
   const [actualTimePublishModal, setActualTimePublishModal] = useState({ isOpen: false });
-
-  // Keep original shifts snapshot per user to detect changes on publish
   const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
-
-  // Ref to store checkScheduleSessionId for publish
-
-  // Session data state for actual time tracking (local state for UI)
   const [sessionData, setSessionData] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionError, setSessionError] = useState(null);
   const [checkScheduleSessionIdMap, setCheckScheduleSessionIdMap] = useState<Map<string, number>>(new Map());
-  // State to store API existing shifts for overlap checking
   const [apiExistingShifts, setApiExistingShifts] = useState<Map<string, any[]>>(new Map());
-
   const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
   const [hasSessionChanges, setHasSessionChanges] = useState(false);
-  // Function to fetch existing shifts from API for overlap checking
   const fetchApiExistingShifts = async (userId?: number) => {
     if (!currentWeekRange || !selectedClient) return null;
-
     try {
       const startDate = formatDateLocal(new Date(currentWeekRange.startOfWeek));
       const [year, month, day] = startDate.split("-");
@@ -248,9 +219,7 @@ export const ViewSchedule = () => {
       const newApiShifts = new Map<string, any[]>();
 
       if (userId) {
-        // Fetch for specific user only
         const combination = `${selectedClient.clientId}-${selectedClient.addressId}-${userId}`;
-
         try {
           const result = await checkScheduleSession(
             selectedClient.clientId,
@@ -258,8 +227,6 @@ export const ViewSchedule = () => {
             userId,
             formattedStartDate
           );
-
-          // Check for GraphQL errors in the response
           if (result?.errors && result.errors.length > 0) {
             const errorMessage = result.errors[0].message;
             console.error(`GraphQL error for user ${userId}:`, errorMessage);
@@ -271,17 +238,13 @@ export const ViewSchedule = () => {
                 variant: "destructive",
               });
             }
-            return null; // Exit early if there are errors
+            return null;
           }
-
-          // Store checkScheduleSessionId from the result (regardless of shifts)
           if (result.data.checkScheduleSession.id) {
-            // Use combination of parameters as key since API doesn't return scheduleSessionId
             const mapKey = `${selectedClient.clientId}-${selectedClient.addressId}-${userId}`;
             checkScheduleSessionIdMap.set(mapKey, result.data.checkScheduleSession.id);
             console.log(`Stored mapping: ${mapKey} -> ${result.data.checkScheduleSession.id}`);
           }
-
           if (result?.data?.checkScheduleSession?.shifts) {
             newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
             console.log("Shifts found and stored:", result.data.checkScheduleSession.shifts);
@@ -290,8 +253,6 @@ export const ViewSchedule = () => {
           }
         } catch (error: any) {
           console.error(`Failed to fetch shifts for user ${userId}:`, error);
-
-          // Show error to user if it's a permission/assignment error
           if (error?.response?.errors && error.response.errors.length > 0) {
             const errorMessage = error.response.errors[0].message;
             if (errorMessage.includes("Assign permission") || errorMessage.includes("not found")) {
@@ -305,18 +266,14 @@ export const ViewSchedule = () => {
           }
         }
       } else {
-        // Fetch for all users in schedule data (for edit mode)
         const uniqueCombinations = new Set<string>();
         scheduleData.forEach(item => {
           const key = `${item.clientId}-${item.addressId}-${item.userId}`;
           uniqueCombinations.add(key);
         });
-
-        // Fetch existing shifts for each combination
         await Promise.all(
           Array.from(uniqueCombinations).map(async (combination) => {
             const [clientId, addressId, userId] = combination.split('-').map(Number);
-
             try {
               const result = await checkScheduleSession(
                 clientId,
@@ -324,8 +281,6 @@ export const ViewSchedule = () => {
                 userId,
                 formattedStartDate
               );
-
-              // Check for GraphQL errors in the response
               if (result?.errors && result.errors.length > 0) {
                 const errorMessage = result.errors[0].message;
                 console.error(`GraphQL error for user ${userId}:`, errorMessage);
@@ -337,17 +292,13 @@ export const ViewSchedule = () => {
                     variant: "destructive",
                   });
                 }
-                return null; // Skip this combination if there are errors
+                return null;
               }
-
-              // Store checkScheduleSessionId from the result (regardless of shifts)
               if (result.data.checkScheduleSession.id) {
-                // Use combination of parameters as key since API doesn't return scheduleSessionId
                 const mapKey = `${clientId}-${addressId}-${userId}`;
                 checkScheduleSessionIdMap.set(mapKey, result.data.checkScheduleSession.id);
                 console.log(`Stored mapping (all users): ${mapKey} -> ${result.data.checkScheduleSession.id}`);
               }
-
               if (result?.data?.checkScheduleSession?.shifts) {
                 newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
                 console.log("Shifts found and stored (all users):", result.data.checkScheduleSession.shifts);
@@ -356,8 +307,6 @@ export const ViewSchedule = () => {
               }
             } catch (error: any) {
               console.error(`Failed to fetch shifts for user ${userId}:`, error);
-
-              // Show error to user if it's a permission/assignment error
               if (error?.response?.errors && error.response.errors.length > 0) {
                 const errorMessage = error.response.errors[0].message;
                 if (errorMessage.includes("Assign permission") || errorMessage.includes("not found")) {
@@ -373,23 +322,16 @@ export const ViewSchedule = () => {
           })
         );
       }
-
       setApiExistingShifts(newApiShifts);
       console.log("Fetched API existing shifts:", newApiShifts);
     } catch (error) {
       console.error("Failed to fetch API existing shifts:", error);
     }
   };
-
-  // Add local loading state for table navigation
   const [tableLoading, setTableLoading] = useState(false);
-
-  // Add state to track previous date for navigation validation
   const [previousDate, setPreviousDate] = useState("");
   const [isNavigationAttempt, setIsNavigationAttempt] = useState(false);
   const [targetDate, setTargetDate] = useState("");
-
-  // Form states for adding new guards
   const [form, setForm] = useState<FormData>({
     userId: "",
     date: "",
@@ -399,28 +341,15 @@ export const ViewSchedule = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [userSearch, setUserSearch] = useState("");
   const debouncedUserSearch = useDebounce(userSearch, 300);
-  // const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(
-  //   debouncedUserSearch,
-  //   selectedClient?.clientId ? Number(selectedClient.clientId) : undefined,
-  //   selectedClient?.addressId ? Number(selectedClient.addressId) : undefined
-  // );
-  //   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);
   const [applyAllWeek, setApplyAllWeek] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // Add a state to track if we have data from API
   const [hasApiData, setHasApiData] = useState(false);
-
-  // Track where navigation originated: 'week' | 'modal'
   const [navigationSource, setNavigationSource] = useState<"week" | "modal" | null>(null);
-  // track if the modal was opened via the "View" (eye) action
   const [openedFromViewButton, setOpenedFromViewButton] = useState(false);
-  // Confirmation modal state for no schedule found
   const [noScheduleConfirmModal, setNoScheduleConfirmModal] = useState({
     isOpen: false,
     clientName: "",
@@ -429,26 +358,15 @@ export const ViewSchedule = () => {
     addressId: null as number | null,
     selectedDate: ""
   });
-  // Bump key to remount tables and reset any internal component state
   const [viewKey, setViewKey] = useState(0);
-
-  // Ref to track if we've already restored state from URL parameters
   const hasRestoredState = useRef(false);
-
-  // Dynamic table height state and refs
   const [tableHeight, setTableHeight] = useState<string>("500px");
   const formRef = useRef<HTMLDivElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
-
-  // Initialize state from URL parameters on component mount
   useEffect(() => {
     const urlParams = getUrlParams();
-
     if (!hasRestoredState.current && urlParams.showSchedule && urlParams.clientId && urlParams.addressId) {
-      // Restore schedule view state
       setShowScheduleTable(true);
-
-      // Find the client data from the sessions
       if (clientSessions && Array.isArray(clientSessions)) {
         const clientSession = clientSessions.find(session =>
           session.clientId === parseInt(urlParams.clientId!) &&
@@ -469,17 +387,12 @@ export const ViewSchedule = () => {
           };
 
           setSelectedClient(clientData);
-
-          // Restore selected date if available
           if (urlParams.selectedDate) {
             setSelectedDate(urlParams.selectedDate);
             const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(urlParams.selectedDate));
             setCurrentWeekRange(weekRange);
-
-            // Trigger API call to fetch schedule data
             const formattedDate = convertDateFormat(urlParams.selectedDate);
             setTableLoading(true);
-
             fetchScheduleData(clientSession.clientId, clientSession.addressId, formattedDate)
               .catch(error => {
                 console.error("Error fetching schedule data on refresh:", error);
@@ -493,8 +406,6 @@ export const ViewSchedule = () => {
                 setTableLoading(false);
               });
           }
-
-          // Mark that we've restored the state
           hasRestoredState.current = true;
         }
       }
@@ -512,10 +423,8 @@ export const ViewSchedule = () => {
         setSelectedDate(userSelectedDate);
         const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(userSelectedDate));
         setCurrentWeekRange(weekRange);
-
         const formattedDate = convertDateFormat(userSelectedDate);
         setTableLoading(true);
-
         fetchScheduleData(undefined, undefined, formattedDate, parsedUserId)
           .catch(error => {
             console.error("Error fetching schedule data for employee:", error);
@@ -531,18 +440,14 @@ export const ViewSchedule = () => {
           });
       }
     }
-  }, [clientSessions]); // Remove fetchScheduleData from dependencies
+  }, [clientSessions]); 
 
   const resetUIForWeekNavigation = () => {
-    // Close modals
     setModalOpen(false);
-    // Exit edit modes
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
-    // Reset original data
     setOriginalScheduleData([]);
     setOriginalSessionData([]);
-    // Reset form-related state
     setForm({ userId: "", date: "", starttime: "", endtime: "" });
     setErrors({});
     setUserSearch("");
@@ -550,23 +455,16 @@ export const ViewSchedule = () => {
     setSubmitLoader(false);
     setAuto(false);
     setApplyAllWeek(false);
-    // Reset actions state
     setIsPrinting(false);
     setIsPublishing(false);
     setIsActualTimePublishing(false);
-    // Force remount tables
     setViewKey((k) => k + 1);
   };
-
-
   const handleView = (rowData: any) => {
-    // Reset any stale schedule state to avoid spurious toasts
     clearScheduleData();
     setHasApiData(false);
     setIsNavigationAttempt(false);
     setTargetDate("");
-
-
     const clientData = {
       clientId: rowData.clientId,
       addressId: rowData.addressId,
@@ -577,21 +475,15 @@ export const ViewSchedule = () => {
       pincode: rowData.pincode,
       addresses: rowData.client?.addresses || []
     };
-
     setSelectedClient(clientData);
     setSelectedUserId(null);
     setSelectedUserDisplayName("");
     setModalOpen(true);
     setOpenedFromViewButton(true);
-
-    // Remove URL parameter updates from here - they will be set in handleDateSubmit
   };
-
-  // Handler to close the period modal and reset related state
   const handleClosePeriodModal = () => {
     setModalOpen(false);
     setOpenedFromViewButton(false);
-    // Also close confirmation modal if it's open
     setNoScheduleConfirmModal({
       isOpen: false,
       clientName: "",
@@ -604,7 +496,6 @@ export const ViewSchedule = () => {
   const validateAndNavigate = async (newDate: string) => {
     console.log("validateAndNavigate called with:", newDate);
     setNavigationSource("week");
-    // this is a week navigation (not the modal view flow)
     setOpenedFromViewButton(false);
 
     const clientId = selectedClient?.clientId;
@@ -618,38 +509,24 @@ export const ViewSchedule = () => {
       });
       return;
     }
-
-    // Normalize to start of week
     const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
     const weekStartStr = toLocalYMD(week.startOfWeek);
-
-    // Store the current date as previous date before attempting navigation
     setPreviousDate(selectedDate);
-    setTargetDate(weekStartStr); // Store the target date (week start)
+    setTargetDate(weekStartStr); 
     setIsNavigationAttempt(true);
-
-    // IMMEDIATELY update the selected date and week range
     setSelectedDate(weekStartStr);
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
-
-    // Update only the selectedDate parameter since others are already set
     updateUrlParams({
       selectedDate: weekStartStr
     });
-
-    // Reset UI for week navigation attempt and clear stale data
     resetUIForWeekNavigation();
     setHasApiData(false);
     setScheduleData([]);
     setSessionData([]);
 
-    setTableLoading(true); // Set local loading state
-
-    // Convert date format for backend
+    setTableLoading(true);
     const formattedDate = convertDateFormat(weekStartStr);
-
-    // Clear any existing schedule data
     clearScheduleData();
 
     try {
@@ -679,13 +556,9 @@ export const ViewSchedule = () => {
     setPreviousDate(selectedDate);
     setTargetDate(weekStartStr);
     setIsNavigationAttempt(true);
-
-    // IMMEDIATELY update the selected date and week range
     setSelectedDate(weekStartStr);
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
-
-    // Set ALL URL parameters here after clicking Enter button
     const urlUpdates: Record<string, string | boolean | null> = {
       selectedDate: weekStartStr,
       showSchedule: true
@@ -701,8 +574,6 @@ export const ViewSchedule = () => {
     }
 
     updateUrlParams(urlUpdates);
-
-    // Reset UI for navigation (but don't close modal yet) and clear stale data
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
     setOriginalScheduleData([]);
@@ -711,9 +582,6 @@ export const ViewSchedule = () => {
     setScheduleData([]);
     setSessionData([]);
     setTableLoading(true);
-
-    // Ensure confirmation modal is closed before making a new request
-    // This allows the modal to show again if the same date has no schedule
     if (noScheduleConfirmModal.isOpen) {
       setNoScheduleConfirmModal({
         isOpen: false,
@@ -738,32 +606,21 @@ export const ViewSchedule = () => {
       }
     } catch (e) {
       toast({ title: "Error", description: "Failed to load schedule data!", variant: "destructive" });
-      // On error, close the modal
       setModalOpen(false);
     } finally {
       setTableLoading(false);
-      // Don't close modal here - let the useEffect handle it based on whether data exists
-      // If no data exists, the confirmation modal will be shown and period modal will stay open
     }
   };
-
-  // Handler for confirmation modal - Yes button (navigate to prepare schedule)
   const handleConfirmPrepareSchedule = () => {
     const { clientId, addressId, selectedDate } = noScheduleConfirmModal;
     if (clientId && addressId && selectedDate) {
-      // Close both modals
       setNoScheduleConfirmModal({ isOpen: false, clientName: "", formattedDate: "", clientId: null, addressId: null, selectedDate: "" });
       setModalOpen(false);
-      // Reset openedFromViewButton since we're navigating away
       setOpenedFromViewButton(false);
-      // Navigate to prepare schedule
       navigate(`/prepare-schedule/`);
     }
   };
-
-  // Handler for confirmation modal - No button (keep period modal open)
   const handleCancelPrepareSchedule = () => {
-    // Just close the confirmation modal, keep the period modal open
     setNoScheduleConfirmModal(
       {  isOpen: false,
         clientName: "",
@@ -775,7 +632,7 @@ export const ViewSchedule = () => {
   };
 
   useEffect(() => {
-    fetchClientSessions(); // Fetch only when needed
+    fetchClientSessions();
   }, []);
 
   const [tableData, setTableData] = useState([]);
@@ -802,12 +659,8 @@ export const ViewSchedule = () => {
       setTableData([]);
     }
   }, [clientSessions]);
-
-  // Transform API data when it arrives - FIXED VERSION
   useEffect(() => {
-   
     if (apiScheduleData && Array.isArray(apiScheduleData)) {
-
       if (apiScheduleData.length === 0) {
         const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
         const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
@@ -815,11 +668,8 @@ export const ViewSchedule = () => {
           day: '2-digit',
           year: 'numeric'
         }) : "";
-        //this toast should appear only when clicked on enter on Period end date modal 
         if (navigationSource === "modal" && openedFromViewButton) {
-          // Show confirmation modal instead of directly navigating
           if (selectedClient && selectedDate) {
-            // Only show modal if it's not already open (avoid duplicate modals)
             if (!noScheduleConfirmModal.isOpen) {
               setNoScheduleConfirmModal({
                 isOpen: true,
@@ -830,17 +680,14 @@ export const ViewSchedule = () => {
                 selectedDate
               });
             }
-            // Don't set openedFromViewButton to false here - keep it true so modal can show again if user clicks "No"
-            return; // stop further handling in this effect
+            return; 
           }
-          // fallback toast if we can't show modal
           toast({
             title: "No Schedule Found",
             description: `No schedule found for this week. Please prepare a schedule first.`,
             variant: "destructive",
           });
         }
-        // Only show the "No Schedule" toast when a navigation attempt triggered this state
         if (isNavigationAttempt) {
           toast({
             title: "No Schedule Found",
@@ -848,45 +695,32 @@ export const ViewSchedule = () => {
             variant: "destructive",
           });
         }
-
         setHasApiData(false);
-
-        // Don't update selectedDate here since it's already updated in validateAndNavigate
         if (isNavigationAttempt && targetDate) {
           if (navigationSource === "week") {
-            // Allow navigation to empty view - selectedDate is already set
             if (!showScheduleTable) setShowScheduleTable(true);
           }
-          // If source is modal: do NOT change selectedDate or view; keep modal open
         }
 
         setIsNavigationAttempt(false);
         setTargetDate("");
         return;
       }
-
-      // We have data
       setHasApiData(true);
       if (isNavigationAttempt && targetDate) {
-        // Don't update selectedDate here since it's already updated in validateAndNavigate
         if (!showScheduleTable) setShowScheduleTable(true);
         if (navigationSource === "modal") {
-          // Close period modal only when data exists and confirmation modal is not open
           if (!noScheduleConfirmModal.isOpen) {
             setModalOpen(false);
-            // Reset openedFromViewButton when period modal closes with data found
             setOpenedFromViewButton(false);
           }
         }
-        // Reset UI when week change is applied
         if (navigationSource === "week") {
           resetUIForWeekNavigation();
         }
       }
       setIsNavigationAttempt(false);
       setTargetDate("");
-
-      // Transform the API data
       const keyedByUserDate = new Map();
       let derivedClientInfo: any = null;
 
@@ -907,11 +741,8 @@ export const ViewSchedule = () => {
         const userId = group.user?.id;
         group.shifts?.forEach(shift => {
           if (!shift?.date || userId == null) return;
-
-          // FIX: Handle UTC dates properly - treat as local date
           let date: string;
           if (shift.date.includes('T') && shift.date.includes('Z')) {
-            // This is a UTC date, extract just the date part without timezone conversion
             date = shift.date.split('T')[0];
           } else {
             date = formatDateLocal(new Date(shift.date));
@@ -982,18 +813,18 @@ export const ViewSchedule = () => {
         });
       }
 
+      console.log("transformedData in useEffect", transformedData);
+
       if (selectedUserId) {
         const match = transformedData.find(item => item.userId === selectedUserId);
         if (match) {
           setSelectedUserDisplayName(match.userName ?? "");
         }
       }
-
-      // Only auto-select first user when not in view-employee mode and no userId in URL
       const urlParams = getUrlParams();
-      if (urlParams.viewEmployee && selectedUserId === null && transformedData.length > 0) {
+      if (urlParams.viewEmployee && transformedData.length > 0) {
         const firstUserId = transformedData[0]?.userId ?? null;
-        console.log(33,firstUserId)
+        console.log(33,transformedData[0])
         setSelectedUserId(firstUserId);
         setSelectedUserDisplayName(transformedData[0]?.userName ?? "");
       }
@@ -1001,8 +832,6 @@ export const ViewSchedule = () => {
       if (!selectedClient && derivedClientInfo) {
         setSelectedClient(derivedClientInfo);
       }
-
-      // Capture original snapshot of shifts per user to detect changes on publish
       const baseMap = new Map<number, Set<string>>();
       transformedData.forEach(item => {
         const set = baseMap.get(item.userId) || new Set<string>();
@@ -1010,8 +839,6 @@ export const ViewSchedule = () => {
         baseMap.set(item.userId, set);
       });
       originalShiftsRef.current = baseMap;
-
-      // Fetch session data for the schedule sessions
       if (transformedData.length > 0) {
         const scheduleSessionIds = transformedData.map(item => item.shifts[0]?.scheduleSessionId).filter(Boolean);
         fetchSessionData(scheduleSessionIds);
@@ -1021,7 +848,6 @@ export const ViewSchedule = () => {
       setHasApiData(false);
     }
   }, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
-  // Update local session data when API session data changes
   useEffect(() => {
     if (apiSessionData) {
       setSessionData(apiSessionData);
@@ -1029,8 +855,6 @@ export const ViewSchedule = () => {
       setSessionData([]);
     }
   }, [apiSessionData]);
-
-  // Add these useEffect hooks after the existing useEffect hooks (around line 700)
   useEffect(() => {
     if (isScheduleEditMode && originalScheduleData.length > 0) {
       const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
@@ -1039,8 +863,6 @@ export const ViewSchedule = () => {
       setHasScheduleChanges(false);
     }
   }, [scheduleData, originalScheduleData, isScheduleEditMode]);
-
-  // Minimal handler to refresh schedule data after child reports a successful delete
   const handleDeleteSuccess = async () => {
     if (!selectedDate) return;
     setTableLoading(true);
@@ -1062,15 +884,12 @@ export const ViewSchedule = () => {
 
   useEffect(() => {
     if (isActualTimeEditMode) {
-      // If we're in edit mode, check for changes regardless of originalSessionData length
-      // This handles cases where we start with no sessions and add new ones
       const hasChanges = !sessionsEqual(sessionData, originalSessionData);
       setHasSessionChanges(hasChanges);
     } else {
       setHasSessionChanges(false);
     }
   }, [sessionData, originalSessionData, isActualTimeEditMode]);
-  // Update loading states from context
   useEffect(() => {
     setSessionLoading(apiSessionLoading);
   }, [apiSessionLoading]);
@@ -1109,29 +928,19 @@ export const ViewSchedule = () => {
       title: "View"
     }
   ];
-
-
-
-  // Form handler functions
   const handleFormChange = (field: keyof FormData, value: string) => {
     setForm((f) => ({
       ...f,
       [field]: value,
     }));
-
-    // Clear field-specific error and overlap error for fields that affect overlap validation
     if (field === 'starttime' || field === 'endtime' || field === 'userId' || field === 'date') {
       setErrors((e) => ({ ...e, [field]: undefined, overlap: undefined }));
     } else {
       setErrors((e) => ({ ...e, [field]: undefined }));
     }
-
-    // Check week range when date changes
     if (field === 'date' && value && currentWeekRange) {
       const selectedDate = parseLocalYMD(value);
       const weekRange = getWeekRangeFromDateLocal(selectedDate);
-
-      // Use local timezone formatting
       const existingWeekStart = toLocalYMD(currentWeekRange.startOfWeek);
       const newWeekStart = toLocalYMD(weekRange.startOfWeek);
 
@@ -1180,54 +989,34 @@ export const ViewSchedule = () => {
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
     setSubmitLoader(true)
-    // Check if the guard is already in the schedule table
     const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
-
-    // If guard is not in schedule table, fetch their existing shifts from API
-    // if (!guardExistsInSchedule && form.userId) {
       const result = await fetchApiExistingShifts(Number(form.userId));
-      console.log("result from fetchApiExistingShifts:", JSON.stringify(result));
       if (result === null) {
         setSubmitLoader(false);
         return;
       }
-    // }
-
-    // For "Apply All Week", we need custom validation
     if (applyAllWeek && currentWeekRange) {
       const weekErrors: { [key: string]: string } = {};
-
-      // Basic field validation
       if (!form.userId) weekErrors.userId = "Required";
       if (!form.starttime) weekErrors.starttime = "Required";
       if (!form.endtime) weekErrors.endtime = "Required";
-
-      // Time duration validation
       if (form.starttime && form.endtime) {
         const minutes = minutesDiffWithWrap(form.starttime, form.endtime);
         if (minutes < 1) {
           weekErrors.endtime = "End time must be at least 1 minute after start time";
         }
       }
-
-      // For "Apply All Week", we don't block submission if there are overlaps
-      // Instead, we'll skip overlapping days during the actual shift addition
       setErrors(weekErrors);
       if (Object.keys(weekErrors).length > 0) return;
     } else {
-      // Single date validation
       const formErrors = validateForm(form, scheduleData, undefined, apiExistingShifts);
       setErrors(formErrors);
       if (Object.keys(formErrors).length > 0) {
-        setSubmitLoader(false); // Add this line
+        setSubmitLoader(false);
         return;
       }
     }
-
-    // setSubmitLoader(true);
-
     try {
-      // Get user details from state or the search results as fallback
       const selected = selectedUser ?? searchedUsers.find(u => String(u.id) === form.userId);
 
       if (!selected) {
@@ -1238,7 +1027,6 @@ export const ViewSchedule = () => {
         });
         return;
       }
-      // Create a copy of current schedule data to work with
       const updatedScheduleData = [...scheduleData];
       const newShift = {
         id: Date.now(),
@@ -1247,22 +1035,16 @@ export const ViewSchedule = () => {
         hours: calculateHours(form.starttime, form.endtime),
         auto: auto,
       };
-
-      // Initialize counters for tracking added/skipped days
       let addedDays = 0;
       let skippedDays = 0;
 
       if (applyAllWeek && currentWeekRange) {
-        // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
 
         for (let i = 0; i < 7; i++) {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
-          // Use local timezone formatting
           const dateStr = toLocalYMD(dateObj);
-
-          // Check for overlap before adding shift (both local and API data)
           const existingShiftsForDate = updatedScheduleData
             .filter(item => item.userId === Number(form.userId) && item.startDate === dateStr)
             .flatMap(item => item.shifts);
@@ -1271,8 +1053,6 @@ export const ViewSchedule = () => {
 
             return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
           });
-
-          // Check API existing shifts overlap
           let hasApiOverlap = false;
           if (selectedClient) {
             hasApiOverlap = checkApiOverlap(
@@ -1289,33 +1069,27 @@ export const ViewSchedule = () => {
           if (hasLocalOverlap || hasApiOverlap) {
             skippedDays++;
             console.log(`Skipping ${dateStr} due to ${hasLocalOverlap ? 'local' : 'API'} overlap`);
-            continue; // Skip this day and move to next
+            continue;
           }
-
-          // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
             item => item.userId === Number(form.userId) && item.startDate === dateStr
           );
 
           if (existingScheduleIndex !== -1) {
-            // Add new shift to existing schedule
             const newShifts = [
               ...updatedScheduleData[existingScheduleIndex].shifts,
               {
                 ...newShift,
-                id: Date.now() + i, // Ensure unique ID
+                id: Date.now() + i, 
                 date: dateStr,
               }
             ];
-
-            // Sort shifts by time when adding
             updatedScheduleData[existingScheduleIndex] = {
               ...updatedScheduleData[existingScheduleIndex],
               shifts: sortShiftsByTime(newShifts)
             };
             addedDays++;
           } else {
-            // Create new schedule for this day
             updatedScheduleData.push({
               id: Date.now() + i,
               clientId: selectedClient?.clientId || 0,
@@ -1339,13 +1113,11 @@ export const ViewSchedule = () => {
           }
         }
       } else {
-        // Single day entry
         const existingScheduleIndex = updatedScheduleData.findIndex(
           item => item.userId === Number(form.userId) && item.startDate === form.date
         );
 
         if (existingScheduleIndex !== -1) {
-          // Add new shift to existing schedule
           const newShifts = [
             ...updatedScheduleData[existingScheduleIndex].shifts,
             {
@@ -1353,15 +1125,12 @@ export const ViewSchedule = () => {
               date: form.date,
             }
           ];
-
-          // Sort shifts by time when adding
           updatedScheduleData[existingScheduleIndex] = {
             ...updatedScheduleData[existingScheduleIndex],
             shifts: sortShiftsByTime(newShifts)
           };
-          addedDays = 1; // Single day added
+          addedDays = 1; 
         } else {
-          // Create new schedule
           updatedScheduleData.push({
             id: Date.now(),
             clientId: selectedClient?.clientId || 0,
@@ -1381,16 +1150,12 @@ export const ViewSchedule = () => {
             userName: [selectedUser.name, (selectedUser as any)?.lastName].filter(Boolean).join(" "),
             userPhone: (selectedUser as any)?.phone || '',
           });
-          addedDays = 1; // Single day added
+          addedDays = 1; 
         }
       }
-
-      // Update schedule data and re-render table
       setScheduleData(updatedScheduleData);
 
       resetAddGuardForm();
-
-      // Show appropriate success message based on Apply All Week or single date
       if (applyAllWeek && currentWeekRange) {
         if (addedDays > 0 && skippedDays > 0) {
           toast({
@@ -1426,8 +1191,6 @@ export const ViewSchedule = () => {
       setSubmitLoader(false);
     }
   };
-
-  // Updated Publish functionality
   const handlePublish = async () => {
     setSchedulePublishModal({ isOpen: true });
   };
@@ -1444,51 +1207,36 @@ export const ViewSchedule = () => {
 
     try {
       setIsPublishing(true);
-
-      // Calculate week start and end dates from the selected date
       const selectedDateObj = parseLocalYMD(selectedDate);
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
-      // Use local timezone formatting
       const startDate = toLocalYMD(weekRange.startOfWeek);
       const endDate = toLocalYMD(weekRange.endOfWeek);
-
-      // Group schedule data by user to create the required format
       const userScheduleMap = new Map();
-
-      // Process each schedule item
       scheduleData.forEach(item => {
         const userId = item.userId;
-
-        // Get scheduleSessionId from any existing shift (all shifts for a user should have the same scheduleSessionId)
         const scheduleSessionId = item.shifts.find(shift => shift.scheduleSessionId)?.scheduleSessionId || null;
 
         if (!userScheduleMap.has(userId)) {
           userScheduleMap.set(userId, {
-            scheduleSessionId: scheduleSessionId, // Take from shift data
+            scheduleSessionId: scheduleSessionId, 
             clientId: item.clientId,
             addressId: item.addressId,
             userId: userId,
             startDate: convertDateFormat(startDate),
             endDate: convertDateFormat(endDate),
             auto: item.auto,
-            weeklyHours: 0, // Will calculate below
+            weeklyHours: 0, 
             shifts: []
           });
         } else {
-          // If user already exists, keep the first scheduleSessionId we found
-          // but update auto setting if it's different (take the latest one)
           const existingSchedule = userScheduleMap.get(userId);
-          existingSchedule.auto = item.auto; // Update with latest auto setting
-
-          // If we don't have a scheduleSessionId yet, try to get it from this item
+          existingSchedule.auto = item.auto;
           if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
             existingSchedule.scheduleSessionId = scheduleSessionId;
           }
         }
 
         const userSchedule = userScheduleMap.get(userId);
-
-        // Add shifts for this user
         item.shifts.forEach(shift => {
           const isClientGeneratedId = shift.id > 1000000000000;
           userSchedule.shifts.push({
@@ -1501,13 +1249,8 @@ export const ViewSchedule = () => {
           });
         });
       });
-
-      // Calculate weekly hours for each user and prepare final array
       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
-        // Calculate total weekly hours
         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
-
-        // Determine if this user's schedule changed compared to the original snapshot
         const originalSet = originalShiftsRef.current.get(userSchedule.userId) || new Set<string>();
         const currentSet = new Set<string>();
         scheduleData
@@ -1521,12 +1264,9 @@ export const ViewSchedule = () => {
             if (!originalSet.has(k)) { changed = true; break; }
           }
         }
-        // Also mark changed if auto flags differ
         if (!changed && autoChangedForUser(userSchedule.userId, scheduleData, originalScheduleData)) {
           changed = true;
         }
-
-        // Use the same key format as the mapping: clientId-addressId-userId
         const mapKey = `${userSchedule.clientId}-${userSchedule.addressId}-${userSchedule.userId}`;
         const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
         console.log(`User ${userSchedule.userId}: mapKey=${mapKey}, mapped checkScheduleSessionId=${mappedCheckScheduleSessionId}`);
@@ -1538,16 +1278,6 @@ export const ViewSchedule = () => {
           checkScheduleSessionId: mappedCheckScheduleSessionId
         };
       });
-
-      console.log("=== PUBLISHING SCHEDULE DATA ===");
-      console.log("checkScheduleSessionIdMap:", checkScheduleSessionIdMap);
-      console.log("Schedule Input:", JSON.stringify(scheduleInput, null, 2));
-      console.log("Total Users:", scheduleInput.length);
-      console.log("Week Range:", { startDate, endDate });
-      console.log("=====================================");
-      console.log(scheduleInput);
-
-      // Call the context function
       await bulkUpsertScheduleSessions(scheduleInput);
       console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
 
@@ -1568,16 +1298,12 @@ export const ViewSchedule = () => {
         setIsPublishing(false);
       } catch (refreshError) {
         console.error("Error refreshing schedule data after publish:", refreshError);
-        // Don't show error toast for refresh failure as publish was successful
+       
       }
-      // Switch to view mode after successful publish
       setIsScheduleEditMode(false);
       setSchedulePublishModal({ isOpen: false });
 
     } catch (error: any) {
-      console.error("Error publishing schedule:", error);
-
-      // Handle different types of errors
       let errorMessage = "Failed to publish schedule. Please try again.";
 
       if (error.message) {
@@ -1597,8 +1323,6 @@ export const ViewSchedule = () => {
         description: errorMessage,
         variant: "destructive",
       });
-
-      // Close modal on error
       setSchedulePublishModal({ isOpen: false });
     } finally {
 
@@ -1639,22 +1363,15 @@ export const ViewSchedule = () => {
   };
 
   const resetScheduleView = () => {
-    // Check URL parameters to determine where to redirect
     const urlParams = getUrlParams();
-    
-    // If view-client=true, redirect to ViewClientSummary
     if (urlParams.viewClient) {
       navigate('/view-client-summary');
       return;
     }
-    
-    // If view-employee=true, redirect to ViewEmployeeSummary
     if (urlParams.viewEmployee) {
       navigate('/view-employee-summary');
       return;
     }
-    
-    // Default behavior: reset the view
     setShowScheduleTable(false);
     setSelectedClient(null);
     setSelectedUserId(null);
@@ -1666,9 +1383,7 @@ export const ViewSchedule = () => {
     setSelectedDate("");
     setIsScheduleEditMode(false);
     setIsActualTimeEditMode(false);
-    setTableLoading(false); // Reset local loading state
-
-    // Clear URL parameters
+    setTableLoading(false);
     updateUrlParams({
       clientId: null,
       addressId: null,
@@ -1679,20 +1394,14 @@ export const ViewSchedule = () => {
       userid: null
     });
   };
-  // Add this function after the schedulesEqual function (around line 1300)
   const sessionsEqual = (a: any[], b: any[]) => {
     if (a.length !== b.length) return false;
-    
-    // Create normalized copies to avoid mutating original arrays
-    // Only compare source data fields, not derived fields like workedTime
     const normalizeSession = (s: any) => ({
       shiftId: s.shiftId || null,
       scheduleSessionId: s.scheduleSessionId || null,
       clockIn: s.clockIn || null,
       clockOut: s.clockOut || null,
     });
-    
-    // Sort by shiftId, then clockIn for stable comparison
     const sortedA = [...a].sort((x, y) => {
       if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
       return (x.clockIn || '').localeCompare(y.clockIn || '');
@@ -1705,20 +1414,17 @@ export const ViewSchedule = () => {
     
     return JSON.stringify(sortedA) === JSON.stringify(sortedB);
   };
-  // Helper: deep equality for schedule data (order-insensitive)
   const schedulesEqual = (a: ScheduleItem[], b: ScheduleItem[]) => {
     const normalize = (arr: ScheduleItem[]) =>
       [...arr]
         .map(item => ({
           ...item,
-          // sort shifts by startTime/endTime/id for stable compare
           shifts: [...item.shifts].sort((s1, s2) =>
             s1.startTime === s2.startTime
               ? (s1.endTime === s2.endTime ? (s1.id - s2.id) : s1.endTime.localeCompare(s2.endTime))
               : s1.startTime.localeCompare(s2.startTime)
           )
         }))
-        // sort items by userId then startDate for stable compare
         .sort((i1, i2) =>
           i1.userId === i2.userId ? i1.startDate.localeCompare(i2.startDate) : i1.userId - i2.userId
         );
@@ -1731,7 +1437,6 @@ export const ViewSchedule = () => {
   const toggleScheduleEditMode = () => {
     if (!isScheduleEditMode) {
       setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
-      // Fetch existing shifts from API when entering edit mode
       fetchApiExistingShifts();
     } else {
       const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
@@ -1758,8 +1463,6 @@ export const ViewSchedule = () => {
     }
     setIsActualTimeEditMode(!isActualTimeEditMode);
   };
-
-  // Handle actual time publish
   const handleActualTimePublish = async () => {
     setActualTimePublishModal({ isOpen: true });
   };
@@ -1776,8 +1479,6 @@ export const ViewSchedule = () => {
 
     try {
       setIsActualTimePublishing(true);
-
-      // Prepare updated/new sessions (with clockIn)
       const updatedItems = sessionData
         .filter(s => s.clockIn)
         .map(s => {
@@ -1789,60 +1490,33 @@ export const ViewSchedule = () => {
             clockIn: s.clockIn!,
           };
           if (s.clockOut) {
-            base.clockOut = s.clockOut; // omit when missing
+            base.clockOut = s.clockOut; 
           }
           return base;
         });
-
-      // Find deleted sessions (exist in originalSessionData but not in current sessionData)
       const deletedItems: any[] = [];
       if (isActualTimeEditMode && originalSessionData.length > 0) {
         const currentSessionIds = new Set(sessionData.map(s => s.id));
         originalSessionData.forEach(originalSession => {
-          // Only include sessions that had a real ID (not temporary IDs > 1700000000000)
-          // and are no longer in the current sessionData
           if (originalSession.id <= 1700000000000 && !currentSessionIds.has(originalSession.id)) {
             deletedItems.push({
               shiftId: originalSession.shiftId,
               scheduleSessionId: originalSession.scheduleSessionId,
-              // No sessionId, clockIn, or clockOut for deleted sessions
             });
           }
         });
       }
-
-      // Combine updated/new sessions with deleted sessions
       const items = [...updatedItems, ...deletedItems];
-
-      // if (items.length === 0) {
-      //   toast({
-      //     title: "Error",
-      //     description: "No sessions to publish.",
-      //     variant: "destructive",
-      //   });
-      //   setIsActualTimePublishing(false);
-      //   return;
-      // }
-
-      // Log payload before API call
-      console.log("=== PUBLISHING ACTUAL TIME ITEMS ===");
-      console.log(JSON.stringify(items, null, 2));
-
       await updateSessionTimes(items);
-
       toast({
         title: "Success",
         description: "Actual time data published successfully!",
       });
-
-      // Switch to view mode after successful publish
       setIsActualTimeEditMode(false);
       setActualTimePublishModal({ isOpen: false });
 
     } catch (error: any) {
       console.error("Error publishing actual time data:", error);
-
-      // Handle different types of errors
       let errorMessage = "Failed to publish actual time data. Please try again.";
 
       if (error.message) {
@@ -1851,7 +1525,6 @@ export const ViewSchedule = () => {
         } else if (error.message.includes("Network Error") || error.message.includes("fetch")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
         } else {
-          // Check for GraphQL errors in the response
           if (error.response?.errors && error.response.errors.length > 0) {
             errorMessage = error.response.errors[0].message || errorMessage;
           } else if (error.response?.data?.errors && error.response.data.errors.length > 0) {
@@ -1869,8 +1542,6 @@ export const ViewSchedule = () => {
         description: errorMessage,
         variant: "destructive",
       });
-
-      // Close modal on error
       setActualTimePublishModal({ isOpen: false });
     } finally {
       setIsActualTimePublishing(false);
@@ -1880,13 +1551,10 @@ export const ViewSchedule = () => {
   const cancelActualTimePublish = () => {
     setActualTimePublishModal({ isOpen: false });
   };
-
-  // Create immutable copy of schedule data for actual time table
   const createImmutableScheduleCopy = (scheduleData: ScheduleItem[]) => {
     return scheduleData.map(item => ({
       ...item,
       shifts: item.shifts.map(shift => ({ ...shift })),
-      // Add any additional properties needed for actual time tracking
     }));
   };
 
@@ -1894,8 +1562,6 @@ export const ViewSchedule = () => {
   const handleSchedulePrint = async () => {
     try {
       setIsPrinting(true);
-
-      // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
       const cleanScheduleData = scheduleData.map(item => ({
         ...item,
@@ -1905,8 +1571,6 @@ export const ViewSchedule = () => {
         })),
       }));
       const tableContent = generateSchedulePrintableTable(cleanScheduleData, currentWeekRange, selectedClient);
-
-      // Compute meta details for header
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
       const totalHours = scheduleData.reduce((sum, item) =>
         sum + item.shifts.reduce((s, sh) => s + (sh.hours || 0), 0), 0
@@ -1962,30 +1626,20 @@ export const ViewSchedule = () => {
       });
     }
   };
-
-  // Helper function to calculate worked time with 24-hour logic for clock-in == clock-out
   const calculateWorkedTimeForExcel = (session: any) => {
     if (!session.clockIn || !session.clockOut) {
-      return 0; // Return 0 if either time is missing
+      return 0;
     }
-
-    // If clock-in equals clock-out, return 24 hours
     if (session.clockIn === session.clockOut) {
-      return 24.0; // 24 hours
+      return 24.0; 
     }
-
-    // Otherwise use the calculated hours directly
     return calculateHours(session.clockIn, session.clockOut);
   };
 
   const handleActualTimeDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
-
-      // Transform actual time data to match schedule data format
       const transformedData = [];
-
-      // Get unique users from session data
       const uniqueUsers = new Map();
       sessionData.forEach(item => {
         const scheduleItem = scheduleData.find(si =>
@@ -1998,10 +1652,7 @@ export const ViewSchedule = () => {
           });
         }
       });
-
-      // Transform data for each user
       uniqueUsers.forEach((user) => {
-        // Group sessions by date for this user
         const sessionsByDate = new Map();
 
         sessionData.forEach(session => {
@@ -2012,7 +1663,6 @@ export const ViewSchedule = () => {
           if (scheduleItem && scheduleItem.userId === user.id) {
             const shift = scheduleItem.shifts.find(s => s.id === session.shiftId);
             if (shift) {
-              // Handle both local date format and ISO date format
               let shiftDate: string;
               if (shift.date.includes('T') && shift.date.includes('Z')) {
                 shiftDate = shift.date.split('T')[0];
@@ -2029,29 +1679,23 @@ export const ViewSchedule = () => {
             }
           }
         });
-
-        // Create transformed data structure
         sessionsByDate.forEach((sessions, date) => {
           sessions.forEach(session => {
-            // Check if we have both clock-in and clock-out times
             const hasCompleteTime = session.clockIn && session.clockOut;
-
             transformedData.push({
               userId: user.id,
               userName: user.name,
               startDate: date,
               shifts: [{
-                id: session.shiftId,  // Add the shift ID for border detection
-                startTime: session.clockIn || 'N/A',  // Use clockIn instead of startTime
-                endTime: session.clockOut || 'N/A',   // Use clockOut instead of endTime
+                id: session.shiftId,  
+                startTime: session.clockIn || 'N/A',  
+                endTime: session.clockOut || 'N/A',  
                 hours: hasCompleteTime ? calculateWorkedTimeForExcel(session) : 'N/A'
               }]
             });
           });
         });
       });
-
-      // Use the same Excel generation function with transformed data
       await generateScheduleStyledExcel(transformedData, selectedClient, currentWeekRange, 'actual');
 
       toast({
@@ -2071,13 +1715,9 @@ export const ViewSchedule = () => {
   const handleActualTimePrint = async () => {
     try {
       setIsPrinting(true);
-
-      // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange, selectedClient);
-
-      // Compute meta details for header (Actual Time)
       const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
       const totalHours = sessionData.reduce((sum, item) => sum + calculateWorkedTimeForExcel(item), 0);
 
