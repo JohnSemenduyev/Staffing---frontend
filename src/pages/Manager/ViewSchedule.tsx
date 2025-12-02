@@ -1950,7 +1950,7 @@ export const ViewSchedule = () => {
                         All Week
                       </label>
                     </div>
-                  </div>=
+                  </div>
                   <div>
                     <input
                       type={form.starttime ? "time" : "text"}
