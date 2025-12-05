@@ -505,6 +505,98 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
     }
   }
 `;
+
+export const SCHEDULE_SESSIONS_WITH_DRAFT_DATA = gql`
+  query ScheduleSessionsWithDraftData(
+    $clientId: Int
+    $addressId: Int
+    $date: String
+    $userid: Int
+  ) {
+    ScheduleSessionsWithDraftData(
+      clientId: $clientId
+      addressId: $addressId
+      date: $date
+      userid: $userid
+    ) {
+      scheduleSessions {
+        shifts {
+          scheduleSessionId
+          date
+          confirm
+          auto
+          reject
+          startTime
+          endTime
+          hours
+          id
+          actualHours
+        }
+        draftShifts {
+          draftScheduleSessionId
+          scheduleSessionId
+          date
+          startTime
+          endTime
+          hours
+          auto
+          id
+        }
+        user {
+          id
+          name
+          lastName
+          phone
+        }
+        client {
+          name
+          lastName
+        }
+        clientId
+        addressId
+        auto
+        weeklyHours
+        address {
+          address
+          city
+          state
+          pincode
+        }
+      }
+      draftScheduleSessions {
+        clientId
+        addressId
+        weeklyHours
+        client {
+          name
+          lastName
+        }
+        user {
+          id
+          name
+          lastName
+          phone
+        }
+        draftShifts {
+          id
+          date
+          startTime
+          endTime
+          hours
+          auto
+          scheduleSessionId
+          draftScheduleSessionId
+        }
+        address {
+          address
+          city
+          state
+          pincode
+        }
+      }
+    }
+  }
+`;
 export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
   query ScheduleSessionsByClientWeek($clientId: Int, $addressId: Int, $date: String , $userid : Int) {
     ScheduleSessionsByClientWeek(clientId: $clientId, addressId: $addressId, date: $date, userid: $userid) {

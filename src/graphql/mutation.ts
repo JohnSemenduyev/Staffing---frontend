@@ -446,6 +446,30 @@ export const BULK_UPSERT_SCHEDULE_SESSION = gql`
   }
 `;
 
+export const CREATE_DRAFT_SCHEDULE_SESSIONS = gql`
+  mutation CreateDraftScheduleSessions($input: [DraftScheduleSessionInput!]!) {
+    createDraftScheduleSessions(input: $input) {
+      draftScheduleSessionId
+      scheduleSessionId
+      assignmentId
+      timeSetupId
+      geosetupId
+      shifts {
+        id
+        draftScheduleSessionId
+        scheduleSessionId
+        date
+        startTime
+        endTime
+        hours
+        managerId
+        isDelete
+        auto
+      }
+    }
+  }
+`;
+
 
 
 export const UPDATE_MANY_SESSION_TIMES = gql`

@@ -159,7 +159,8 @@ export const ViewSchedule = () => {
     scheduleError,
     fetchScheduleData,
     clearScheduleData,
-    bulkUpsertScheduleSessions, 
+    bulkUpsertScheduleSessions,
+    createDraftScheduleSessions,
     sessionData: apiSessionData,
     sessionLoading: apiSessionLoading,
     sessionError: apiSessionError,
@@ -194,6 +195,13 @@ export const ViewSchedule = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [pendingDraftDeletions, setPendingDraftDeletions] = useState<Array<{
+    draftShiftId: number;
+    draftScheduleSessionId: number | null;
+    scheduleSessionId: number | null;
+    hours: number;
+  }>>([]);
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
@@ -243,11 +251,11 @@ export const ViewSchedule = () => {
           if (result.data.checkScheduleSession.id) {
             const mapKey = `${selectedClient.clientId}-${selectedClient.addressId}-${userId}`;
             checkScheduleSessionIdMap.set(mapKey, result.data.checkScheduleSession.id);
-            console.log(`Stored mapping: ${mapKey} -> ${result.data.checkScheduleSession.id}`);
+            // console.log(`Stored mapping: ${mapKey} -> ${result.data.checkScheduleSession.id}`);
           }
           if (result?.data?.checkScheduleSession?.shifts) {
             newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
-            console.log("Shifts found and stored:", result.data.checkScheduleSession.shifts);
+            // console.log("Shifts found and stored:", result.data.checkScheduleSession.shifts);
           } else {
             console.log("No shifts found in result:", result?.data?.checkScheduleSession);
           }
@@ -297,11 +305,11 @@ export const ViewSchedule = () => {
               if (result.data.checkScheduleSession.id) {
                 const mapKey = `${clientId}-${addressId}-${userId}`;
                 checkScheduleSessionIdMap.set(mapKey, result.data.checkScheduleSession.id);
-                console.log(`Stored mapping (all users): ${mapKey} -> ${result.data.checkScheduleSession.id}`);
+                // console.log(`Stored mapping (all users): ${mapKey} -> ${result.data.checkScheduleSession.id}`);
               }
               if (result?.data?.checkScheduleSession?.shifts) {
                 newApiShifts.set(combination, result.data.checkScheduleSession.shifts);
-                console.log("Shifts found and stored (all users):", result.data.checkScheduleSession.shifts);
+                // console.log("Shifts found and stored (all users):", result.data.checkScheduleSession.shifts);
               } else {
                 console.log("No shifts found in result (all users):", result?.data?.checkScheduleSession);
               }
@@ -658,14 +666,32 @@ export const ViewSchedule = () => {
     }
   }, [clientSessions]);
   useEffect(() => {
-    if (apiScheduleData && Array.isArray(apiScheduleData)) {
-      if (apiScheduleData.length === 0) {
-        const clientName = [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ') || "this client";
-        const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        }) : "";
+    if (apiScheduleData) {
+      const scheduleSessions = apiScheduleData.scheduleSessions ?? [];
+      const draftScheduleSessions = apiScheduleData.draftScheduleSessions ?? [];
+  
+      const hasAnyData =
+        (scheduleSessions && scheduleSessions.length > 0) ||
+        (draftScheduleSessions && draftScheduleSessions.length > 0);
+  
+      // -------------------------
+      // 1. No schedule / draft data
+      // -------------------------
+      if (!hasAnyData) {
+        const clientName =
+          [selectedClient?.name, selectedClient?.lastName]
+            .filter(Boolean)
+            .join(" ") || "this client";
+  
+        const formattedDate = targetDate
+          ? new Date(targetDate).toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+            })
+          : "";
+  
+        // Same UX as before
         if (navigationSource === "modal" && openedFromViewButton) {
           if (selectedClient && selectedDate) {
             if (!noScheduleConfirmModal.isOpen) {
@@ -675,10 +701,10 @@ export const ViewSchedule = () => {
                 formattedDate,
                 clientId: selectedClient.clientId,
                 addressId: selectedClient.addressId,
-                selectedDate
+                selectedDate,
               });
             }
-            return; 
+            return;
           }
           toast({
             title: "No Schedule Found",
@@ -686,6 +712,7 @@ export const ViewSchedule = () => {
             variant: "destructive",
           });
         }
+  
         if (isNavigationAttempt) {
           toast({
             title: "No Schedule Found",
@@ -693,99 +720,215 @@ export const ViewSchedule = () => {
             variant: "destructive",
           });
         }
+  
         setHasApiData(false);
+  
         if (isNavigationAttempt && targetDate) {
           if (navigationSource === "week") {
             if (!showScheduleTable) setShowScheduleTable(true);
           }
         }
-
+  
         setIsNavigationAttempt(false);
         setTargetDate("");
         return;
       }
+  
+      // -------------------------
+      // 2. We DO have schedule or draft data
+      // -------------------------
       setHasApiData(true);
+  
       if (isNavigationAttempt && targetDate) {
         if (!showScheduleTable) setShowScheduleTable(true);
+  
         if (navigationSource === "modal") {
           if (!noScheduleConfirmModal.isOpen) {
             setModalOpen(false);
             setOpenedFromViewButton(false);
           }
         }
+  
         if (navigationSource === "week") {
           resetUIForWeekNavigation();
         }
       }
+  
       setIsNavigationAttempt(false);
       setTargetDate("");
-      const keyedByUserDate = new Map();
+  
+      const keyedByUserDate = new Map<string, any>();
       let derivedClientInfo: any = null;
-
-      apiScheduleData.forEach((group: any) => {
-        if (!derivedClientInfo) {
-          derivedClientInfo = {
+  
+      const normalizeDate = (raw: string) => {
+        if (!raw) return "";
+        if (raw.includes("T")) {
+          return raw.split("T")[0];
+        }
+        return formatDateLocal(new Date(raw));
+      };
+  
+      const ensureDerivedClientInfo = (group: any) => {
+        if (derivedClientInfo) return;
+        derivedClientInfo = {
+          clientId: group.clientId,
+          addressId: group.addressId,
+          name: group.client?.name ?? "",
+          lastName: (group.client as any)?.lastName ?? "",
+          address: group.address?.address ?? "",
+          city: group.address?.city ?? "",
+          state: group.address?.state ?? "",
+          pincode: group.address?.pincode ?? "",
+          addresses: (group.client as any)?.addresses || [],
+        };
+      };
+  
+      const addShiftToMap = (params: {
+        group: any;
+        userId: number;
+        userName: string;
+        userPhone: string;
+        shift: any;
+        isDraft: boolean;
+        groupAuto: boolean;
+      }) => {
+        const { group, userId, userName, userPhone, shift, isDraft, groupAuto } = params;
+        if (!shift?.date || userId == null) return;
+  
+        const date = normalizeDate(shift.date);
+        const key = `${userId}-${date}`;
+  
+        let item = keyedByUserDate.get(key);
+        if (!item) {
+          item = {
+            id: keyedByUserDate.size + 1,
             clientId: group.clientId,
             addressId: group.addressId,
-            name: group.client?.name ?? "",
-            lastName: (group.client as any)?.lastName ?? "",
-            address: group.address?.address ?? "",
-            city: group.address?.city ?? "",
-            state: group.address?.state ?? "",
-            pincode: group.address?.pincode ?? "",
-            addresses: (group.client as any)?.addresses || []
+            userId,
+            startDate: date,
+            auto: groupAuto ?? false,
+            shifts: [],
+            clientName:
+              [group.client?.name, (group.client as any)?.lastName]
+                .filter(Boolean)
+                .join(" ") || "Unknown Client",
+            address:
+              [
+                group.address?.address,
+                group.address?.city,
+                group.address?.state,
+                group.address?.pincode,
+              ]
+                .filter(Boolean)
+                .join(", ") || "Unknown Address",
+            userName,
+            userPhone,
           };
+          keyedByUserDate.set(key, item);
         }
+  
+        // For draft shifts we give them a big synthetic id so they are treated as "new"
+        const baseId = shift.id ?? 0;
+        const syntheticId = isDraft ? 2000000000000 + baseId : baseId;
+
+        const shiftData: any = {
+          id: syntheticId,
+          date: shift.date,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          hours: shift.hours,
+          scheduleSessionId: shift.scheduleSessionId ?? null,
+          auto: (shift as any)?.auto ?? false,
+          confirm: (shift as any)?.confirm ?? false,
+          reject: (shift as any)?.reject ?? false,
+        };
+
+        // Preserve draft-specific IDs for delete/update operations
+        if (isDraft) {
+          // draftShiftId is the original database ID (baseId)
+          shiftData.draftShiftId = baseId;
+          // draftScheduleSessionId comes from the shift object or the group
+          shiftData.draftScheduleSessionId = (shift as any)?.draftScheduleSessionId ?? (group as any)?.draftScheduleSessionId ?? null;
+        }
+
+        item.shifts.push(shiftData);
+      };
+  
+      // 2.a. Handle main scheduleSessions (shifts + draftShifts)
+      scheduleSessions.forEach((group: any) => {
+        ensureDerivedClientInfo(group);
+  
         const userId = group.user?.id;
-        group.shifts?.forEach(shift => {
-          if (!shift?.date || userId == null) return;
-          let date: string;
-          if (shift.date.includes('T') && shift.date.includes('Z')) {
-            date = shift.date.split('T')[0];
-          } else {
-            date = formatDateLocal(new Date(shift.date));
-          }
-
-          const key = `${userId}-${date}`;
-
-          let item = keyedByUserDate.get(key);
-          if (!item) {
-            item = {
-              id: keyedByUserDate.size + 1,
-              clientId: group.clientId,
-              addressId: group.addressId,
-              userId,
-              startDate: date,
-              auto: group.auto ?? false,
-              shifts: [],
-              clientName: [group.client?.name, (group.client as any)?.lastName].filter(Boolean).join(' ') || "Unknown Client",
-              address: [group.address?.address, group.address?.city, group.address?.state, group.address?.pincode].filter(Boolean).join(", ") || "Unknown Address",
-              userName: [group.user?.name, (group.user as any)?.lastName].filter(Boolean).join(" "),
-              userPhone: (group.user as any)?.phone ?? ""
-            };
-            keyedByUserDate.set(key, item);
-          }
-
-          item.shifts.push({
-            id: shift.id,
-            date: shift.date,
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            hours: shift.hours,
-            scheduleSessionId: shift.scheduleSessionId,
-            auto: (shift as any)?.auto ?? false,
-            confirm: (shift as any)?.confirm ?? false,
-            reject: (shift as any)?.reject ?? false
+        const userName = [group.user?.name, (group.user as any)?.lastName]
+          .filter(Boolean)
+          .join(" ");
+        const userPhone = (group.user as any)?.phone ?? "";
+        const groupAuto = group.auto ?? false;
+  
+        // Real scheduled shifts
+        group.shifts?.forEach((shift: any) => {
+          addShiftToMap({
+            group,
+            userId,
+            userName,
+            userPhone,
+            shift,
+            isDraft: false,
+            groupAuto,
+          });
+        });
+  
+        // Draft shifts attached to existing scheduleSession
+        group.draftShifts?.forEach((shift: any) => {
+          addShiftToMap({
+            group,
+            userId,
+            userName,
+            userPhone,
+            shift,
+            isDraft: true,
+            groupAuto: groupAuto || !!shift.auto,
           });
         });
       });
-
+  
+      // 2.b. Handle draftScheduleSessions (draft-only sessions)
+      draftScheduleSessions.forEach((group: any) => {
+        ensureDerivedClientInfo(group);
+  
+        const userId = group.user?.id;
+        const userName = [group.user?.name, (group.user as any)?.lastName]
+          .filter(Boolean)
+          .join(" ");
+        const userPhone = (group.user as any)?.phone ?? "";
+  
+        // For draft schedule sessions, derive auto from shifts
+        const groupAuto =
+          group.draftShifts?.some((s: any) => s.auto) ?? false;
+  
+        group.draftShifts?.forEach((shift: any) => {
+          addShiftToMap({
+            group,
+            userId,
+            userName,
+            userPhone,
+            shift,
+            isDraft: true,
+            groupAuto,
+          });
+        });
+      });
+  
+      // -------------------------
+      // 3. Final transformed data
+      // -------------------------
       const transformedData = Array.from(keyedByUserDate.values());
       setScheduleData(transformedData);
-
+  
+      // Keep selectedClient in sync (same logic as before)
       if (transformedData.length > 0) {
         const first = transformedData[0];
-        setSelectedClient(prev => {
+        setSelectedClient((prev) => {
           const next = {
             clientId: first.clientId,
             addressId: first.addressId,
@@ -795,9 +938,9 @@ export const ViewSchedule = () => {
             city: prev?.city ?? "",
             state: prev?.state ?? "",
             pincode: prev?.pincode ?? "",
-            addresses: prev?.addresses ?? []
+            addresses: prev?.addresses ?? [],
           };
-
+  
           if (
             !prev ||
             prev.clientId !== next.clientId ||
@@ -810,51 +953,67 @@ export const ViewSchedule = () => {
           return prev;
         });
       }
-
+  
+      // Set selected employee display name if viewing by employee
       if (selectedUserId) {
-        const match = transformedData.find(item => item.userId === selectedUserId);
+        const match = transformedData.find(
+          (item) => item.userId === selectedUserId
+        );
         if (match) {
           setSelectedUserDisplayName(match.userName ?? "");
         }
       }
+  
       const urlParams = getUrlParams();
       if (urlParams.viewEmployee && transformedData.length > 0) {
         const firstUserId = transformedData[0]?.userId ?? null;
         setSelectedUserId(firstUserId);
         setSelectedUserDisplayName(transformedData[0]?.userName ?? "");
       }
-
+  
       if (!selectedClient && derivedClientInfo) {
         setSelectedClient(derivedClientInfo);
       }
+  
+      // Build originalShiftsRef (used for change detection)
       const baseMap = new Map<number, Set<string>>();
-      transformedData.forEach(item => {
+      transformedData.forEach((item) => {
         const set = baseMap.get(item.userId) || new Set<string>();
-        item.shifts.forEach(s => set.add(makeShiftKey(s)));
+        item.shifts.forEach((s: any) => set.add(makeShiftKey(s)));
         baseMap.set(item.userId, set);
       });
       originalShiftsRef.current = baseMap;
+  
+      // Fetch session data for all scheduleSessionIds (only real sessions)
       if (transformedData.length > 0) {
-        // Collect ALL scheduleSessionIds from all shifts (across all clients)
         const scheduleSessionIds = Array.from(
           new Set(
-            transformedData.flatMap(item =>
+            transformedData.flatMap((item) =>
               item.shifts
-                .map(s => s.scheduleSessionId)
-                .filter((id): id is number => typeof id === "number")
+                .map((s: any) => s.scheduleSessionId)
+                .filter((id: any): id is number => typeof id === "number")
             )
           )
         );
-
+  
         if (scheduleSessionIds.length > 0) {
           fetchSessionData(scheduleSessionIds);
         }
       }
-
     } else if (apiScheduleData === null) {
       setHasApiData(false);
     }
-  }, [apiScheduleData, selectedClient, selectedDate, isNavigationAttempt, previousDate, targetDate, showScheduleTable, navigationSource]);
+  }, [
+    apiScheduleData,
+    selectedClient,
+    selectedDate,
+    isNavigationAttempt,
+    previousDate,
+    targetDate,
+    showScheduleTable,
+    navigationSource,
+  ]);
+  
   useEffect(() => {
     if (apiSessionData) {
       setSessionData(apiSessionData);
@@ -1162,7 +1321,7 @@ export const ViewSchedule = () => {
       }
       setScheduleData(updatedScheduleData);
 
-      resetAddGuardForm();
+      // resetAddGuardForm();
       if (applyAllWeek && currentWeekRange) {
         if (addedDays > 0 && skippedDays > 0) {
           toast({
@@ -1341,6 +1500,282 @@ export const ViewSchedule = () => {
     setSchedulePublishModal({ isOpen: false });
   };
 
+  // Callback to handle draft shift deletions
+  const handleDraftShiftDeletion = (shift: any) => {
+    // Check if this is a draft shift
+    const draftShiftId = (shift as any)?.draftShiftId;
+    const draftScheduleSessionId = (shift as any)?.draftScheduleSessionId ?? null;
+    const scheduleSessionId = shift.scheduleSessionId ?? null;
+    if (draftShiftId || draftScheduleSessionId) {
+      setPendingDraftDeletions(prev => [...prev, {
+        draftShiftId: draftShiftId || (shift.id > 2000000000000 ? shift.id - 2000000000000 : shift.id),
+        draftScheduleSessionId,
+        scheduleSessionId,
+        hours: shift.hours || 0
+      }]);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!scheduleData || scheduleData.length === 0) {
+      toast({
+        title: "Error",
+        description: "No data available to save!",
+        variant: "destructive",
+      });
+      return;
+    }
+  
+    try {
+      setIsSavingDraft(true);
+      console.log("scheduleData111", scheduleData);
+  
+      const selectedDateObj = parseLocalYMD(selectedDate);
+      const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
+      const startDate = toLocalYMD(weekRange.startOfWeek);
+      const endDate = toLocalYMD(weekRange.endOfWeek);
+  
+      // =========================================================
+      // STEP 1: build inputs for NEW draft shifts
+      //   - case1: new draftScheduleSession (no scheduleSessionId)
+      //   - case2: new draft shifts for existing scheduleSession
+      // Only consider client-generated shifts (id from Date.now).
+      // =========================================================
+  
+      type GroupKey = string;
+      type GroupValue = {
+        clientId: number;
+        addressId: number;
+        userId: number;
+        scheduleSessionId: number | null;
+        checkScheduleSessionId: number | null;
+        auto: boolean;
+        newShifts: any[];                      // case1
+        existingShiftsWithNewScheduleSession: any[]; // case2
+      };
+  
+      const createInputs: any[] = [];
+      const userScheduleMap = new Map<GroupKey, GroupValue>();
+  
+      scheduleData.forEach(item => {
+        const groupKey: GroupKey = `${item.userId}-${item.clientId}-${item.addressId}`;
+  
+        const scheduleSessionId =
+          item.shifts.find(s => s.scheduleSessionId)?.scheduleSessionId ?? null;
+  
+        const checkKey = `${item.clientId}-${item.addressId}-${item.userId}`;
+        const checkScheduleSessionId = checkScheduleSessionIdMap.get(checkKey) || null;
+  
+        if (!userScheduleMap.has(groupKey)) {
+          userScheduleMap.set(groupKey, {
+            clientId: item.clientId,
+            addressId: item.addressId,
+            userId: item.userId,
+            scheduleSessionId,
+            checkScheduleSessionId,
+            auto: item.auto || false,
+            newShifts: [],
+            existingShiftsWithNewScheduleSession: [],
+          });
+        }
+  
+        const group = userScheduleMap.get(groupKey)!;
+  
+        item.shifts.forEach(shift => {
+          // 🔑 Treat only client-generated ids as "new" shifts
+          const isClientGeneratedId = shift.id > 1_000_000_000_000;
+          if (!isClientGeneratedId) {
+            // existing schedule shift or existing draft shift -> not a "create"
+            return;
+          }
+  
+          const shiftDate = convertDateFormat(shift.date || item.startDate);
+          const shiftData: any = {
+            isDelete: false,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            hours: shift.hours,
+            auto: shift.auto || false,
+            date: shiftDate,
+          };
+  
+          if (!shift.scheduleSessionId) {
+            // ---- case1: new draftScheduleSession ----
+            group.newShifts.push(shiftData);
+          } else {
+            // ---- case2: extra draft shifts for existing scheduleSession ----
+            group.existingShiftsWithNewScheduleSession.push(shiftData);
+          }
+        });
+      });
+  
+      // Build payloads for case1 & case2
+      userScheduleMap.forEach(group => {
+        // case1: new draftScheduleSession
+        if (group.newShifts.length > 0) {
+          const weeklyHours = group.newShifts.reduce(
+            (total, s) => total + (s.hours || 0),
+            0
+          );
+  
+          createInputs.push({
+            shifts: group.newShifts,
+            weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+            clientId: group.clientId,
+            addressId: group.addressId,
+            userId: group.userId,
+            startDate: convertDateFormat(startDate),
+            endDate: convertDateFormat(endDate),
+            checkScheduleSessionId: group.checkScheduleSessionId,
+            scheduleSessionId: null,
+            auto: group.auto,
+          });
+        }
+  
+        // case2: new draft shifts attached to an existing scheduleSession
+        if (
+          group.existingShiftsWithNewScheduleSession.length > 0 &&
+          group.scheduleSessionId
+        ) {
+          createInputs.push({
+            shifts: group.existingShiftsWithNewScheduleSession,
+            scheduleSessionId: group.scheduleSessionId,
+          });
+        }
+      });
+  
+      // =========================================================
+      // STEP 2: build inputs for DELETED draft shifts from pending deletions
+      //   - case6: { shifts:[{isDelete:true,draftShiftId}], draftScheduleSessionId, weeklyHours }
+      //   Group by draftScheduleSessionId and calculate weeklyHours
+      // =========================================================
+
+      const deleteInputs: any[] = [];
+
+      // Group pending deletions by draftScheduleSessionId
+      const deletionsByDraftSession = new Map<number | null, typeof pendingDraftDeletions>();
+      
+      pendingDraftDeletions.forEach(deletion => {
+        const key = deletion.draftScheduleSessionId;
+        if (!deletionsByDraftSession.has(key)) {
+          deletionsByDraftSession.set(key, []);
+        }
+        deletionsByDraftSession.get(key)!.push(deletion);
+      });
+
+      // Process each group
+      deletionsByDraftSession.forEach((deletions, draftScheduleSessionId) => {
+        if (draftScheduleSessionId === null) {
+          // Skip if no draftScheduleSessionId (shouldn't happen for case6)
+          return;
+        }
+
+        // Calculate remaining weekly hours after deletions
+        // Get all shifts with this draftScheduleSessionId that are NOT being deleted
+        const deletedShiftIds = new Set(deletions.map(d => d.draftShiftId));
+        const remainingWeeklyHoursRaw = scheduleData.reduce((total, item) => {
+          const sumForItem = item.shifts
+            .filter(s => {
+              const shiftDraftScheduleSessionId = (s as any)?.draftScheduleSessionId ?? null;
+              const shiftDraftShiftId = (s as any)?.draftShiftId;
+              return (
+                shiftDraftScheduleSessionId === draftScheduleSessionId &&
+                !deletedShiftIds.has(shiftDraftShiftId)
+              );
+            })
+            .reduce((st, sh) => st + (sh.hours || 0), 0);
+          return total + sumForItem;
+        }, 0);
+
+        const remainingWeeklyHours = parseFloat(remainingWeeklyHoursRaw.toFixed(2));
+
+        // Build shifts array with all deletions for this draftScheduleSessionId
+        const shiftsArray = deletions.map(d => ({
+          isDelete: true,
+          draftShiftId: d.draftShiftId,
+        }));
+
+        deleteInputs.push({
+          shifts: shiftsArray,
+          draftScheduleSessionId: draftScheduleSessionId,
+          weeklyHours: remainingWeeklyHours,
+        });
+      });
+
+      // Console log for pending deletions array
+      if (deleteInputs.length > 0) {
+        console.log("Pending draft deletions to be sent:", deleteInputs);
+      }
+  
+      // =========================================================
+      // STEP 3: final payload = creates + deletes
+      // =========================================================
+  
+      const draftInput = [...createInputs, ...deleteInputs];
+  
+      if (draftInput.length === 0) {
+        toast({
+          title: "Info",
+          description:
+            "No new or changed draft data to save. All shifts are already up to date.",
+        });
+        return;
+      }
+  
+      await createDraftScheduleSessions(draftInput);
+      
+      // Clear pending deletions after successful save
+      setPendingDraftDeletions([]);
+      
+      toast({
+        title: "Success",
+        description: "Draft schedule saved successfully!",
+      });
+  
+      // refresh data
+      try {
+        const clientId = selectedClient?.clientId;
+        const addressId = selectedClient?.addressId;
+        const formattedDate = convertDateFormat(selectedDate);
+  
+        if (selectedUserId) {
+          await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
+        } else if (clientId && addressId) {
+          await fetchScheduleData(clientId, addressId, formattedDate);
+        }
+      } catch (refreshError) {
+        console.error("Error refreshing schedule data after save:", refreshError);
+      }
+    } catch (error: any) {
+      let errorMessage = "Failed to save draft schedule. Please try again.";
+  
+      if (error.message) {
+        if (error.message.includes("No authentication token found")) {
+          errorMessage = "Authentication token not found. Please log in again.";
+        } else if (
+          error.message.includes("Network Error") ||
+          error.message.includes("fetch")
+        ) {
+          errorMessage =
+            "Network error. Please check your internet connection and try again.";
+        } else if (error.response?.errors && error.response.errors.length > 0) {
+          errorMessage = error.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+  
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+  
+  
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
     setScheduleData(prev => prev.map(item =>
       item.userId === userId
@@ -1445,10 +1880,14 @@ export const ViewSchedule = () => {
     if (!isScheduleEditMode) {
       setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
       fetchApiExistingShifts();
+      // Clear pending deletions when entering edit mode
+      setPendingDraftDeletions([]);
     } else {
       const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
       if (hasChanges) {
         setScheduleData(originalScheduleData);
+        // Clear pending deletions when cancelling edit mode
+        setPendingDraftDeletions([]);
         toast({
           title: "Changes Cancelled",
           description: "Schedule time changes have been reset.",
@@ -2089,10 +2528,13 @@ export const ViewSchedule = () => {
                 isEditMode={isScheduleEditMode}
                 onScheduleDataChange={setScheduleData}
                 onPublish={handlePublish}
+                onSave={handleSaveDraft}
+                isSaving={isSavingDraft}
                 onPrint={handleSchedulePrint}
                 onDownloadExcel={handleScheduleDownloadExcel}
                 onToggleEditMode={toggleScheduleEditMode}
                 onDeleteSuccess={handleDeleteSuccess}
+                onDraftShiftDeletion={handleDraftShiftDeletion}
                 isPublishing={isPublishing}
                 isPrinting={isPrinting}
                 loading={scheduleLoading || tableLoading}

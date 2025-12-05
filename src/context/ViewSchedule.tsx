@@ -1,16 +1,24 @@
-
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+} from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { 
+import {
   GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
-  SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
-  GET_ALL_SESSIONS,
+  SCHEDULE_SESSIONS_WITH_DRAFT_DATA,
   GET_SESSIONS_BY_SCHEDULE_SESSION,
 } from "../graphql/queries";
-import { BULK_UPSERT_SCHEDULE_SESSION, UPDATE_MANY_SESSION_TIMES, CHECK_SCHEDULE_SESSION } from "../graphql/mutation";
-import { toast as toasted } from "sonner";
+import {
+  BULK_UPSERT_SCHEDULE_SESSION,
+  UPDATE_MANY_SESSION_TIMES,
+  CHECK_SCHEDULE_SESSION,
+  CREATE_DRAFT_SCHEDULE_SESSIONS,
+} from "../graphql/mutation";
 
-// Types
+// ---------- Types ----------
+
 export type Address = {
   address: string;
   city: string;
@@ -87,9 +95,22 @@ export type ScheduleUser = {
   phone?: string;
 };
 
-export type ScheduleDataItem = {
+// New: drafts support
+export type DraftShift = {
+  id: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  auto?: boolean;
+  scheduleSessionId?: number | null;
+  draftScheduleSessionId?: number | null;
+};
+
+export type ScheduleSessionWithDraft = {
   auto: boolean;
   shifts: Shift[];
+  draftShifts: DraftShift[];
   user: ScheduleUser;
   client: Client;
   address: Address;
@@ -98,7 +119,24 @@ export type ScheduleDataItem = {
   weeklyHours: number;
 };
 
-export type ScheduleData = ScheduleDataItem[];
+export type DraftScheduleSession = {
+  clientId: number;
+  addressId: number;
+  weeklyHours: number;
+  client: Client;
+  user: ScheduleUser;
+  draftShifts: DraftShift[];
+  address: Address;
+};
+
+// Now ScheduleData is an object with two arrays
+export type ScheduleData = {
+  scheduleSessions: ScheduleSessionWithDraft[];
+  draftScheduleSessions: DraftScheduleSession[];
+};
+
+// For backward compatibility if anything still uses ScheduleDataItem
+export type ScheduleDataItem = ScheduleSessionWithDraft;
 
 // New input type for mutation
 export type ShiftInput = {
@@ -123,7 +161,8 @@ export type ScheduleSessionInputExtended = {
   change?: boolean | null;
 };
 
-// Context type
+// ---------- Context type ----------
+
 type ClientSessionContextType = {
   clientSessions: ClientSession[] | null;
   loading: boolean;
@@ -141,27 +180,46 @@ type ClientSessionContextType = {
   ) => Promise<void>;
   clearScheduleData: () => void;
 
-  bulkUpsertScheduleSessions: (input: ScheduleSessionInputExtended[]) => Promise<any>;
+  bulkUpsertScheduleSessions: (
+    input: ScheduleSessionInputExtended[]
+  ) => Promise<any>;
+  createDraftScheduleSessions: (input: any[]) => Promise<any>;
   mutationLoading: boolean;
+
   sessionData: SessionItem[] | null;
   sessionLoading: boolean;
   sessionError: string | null;
   fetchSessionData: (scheduleSessionIds: number[]) => Promise<void>;
   clearSessionData: () => void;
   updateSessionTimes: (sessionUpdates: Array<{
-    sessionId: number; 
+    sessionId?: number | null;
     shiftId: number;
     scheduleSessionId: number;
-    clockIn: string;
+    clockIn?: string;
     clockOut?: string | null;
   }>) => Promise<SessionItem[]>;
-  checkScheduleSession: (clientId: number, addressId: number, userId: number, startDate: string) => Promise<any>;
+  checkScheduleSession: (
+    clientId: number,
+    addressId: number,
+    userId: number,
+    startDate: string
+  ) => Promise<any>;
 };
- 
-const ClientSessionContext = createContext<ClientSessionContextType | undefined>(undefined);
 
-export const ClientSessionProvider = ({ children }: { children: ReactNode }) => {
-  const [clientSessions, setClientSessions] = useState<ClientSession[] | null>(null);
+// ---------- Context + Provider ----------
+
+const ClientSessionContext = createContext<
+  ClientSessionContextType | undefined
+>(undefined);
+
+export const ClientSessionProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const [clientSessions, setClientSessions] = useState<ClientSession[] | null>(
+    null
+  );
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -171,18 +229,30 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
 
   const [mutationLoading, setMutationLoading] = useState<boolean>(false);
 
-  // Session data state
   const [sessionData, setSessionData] = useState<SessionItem[] | null>(null);
   const [sessionLoading, setSessionLoading] = useState<boolean>(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
-  const genericError = (op: 'fetchClientSessions'|'fetchSchedule'|'bulkUpsert'|'fetchSessions'|'updateTimes', err: any) => {
-    const msg = String(err?.response?.errors?.[0]?.message || err?.message || '');
-    if (/unauthorized|forbidden/i.test(msg)) return 'Your session has expired. Please sign in again.';
-    if (/invalid\s+(date|time)/i.test(msg)) return 'Invalid input. Please check your entries and try again.';
-    if (op === 'updateTimes' && /non-empty array/i.test(msg)) return 'No valid sessions to publish.';
-    return 'Something went wrong. Please try again.';
+  const genericError = (
+    op:
+      | "fetchClientSessions"
+      | "fetchSchedule"
+      | "bulkUpsert"
+      | "fetchSessions"
+      | "updateTimes",
+    err: any
+  ) => {
+    const msg = String(err?.response?.errors?.[0]?.message || err?.message || "");
+    if (/unauthorized|forbidden/i.test(msg))
+      return "Your session has expired. Please sign in again.";
+    if (/invalid\s+(date|time)/i.test(msg))
+      return "Invalid input. Please check your entries and try again.";
+    if (op === "updateTimes" && /non-empty array/i.test(msg))
+      return "No valid sessions to publish.";
+    return "Something went wrong. Please try again.";
   };
+
+  // ----- fetchClientSessions -----
 
   const fetchClientSessions = async () => {
     setLoading(true);
@@ -198,12 +268,14 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       );
       setClientSessions(response.ScheduleSessionsByClientWeekForManager);
     } catch (err) {
-      console.error('fetchClientSessions:', err);
-      setError(genericError('fetchClientSessions', err));
+      console.error("fetchClientSessions:", err);
+      setError(genericError("fetchClientSessions", err));
     } finally {
       setLoading(false);
     }
   };
+
+  // ----- fetchScheduleData (NEW QUERY) -----
 
   const fetchScheduleData = async (
     clientId?: number | null,
@@ -216,21 +288,22 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     try {
       const token = sessionStorage.getItem("token");
       const response = await graphQLClient.request<{
-        ScheduleSessionsByClientWeek: ScheduleData;
+        ScheduleSessionsWithDraftData: ScheduleData;
       }>(
-        SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
+        SCHEDULE_SESSIONS_WITH_DRAFT_DATA,
         {
           ...(clientId !== undefined && clientId !== null ? { clientId } : {}),
           ...(addressId !== undefined && addressId !== null ? { addressId } : {}),
           ...(date ? { date } : {}),
-          ...(userid !== undefined && userid !== null ? { userid } : {})
+          ...(userid !== undefined && userid !== null ? { userid } : {}),
         },
         { Authorization: `Bearer ${token}` }
       );
-      setScheduleData(response.ScheduleSessionsByClientWeek);
+
+      setScheduleData(response.ScheduleSessionsWithDraftData);
     } catch (err) {
-      console.error('fetchScheduleData:', err);
-      setScheduleError(genericError('fetchSchedule', err));
+      console.error("fetchScheduleData:", err);
+      setScheduleError(genericError("fetchSchedule", err));
       setScheduleData(null);
     } finally {
       setScheduleLoading(false);
@@ -242,61 +315,63 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setScheduleError(null);
   };
 
-  const bulkUpsertScheduleSessions = async (input: ScheduleSessionInputExtended[]) => {
+  // ----- Bulk upsert schedule sessions -----
+
+  const bulkUpsertScheduleSessions = async (
+    input: ScheduleSessionInputExtended[]
+  ) => {
     setMutationLoading(true);
     try {
       const token = sessionStorage.getItem("token");
       if (!token) {
         throw new Error("No authentication token found");
       }
-      
+
       const response = await graphQLClient.request(
         BULK_UPSERT_SCHEDULE_SESSION,
         { input },
         { Authorization: `Bearer ${token}` }
       );
-      // Don't show success toast here - let the component handle it
+      // let calling component handle the result & toast
       return response;
     } catch (err) {
-      console.error('bulkUpsertScheduleSessions:', err);
-      // Throw the error so the component can handle it properly
+      console.error("bulkUpsertScheduleSessions:", err);
       throw err;
     } finally {
       setMutationLoading(false);
     }
   };
 
+  // ----- fetchSessionData -----
+
   const fetchSessionData = async (scheduleSessionIds: number[]) => {
     setSessionLoading(true);
     setSessionError(null);
     try {
       const token = sessionStorage.getItem("token");
-      
-      // Remove duplicates to avoid redundant API calls
       const uniqueScheduleSessionIds = [...new Set(scheduleSessionIds)];
-      
-      // Make all API calls in parallel for better performance
-      const sessionPromises = uniqueScheduleSessionIds.map(scheduleSessionId =>
-        graphQLClient.request<{
-          sessionsByScheduleSession: SessionItem[];
-        }>(
-          GET_SESSIONS_BY_SCHEDULE_SESSION,
-          { scheduleSessionId },
-          { Authorization: `Bearer ${token}` }
-        )
+
+      const sessionPromises = uniqueScheduleSessionIds.map(
+        (scheduleSessionId) =>
+          graphQLClient.request<{
+            sessionsByScheduleSession: SessionItem[];
+          }>(
+            GET_SESSIONS_BY_SCHEDULE_SESSION,
+            { scheduleSessionId },
+            { Authorization: `Bearer ${token}` }
+          )
       );
-      
+
       const responses = await Promise.all(sessionPromises);
-      
-      // Combine all session data
-      const allSessions: SessionItem[] = responses.flatMap(response => 
-        response.sessionsByScheduleSession
+
+      const allSessions: SessionItem[] = responses.flatMap(
+        (response) => response.sessionsByScheduleSession
       );
 
       setSessionData(allSessions);
     } catch (err) {
-      console.error('fetchSessionData:', err);
-      setSessionError(genericError('fetchSessions', err));
+      console.error("fetchSessionData:", err);
+      setSessionError(genericError("fetchSessions", err));
       setSessionData(null);
     } finally {
       setSessionLoading(false);
@@ -308,12 +383,13 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
     setSessionError(null);
   };
 
-  // Update or create session times
+  // ----- updateSessionTimes -----
+
   const updateSessionTimes = async (sessionUpdates: Array<{
-    sessionId?: number | null; // Optional for deleted sessions
+    sessionId?: number | null;
     shiftId: number;
     scheduleSessionId: number;
-    clockIn?: string; // Optional for deleted sessions
+    clockIn?: string;
     clockOut?: string | null;
   }>) => {
     try {
@@ -322,23 +398,22 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         throw new Error("No authentication token found");
       }
 
-      // Transform the data to match the expected GraphQL input
-      const transformedUpdates = sessionUpdates.map(update => {
+      const transformedUpdates = sessionUpdates.map((update) => {
         const base: any = {
           shiftId: update.shiftId,
           scheduleSessionId: update.scheduleSessionId,
         };
-        // Only include sessionId if it exists (for deleted sessions, it won't)
+
         if (update.sessionId !== undefined && update.sessionId !== null) {
           base.sessionId = update.sessionId;
         }
-        // Only include clockIn/clockOut if they exist (for deleted sessions, they won't)
         if (update.clockIn) {
           base.clockIn = update.clockIn;
         }
         if (update.clockOut) {
-          base.clockOut = update.clockOut; // omit when null/undefined
+          base.clockOut = update.clockOut;
         }
+
         return base;
       });
 
@@ -351,31 +426,44 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
       );
 
       console.log("Session times updated:", response.updateManySessionTimes);
-      // Don't show success toast here - let the component handle it
-      
-      // Refresh session data after update
+
+      // Refresh session data after update using the new scheduleData shape
       if (scheduleData) {
-        // Collect unique scheduleSessionIds from shifts within scheduleData
         const scheduleSessionIds = new Set<number>();
-        scheduleData.forEach(item => {
-          item.shifts.forEach(shift => {
+
+        // From scheduleSessions' regular shifts and draftShifts
+        scheduleData.scheduleSessions.forEach((item) => {
+          item.shifts.forEach((shift) => {
             if (shift.scheduleSessionId) {
               scheduleSessionIds.add(shift.scheduleSessionId);
             }
           });
+
+          item.draftShifts.forEach((draft) => {
+            if (draft.scheduleSessionId) {
+              scheduleSessionIds.add(draft.scheduleSessionId);
+            }
+          });
         });
+
         await fetchSessionData(Array.from(scheduleSessionIds));
       }
-      
+
       return response.updateManySessionTimes;
     } catch (error) {
-      console.error('updateSessionTimes:', error);
-      // Throw the error so the component can handle it properly
+      console.error("updateSessionTimes:", error);
       throw error;
     }
   };
 
-  const checkScheduleSession = async (clientId: number, addressId: number, userId: number, startDate: string) => {
+  // ----- checkScheduleSession -----
+
+  const checkScheduleSession = async (
+    clientId: number,
+    addressId: number,
+    userId: number,
+    startDate: string
+  ) => {
     try {
       const token = sessionStorage.getItem("token");
       if (!token) {
@@ -389,16 +477,39 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         { clientId, addressId, userId, startDate },
         { Authorization: `Bearer ${token}` }
       );
-      
-      // Return the response in the expected format with data property
+
       return {
         data: {
-          checkScheduleSession: response.checkScheduleSession
-        }
+          checkScheduleSession: response.checkScheduleSession,
+        },
       };
     } catch (error) {
-      console.error('checkScheduleSession:', error);
+      console.error("checkScheduleSession:", error);
       throw error;
+    }
+  };
+
+  // ----- createDraftScheduleSessions -----
+
+  const createDraftScheduleSessions = async (input: any[]) => {
+    setMutationLoading(true);
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await graphQLClient.request(
+        CREATE_DRAFT_SCHEDULE_SESSIONS,
+        { input },
+        { Authorization: `Bearer ${token}` }
+      );
+      return response;
+    } catch (err) {
+      console.error("createDraftScheduleSessions:", err);
+      throw err;
+    } finally {
+      setMutationLoading(false);
     }
   };
 
@@ -415,6 +526,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         fetchScheduleData,
         clearScheduleData,
         bulkUpsertScheduleSessions,
+        createDraftScheduleSessions,
         mutationLoading,
         sessionData,
         sessionLoading,
@@ -422,7 +534,7 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
         fetchSessionData,
         clearSessionData,
         updateSessionTimes,
-        checkScheduleSession
+        checkScheduleSession,
       }}
     >
       {children}
@@ -430,10 +542,14 @@ export const ClientSessionProvider = ({ children }: { children: ReactNode }) => 
   );
 };
 
+// ---------- Hook ----------
+
 export const useClientSessions = () => {
   const context = useContext(ClientSessionContext);
   if (!context) {
-    throw new Error("useClientSessions must be used within a ClientSessionProvider");
+    throw new Error(
+      "useClientSessions must be used within a ClientSessionProvider"
+    );
   }
   return context;
 };

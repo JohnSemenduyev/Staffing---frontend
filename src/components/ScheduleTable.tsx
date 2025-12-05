@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { FaFileExport, FaFilePdf, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
-import { GripVertical, RotateCcw, Send, Calendar } from "lucide-react";
+import { GripVertical, RotateCcw, Send, Calendar, Save } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { formatDateLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
 import { graphQLClient } from "../GraphqlClient";
 import { DELETE_SCHEDULE_SESSION } from "../graphql/mutation";
+
 interface Shift {
   id: number;
   date: string;
@@ -18,6 +19,8 @@ interface Shift {
   auto?: boolean;
   confirm?: boolean;
   reject?: boolean;
+  // NEW: flag if backend explicitly marks it as draft
+  isDraft?: boolean;
 }
 
 interface ScheduleItem {
@@ -35,9 +38,7 @@ interface ScheduleItem {
 }
 
 interface RowGroup {
-  // Unique row identifier (can be composite when viewing by employee)
   id: string | number;
-  // Always the actual user id
   userId: number;
   name: string;
   phone?: string;
@@ -62,49 +63,69 @@ interface SessionItem {
 
 interface ScheduleTableProps {
   scheduleData: ScheduleItem[];
-  sessionData?: SessionItem[]; // Add session data for comparison
+  sessionData?: SessionItem[];
   selectedDate: string;
   currentWeekRange: any;
   isEditMode: boolean;
   onScheduleDataChange: (newData: ScheduleItem[]) => void;
   onPublish: () => void;
+  onSave?: () => void;
   onPrint: () => void;
   onDownloadExcel: () => void;
   onToggleEditMode: () => void;
   onDeleteSuccess?: () => void | Promise<void>;
+  onDraftShiftDeletion?: (shift: any) => void;
   isPublishing: boolean;
   isPrinting: boolean;
+  isSaving?: boolean;
   readOnly?: boolean;
   selectedUserId?: number;
   loading?: boolean;
   onUserAutoToggle?: (userId: number, enabled: boolean) => void;
   onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
   onScheduleAutoToggle?: (enabled: boolean) => void;
-  hideActionButtons?: boolean; // Hide cancel, edit, download buttons
-  existingShifts?: Shift[]; // Existing shifts from backend for overlap checking
-  apiExistingShiftsData?: Map<string, any[]>; // API existing shifts for overlap checking
+  hideActionButtons?: boolean;
+  existingShifts?: Shift[];
+  apiExistingShiftsData?: Map<string, any[]>;
   hasChanges?: boolean;
 }
 
-const hasTimeMismatch = (shift: Shift, session?: { clockIn?: string; clockOut?: string }): boolean => {
+// ---------- Helpers for draft + mismatch ----------
+
+const hasTimeMismatch = (
+  shift: Shift,
+  session?: { clockIn?: string; clockOut?: string }
+): boolean => {
   if (!session) return false;
-  
-  // Check if start time doesn't match clock-in OR end time doesn't match clock-out
   const startTimeMismatch = shift.startTime !== session.clockIn;
   const endTimeMismatch = shift.endTime !== session.clockOut;
-  
   return startTimeMismatch || endTimeMismatch;
 };
 
-// Find session data for a specific shift
-const findSessionForShift = (shiftId: number, sessionData?: SessionItem[]): SessionItem | null => {
+const findSessionForShift = (
+  shiftId: number,
+  sessionData?: SessionItem[]
+): SessionItem | null => {
   if (!sessionData) return null;
-  return sessionData.find(s => s.shiftId === shiftId) || null;
+  return sessionData.find((s) => s.shiftId === shiftId) || null;
 };
+
+// Decide if a shift should be treated as "draft"
+const isDraftShift = (shift: Shift): boolean => {
+  // if server sends explicit flag
+  if (shift.isDraft) return true;
+  // if it has no scheduleSessionId, it's not in the main schedule yet
+  if (!shift.scheduleSessionId) return true;
+  // synthetic IDs / client-generated ones
+  if (shift.id > 1_000_000_000_000) return true;
+  return false;
+};
+
+// ---------- Time helpers ----------
 
 const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
   const timeToMinutes = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
+    const [hours, minutes] = timeStr.split(":").map(Number);
     return hours * 60 + minutes;
   };
 
@@ -113,7 +134,10 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
     const ee = timeToMinutes(e);
     if (ss === ee) return [[0, 24 * 60]];
     if (ee > ss) return [[ss, ee]];
-    return [[ss, 24 * 60], [0, ee]];
+    return [
+      [ss, 24 * 60],
+      [0, ee],
+    ];
   };
 
   const ranges1 = toRanges(start1, end1);
@@ -121,9 +145,11 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
 
   for (const a of ranges1) {
     for (const b of ranges2) {
-      const aStart = a[0], aEnd = a[1];
-      const bStart = b[0], bEnd = b[1];
-      const hasRequiredGap = (aEnd + 1 <= bStart) || (bEnd + 1 <= aStart);
+      const aStart = a[0],
+        aEnd = a[1];
+      const bStart = b[0],
+        bEnd = b[1];
+      const hasRequiredGap = aEnd + 1 <= bStart || bEnd + 1 <= aStart;
       if (!hasRequiredGap) return true;
     }
   }
@@ -133,7 +159,7 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
 const sortShiftsByTime = (shifts: Shift[]) => {
   return [...shifts].sort((a, b) => {
     const timeToMinutes = (timeStr: string) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
+      const [hours, minutes] = timeStr.split(":").map(Number);
       return hours * 60 + minutes;
     };
     return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
@@ -157,20 +183,23 @@ const getMaxShiftsPerDay = (
 
 const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
   const total = scheduleData
-    .filter(item => {
-      // Handle both local date format and ISO date format
+    .filter((item) => {
       let itemDate: string;
-      if (item.startDate.includes('T') && item.startDate.includes('Z')) {
-        // This is a UTC date, extract just the date part without timezone conversion
-        itemDate = item.startDate.split('T')[0];
-      } else if (item.startDate.includes('T')) {
+      if (item.startDate.includes("T") && item.startDate.includes("Z")) {
+        itemDate = item.startDate.split("T")[0];
+      } else if (item.startDate.includes("T")) {
         itemDate = formatDateLocal(new Date(item.startDate));
       } else {
         itemDate = item.startDate;
       }
       return itemDate === date;
     })
-    .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    .reduce(
+      (total, item) =>
+        total +
+        item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0),
+      0
+    );
   return parseFloat(total.toFixed(2));
 };
 
@@ -198,13 +227,17 @@ const calculateRowTotal = (
 };
 
 const calculateGrandTotal = (scheduleData: ScheduleItem[]) => {
-  const total = scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+  const total = scheduleData.reduce(
+    (total, item) =>
+      total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0),
+    0
+  );
   return parseFloat(total.toFixed(2));
 };
 
 export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   scheduleData,
-  sessionData = [], // Add sessionData with default empty array
+  sessionData = [],
   selectedDate,
   currentWeekRange,
   isEditMode,
@@ -212,8 +245,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onPublish,
   onPrint,
   onDownloadExcel,
-  onToggleEditMode, 
+  onToggleEditMode,
   onDeleteSuccess,
+  onDraftShiftDeletion,
   isPublishing,
   isPrinting,
   readOnly = false,
@@ -222,68 +256,100 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onShiftAutoToggle,
   onScheduleAutoToggle,
   hideActionButtons = false,
-  existingShifts = [], // Default empty array for existing shifts
-  apiExistingShiftsData = new Map(), // Default empty Map for API existing shifts
+  existingShifts = [],
+  apiExistingShiftsData = new Map(),
   hasChanges,
-  selectedUserId
+  selectedUserId,
+  onSave,
+  isSaving = false,
 }) => {
   const { toast: hookToast } = useToast();
+  // console.log("scheduleData", scheduleData);
 
-  // Modal states for edit/delete functionality
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
-  const [editModal, setEditModal] = useState({ isOpen: false, shift: null, userId: null, date: null });
-  const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    shiftId: null as number | null,
+    userId: null as number | null,
+    date: null as string | null,
+  });
+  const [editModal, setEditModal] = useState({
+    isOpen: false,
+    shift: null as Shift | null,
+    userId: null as number | null,
+    date: null as string | null,
+  });
+  const [deleteUserModal, setDeleteUserModal] = useState({
+    isOpen: false,
+    userId: null as number | null,
+  });
   const [editForm, setEditForm] = useState({ starttime: "", endtime: "" });
   const [deletingUser, setDeletingUser] = useState(false);
-  // Drag and drop states
-  const [draggedShift, setDraggedShift] = useState(null);
-  const [dragOverCell, setDragOverCell] = useState(null);
+  const [draggedShift, setDraggedShift] = useState<any>(null);
+  const [dragOverCell, setDragOverCell] = useState<any>(null);
   const [deletingLastShift, setDeletingLastShift] = useState(false);
-  const [deleteLastShiftModal, setDeleteLastShiftModal] = useState({ isOpen: false, shiftId: null, userId: null, date: null });
-  // Edit mode confirmation modal
-  const [editModeConfirmModal, setEditModeConfirmModal] = useState({ isOpen: false });
-const isLastShiftForUser = (userId: number, shiftId: number) => {
-  const userShifts = scheduleData
-    .filter(item => item.userId === userId)
-    .flatMap(item => item.shifts);
-  
-  return userShifts.length === 1 && userShifts[0].id === shiftId;
-};
-  const checkOverlapWithApiShifts = (userId: number, clientId: number, addressId: number, date: string, startTime: string, endTime: string, excludeShiftId?: number) => {
+  const [deleteLastShiftModal, setDeleteLastShiftModal] = useState({
+    isOpen: false,
+    shiftId: null as number | null,
+    userId: null as number | null,
+    date: null as string | null,
+  });
+  const [editModeConfirmModal, setEditModeConfirmModal] = useState({
+    isOpen: false,
+  });
+
+  const isLastShiftForUser = (userId: number, shiftId: number) => {
+    const userShifts = scheduleData
+      .filter((item) => item.userId === userId)
+      .flatMap((item) => item.shifts);
+
+    return userShifts.length === 1 && userShifts[0].id === shiftId;
+  };
+
+  const checkOverlapWithApiShifts = (
+    userId: number,
+    clientId: number,
+    addressId: number,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeShiftId?: number
+  ) => {
     const key = `${clientId}-${addressId}-${userId}`;
     const userShifts = apiExistingShiftsData.get(key) || [];
-    const overlappingShift = userShifts.find(shift => {
-      // Convert API date to local format for comparison
-      const shiftDateStr = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
+    const overlappingShift = userShifts.find((shift: any) => {
+      const shiftDateStr = shift.date.includes("T")
+        ? shift.date.split("T")[0]
+        : shift.date;
       const dateMatch = shiftDateStr === date;
-          
       if (!dateMatch) return false;
-      
-      // Check for time overlap
-      const hasOverlap = doTimesOverlap(startTime, endTime, shift.startTime, shift.endTime);
-      console.log(`Time overlap check: ${startTime}-${endTime} vs ${shift.startTime}-${shift.endTime} = ${hasOverlap}`);
-      
+      const hasOverlap = doTimesOverlap(
+        startTime,
+        endTime,
+        shift.startTime,
+        shift.endTime
+      );
       return hasOverlap;
     });
 
-    // If overlap found, show toast with specific details
     if (overlappingShift) {
-      // Format the date for display
-      const shiftDateStr = overlappingShift.date.includes('T') ? overlappingShift.date.split('T')[0] : overlappingShift.date;
-      const [year, month, day] = shiftDateStr.split('-');
+      const shiftDateStr = overlappingShift.date.includes("T")
+        ? overlappingShift.date.split("T")[0]
+        : overlappingShift.date;
+      const [year, month, day] = shiftDateStr.split("-");
       const formattedDate = `${month}-${day}-${year}`;
-      
+
       hookToast({
         title: "Shift Overlapping",
         description: `Shift overlapping on date ${formattedDate} at ${overlappingShift.startTime}-${overlappingShift.endTime}`,
         variant: "destructive",
       });
-      
+
       return true;
     }
-    
+
     return false;
   };
+
   const generateDateColumns = () => {
     if (!currentWeekRange) return [];
 
@@ -295,28 +361,26 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       date.setDate(startDate.getDate() + i);
       dates.push({
         date: formatDateLocal(date),
-        display: `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`
+        display: `${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+          date.getDate()
+        ).padStart(2, "0")}-${date.getFullYear()}`,
       });
     }
     return dates;
   };
 
-  // Helper function to format date from ISO string to local format
   const formatDateFromISO = (isoDate: string) => {
     try {
       const date = new Date(isoDate);
       return formatDateLocal(date);
     } catch (error) {
-      console.error('Error formatting date:', isoDate, error);
-      return isoDate; // fallback to original if parsing fails
+      console.error("Error formatting date:", isoDate, error);
+      return isoDate;
     }
   };
 
   const dateColumns = generateDateColumns();
 
-  // Get row groups from schedule data.
-  // When viewing by client (default), we group by userId.
-  // When viewing by employee (selectedUserId is provided), we group by userId + clientId + addressId.
   const getRowGroups = (): RowGroup[] => {
     const groupByClient = Boolean(selectedUserId);
     const rowMap = new Map<string | number, RowGroup>();
@@ -345,52 +409,78 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
 
   const rowGroups = getRowGroups();
 
-  // Delete individual shift
+  // ---------- Delete shift ----------
+
   const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
     setDeleteModal({ isOpen: true, shiftId, userId, date });
   };
 
   const confirmDeleteShift = () => {
     const { userId, date, shiftId } = deleteModal;
-      // Check if this is the last shift for the user
-  if (isLastShiftForUser(userId, shiftId)) {
-    // Close current modal and open the "delete last shift" modal
-    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
-    setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
-    return;
-  }
-  
-    const updatedData = scheduleData.map(item => {
-      if (item.userId === userId && item.startDate === date) {
-        return {
-          ...item,
-          shifts: item.shifts.filter(shift => shift.id !== shiftId)
-        };
+    if (userId == null || shiftId == null || !date) return;
+
+    // Find the shift being deleted
+    const shiftToDelete = scheduleData
+      .find(item => item.userId === userId && item.startDate === date)
+      ?.shifts.find(shift => shift.id === shiftId);
+
+    // Check if it's a draft shift and notify parent
+    if (shiftToDelete && onDraftShiftDeletion) {
+      const isDraftShift = (shiftToDelete as any)?.draftShiftId || 
+                          (shiftToDelete as any)?.draftScheduleSessionId ||
+                          (shiftToDelete.id > 2000000000000);
+      
+      if (isDraftShift) {
+        onDraftShiftDeletion(shiftToDelete);
       }
-      return item;
-    }).filter(item => item.shifts.length > 0);
+    }
+
+    if (isLastShiftForUser(userId, shiftId)) {
+      setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+      setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
+      return;
+    }
+
+    const updatedData = scheduleData
+      .map((item) => {
+        if (item.userId === userId && item.startDate === date) {
+          return {
+            ...item,
+            shifts: item.shifts.filter((shift) => shift.id !== shiftId),
+          };
+        }
+        return item;
+      })
+      .filter((item) => item.shifts.length > 0);
 
     onScheduleDataChange(updatedData);
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
   };
+
+  const cancelDeleteShift = () => {
+    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+  };
+
+  // ---------- Delete entire schedule for last shift ----------
+
   const confirmDeleteLastShift = async () => {
     setDeletingLastShift(true);
     const { userId } = deleteLastShiftModal;
-    
+    if (userId == null) return;
+
     try {
-      // collect this user's scheduleSessionIds (unique) across the week
       const sessionIds = new Set<number>();
-      scheduleData.forEach(item => {
+      scheduleData.forEach((item) => {
         if (item.userId === userId) {
-          item.shifts.forEach(s => { if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId); });
+          item.shifts.forEach((s) => {
+            if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
+          });
         }
       });
-      
+
       const token = sessionStorage.getItem("token");
-      // delete each schedule session on server
-      
       const deleteResults = await Promise.allSettled(
-        Array.from(sessionIds).map(id =>
+        Array.from(sessionIds).map((id) =>
           graphQLClient.request(
             DELETE_SCHEDULE_SESSION,
             { deleteScheduleSessionId: id },
@@ -398,37 +488,36 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           )
         )
       );
-      
-      // Check if any deletions failed
-      const failedDeletions = deleteResults.filter(result => result.status === 'rejected');
-      
+
+      const failedDeletions = deleteResults.filter(
+        (result) => result.status === "rejected"
+      );
+
       if (failedDeletions.length > 0) {
-        console.error("Some deletions failed:", failedDeletions);
         hookToast({
           title: "Error",
-          description: "Some schedule sessions could not be deleted. Please try again.",
+          description:
+            "Some schedule sessions could not be deleted. Please try again.",
           variant: "destructive",
         });
         return;
       }
-      
-      // Check for GraphQL errors in successful responses
+
       const graphQLErrors = deleteResults
-        .filter(result => result.status === 'fulfilled')
-        .map(result => {
-          if (result.status === 'fulfilled') {
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => {
+          if (result.status === "fulfilled") {
             const response = result.value as any;
             return response?.errors;
           }
           return null;
         })
-        .filter(errors => errors && errors.length > 0)
+        .filter((errors) => errors && errors.length > 0)
         .flat();
-      
+
       if (graphQLErrors.length > 0) {
-        console.error("GraphQL errors in delete response:", graphQLErrors);
-        // Use the first error message from GraphQL response
-        const errorMessage = graphQLErrors[0]?.message || "Failed to delete schedule";
+        const errorMessage =
+          (graphQLErrors[0] as any)?.message || "Failed to delete schedule";
         hookToast({
           title: "Error",
           description: errorMessage,
@@ -436,23 +525,19 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         });
         return;
       }
-      
-      // then remove this user's entries locally 
-      const updatedData = scheduleData.filter(item => item.userId !== userId);
+
+      const updatedData = scheduleData.filter((item) => item.userId !== userId);
       onScheduleDataChange(updatedData);
-      // go to view mode
       onToggleEditMode();
-      
+
       hookToast({
         title: "Success",
         description: "Schedule deleted successfully!",
       });
-      
-      // Refresh data from server after successful deletion
+
       if (onDeleteSuccess) {
         await onDeleteSuccess();
       }
-      
     } catch (error) {
       console.error("Error deleting schedule:", error);
       hookToast({
@@ -462,15 +547,26 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       });
     } finally {
       setDeletingLastShift(false);
-      setDeleteLastShiftModal({ isOpen: false, shiftId: null, userId: null, date: null });
+      setDeleteLastShiftModal({
+        isOpen: false,
+        shiftId: null,
+        userId: null,
+        date: null,
+      });
     }
   };
-  
+
   const cancelDeleteLastShift = () => {
-    setDeleteLastShiftModal({ isOpen: false, shiftId: null, userId: null, date: null });
+    setDeleteLastShiftModal({
+      isOpen: false,
+      shiftId: null,
+      userId: null,
+      date: null,
+    });
   };
 
-  // Handle edit mode toggle with confirmation
+  // ---------- Edit mode toggle ----------
+
   const handleEditModeToggle = () => {
     if (hasChanges) {
       setEditModeConfirmModal({ isOpen: true });
@@ -487,23 +583,21 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
   const cancelEditModeToggle = () => {
     setEditModeConfirmModal({ isOpen: false });
   };
-  const cancelDeleteShift = () => {
-    setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
-  };
 
-  // Edit individual shift
+  // ---------- Edit shift ----------
+
   const handleEditShift = (userId: number, date: string, shift: Shift) => {
     setEditModal({ isOpen: true, shift, userId, date });
     setEditForm({
       starttime: shift.startTime,
-      endtime: shift.endTime
+      endtime: shift.endTime,
     });
   };
 
   const confirmEditShift = () => {
     const { userId, date, shift } = editModal;
+    if (!shift || userId == null || !date) return;
 
-    // Validate the edit form
     if (!editForm.starttime || !editForm.endtime) {
       hookToast({
         title: "Validation Error",
@@ -513,45 +607,63 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       return;
     }
 
-    // Check for overlapping shifts in current schedule data
-    const existingShifts = scheduleData
-      .filter(item => item.userId === userId && item.startDate === date)
-      .flatMap(item => item.shifts);
+    const localExistingShifts = scheduleData
+      .filter((item) => item.userId === userId && item.startDate === date)
+      .flatMap((item) => item.shifts);
 
-    for (const existingShift of existingShifts) {
-      console.log("Existing shift:", existingShift);
-      if (existingShift.id === shift.id) continue; // Skip current shift when editing
-
-      if (doTimesOverlap(editForm.starttime, editForm.endtime, existingShift.startTime, existingShift.endTime)) {
+    for (const existingShift of localExistingShifts) {
+      if (existingShift.id === shift.id) continue;
+      if (
+        doTimesOverlap(
+          editForm.starttime,
+          editForm.endtime,
+          existingShift.startTime,
+          existingShift.endTime
+        )
+      ) {
         hookToast({
           title: "Overlapping Shift",
-          description: "Shift time overlaps with existing shift for this user and date",
+          description:
+            "Shift time overlaps with existing shift for this user and date",
           variant: "destructive",
         });
         return;
       }
     }
 
-    // Check for API overlap
-    const targetSchedule = scheduleData.find(item => item.userId === userId && item.startDate === date);
-    if (targetSchedule && checkOverlapWithApiShifts(userId, targetSchedule.clientId, targetSchedule.addressId, date, editForm.starttime, editForm.endtime, shift.id)) {
+    const targetSchedule = scheduleData.find(
+      (item) => item.userId === userId && item.startDate === date
+    );
+    if (
+      targetSchedule &&
+      checkOverlapWithApiShifts(
+        userId,
+        targetSchedule.clientId,
+        targetSchedule.addressId,
+        date,
+        editForm.starttime,
+        editForm.endtime,
+        shift.id
+      )
+    ) {
       return;
     }
 
-    // Check for overlapping shifts with backend existing shifts (legacy existingShifts prop)
-    const hasBackendOverlap = existingShifts?.some(backendShift => {
-      const shiftDateStr = backendShift.date.includes('T') ? backendShift.date.split('T')[0] : backendShift.date;
+    const hasBackendOverlap = existingShifts?.some((backendShift) => {
+      const shiftDateStr = backendShift.date.includes("T")
+        ? backendShift.date.split("T")[0]
+        : backendShift.date;
       const dateMatch = shiftDateStr === date;
-      
       if (!dateMatch) return false;
-      
-      // Skip the current shift being edited
       if (backendShift.id === shift.id) return false;
-      
-      // Use the same overlap checking logic as in PrepareSchedule onSubmit
-      return doTimesOverlap(editForm.starttime, editForm.endtime, backendShift.startTime, backendShift.endTime);
+      return doTimesOverlap(
+        editForm.starttime,
+        editForm.endtime,
+        backendShift.startTime,
+        backendShift.endTime
+      );
     });
-    
+
     if (hasBackendOverlap) {
       hookToast({
         title: "Overlapping Shift",
@@ -561,30 +673,38 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       return;
     }
 
-
     const calculateHours = (start: string, end: string) => {
       const [startH, startM] = start.split(":").map(Number);
       const [endH, endM] = end.split(":").map(Number);
-      
-      // If start time equals end time, treat as 24 hours
+
       if (startH === endH && startM === endM) {
         return 24.0;
       }
-      
+
       let hours = endH - startH + (endM - startM) / 60;
       if (hours < 0) hours += 24;
       return parseFloat(hours.toFixed(2));
     };
 
-    const updatedData = scheduleData.map(item => {
+    const updatedData = scheduleData.map((item) => {
       if (item.userId === userId && item.startDate === date) {
         return {
           ...item,
-          shifts: item.shifts.map(s =>
+          shifts: item.shifts.map((s) =>
             s.id === shift.id
-              ? { ...s, startTime: editForm.starttime, endTime: editForm.endtime, hours: calculateHours(editForm.starttime, editForm.endtime), confirm: false, reject: false }
+              ? {
+                  ...s,
+                  startTime: editForm.starttime,
+                  endTime: editForm.endtime,
+                  hours: calculateHours(
+                    editForm.starttime,
+                    editForm.endtime
+                  ),
+                  confirm: false,
+                  reject: false,
+                }
               : s
-          )
+          ),
         };
       }
       return item;
@@ -600,7 +720,8 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     setEditForm({ starttime: "", endtime: "" });
   };
 
-  // Delete all data for a user
+  // ---------- Delete all user data ----------
+
   const handleDeleteUser = (userId: number) => {
     setDeleteUserModal({ isOpen: true, userId });
   };
@@ -608,21 +729,21 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
   const confirmDeleteUser = async () => {
     setDeletingUser(true);
     const { userId } = deleteUserModal;
-  
+    if (userId == null) return;
+
     try {
-      // collect this user's scheduleSessionIds (unique) across the week
       const sessionIds = new Set<number>();
-      scheduleData.forEach(item => {
+      scheduleData.forEach((item) => {
         if (item.userId === userId) {
-          item.shifts.forEach(s => { if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId); });
+          item.shifts.forEach((s) => {
+            if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
+          });
         }
       });
-  
-      const token = sessionStorage.getItem("token");
-      // delete each schedule session on server
 
+      const token = sessionStorage.getItem("token");
       const deleteResults = await Promise.allSettled(
-        Array.from(sessionIds).map(id =>
+        Array.from(sessionIds).map((id) =>
           graphQLClient.request(
             DELETE_SCHEDULE_SESSION,
             { deleteScheduleSessionId: id },
@@ -630,37 +751,36 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           )
         )
       );
-      
-      // Check if any deletions failed
-      const failedDeletions = deleteResults.filter(result => result.status === 'rejected');
-      
+
+      const failedDeletions = deleteResults.filter(
+        (result) => result.status === "rejected"
+      );
+
       if (failedDeletions.length > 0) {
-        console.error("Some deletions failed:", failedDeletions);
         hookToast({
           title: "Error",
-          description: "Some schedule sessions could not be deleted. Please try again.",
+          description:
+            "Some schedule sessions could not be deleted. Please try again.",
           variant: "destructive",
         });
         return;
       }
-      
-      // Check for GraphQL errors in successful responses
+
       const graphQLErrors = deleteResults
-        .filter(result => result.status === 'fulfilled')
-        .map(result => {
-          if (result.status === 'fulfilled') {
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => {
+          if (result.status === "fulfilled") {
             const response = result.value as any;
             return response?.errors;
           }
           return null;
         })
-        .filter(errors => errors && errors.length > 0)
+        .filter((errors) => errors && errors.length > 0)
         .flat();
-      
+
       if (graphQLErrors.length > 0) {
-        console.error("GraphQL errors in delete response:", graphQLErrors);
-        // Use the first error message from GraphQL response
-        const errorMessage = graphQLErrors[0]?.message || "Failed to delete schedule";
+        const errorMessage =
+          (graphQLErrors[0] as any)?.message || "Failed to delete schedule";
         hookToast({
           title: "Error",
           description: errorMessage,
@@ -668,23 +788,19 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         });
         return;
       }
-  
-      // then remove this user's entries locally 
-      const updatedData = scheduleData.filter(item => item.userId !== userId);
+
+      const updatedData = scheduleData.filter((item) => item.userId !== userId);
       onScheduleDataChange(updatedData);
-      // go to view mode
       onToggleEditMode();
-      
+
       hookToast({
         title: "Success",
         description: "Schedule deleted successfully!",
       });
 
-      // Refresh data from server after successful deletion
       if (onDeleteSuccess) {
         await onDeleteSuccess();
       }
-
     } catch (error) {
       console.error("Error deleting schedule:", error);
       hookToast({
@@ -702,19 +818,23 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     setDeleteUserModal({ isOpen: false, userId: null });
   };
 
-  // Auto toggle handler
+  // ---------- Auto toggle ----------
+
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
     if (onUserAutoToggle) {
-      // Use the parent component's handler if provided
       onUserAutoToggle(userId, enabled);
     } else {
-      // Fallback to local state update: set row auto and all child shifts auto to match
-      const updatedData = scheduleData.map(item =>
+      const updatedData = scheduleData.map((item) =>
         item.userId === userId
           ? {
               ...item,
               auto: enabled,
-              shifts: item.shifts.map(s => ({ ...s, auto: enabled, confirm: false, reject: false }))
+              shifts: item.shifts.map((s) => ({
+                ...s,
+                auto: enabled,
+                confirm: false,
+                reject: false,
+              })),
             }
           : item
       );
@@ -722,20 +842,32 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     }
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, shift: Shift, sourceUserId: number, sourceDate: string, sourceRowIdx: number) => {
+  // ---------- Drag & drop ----------
+
+  const handleDragStart = (
+    e: React.DragEvent,
+    shift: Shift,
+    sourceUserId: number,
+    sourceDate: string,
+    sourceRowIdx: number
+  ) => {
     setDraggedShift({
       shift,
       sourceUserId,
       sourceDate,
-      sourceRowIdx
+      sourceRowIdx,
     });
-    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.effectAllowed = "copy";
   };
 
-  const handleDragOver = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+  const handleDragOver = (
+    e: React.DragEvent,
+    targetUserId: number,
+    targetDate: string,
+    targetRowIdx: number
+  ) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = "copy";
     setDragOverCell({ userId: targetUserId, date: targetDate, rowIdx: targetRowIdx });
   };
 
@@ -743,208 +875,209 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
     setDragOverCell(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetUserId: number, targetDate: string, targetRowIdx: number) => {
+  const handleDrop = (
+    e: React.DragEvent,
+    targetUserId: number,
+    targetDate: string,
+    targetRowIdx: number
+  ) => {
     e.preventDefault();
-    console.log("handleDrop called:", { targetUserId, targetDate, targetRowIdx, draggedShift });
-  
+
     if (!draggedShift) {
-      console.log("No draggedShift found");
       return;
     }
-  
+
     const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
-    console.log("Drop details:", { shift, sourceUserId, sourceDate, sourceRowIdx, targetUserId, targetDate, targetRowIdx });
-  
-    // Cleanup function to reset drag state
+
     const cleanupDragState = () => {
       setDraggedShift(null);
       setDragOverCell(null);
     };
-  
-    // Don't allow dropping on the same cell
-    if (sourceUserId === targetUserId && sourceDate === targetDate && sourceRowIdx === targetRowIdx) {
+
+    if (
+      sourceUserId === targetUserId &&
+      sourceDate === targetDate &&
+      sourceRowIdx === targetRowIdx
+    ) {
       cleanupDragState();
       return;
     }
-  
-    // Check for backend overlap (common logic)
+
     const checkBackendOverlap = () => {
-      return existingShifts.some(existingShift => {
-        const shiftDateStr = existingShift.date.includes('T') 
-          ? existingShift.date.split('T')[0] 
+      return existingShifts.some((existingShift) => {
+        const shiftDateStr = existingShift.date.includes("T")
+          ? existingShift.date.split("T")[0]
           : existingShift.date;
-        
-        return shiftDateStr === targetDate && 
-               doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
+
+        return (
+          shiftDateStr === targetDate &&
+          doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          )
+        );
       });
     };
 
-  
-    // Handle overlap error
     const handleOverlapError = (message: string) => {
-      console.log(message);
       hookToast({
         title: "Overlapping Shift",
-        description: `Cannot drop shift here - it overlaps with existing shifts${message.includes('backend') ? ' from backend' : ' for this user and date'}.`,
+        description: message,
         variant: "destructive",
       });
       cleanupDragState();
     };
-  
-    // Declare sourceSchedule first
+
     const sourceSchedule = scheduleData.find(
-      item => item.userId === sourceUserId && item.startDate === sourceDate
+      (item) => item.userId === sourceUserId && item.startDate === sourceDate
     );
 
-    // Check for API existing shifts overlap
-    const checkApiOverlap = () => {
-      // First try to find target schedule, if not found, use source schedule for client/address info
-      let targetSchedule = scheduleData.find(item => item.userId === targetUserId && item.startDate === targetDate);
-      
+    const checkApiOverlapFn = () => {
+      let targetSchedule = scheduleData.find(
+        (item) => item.userId === targetUserId && item.startDate === targetDate
+      );
+
       if (!targetSchedule) {
-        // If no target schedule exists, use source schedule for client/address info
         targetSchedule = sourceSchedule;
       }
-      
+
       if (!targetSchedule) return false;
-      
-      // This will show the toast and return true if overlap found
-      return checkOverlapWithApiShifts(targetUserId, targetSchedule.clientId, targetSchedule.addressId, targetDate, shift.startTime, shift.endTime);
+
+      return checkOverlapWithApiShifts(
+        targetUserId,
+        targetSchedule.clientId,
+        targetSchedule.addressId,
+        targetDate,
+        shift.startTime,
+        shift.endTime
+      );
     };
 
-    // Check for backend overlap first (applies to both scenarios)
     if (checkBackendOverlap()) {
-      handleOverlapError("Backend overlap detected, blocking drop");
+      handleOverlapError(
+        "Cannot drop shift here - it overlaps with existing shifts from backend."
+      );
       return;
     }
 
-    // Check for API existing shifts overlap
-    if (checkApiOverlap()) {
-      return;
-    }
-  
-    const existingSchedule = scheduleData.find(
-      item => item.userId === targetUserId && item.startDate === targetDate
-    );
-
-    if (!sourceSchedule) {
-      console.error("Source schedule not found");
+    if (checkApiOverlapFn()) {
       cleanupDragState();
       return;
     }
-  
-    // Create copied shift object (common logic)
-    const createCopiedShift = (scheduleSessionId?: string) => ({
+
+    const existingSchedule = scheduleData.find(
+      (item) => item.userId === targetUserId && item.startDate === targetDate
+    );
+
+    if (!sourceSchedule) {
+      cleanupDragState();
+      return;
+    }
+
+    const createCopiedShift = () => ({
       ...shift,
       id: Date.now(),
       date: targetDate,
       confirm: false,
       reject: false,
-      scheduleSessionId: scheduleSessionId || sourceSchedule.shifts[0]?.scheduleSessionId
+      scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId,
+      isDraft: true, // new copied shifts are draft until published
     });
-  
+
     if (existingSchedule) {
       const sortedShifts = sortShiftsByTime(existingSchedule.shifts);
-      
-      // Check if target cell has existing data
       const targetCellHasData = targetRowIdx < sortedShifts.length;
-      
+
       if (targetCellHasData) {
-        // Dropping on cell with data - replace it, but check overlap with all OTHER shifts
         const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
-          // Skip the target position that will be replaced
           if (index === targetRowIdx) return false;
-          
-          // For same column drops, check overlap with ALL other shifts (including source)
-          return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
+          return doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          );
         });
 
         if (hasLocalOverlap) {
-          handleOverlapError("Local overlap detected, blocking drop");
+          handleOverlapError(
+            "Cannot drop shift here - it overlaps with existing shifts for this user and date."
+          );
           return;
         }
 
-        // Check for API overlap
-        if (checkApiOverlap()) {
-          return;
-        }
-  
-        // Replace the shift at target position, keeping the original ID
-        console.log("Replacing shift at target position");
         const originalShiftId = sortedShifts[targetRowIdx].id;
         const replacementShift = createCopiedShift();
-        replacementShift.id = originalShiftId; // Keep original ID
-        
-        const updatedScheduleData = scheduleData.map(item => {
+        replacementShift.id = originalShiftId;
+
+        const updatedScheduleData = scheduleData.map((item) => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
             const updatedShifts = [...item.shifts];
             updatedShifts[targetRowIdx] = replacementShift;
             return {
               ...item,
-              shifts: sortShiftsByTime(updatedShifts)
+              shifts: sortShiftsByTime(updatedShifts),
             };
           }
           return item;
         });
-  
-        console.log("Final updated schedule data (replacement):", updatedScheduleData);
+
         onScheduleDataChange(updatedScheduleData);
       } else {
-        // Dropping on empty cell - add new shift, check overlap with all shifts
-        const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
-          // For same column drops, check overlap with ALL shifts (including source)
-          return doTimesOverlap(shift.startTime, shift.endTime, existingShift.startTime, existingShift.endTime);
-        });
+        const hasLocalOverlap = sortedShifts.some((existingShift) =>
+          doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          )
+        );
 
         if (hasLocalOverlap) {
-          handleOverlapError("Local overlap detected, blocking drop");
+          handleOverlapError(
+            "Cannot drop shift here - it overlaps with existing shifts for this user and date."
+          );
           return;
         }
 
-        // Check for API overlap
-        if (checkApiOverlap()) {
-          return;
-        }
-  
-        // Add new shift to existing schedule
-        console.log("No overlaps detected, adding new shift");
         const copiedShift = createCopiedShift();
-        const updatedScheduleData = scheduleData.map(item => {
+        const updatedScheduleData = scheduleData.map((item) => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
             const updatedShifts = [...item.shifts, copiedShift];
             return {
               ...item,
-              shifts: sortShiftsByTime(updatedShifts)
+              shifts: sortShiftsByTime(updatedShifts),
             };
           }
           return item;
         });
-  
-        console.log("Final updated schedule data (addition):", updatedScheduleData);
+
         onScheduleDataChange(updatedScheduleData);
       }
     } else {
-      // Create new schedule - check backend overlap first
       if (checkBackendOverlap()) {
-        handleOverlapError("Backend overlap detected in new schedule creation, blocking drop");
+        handleOverlapError(
+          "Cannot drop shift here - it overlaps with existing shifts from backend."
+        );
         return;
       }
-      
-      // Check for API existing shifts overlap
-      if (checkApiOverlap()) {
+
+      if (checkApiOverlapFn()) {
+        cleanupDragState();
         return;
       }
-      
-      // Create new schedule
-      console.log("No overlaps detected, creating new schedule");
+
       const groupByClient = Boolean(selectedUserId);
       const targetGroupKey = groupByClient
         ? `${targetUserId}-${sourceSchedule.clientId}-${sourceSchedule.addressId}`
         : targetUserId;
-      const targetGroup = getRowGroups().find(g => g.id === targetGroupKey);
+      const targetGroup = getRowGroups().find((g) => g.id === targetGroupKey);
+
       const copiedShift = createCopiedShift();
-      
-      const newSchedule = {
+
+      const newSchedule: ScheduleItem = {
         id: Date.now(),
         clientId: sourceSchedule.clientId,
         addressId: sourceSchedule.addressId,
@@ -957,44 +1090,46 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         userName: targetGroup?.name || sourceSchedule.userName,
         userPhone: targetGroup?.phone || sourceSchedule.userPhone,
       };
-  
-      console.log("New schedule being added:", newSchedule);
+
       onScheduleDataChange([...scheduleData, newSchedule]);
     }
-  
-    // Success message
+
     hookToast({
       title: "Success",
       description: "Shift copied successfully!",
     });
-  
+
     cleanupDragState();
   };
+
   const handleDragEnd = () => {
     setDraggedShift(null);
     setDragOverCell(null);
   };
 
-  console.log("selectedUserId11", selectedUserId , scheduleData);
+  const groupByClient = Boolean(selectedUserId);
 
   return (
-    <div className="relative w-full  border border-gray-200 shadow-xl rounded-2xl overflow-hidden">
+    <div className="relative w-full border border-gray-200 shadow-xl rounded-2xl overflow-hidden">
       {loading && (
         <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
-      
+
       <div className="w-full overflow-auto custom-scrollbar" style={{ maxHeight: "600px" }}>
-        {/* Table */}
         <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
           <thead className="bg-[#004175] text-white text-xs font-sans sticky top-0 z-10">
-            <tr className="h-[41px]"  style={{ lineHeight: '16px' }}>
+            <tr className="h-[41px]" style={{ lineHeight: "16px" }}>
               <th className="px-4 py-2 text-left border border-gray-300 whitespace-nowrap">
-               {selectedUserId ? "Client Name" : "Employee Name"}
+                {selectedUserId ? "Client Name" : "Employee Name"}
               </th>
-              {dateColumns.map(dateCol => (
-                <th key={dateCol.date} className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap" style={{ minWidth: '120px' }}>
+              {dateColumns.map((dateCol) => (
+                <th
+                  key={dateCol.date}
+                  className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap"
+                  style={{ minWidth: "120px" }}
+                >
                   {dateCol.display}
                 </th>
               ))}
@@ -1008,7 +1143,6 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           </thead>
           <tbody className="relative">
             {rowGroups.map((row, rowIndex) => {
-              const groupByClient = Boolean(selectedUserId);
               const rowCount = getMaxShiftsPerDay(row, scheduleData, groupByClient);
 
               return (
@@ -1016,8 +1150,9 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                   {[...Array(rowCount)].map((_, rowIdx) => (
                     <tr
                       key={`${row.id}-row-${rowIdx}`}
-                      className={`hover:bg-blue-50 transition-colors ${(rowIndex + rowIdx) % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                        }`}
+                      className={`hover:bg-blue-50 transition-colors ${
+                        (rowIndex + rowIdx) % 2 === 0 ? "bg-gray-50" : "bg-white"
+                      }`}
                     >
                       {rowIdx === 0 && (
                         <td
@@ -1033,38 +1168,55 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                         </td>
                       )}
 
-                      {dateColumns.map(dateCol => {
-                        const daySchedules = scheduleData.filter(item => {
-                          // Handle both local date format and ISO date format
-                          const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
+                      {dateColumns.map((dateCol) => {
+                        const daySchedules = scheduleData.filter((item) => {
+                          const itemDate = item.startDate.includes("T")
+                            ? formatDateFromISO(item.startDate)
+                            : item.startDate;
                           const sameUser = item.userId === row.userId;
                           const sameClientGroup = !groupByClient
                             ? true
-                            : item.clientId === row.clientId && item.addressId === row.addressId;
+                            : item.clientId === row.clientId &&
+                              item.addressId === row.addressId;
                           return sameUser && sameClientGroup && itemDate === dateCol.date;
                         });
                         const sortedShifts = sortShiftsByTime(
-                          daySchedules.flatMap(s => s.shifts)
+                          daySchedules.flatMap((s) => s.shifts)
                         );
-                        const shift = sortedShifts[rowIdx]; // take nth shift of the day
-
-                        // Find corresponding session data for this shift
-                        const session = shift ? findSessionForShift(shift.id, sessionData) : null;
-                        const hasMismatch = shift && session ? hasTimeMismatch(shift, session) : false;
+                        const shift = sortedShifts[rowIdx];
+                        const session = shift
+                          ? findSessionForShift(shift.id, sessionData)
+                          : null;
+                        const hasMismatch = shift && session
+                          ? hasTimeMismatch(shift, session)
+                          : false;
+                        const draft = shift ? isDraftShift(shift) : false;
 
                         return (
                           <td
-                            key={dateCol.date + '-' + rowIdx}
+                            key={dateCol.date + "-" + rowIdx}
                             className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                              !readOnly && dragOverCell?.userId === row.userId && dragOverCell?.date === dateCol.date
-                                ? 'bg-blue-50 border-blue-300'
+                              !readOnly &&
+                              dragOverCell?.userId === row.userId &&
+                              dragOverCell?.date === dateCol.date
+                                ? "bg-blue-50 border-blue-300"
                                 : hasMismatch
-                                ? 'bg-red-100 border-red-300'
-                                : ''
+                                ? "bg-red-100 border-red-300"
+                                : draft
+                                ? "bg-amber-50 border-amber-200"
+                                : ""
                             }`}
-                            onDragOver={!readOnly ? (e => handleDragOver(e, row.userId, dateCol.date, rowIdx)) : undefined}
+                            onDragOver={
+                              !readOnly
+                                ? (e) => handleDragOver(e, row.userId, dateCol.date, rowIdx)
+                                : undefined
+                            }
                             onDragLeave={!readOnly ? handleDragLeave : undefined}
-                            onDrop={!readOnly ? (e => handleDrop(e, row.userId, dateCol.date, rowIdx)) : undefined}
+                            onDrop={
+                              !readOnly
+                                ? (e) => handleDrop(e, row.userId, dateCol.date, rowIdx)
+                                : undefined
+                            }
                           >
                             {shift ? (
                               <div className="relative group">
@@ -1073,33 +1225,57 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                     <div
                                       className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
                                       draggable
-                                      onDragStart={e => handleDragStart(e, shift, row.userId, dateCol.date, rowIdx)}
+                                      onDragStart={(e) =>
+                                        handleDragStart(
+                                          e,
+                                          shift,
+                                          row.userId,
+                                          dateCol.date,
+                                          rowIdx
+                                        )
+                                      }
                                       onDragEnd={handleDragEnd}
                                     >
                                       <GripVertical className="w-4 h-4" />
                                     </div>
-                                     <button
-                                       onClick={() => {
-                                         handleEditShift(row.userId, dateCol.date, shift);
-                                       }}
-                                       className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
-                                       title="Edit shift"
-                                     >
-                                       <FaRegEdit className="w-4 h-4" color="blue" />
-                                     </button>
-                                     <button
-                                       onClick={() => handleDeleteShift(row.userId, dateCol.date, shift.id)}
-                                       className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
-                                       title="Delete shift"
-                                     >
-                                       <FaRegTrashAlt className="w-4 h-4" />
-                                     </button>
+                                    <button
+                                      onClick={() =>
+                                        handleEditShift(row.userId, dateCol.date, shift)
+                                      }
+                                      className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
+                                      title="Edit shift"
+                                    >
+                                      <FaRegEdit className="w-4 h-4" color="blue" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteShift(
+                                          row.userId,
+                                          dateCol.date,
+                                          shift.id
+                                        )
+                                      }
+                                      className="text-red-600 hover:text-red-800 p-0.5 hover:bg-red-50 rounded"
+                                      title="Delete shift"
+                                    >
+                                      <FaRegTrashAlt className="w-4 h-4" />
+                                    </button>
                                   </div>
                                 )}
                                 <div className="flex items-center gap-2 justify-center flex-col">
                                   <span className="text-sm">
-                                    {`${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`}
+                                    {`${shift.startTime} - ${formatTimeDisplay(
+                                      shift.endTime
+                                    )}`}
                                   </span>
+
+                                  {/* DRAFT BADGE */}
+                                  {draft && (
+                                    <span className="text-[10px] uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                                      Draft
+                                    </span>
+                                  )}
+
                                   <div className="w-[50px] h-[20px]">
                                     <ToggleSwitch
                                       size="small"
@@ -1108,14 +1284,36 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                       onToggle={(enabled) => {
                                         if (readOnly || !isEditMode) return;
                                         if (onShiftAutoToggle) {
-                                      onShiftAutoToggle(row.userId as number, dateCol.date, shift.id, enabled);
+                                          onShiftAutoToggle(
+                                            row.userId as number,
+                                            dateCol.date,
+                                            shift.id,
+                                            enabled
+                                          );
                                         } else {
-                                          // fallback local update: update shift auto and sync row auto
-                                          const updated = scheduleData.map(item => {
-                                            if (item.userId === row.userId && item.startDate === dateCol.date) {
-                                              const newShifts = item.shifts.map(s => s.id === shift.id ? { ...s, auto: enabled, confirm: false, reject: false } : s);
-                                              const anyOn = newShifts.some(s => s.auto === true);
-                                              return { ...item, auto: anyOn, shifts: newShifts };
+                                          const updated = scheduleData.map((item) => {
+                                            if (
+                                              item.userId === row.userId &&
+                                              item.startDate === dateCol.date
+                                            ) {
+                                              const newShifts = item.shifts.map((s) =>
+                                                s.id === shift.id
+                                                  ? {
+                                                      ...s,
+                                                      auto: enabled,
+                                                      confirm: false,
+                                                      reject: false,
+                                                    }
+                                                  : s
+                                              );
+                                              const anyOn = newShifts.some(
+                                                (s) => s.auto === true
+                                              );
+                                              return {
+                                                ...item,
+                                                auto: anyOn,
+                                                shifts: newShifts,
+                                              };
                                             }
                                             return item;
                                           });
@@ -1124,25 +1322,44 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                                       }}
                                     />
                                   </div>
-                                       {/* Confirm/Reject Status - Only show when not in edit mode */}
-                                       {!readOnly && !isEditMode && (shift.confirm || shift.reject) && (
-                                     <div className="flex items-center justify-center m-1 absolute bottom-0 right-0 ">
-                                       {shift.confirm && (
-                                         <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                           </svg>
-                                         </div>
-                                       )}
-                                       {shift.reject && (
-                                         <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                           </svg>
-                                         </div>
-                                       )}
-                                     </div>
-                                   )}
+
+                                  {/* Confirm/Reject indicator (only in view mode) */}
+                                  {!readOnly &&
+                                    !isEditMode &&
+                                    (shift.confirm || shift.reject) && (
+                                      <div className="flex items-center justify-center m-1 absolute bottom-0 right-0">
+                                        {shift.confirm && (
+                                          <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                            <svg
+                                              className="w-3 h-3 text-white"
+                                              fill="currentColor"
+                                              viewBox="0 0 20 20"
+                                            >
+                                              <path
+                                                fillRule="evenodd"
+                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                clipRule="evenodd"
+                                              />
+                                            </svg>
+                                          </div>
+                                        )}
+                                        {shift.reject && (
+                                          <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                            <svg
+                                              className="w-3 h-3 text-white"
+                                              fill="currentColor"
+                                              viewBox="0 0 20 20"
+                                            >
+                                              <path
+                                                fillRule="evenodd"
+                                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                                clipRule="evenodd"
+                                              />
+                                            </svg>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                 </div>
                               </div>
                             ) : (
@@ -1167,20 +1384,22 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                             <div className="flex items-center justify-center">
                               <ToggleSwitch
                                 size="medium"
-                                enabled={scheduleData.some(item => {
+                                enabled={scheduleData.some((item) => {
                                   if (item.userId !== row.userId) return false;
-                                  if (!groupByClient) return item.shifts.some(s => s.auto);
+                                  if (!groupByClient)
+                                    return item.shifts.some((s) => s.auto);
                                   return (
                                     item.clientId === row.clientId &&
                                     item.addressId === row.addressId &&
-                                    item.shifts.some(s => s.auto)
+                                    item.shifts.some((s) => s.auto)
                                   );
                                 })}
                                 disabled={!isEditMode || readOnly}
                                 onToggle={
                                   readOnly || !isEditMode
                                     ? undefined
-                                    : (enabled => handleUserAutoToggle(row.userId, enabled))
+                                    : (enabled) =>
+                                        handleUserAutoToggle(row.userId, enabled)
                                 }
                               />
                             </div>
@@ -1190,53 +1409,77 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                     </tr>
                   ))}
 
-                  <tr className={`transition-colors ${rowIndex % 2 === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}>
+                  <tr
+                    className={`transition-colors ${
+                      rowIndex % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
+                    }`}
+                  >
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                       Total
                     </td>
-                    {dateColumns.map(dateCol => {
-                      const daySchedules = scheduleData.filter(item => {
-                        // Handle both local date format and ISO date format
-                        const itemDate = item.startDate.includes('T') ? formatDateFromISO(item.startDate) : item.startDate;
+                    {dateColumns.map((dateCol) => {
+                      const daySchedules = scheduleData.filter((item) => {
+                        const itemDate = item.startDate.includes("T")
+                          ? formatDateFromISO(item.startDate)
+                          : item.startDate;
                         const sameUser = item.userId === row.userId;
                         const sameClientGroup = !groupByClient
                           ? true
-                          : item.clientId === row.clientId && item.addressId === row.addressId;
-                        return sameUser && sameClientGroup && itemDate === dateCol.date;
+                          : item.clientId === row.clientId &&
+                            item.addressId === row.addressId;
+                        return (
+                          sameUser &&
+                          sameClientGroup &&
+                          itemDate === dateCol.date
+                        );
                       });
                       const dayTotal = daySchedules.reduce(
-                        (t, s) => t + s.shifts.reduce((st, sh) => st + sh.hours, 0),
+                        (t, s) =>
+                          t +
+                          s.shifts.reduce(
+                            (st, sh) => st + sh.hours,
+                            0
+                          ),
                         0
                       );
                       const rounded = parseFloat(dayTotal.toFixed(2));
                       return (
-                        <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap">
-                          {rounded > 0 ? rounded : '-'}
+                        <td
+                          key={dateCol.date}
+                          className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                        >
+                          {rounded > 0 ? rounded : "-"}
                         </td>
                       );
                     })}
                     <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
                       {calculateRowTotal(row, scheduleData, groupByClient)}
                     </td>
-                      {isEditMode && (
-                                            <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
-
-                        <button onClick={() => handleDeleteUser(row.userId)} className="text-red-600 hover:text-red-800 p-1" title="Delete all data for this user">
-                          <FaRegTrashAlt  className="w-4 h-4" />
+                    {isEditMode && (
+                      <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
+                        <button
+                          onClick={() => handleDeleteUser(row.userId)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Delete all data for this user"
+                        >
+                          <FaRegTrashAlt className="w-4 h-4" />
                         </button>
-                        </td>
-                      )}
-                    
+                      </td>
+                    )}
                   </tr>
                 </React.Fragment>
               );
             })}
-            {/* Grand Total Row */}
             <tr className="bg-gray-50 font-medium">
-              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
-              {dateColumns.map(dateCol => (
-                <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                  {calculateDayTotal(dateCol.date, scheduleData) || '-'}
+              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
+                Grand Total
+              </td>
+              {dateColumns.map((dateCol) => (
+                <td
+                  key={dateCol.date}
+                  className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
+                >
+                  {calculateDayTotal(dateCol.date, scheduleData) || "-"}
                 </td>
               ))}
               <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
@@ -1248,9 +1491,8 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
         </table>
       </div>
 
-      {/* Action buttons - Bottom Corner */}
+      {/* Bottom action bar */}
       <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
-        {/* Publish/Cancel button - Leftmost */}
         {isEditMode ? (
           <div className="flex gap-2">
             <button
@@ -1271,6 +1513,26 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                 </>
               )}
             </button>
+            {onSave && (
+              <button
+                onClick={onSave}
+                disabled={isSaving || !hasChanges}
+                className="inline-flex items-center px-4 py-2 text-[#004175] bg-white border border-[#004175] hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#004175] focus:ring-offset-2 font-medium shadow-sm"
+                title="Save changes"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#004175] border-t-transparent rounded-full animate-spin mr-2" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </button>
+            )}
             {!hideActionButtons && (
               <button
                 onClick={onToggleEditMode}
@@ -1293,49 +1555,48 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           </button>
         )}
 
-        {/* Print, Download and Edit buttons - Right side */}
         {!hideActionButtons && (
           <div className="flex items-center gap-2">
-             <button
-               onClick={onPrint}
-               disabled={isPrinting}
-               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-               title="Print Report"
-             >
-               {isPrinting ? (
-                 <>
-                   <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
-                   <span className="text-sm">Preparing...</span>
-                 </>
-               ) : (
-                 <FaFilePdf className="w-5 h-5" />
-               )}
-             </button>
+            <button
+              onClick={onPrint}
+              disabled={isPrinting}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Print Report"
+            >
+              {isPrinting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                  <span className="text-sm">Preparing...</span>
+                </>
+              ) : (
+                <FaFilePdf className="w-5 h-5" />
+              )}
+            </button>
 
-             <button
-               onClick={onDownloadExcel}
-               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-               title="Download Excel"
-             >
-               <FaFileExport className="w-5 h-5" />
-             </button>
+            <button
+              onClick={onDownloadExcel}
+              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Download Excel"
+            >
+              <FaFileExport className="w-5 h-5" />
+            </button>
 
-             <button
-               onClick={handleEditModeToggle}
-               className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                 isEditMode 
-                   ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500' 
-                   : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
-               }`}
-               title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
-             >
-               <FaRegEdit className="w-5 h-5" color="blue" />
-             </button>
+            <button
+              onClick={handleEditModeToggle}
+              className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                isEditMode
+                  ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500"
+              }`}
+              title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+            >
+              <FaRegEdit className="w-5 h-5" color="blue" />
+            </button>
           </div>
         )}
       </div>
 
-      {/* Delete Shift Confirmation Modal */}
+      {/* Delete Shift Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -1344,7 +1605,6 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                 Are you sure you want to delete this shift?
               </p>
             </div>
-
             <div className="flex space-x-3 justify-end">
               <button
                 type="button"
@@ -1358,7 +1618,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                 onClick={confirmDeleteShift}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
               >
-                <FaRegTrashAlt  className="w-4 h-4 mr-2" />
+                <FaRegTrashAlt className="w-4 h-4 mr-2" />
                 Delete
               </button>
             </div>
@@ -1376,20 +1636,28 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Time
+                </label>
                 <input
                   type="time"
                   value={editForm.starttime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, starttime: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, starttime: e.target.value }))
+                  }
                   className="w-full px-3 py-1 border border-[#d0d4d9] rounded-md placeholder:text-gray-500 font-normal focus:outline-none focus:ring-2 focus:ring-[#004175] transition appearance-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Time
+                </label>
                 <input
                   type="time"
                   value={editForm.endtime}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, endtime: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, endtime: e.target.value }))
+                  }
                   className="w-full px-3 py-1 border border-[#d0d4d9] rounded-md placeholder:text-gray-500 font-normal focus:outline-none focus:ring-2 focus:ring-[#004175] transition appearance-none"
                 />
               </div>
@@ -1403,20 +1671,20 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
               >
                 Cancel
               </button>
-               <button
-                 type="button"
-                 onClick={confirmEditShift}
-                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
-               >
-                 <FaRegEdit className="w-4 h-4 mr-2" color="white" />
-                 Update
-               </button>
+              <button
+                type="button"
+                onClick={confirmEditShift}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+              >
+                <FaRegEdit className="w-4 h-4 mr-2" color="white" />
+                Update
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete User Confirmation Modal */}
+      {/* Delete User Modal */}
       {deleteUserModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -1442,7 +1710,7 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
                 {deletingUser ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                 ) : (
-                  <FaRegTrashAlt  className="w-4 h-4 mr-2" />
+                  <FaRegTrashAlt className="w-4 h-4 mr-2" />
                 )}
                 Delete All
               </button>
@@ -1450,56 +1718,64 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
           </div>
         </div>
       )}
+
+      {/* Delete Last Shift -> Entire Schedule Modal */}
       {deleteLastShiftModal.isOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-      <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Entire Schedule</h3>
-        <p className="text-sm text-gray-500">
-          Deleting this shift will delete the entire schedule for this user as it's their only remaining shift. 
-          Are you sure you want to proceed?
-        </p>
-      </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Delete Entire Schedule
+              </h3>
+              <p className="text-sm text-gray-500">
+                Deleting this shift will delete the entire schedule for this user
+                as it's their only remaining shift. Are you sure you want to
+                proceed?
+              </p>
+            </div>
 
-      <div className="flex space-x-3 justify-end">
-        <button
-          type="button"
-          onClick={cancelDeleteLastShift}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={confirmDeleteLastShift}
-          disabled={deletingLastShift}
-          className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
-        >
-          {deletingLastShift ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Deleting...
-            </>
-          ) : (
-            <>
-              <FaRegTrashAlt className="w-4 h-4 mr-2" />
-              Delete Schedule
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={cancelDeleteLastShift}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#004175]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteLastShift}
+                disabled={deletingLastShift}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+              >
+                {deletingLastShift ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <FaRegTrashAlt className="w-4 h-4 mr-2" />
+                    Delete Schedule
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Edit Mode Confirmation Modal */}
+      {/* Edit mode unsaved changes modal */}
       {editModeConfirmModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Unsaved Changes</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Unsaved Changes
+              </h3>
               <p className="text-sm text-gray-500">
-                You have unsaved changes. Switching edit mode will reset your changes. Are you sure you want to continue?
+                You have unsaved changes. Switching edit mode will reset your
+                changes. Are you sure you want to continue?
               </p>
             </div>
 
@@ -1524,6 +1800,4 @@ const isLastShiftForUser = (userId: number, shiftId: number) => {
       )}
     </div>
   );
-}; 
-
-
+};

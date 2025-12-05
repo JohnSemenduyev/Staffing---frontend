@@ -40,6 +40,9 @@ export interface Shift {
   hours: number;
   scheduleSessionId?: number;
   auto?: boolean;
+  isDraft?: boolean;                 // optional flag
+  draftShiftId?: number | null;      // from backend
+  draftScheduleSessionId?: number | null;
   // Add these properties for session data
   clockIn?: string | null;
   clockOut?: string | null;
