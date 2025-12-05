@@ -21,6 +21,8 @@ interface Shift {
   reject?: boolean;
   // NEW: flag if backend explicitly marks it as draft
   isDraft?: boolean;
+  // Flag to mark deleted draft shifts
+  isDelete?: boolean;
 }
 
 interface ScheduleItem {
@@ -177,7 +179,10 @@ const getMaxShiftsPerDay = (
     return i.clientId === row.clientId && i.addressId === row.addressId;
   });
   let max = 1;
-  for (const d of userDays) max = Math.max(max, d.shifts.length);
+  for (const d of userDays) {
+    const activeShifts = d.shifts.filter((shift) => !(shift as any).isDelete);
+    max = Math.max(max, activeShifts.length);
+  }
   return max;
 };
 
@@ -197,7 +202,9 @@ const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]) => {
     .reduce(
       (total, item) =>
         total +
-        item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0),
+        item.shifts
+          .filter((shift) => !(shift as any).isDelete)
+          .reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0),
       0
     );
   return parseFloat(total.toFixed(2));
@@ -217,10 +224,12 @@ const calculateRowTotal = (
     .reduce(
       (total, item) =>
         total +
-        item.shifts.reduce(
-          (shiftTotal, shift) => shiftTotal + shift.hours,
-          0
-        ),
+        item.shifts
+          .filter((shift) => !(shift as any).isDelete)
+          .reduce(
+            (shiftTotal, shift) => shiftTotal + shift.hours,
+            0
+          ),
       0
     );
   return parseFloat(total.toFixed(2));
@@ -229,7 +238,9 @@ const calculateRowTotal = (
 const calculateGrandTotal = (scheduleData: ScheduleItem[]) => {
   const total = scheduleData.reduce(
     (total, item) =>
-      total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0),
+      total + item.shifts
+        .filter((shift) => !(shift as any).isDelete)
+        .reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0),
     0
   );
   return parseFloat(total.toFixed(2));
@@ -300,7 +311,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   const isLastShiftForUser = (userId: number, shiftId: number) => {
     const userShifts = scheduleData
       .filter((item) => item.userId === userId)
-      .flatMap((item) => item.shifts);
+      .flatMap((item) => item.shifts)
+      .filter((s) => !(s as any).isDelete);
 
     return userShifts.length === 1 && userShifts[0].id === shiftId;
   };
@@ -424,17 +436,37 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       .find(item => item.userId === userId && item.startDate === date)
       ?.shifts.find(shift => shift.id === shiftId);
 
-    // Check if it's a draft shift and notify parent
-    if (shiftToDelete && onDraftShiftDeletion) {
-      const isDraftShift = (shiftToDelete as any)?.draftShiftId || 
-                          (shiftToDelete as any)?.draftScheduleSessionId ||
-                          (shiftToDelete.id > 2000000000000);
-      
-      if (isDraftShift) {
+    if (!shiftToDelete) return;
+
+    // Check if it's a draft shift
+    const isDraftShift = (shiftToDelete as any)?.draftShiftId || 
+                        (shiftToDelete as any)?.draftScheduleSessionId ||
+                        (shiftToDelete.id > 2000000000000);
+    
+    if (isDraftShift) {
+      // For draft shifts, mark with isDelete flag instead of removing
+      if (onDraftShiftDeletion) {
         onDraftShiftDeletion(shiftToDelete);
       }
+      
+      const updatedData = scheduleData.map((item) => {
+        if (item.userId === userId && item.startDate === date) {
+          return {
+            ...item,
+            shifts: item.shifts.map((shift) =>
+              shift.id === shiftId ? { ...shift, isDelete: true } : shift
+            ),
+          };
+        }
+        return item;
+      });
+
+      onScheduleDataChange(updatedData);
+      setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
+      return;
     }
 
+    // For non-draft shifts, use existing deletion logic
     if (isLastShiftForUser(userId, shiftId)) {
       setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
       setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
@@ -1181,7 +1213,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           return sameUser && sameClientGroup && itemDate === dateCol.date;
                         });
                         const sortedShifts = sortShiftsByTime(
-                          daySchedules.flatMap((s) => s.shifts)
+                          daySchedules.flatMap((s) => s.shifts).filter((s) => !(s as any).isDelete)
                         );
                         const shift = sortedShifts[rowIdx];
                         const session = shift

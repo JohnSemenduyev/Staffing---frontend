@@ -196,12 +196,6 @@ export const ViewSchedule = () => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [pendingDraftDeletions, setPendingDraftDeletions] = useState<Array<{
-    draftShiftId: number;
-    draftScheduleSessionId: number | null;
-    scheduleSessionId: number | null;
-    hours: number;
-  }>>([]);
   const [isActualTimePublishing, setIsActualTimePublishing] = useState(false);
   const [isScheduleEditMode, setIsScheduleEditMode] = useState(false);
   const [isActualTimeEditMode, setIsActualTimeEditMode] = useState(false);
@@ -1501,19 +1495,11 @@ export const ViewSchedule = () => {
   };
 
   // Callback to handle draft shift deletions
+  // Note: The shift is already marked with isDelete: true in confirmDeleteShift
+  // This callback is kept for compatibility but no longer needs to track deletions separately
   const handleDraftShiftDeletion = (shift: any) => {
-    // Check if this is a draft shift
-    const draftShiftId = (shift as any)?.draftShiftId;
-    const draftScheduleSessionId = (shift as any)?.draftScheduleSessionId ?? null;
-    const scheduleSessionId = shift.scheduleSessionId ?? null;
-    if (draftShiftId || draftScheduleSessionId) {
-      setPendingDraftDeletions(prev => [...prev, {
-        draftShiftId: draftShiftId || (shift.id > 2000000000000 ? shift.id - 2000000000000 : shift.id),
-        draftScheduleSessionId,
-        scheduleSessionId,
-        hours: shift.hours || 0
-      }]);
-    }
+    // Shift deletion is now handled by marking isDelete: true in scheduleData
+    // No separate tracking needed
   };
 
   const handleSaveDraft = async () => {
@@ -1536,90 +1522,113 @@ export const ViewSchedule = () => {
       const endDate = toLocalYMD(weekRange.endOfWeek);
   
       // =========================================================
-      // STEP 1: build inputs for NEW draft shifts
-      //   - case1: new draftScheduleSession (no scheduleSessionId)
-      //   - case2: new draft shifts for existing scheduleSession
-      // Only consider client-generated shifts (id from Date.now).
+      // Collect ALL draft shifts (existing + new) grouped by draftScheduleSessionId
+      // Include isDelete flag for deleted shifts
       // =========================================================
-  
-      type GroupKey = string;
-      type GroupValue = {
+
+      type DraftSessionKey = string; // draftScheduleSessionId or "new-{userId}-{clientId}-{addressId}"
+      type DraftSessionGroup = {
+        draftScheduleSessionId: number | null;
+        scheduleSessionId: number | null;
         clientId: number;
         addressId: number;
         userId: number;
-        scheduleSessionId: number | null;
         checkScheduleSessionId: number | null;
         auto: boolean;
-        newShifts: any[];                      // case1
-        existingShiftsWithNewScheduleSession: any[]; // case2
+        shifts: any[];
       };
-  
-      const createInputs: any[] = [];
-      const userScheduleMap = new Map<GroupKey, GroupValue>();
-  
+
+      const draftSessionMap = new Map<DraftSessionKey, DraftSessionGroup>();
+
       scheduleData.forEach(item => {
-        const groupKey: GroupKey = `${item.userId}-${item.clientId}-${item.addressId}`;
-  
-        const scheduleSessionId =
-          item.shifts.find(s => s.scheduleSessionId)?.scheduleSessionId ?? null;
-  
         const checkKey = `${item.clientId}-${item.addressId}-${item.userId}`;
         const checkScheduleSessionId = checkScheduleSessionIdMap.get(checkKey) || null;
-  
-        if (!userScheduleMap.has(groupKey)) {
-          userScheduleMap.set(groupKey, {
-            clientId: item.clientId,
-            addressId: item.addressId,
-            userId: item.userId,
-            scheduleSessionId,
-            checkScheduleSessionId,
-            auto: item.auto || false,
-            newShifts: [],
-            existingShiftsWithNewScheduleSession: [],
-          });
-        }
-  
-        const group = userScheduleMap.get(groupKey)!;
-  
+
         item.shifts.forEach(shift => {
-          // 🔑 Treat only client-generated ids as "new" shifts
+          // Check if this is a draft shift
+          const draftShiftId = (shift as any)?.draftShiftId;
+          const draftScheduleSessionId = (shift as any)?.draftScheduleSessionId ?? null;
           const isClientGeneratedId = shift.id > 1_000_000_000_000;
-          if (!isClientGeneratedId) {
-            // existing schedule shift or existing draft shift -> not a "create"
+          const isDraftShift = draftShiftId || draftScheduleSessionId || isClientGeneratedId;
+
+          if (!isDraftShift) {
+            // Skip non-draft shifts
             return;
           }
-  
+
+          // Determine the key for grouping
+          let sessionKey: DraftSessionKey;
+          if (draftScheduleSessionId) {
+            sessionKey = `draft-${draftScheduleSessionId}`;
+          } else if (!shift.scheduleSessionId) {
+            // New draft schedule session
+            sessionKey = `new-${item.userId}-${item.clientId}-${item.addressId}`;
+          } else {
+            // Draft shifts attached to existing schedule session
+            sessionKey = `existing-${shift.scheduleSessionId}`;
+          }
+
+          if (!draftSessionMap.has(sessionKey)) {
+            draftSessionMap.set(sessionKey, {
+              draftScheduleSessionId: draftScheduleSessionId,
+              scheduleSessionId: shift.scheduleSessionId ?? null,
+              clientId: item.clientId,
+              addressId: item.addressId,
+              userId: item.userId,
+              checkScheduleSessionId,
+              auto: item.auto || false,
+              shifts: [],
+            });
+          }
+
+          const group = draftSessionMap.get(sessionKey)!;
           const shiftDate = convertDateFormat(shift.date || item.startDate);
           const shiftData: any = {
-            isDelete: false,
+            isDelete: (shift as any).isDelete === true,
             startTime: shift.startTime,
             endTime: shift.endTime,
             hours: shift.hours,
             auto: shift.auto || false,
             date: shiftDate,
           };
-  
-          if (!shift.scheduleSessionId) {
-            // ---- case1: new draftScheduleSession ----
-            group.newShifts.push(shiftData);
-          } else {
-            // ---- case2: extra draft shifts for existing scheduleSession ----
-            group.existingShiftsWithNewScheduleSession.push(shiftData);
+
+          // Include draftShiftId for existing draft shifts
+          if (draftShiftId) {
+            shiftData.draftShiftId = draftShiftId;
           }
+
+          group.shifts.push(shiftData);
         });
       });
-  
-      // Build payloads for case1 & case2
-      userScheduleMap.forEach(group => {
-        // case1: new draftScheduleSession
-        if (group.newShifts.length > 0) {
-          const weeklyHours = group.newShifts.reduce(
-            (total, s) => total + (s.hours || 0),
-            0
-          );
-  
-          createInputs.push({
-            shifts: group.newShifts,
+
+      // Build final payload
+      const draftInput: any[] = [];
+
+      draftSessionMap.forEach((group, sessionKey) => {
+        // Filter out deleted shifts for weeklyHours calculation
+        const activeShifts = group.shifts.filter(s => !s.isDelete);
+        const weeklyHours = activeShifts.reduce(
+          (total, s) => total + (s.hours || 0),
+          0
+        );
+
+        if (group.draftScheduleSessionId) {
+          // Existing draft schedule session - send all shifts (including deletions)
+          draftInput.push({
+            shifts: group.shifts,
+            draftScheduleSessionId: group.draftScheduleSessionId,
+            weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+          });
+        } else if (group.scheduleSessionId) {
+          // New draft shifts for existing schedule session
+          draftInput.push({
+            shifts: group.shifts,
+            scheduleSessionId: group.scheduleSessionId,
+          });
+        } else {
+          // New draft schedule session
+          draftInput.push({
+            shifts: group.shifts,
             weeklyHours: parseFloat(weeklyHours.toFixed(2)),
             clientId: group.clientId,
             addressId: group.addressId,
@@ -1631,87 +1640,7 @@ export const ViewSchedule = () => {
             auto: group.auto,
           });
         }
-  
-        // case2: new draft shifts attached to an existing scheduleSession
-        if (
-          group.existingShiftsWithNewScheduleSession.length > 0 &&
-          group.scheduleSessionId
-        ) {
-          createInputs.push({
-            shifts: group.existingShiftsWithNewScheduleSession,
-            scheduleSessionId: group.scheduleSessionId,
-          });
-        }
       });
-  
-      // =========================================================
-      // STEP 2: build inputs for DELETED draft shifts from pending deletions
-      //   - case6: { shifts:[{isDelete:true,draftShiftId}], draftScheduleSessionId, weeklyHours }
-      //   Group by draftScheduleSessionId and calculate weeklyHours
-      // =========================================================
-
-      const deleteInputs: any[] = [];
-
-      // Group pending deletions by draftScheduleSessionId
-      const deletionsByDraftSession = new Map<number | null, typeof pendingDraftDeletions>();
-      
-      pendingDraftDeletions.forEach(deletion => {
-        const key = deletion.draftScheduleSessionId;
-        if (!deletionsByDraftSession.has(key)) {
-          deletionsByDraftSession.set(key, []);
-        }
-        deletionsByDraftSession.get(key)!.push(deletion);
-      });
-
-      // Process each group
-      deletionsByDraftSession.forEach((deletions, draftScheduleSessionId) => {
-        if (draftScheduleSessionId === null) {
-          // Skip if no draftScheduleSessionId (shouldn't happen for case6)
-          return;
-        }
-
-        // Calculate remaining weekly hours after deletions
-        // Get all shifts with this draftScheduleSessionId that are NOT being deleted
-        const deletedShiftIds = new Set(deletions.map(d => d.draftShiftId));
-        const remainingWeeklyHoursRaw = scheduleData.reduce((total, item) => {
-          const sumForItem = item.shifts
-            .filter(s => {
-              const shiftDraftScheduleSessionId = (s as any)?.draftScheduleSessionId ?? null;
-              const shiftDraftShiftId = (s as any)?.draftShiftId;
-              return (
-                shiftDraftScheduleSessionId === draftScheduleSessionId &&
-                !deletedShiftIds.has(shiftDraftShiftId)
-              );
-            })
-            .reduce((st, sh) => st + (sh.hours || 0), 0);
-          return total + sumForItem;
-        }, 0);
-
-        const remainingWeeklyHours = parseFloat(remainingWeeklyHoursRaw.toFixed(2));
-
-        // Build shifts array with all deletions for this draftScheduleSessionId
-        const shiftsArray = deletions.map(d => ({
-          isDelete: true,
-          draftShiftId: d.draftShiftId,
-        }));
-
-        deleteInputs.push({
-          shifts: shiftsArray,
-          draftScheduleSessionId: draftScheduleSessionId,
-          weeklyHours: remainingWeeklyHours,
-        });
-      });
-
-      // Console log for pending deletions array
-      if (deleteInputs.length > 0) {
-        console.log("Pending draft deletions to be sent:", deleteInputs);
-      }
-  
-      // =========================================================
-      // STEP 3: final payload = creates + deletes
-      // =========================================================
-  
-      const draftInput = [...createInputs, ...deleteInputs];
   
       if (draftInput.length === 0) {
         toast({
@@ -1723,9 +1652,6 @@ export const ViewSchedule = () => {
       }
   
       await createDraftScheduleSessions(draftInput);
-      
-      // Clear pending deletions after successful save
-      setPendingDraftDeletions([]);
       
       toast({
         title: "Success",
@@ -1880,14 +1806,10 @@ export const ViewSchedule = () => {
     if (!isScheduleEditMode) {
       setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
       fetchApiExistingShifts();
-      // Clear pending deletions when entering edit mode
-      setPendingDraftDeletions([]);
     } else {
       const hasChanges = !schedulesEqual(scheduleData, originalScheduleData);
       if (hasChanges) {
         setScheduleData(originalScheduleData);
-        // Clear pending deletions when cancelling edit mode
-        setPendingDraftDeletions([]);
         toast({
           title: "Changes Cancelled",
           description: "Schedule time changes have been reset.",

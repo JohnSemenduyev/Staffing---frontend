@@ -43,6 +43,7 @@ export interface Shift {
   isDraft?: boolean;                 // optional flag
   draftShiftId?: number | null;      // from backend
   draftScheduleSessionId?: number | null;
+  isDelete?: boolean;                 // flag to mark deleted draft shifts
   // Add these properties for session data
   clockIn?: string | null;
   clockOut?: string | null;
