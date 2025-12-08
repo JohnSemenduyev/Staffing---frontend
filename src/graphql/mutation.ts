@@ -438,6 +438,21 @@ export const LOGIN_USER = gql`
     }
   }
 `;
+
+// -------------------- AUTH --------------------
+export const UPDATE_PASSWORD = gql`
+  mutation UpdatePassword(
+    $token: String!
+    $password: String!
+    $confirmPassword: String
+  ) {
+    updatePassword(
+      token: $token
+      password: $password
+      confirmPassword: $confirmPassword
+    )
+  }
+`;
 export const BULK_UPSERT_SCHEDULE_SESSION = gql`
   mutation BulkUpsertScheduleSession($input: [ScheduleSessionInputExtended!]!) {
     bulkUpsertScheduleSession(input: $input) {

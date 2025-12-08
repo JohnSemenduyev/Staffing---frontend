@@ -32,6 +32,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { token, roles, role, login, changeRoles } = useAuth();
   const { toast } = useToast();
+  const handleForgotPassword = () => navigate('/reset-password');
 
   const handleBackToLogin = () => {
     
@@ -240,9 +241,13 @@ const Login = () => {
               )}
             </Button>
             <div className="text-center">
-              <a href="#" className="text-gray-600 hover:text-[#004175] text-sm">
+              <button
+                type="button"
+                onClick={() => {}}
+                className="text-gray-600 hover:text-[#004175] text-sm"
+              >
                 Forgot Password?
-              </a>
+              </button>
             </div>
           </form>
           <div className="mt-6 pt-6 border-t border-gray-200">
