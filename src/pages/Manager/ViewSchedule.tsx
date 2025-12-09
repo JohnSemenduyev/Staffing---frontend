@@ -785,8 +785,18 @@ export const ViewSchedule = () => {
         shift: any;
         isDraft: boolean;
         groupAuto: boolean;
+        isDraftScheduleSession: boolean;
       }) => {
-        const { group, userId, userName, userPhone, shift, isDraft, groupAuto } = params;
+        const {
+          group,
+          userId,
+          userName,
+          userPhone,
+          shift,
+          isDraft,
+          groupAuto,
+          isDraftScheduleSession,
+        } = params;
         if (!shift?.date || userId == null) return;
   
         const date = normalizeDate(shift.date);
@@ -817,8 +827,12 @@ export const ViewSchedule = () => {
                 .join(", ") || "Unknown Address",
             userName,
             userPhone,
+            draftScheduleSession: isDraftScheduleSession,
           };
           keyedByUserDate.set(key, item);
+        }
+        if (item && isDraftScheduleSession) {
+          item.draftScheduleSession = true;
         }
   
         // For draft shifts we give them a big synthetic id so they are treated as "new"
@@ -869,6 +883,7 @@ export const ViewSchedule = () => {
             shift,
             isDraft: false,
             groupAuto,
+            isDraftScheduleSession: false,
           });
         });
   
@@ -882,6 +897,7 @@ export const ViewSchedule = () => {
             shift,
             isDraft: true,
             groupAuto: groupAuto || !!shift.auto,
+            isDraftScheduleSession: false,
           });
         });
       });
@@ -909,6 +925,7 @@ export const ViewSchedule = () => {
             shift,
             isDraft: true,
             groupAuto,
+            isDraftScheduleSession: true,
           });
         });
       });
@@ -1355,6 +1372,157 @@ export const ViewSchedule = () => {
     setSchedulePublishModal({ isOpen: true });
   };
 
+  // const confirmSchedulePublish = async () => {
+  //   if (!scheduleData || scheduleData.length === 0) {
+  //     toast({
+  //       title: "Error",
+  //       description: "No data available to publish!",
+  //       variant: "destructive",
+  //     });
+  //     return;
+  //   }
+
+  //   try {
+  //     setIsPublishing(true);
+  //     const selectedDateObj = parseLocalYMD(selectedDate);
+  //     const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
+  //     const startDate = toLocalYMD(weekRange.startOfWeek);
+  //     const endDate = toLocalYMD(weekRange.endOfWeek);
+  //     const userScheduleMap = new Map();
+  //     scheduleData.forEach(item => {
+  //       const userId = item.userId;
+  //       const scheduleSessionId = item.shifts.find(shift => shift.scheduleSessionId)?.scheduleSessionId || null;
+  //       const hasDraftShiftsForItem = item.shifts.some((s: any) => !!(s?.draftShiftId));
+
+  //       if (!userScheduleMap.has(userId)) {
+  //         userScheduleMap.set(userId, {
+  //           scheduleSessionId: scheduleSessionId, 
+  //           clientId: item.clientId,
+  //           addressId: item.addressId,
+  //           userId: userId,
+  //           startDate: convertDateFormat(startDate),
+  //           endDate: convertDateFormat(endDate),
+  //           auto: item.auto,
+  //           weeklyHours: 0, 
+  //           shifts: [],
+  //           hasDraftShifts: hasDraftShiftsForItem || false,
+  //         });
+  //       } else {
+  //         const existingSchedule = userScheduleMap.get(userId);
+  //         existingSchedule.auto = item.auto;
+  //         if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
+  //           existingSchedule.scheduleSessionId = scheduleSessionId;
+  //         }
+  //         if (hasDraftShiftsForItem) {
+  //           existingSchedule.hasDraftShifts = true;
+  //         }
+  //       }
+
+  //       const userSchedule = userScheduleMap.get(userId);
+  //       item.shifts.forEach(shift => {
+  //         const isClientGeneratedId = shift.id > 1000000000000;
+  //         const isDraftShift = !!(shift as any)?.draftShiftId;
+  //         // Treat draft shifts as new entities (shiftId: null) when they belong to existing scheduleSession
+  //         const shiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
+  //         userSchedule.shifts.push({
+  //           date: convertDateFormat(shift.date),
+  //           startTime: shift.startTime,
+  //           endTime: shift.endTime,
+  //           hours: shift.hours,
+  //           shiftId: shiftId,
+  //           auto: (shift as any)?.auto ?? null
+  //         });
+  //       });
+  //     });
+  //     const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
+  //       const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
+  //       const originalSet = originalShiftsRef.current.get(userSchedule.userId) || new Set<string>();
+  //       const currentSet = new Set<string>();
+  //       scheduleData
+  //         .filter(i => i.userId === userSchedule.userId)
+  //         .forEach(i => i.shifts.forEach(s => currentSet.add(makeShiftKey(s))));
+  //       let changed = false;
+  //       if (originalSet.size !== currentSet.size) {
+  //         changed = true;
+  //       } else {
+  //         for (const k of currentSet) {
+  //           if (!originalSet.has(k)) { changed = true; break; }
+  //         }
+  //       }
+  //       if (!changed && autoChangedForUser(userSchedule.userId, scheduleData, originalScheduleData)) {
+  //         changed = true;
+  //       }
+  //       // Set change to true if there are draft shifts (they are treated as new entities)
+  //       if (userSchedule.hasDraftShifts) {
+  //         changed = true;
+  //       }
+  //       const mapKey = `${userSchedule.clientId}-${userSchedule.addressId}-${userSchedule.userId}`;
+  //       const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
+  //       console.log(`User ${userSchedule.userId}: mapKey=${mapKey}, mapped checkScheduleSessionId=${mappedCheckScheduleSessionId}`);
+        
+  //       // Remove hasDraftShifts before sending to server
+  //       const { hasDraftShifts, ...scheduleSessionData } = userSchedule;
+        
+  //       return {
+  //         ...scheduleSessionData,
+  //         weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+  //         change: changed,
+  //         checkScheduleSessionId: mappedCheckScheduleSessionId
+  //       };
+  //     });
+  //     await bulkUpsertScheduleSessions(scheduleInput);
+  //     console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
+
+  //     toast({
+  //       title: "Success",
+  //       description: "Schedule published successfully!",
+  //     });
+  //     try {
+  //       const clientId = selectedClient?.clientId;
+  //       const addressId = selectedClient?.addressId;
+  //       const formattedDate = convertDateFormat(selectedDate);
+
+  //       if (selectedUserId) {
+  //         await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
+  //       } else if (clientId && addressId) {
+  //         await fetchScheduleData(clientId, addressId, formattedDate);
+  //       }
+  //       setIsPublishing(false);
+  //     } catch (refreshError) {
+  //       console.error("Error refreshing schedule data after publish:", refreshError);
+       
+  //     }
+  //     setIsScheduleEditMode(false);
+  //     setSchedulePublishModal({ isOpen: false });
+
+  //   } catch (error: any) {
+  //     let errorMessage = "Failed to publish schedule. Please try again.";
+
+  //     if (error.message) {
+  //       if (error.message.includes("No authentication token found")) {
+  //         errorMessage = "Authentication token not found. Please log in again.";
+  //       } else if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+  //         errorMessage = "Network error. Please check your internet connection and try again.";
+  //       } else if (error.response?.errors && error.response.errors.length > 0) {
+  //         errorMessage = error.response.errors[0].message || errorMessage;
+  //       } else {
+  //         errorMessage = error.message;
+  //       }
+  //     }
+
+  //     toast({
+  //       title: "Error",
+  //       description: errorMessage,
+  //       variant: "destructive",
+  //     });
+  //     setSchedulePublishModal({ isOpen: false });
+  //   } finally {
+
+  //     setIsPublishing(false);
+  //   }
+  // };
+
+
   const confirmSchedulePublish = async () => {
     if (!scheduleData || scheduleData.length === 0) {
       toast({
@@ -1364,29 +1532,32 @@ export const ViewSchedule = () => {
       });
       return;
     }
-
+  
     try {
       setIsPublishing(true);
       const selectedDateObj = parseLocalYMD(selectedDate);
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       const startDate = toLocalYMD(weekRange.startOfWeek);
       const endDate = toLocalYMD(weekRange.endOfWeek);
+  
       const userScheduleMap = new Map();
       scheduleData.forEach(item => {
         const userId = item.userId;
         const scheduleSessionId = item.shifts.find(shift => shift.scheduleSessionId)?.scheduleSessionId || null;
-
+        const hasDraftShiftsForItem = item.shifts.some((s: any) => !!(s?.draftShiftId));
+  
         if (!userScheduleMap.has(userId)) {
           userScheduleMap.set(userId, {
-            scheduleSessionId: scheduleSessionId, 
+            scheduleSessionId: scheduleSessionId,
             clientId: item.clientId,
             addressId: item.addressId,
             userId: userId,
             startDate: convertDateFormat(startDate),
             endDate: convertDateFormat(endDate),
             auto: item.auto,
-            weeklyHours: 0, 
-            shifts: []
+            weeklyHours: 0,
+            shifts: [],
+            hasDraftShifts: hasDraftShiftsForItem || false,
           });
         } else {
           const existingSchedule = userScheduleMap.get(userId);
@@ -1394,21 +1565,28 @@ export const ViewSchedule = () => {
           if (!existingSchedule.scheduleSessionId && scheduleSessionId) {
             existingSchedule.scheduleSessionId = scheduleSessionId;
           }
+          if (hasDraftShiftsForItem) {
+            existingSchedule.hasDraftShifts = true;
+          }
         }
-
+  
         const userSchedule = userScheduleMap.get(userId);
         item.shifts.forEach(shift => {
           const isClientGeneratedId = shift.id > 1000000000000;
+          const isDraftShift = !!(shift as any)?.draftShiftId;
+          const shiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
+  
           userSchedule.shifts.push({
             date: convertDateFormat(shift.date),
             startTime: shift.startTime,
             endTime: shift.endTime,
             hours: shift.hours,
-            shiftId: isClientGeneratedId ? null : shift.id,
+            shiftId: shiftId,
             auto: (shift as any)?.auto ?? null
           });
         });
       });
+  
       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
         const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
         const originalSet = originalShiftsRef.current.get(userSchedule.userId) || new Set<string>();
@@ -1416,6 +1594,7 @@ export const ViewSchedule = () => {
         scheduleData
           .filter(i => i.userId === userSchedule.userId)
           .forEach(i => i.shifts.forEach(s => currentSet.add(makeShiftKey(s))));
+  
         let changed = false;
         if (originalSet.size !== currentSet.size) {
           changed = true;
@@ -1424,32 +1603,92 @@ export const ViewSchedule = () => {
             if (!originalSet.has(k)) { changed = true; break; }
           }
         }
+  
         if (!changed && autoChangedForUser(userSchedule.userId, scheduleData, originalScheduleData)) {
           changed = true;
         }
+  
+        if (userSchedule.hasDraftShifts) {
+          changed = true;
+        }
+  
         const mapKey = `${userSchedule.clientId}-${userSchedule.addressId}-${userSchedule.userId}`;
         const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
         console.log(`User ${userSchedule.userId}: mapKey=${mapKey}, mapped checkScheduleSessionId=${mappedCheckScheduleSessionId}`);
-        
+  
+        const { hasDraftShifts, ...scheduleSessionData } = userSchedule;
+  
         return {
-          ...userSchedule,
+          ...scheduleSessionData,
           weeklyHours: parseFloat(weeklyHours.toFixed(2)),
           change: changed,
           checkScheduleSessionId: mappedCheckScheduleSessionId
         };
       });
+  
       await bulkUpsertScheduleSessions(scheduleInput);
-      console.log("scheduleInput", JSON.stringify(scheduleInput, null, 2));
+  
+      const draftDeletePayload: any[] = [];
+      const draftScheduleSessionIds = new Set<number>();
+  
+      const scheduleSessionDraftMap = new Map<number, Set<number>>();
+  
+      scheduleData.forEach(item => {
+        item.shifts.forEach((shift: any) => {
+          const draftScheduleSessionId = shift.draftScheduleSessionId as number | null | undefined;
+          const draftShiftId = shift.draftShiftId as number | null | undefined;
+          const scheduleSessionId = shift.scheduleSessionId as number | null | undefined;
+  
+          if (draftScheduleSessionId && !draftScheduleSessionIds.has(draftScheduleSessionId)) {
+            draftScheduleSessionIds.add(draftScheduleSessionId);
+            draftDeletePayload.push({
+              draftScheduleSessionId,
+              isDelete: true,
+            });
+          }
+  
+          if (draftShiftId && scheduleSessionId) {
+            if (!scheduleSessionDraftMap.has(scheduleSessionId)) {
+              scheduleSessionDraftMap.set(scheduleSessionId, new Set());
+            }
+            scheduleSessionDraftMap.get(scheduleSessionId)!.add(draftShiftId);
+          }
+        });
+      });
+  
+      scheduleSessionDraftMap.forEach((draftShiftIds, scheduleSessionId) => {
+        draftDeletePayload.push({
+          scheduleSessionId,
+          shifts: Array.from(draftShiftIds).map(draftShiftId => ({
+            draftShiftId,
+            isDelete: true,
+          })),
+        });
+      });
+  
+      console.log(
+        "Draft delete payload after publish:",
+        JSON.stringify(draftDeletePayload, null, 2)
+      );
 
+      if (draftDeletePayload.length > 0) {
+        try {
+          await createDraftScheduleSessions(draftDeletePayload);
+        } catch (draftDeleteErr) {
+          console.error("Failed to delete draft data after publish:", draftDeleteErr);
+        }
+      }
+  
       toast({
         title: "Success",
         description: "Schedule published successfully!",
       });
+  
       try {
         const clientId = selectedClient?.clientId;
         const addressId = selectedClient?.addressId;
         const formattedDate = convertDateFormat(selectedDate);
-
+  
         if (selectedUserId) {
           await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
         } else if (clientId && addressId) {
@@ -1458,14 +1697,14 @@ export const ViewSchedule = () => {
         setIsPublishing(false);
       } catch (refreshError) {
         console.error("Error refreshing schedule data after publish:", refreshError);
-       
       }
+  
       setIsScheduleEditMode(false);
       setSchedulePublishModal({ isOpen: false });
-
+  
     } catch (error: any) {
       let errorMessage = "Failed to publish schedule. Please try again.";
-
+  
       if (error.message) {
         if (error.message.includes("No authentication token found")) {
           errorMessage = "Authentication token not found. Please log in again.";
@@ -1477,7 +1716,7 @@ export const ViewSchedule = () => {
           errorMessage = error.message;
         }
       }
-
+  
       toast({
         title: "Error",
         description: errorMessage,
@@ -1485,11 +1724,10 @@ export const ViewSchedule = () => {
       });
       setSchedulePublishModal({ isOpen: false });
     } finally {
-
       setIsPublishing(false);
     }
   };
-
+  
   const cancelSchedulePublish = () => {
     setSchedulePublishModal({ isOpen: false });
   };

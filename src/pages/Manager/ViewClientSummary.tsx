@@ -479,14 +479,14 @@ export const ViewClientSummary = () => {
   return (
     <div className="w-full p-6 space-y-4">
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl font-semibold text-gray-800">View Client Summary</h1>
-          <div className="flex items-center gap-4">
-          <div className="relative" ref={filterDropdownRef}>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 w-full md:w-auto">
+          <div className="relative w-full md:w-[250px]" ref={filterDropdownRef}>
             <button
               type="button"
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="w-[250px] h-[40px] px-3 py-2 text-sm border border-gray-300 rounded-md bg-white flex items-center gap-2 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#004175]"
+              className="w-full h-[40px] px-3 py-2 text-sm border border-gray-300 rounded-md bg-white flex items-center gap-2 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#004175]"
             >
               <div 
                 className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden filter-tags-scrollbar"
@@ -559,11 +559,13 @@ export const ViewClientSummary = () => {
               </div>
             )}
           </div>
-          <DateNavigation
-            selectedDate={selectedDate}
-            onDateChange={validateAndNavigate}
-            currentWeekRange={currentWeekRange}
-          />
+          <div className="w-full md:w-auto">
+            <DateNavigation
+              selectedDate={selectedDate}
+              onDateChange={validateAndNavigate}
+              currentWeekRange={currentWeekRange}
+            />
+          </div>
           </div>
         </div>
         {error && <ErrorMessage message={error} />}

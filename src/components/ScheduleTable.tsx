@@ -5,7 +5,10 @@ import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { formatDateLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
 import { graphQLClient } from "../GraphqlClient";
-import { DELETE_SCHEDULE_SESSION } from "../graphql/mutation";
+import {
+  CREATE_DRAFT_SCHEDULE_SESSIONS,
+  DELETE_SCHEDULE_SESSION,
+} from "../graphql/mutation";
 
 interface Shift {
   id: number;
@@ -37,6 +40,7 @@ interface ScheduleItem {
   address: string;
   userName: string;
   userPhone: string;
+  draftScheduleSession?: boolean;
 }
 
 interface RowGroup {
@@ -112,15 +116,13 @@ const findSessionForShift = (
   return sessionData.find((s) => s.shiftId === shiftId) || null;
 };
 
-// Decide if a shift should be treated as "draft"
+// Decide if a shift should be treated as "draft" (only for actual draft data from backend)
 const isDraftShift = (shift: Shift): boolean => {
-  // if server sends explicit flag
-  if (shift.isDraft) return true;
-  // if it has no scheduleSessionId, it's not in the main schedule yet
-  if (!shift.scheduleSessionId) return true;
-  // synthetic IDs / client-generated ones
-  if (shift.id > 1_000_000_000_000) return true;
-  return false;
+  // Only show draft styling for shifts that actually come from draft data (have draftShiftId or draftScheduleSessionId)
+  // Newly created shifts (synthetic IDs) should NOT show draft styling
+  const hasDraftShiftId = !!(shift as any)?.draftShiftId;
+  const hasDraftScheduleSessionId = !!(shift as any)?.draftScheduleSessionId;
+  return hasDraftShiftId || hasDraftScheduleSessionId;
 };
 
 // ---------- Time helpers ----------
@@ -276,6 +278,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 }) => {
   const { toast: hookToast } = useToast();
   // console.log("scheduleData", scheduleData);
+
+  // Check if draft data exists (either draftShiftId in shifts or draftScheduleSession flag)
+  const hasDraftData = () => {
+    return scheduleData.some((item) => {
+      // Check if schedule session has draftScheduleSession flag
+      if (item.draftScheduleSession) {
+        return true;
+      }
+      // Check if any shift has draftShiftId or draftScheduleSessionId
+      return item.shifts.some((shift: any) => {
+        return !!(shift?.draftShiftId || shift?.draftScheduleSessionId);
+      });
+    });
+  };
 
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
@@ -764,18 +780,30 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     if (userId == null) return;
 
     try {
-      const sessionIds = new Set<number>();
+      const scheduleSessionIds = new Set<number>();
+      const draftScheduleSessionIds = new Set<number>();
+
       scheduleData.forEach((item) => {
-        if (item.userId === userId) {
+        if (item.userId !== userId) return;
+
+        if (item.draftScheduleSession) {
+          item.shifts.forEach((s: any) => {
+            if (s?.draftScheduleSessionId) {
+              draftScheduleSessionIds.add(s.draftScheduleSessionId);
+            }
+          });
+        } else {
           item.shifts.forEach((s) => {
-            if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
+            if (s.scheduleSessionId) scheduleSessionIds.add(s.scheduleSessionId);
           });
         }
       });
 
       const token = sessionStorage.getItem("token");
+
+      // Delete published schedule sessions
       const deleteResults = await Promise.allSettled(
-        Array.from(sessionIds).map((id) =>
+        Array.from(scheduleSessionIds).map((id) =>
           graphQLClient.request(
             DELETE_SCHEDULE_SESSION,
             { deleteScheduleSessionId: id },
@@ -819,6 +847,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           variant: "destructive",
         });
         return;
+      }
+
+      // Delete draft schedule sessions
+      if (draftScheduleSessionIds.size > 0) {
+        const draftInput = Array.from(draftScheduleSessionIds).map((id) => ({
+          draftScheduleSessionId: id,
+          isDelete: true,
+        }));
+
+        await graphQLClient.request(
+          CREATE_DRAFT_SCHEDULE_SESSIONS,
+          { input: draftInput },
+          { Authorization: `Bearer ${token}` }
+        );
       }
 
       const updatedData = scheduleData.filter((item) => item.userId !== userId);
@@ -1302,11 +1344,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </span>
 
                                   {/* DRAFT BADGE */}
-                                  {draft && (
-                                    <span className="text-[10px] uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
-                                      Draft
-                                    </span>
-                                  )}
+                                 
 
                                   <div className="w-[50px] h-[20px]">
                                     <ToggleSwitch
@@ -1354,7 +1392,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                       }}
                                     />
                                   </div>
-
+                                  {draft && (
+                                    <span className="text-[10px] uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                                      Draft
+                                    </span>
+                                  )}
                                   {/* Confirm/Reject indicator (only in view mode) */}
                                   {!readOnly &&
                                     !isEditMode &&
@@ -1529,7 +1571,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           <div className="flex gap-2">
             <button
               onClick={onPublish}
-              disabled={isPublishing || !hasChanges}
+              disabled={isPublishing || (!hasChanges && !hasDraftData())}
               className="inline-flex items-center px-4 py-2 text-white bg-[#004175] hover:bg-[#00325d] disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm"
               title="Publish Schedule"
             >

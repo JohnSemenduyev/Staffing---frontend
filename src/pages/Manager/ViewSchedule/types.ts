@@ -67,6 +67,7 @@ export interface ScheduleItem {
   address: string;
   userName: string;
   userPhone: string;
+  draftScheduleSession?: boolean;
 }
 
 export interface WeekRange {

@@ -344,15 +344,17 @@ export const ViewEmployeeSummary: React.FC = () => {
   return (
     <div className="w-full p-6 space-y-4">
       <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <h1 className="text-xl font-semibold text-gray-800">
             View Employee Summary
           </h1>
-          <DateNavigation
-            selectedDate={selectedDate}
-            onDateChange={validateAndNavigate}
-            currentWeekRange={currentWeekRange}
-          />
+          <div className="w-full md:w-auto">
+            <DateNavigation
+              selectedDate={selectedDate}
+              onDateChange={validateAndNavigate}
+              currentWeekRange={currentWeekRange}
+            />
+          </div>
         </div>
         {error && <ErrorMessage message={error} />}
       </div>
