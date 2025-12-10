@@ -40,14 +40,11 @@ type NotificationOption = (typeof notificationOptions)[number];
 const flattenNotificationCategories = (categories) => {
 	const flattened = [];
 	categories.forEach((cat) => {
-		// Add parent as group label if needed
 		flattened.push({ label: cat.label, value: cat.value });
-
-		// Add subcategories (with clear prefix for UI clarity)
 		if (Array.isArray(cat.subCategories)) {
 			cat.subCategories.forEach((sub) => {
 				flattened.push({
-					label: `— ${cat.label} / ${sub.label}`, // visually nested
+					label: `— ${cat.label} / ${sub.label}`,
 					value: sub.value,
 				});
 			});
@@ -104,7 +101,7 @@ export const notificationCategories = [
 	{
 		label: "Time Deviation",
 		value: "Time Deviation",
-		subCategories: [], // none yet
+		subCategories: [],
 	},
 	{
 		label: "Weekly Hours",
@@ -187,8 +184,6 @@ export default function AssignmentNew() {
 		record: any;
 	}>({ isOpen: false, record: null });
 	const [deleteLoader, setDeleteLoader] = useState(false);
-	const [showSearchForm, setShowSearchForm] = useState(false);
-	const [searchLoading, setSearchLoading] = useState(false);
 	const [clientSearch, setClientSearch] = useState("");
 	const [userSearch, setUserSearch] = useState("");
 	const [guardSearch, setGuardSearch] = useState("");
@@ -215,9 +210,6 @@ export default function AssignmentNew() {
 		useSearchUsers(debouncedUserSearch);
 	const { data: searchedGuards = [], isLoading: loadingGuards } =
 		useSearchUsers(debouncedGuardSearch);
-	// const accessDropdownRef = useRef<HTMLDivElement>(null);
-
-	// Access Dropdown
 	useEffect(() => {
 		if (!showAccessDropdown) return;
 		const handleClickOutside = (event: MouseEvent) => {
@@ -233,8 +225,6 @@ export default function AssignmentNew() {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
 	}, [showAccessDropdown]);
-
-	// Role Dropdown
 	useEffect(() => {
 		if (!showRoleDropdown) return;
 		const handleClickOutside = (event: MouseEvent) => {
@@ -250,8 +240,6 @@ export default function AssignmentNew() {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
 	}, [showRoleDropdown]);
-
-	// Notification Dropdown
 	useEffect(() => {
 		if (!showNotificationDropdown) return;
 		const handleClickOutside = (event: MouseEvent) => {
@@ -267,41 +255,9 @@ export default function AssignmentNew() {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
 	}, [showNotificationDropdown]);
-	const searchFields = useMemo<FieldConfig[]>(
-		() => [
-			{ name: "clientName", type: "text", placeholder: "Client Name" },
-			{ name: "location", type: "text", placeholder: "Location" },
-			{ name: "userName", type: "text", placeholder: "User Name" },
-			{
-				name: "role",
-				type: "select",
-				placeholder: "Select Role",
-				options: [
-					{ label: "Admin", value: "Admin" },
-					{ label: "Manager", value: "Manager" },
-					{ label: "Guard", value: "Guard" },
-					{ label: "Client", value: "Client" },
-				],
-			},
-			{
-				name: "access",
-				type: "select",
-				placeholder: "Select Access",
-				options: [
-					{ label: "View", value: "View" },
-					{ label: "Edit", value: "Edit" },
-				],
-			},
-			{ name: "userNotified", type: "text", placeholder: "User Notified" },
-		],
-		[],
-	);
-
 	useEffect(() => {
 		fetchAssignments(currentPage);
 	}, [currentPage]);
-
-	// Calculate table height dynamically
 	useEffect(() => {
 		const calculateTableHeight = () => {
 			if (formRef.current) {
@@ -310,18 +266,12 @@ export default function AssignmentNew() {
 				setTableHeight(calculatedHeight);
 			}
 		};
-
-		// Calculate on mount and when form content changes
 		calculateTableHeight();
-
-		// Recalculate on window resize
 		const handleResize = () => {
 			calculateTableHeight();
 		};
 
 		window.addEventListener("resize", handleResize);
-
-		// Use ResizeObserver to detect form height changes
 		const resizeObserver = new ResizeObserver(() => {
 			calculateTableHeight();
 		});
@@ -350,117 +300,6 @@ export default function AssignmentNew() {
 			document.removeEventListener("mousedown", handleClickOutside);
 		};
 	}, []);
-
-	// const handleSearch = async (searchData: { [key: string]: any }) => {
-	//   console.log({searchData});
-
-	//   const filterEntries = Object.entries(searchData).filter(
-	//     ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
-	//   );
-
-	//   if (filterEntries.length === 0) {
-	//     setCurrentPage(1);
-	//     await fetchAssignments(1, null);
-	//     return;
-	//   }
-
-	//   // mapping table keys -> API keys
-	//   const keyMapping: Record<string, string> = {
-	//     "client.name": "clientName",
-	//     "user.name": "userName",
-	//     "guard.name": "guardName",
-	//     "address.address": "addressText",
-	//     "notification": "notification",
-	//     "role": "role",
-	//     "access": "access",
-	//   };
-
-	//   const filter = Object.fromEntries(
-	//     filterEntries.map(([key, value]) => {
-	//       const mappedKey = keyMapping[key] || key;
-	//       // Convert notification to array format (handle comma-separated values)
-	//       if (mappedKey === "notification") {
-	//         if (Array.isArray(value)) {
-	//           return [mappedKey, value];
-	//         }
-	//         // Split comma-separated string into array
-	//         const notificationArray = typeof value === 'string'
-	//           ? value.split(',').map(item => item.trim()).filter(item => item.length > 0)
-	//           : [value];
-	//         return [mappedKey, notificationArray];
-	//       }
-	//       return [mappedKey, value];
-	//     })
-	//   );
-
-	//   setCurrentPage(1);
-	//   console.log(filter); // 👀 debug
-	//   await fetchAssignments(1, filter);
-	// };
-	// const handleSearch = async (searchData: { [key: string]: any }) => {
-	// 	console.log({ searchData });
-
-	// 	const filterEntries = Object.entries(searchData).filter(
-	// 		([_, v]) => v !== undefined && v !== null && String(v).trim() !== "",
-	// 	);
-
-	// 	if (filterEntries.length === 0) {
-	// 		setCurrentPage(1);
-	// 		await fetchAssignments(1, null);
-	// 		return;
-	// 	}
-
-	// 	// mapping table keys -> API keys
-	// 	const keyMapping: Record<string, string> = {
-	// 		"client.name": "clientName",
-	// 		"user.name": "userName",
-	// 		"guard.name": "guardName",
-	// 		"address.address": "addressText",
-	// 		notification: "notification",
-	// 		role: "role",
-	// 		access: "access",
-	// 	};
-
-	// 	// step 1️⃣ - build filter normally
-	// 	let filter = Object.fromEntries(
-	// 		filterEntries.map(([key, value]) => {
-	// 			const mappedKey = keyMapping[key] || key;
-
-	// 			// Convert notification to array format (handle comma-separated values)
-	// 			if (mappedKey === "notification") {
-	// 				if (Array.isArray(value)) {
-	// 					return [mappedKey, value];
-	// 				}
-	// 				// Split comma-separated string into array
-	// 				const notificationArray =
-	// 					typeof value === "string"
-	// 						? value
-	// 								.split(",")
-	// 								.map((item) => item.trim())
-	// 								.filter((item) => item.length > 0)
-	// 						: [value];
-	// 				return [mappedKey, notificationArray];
-	// 			}
-
-	// 			return [mappedKey, value];
-	// 		}),
-	// 	);
-
-	// 	// step 2️⃣ - remove subCategory from notification array if present
-	// 	if (filter.subCategories && filter.notification) {
-	// 		const subValue = filter.subCategories;
-	// 		if (Array.isArray(filter.notification)) {
-	// 			filter.notification = filter.notification.filter(
-	// 				(item: string) => item !== subValue,
-	// 			);
-	// 		}
-	// 	}
-
-	// 	// step 3️⃣ - send final payload
-	// 	setCurrentPage(1);
-	// 	console.log("✅ Final Filter:", filter);
-	// 	await fetchAssignments(1, filter);
-	// };
 	const toArray = (value: unknown) => {
 		if (Array.isArray(value)) return value.filter(Boolean) as string[];
 		if (typeof value === "string") {
@@ -484,8 +323,6 @@ export default function AssignmentNew() {
 			await fetchAssignments(1, null);
 			return;
 		}
-
-		// mapping table keys -> API keys
 		const keyMapping: Record<string, string> = {
 			"client.name": "clientName",
 			"user.name": "userName",
@@ -495,8 +332,6 @@ export default function AssignmentNew() {
 			role: "role",
 			access: "access",
 		};
-
-		// Step 1️⃣ - build filter object normally
 		let filter = Object.fromEntries(
 			filterEntries.map(([key, value]) => {
 				const mappedKey = keyMapping[key] || key;
@@ -508,8 +343,6 @@ export default function AssignmentNew() {
 				return [mappedKey, value];
 			}),
 		);
-
-		// Step 2️⃣ - normalize notification + sub-category selections
 		const notificationSelections = toArray(filter.notification);
 		const providedSubCats = toArray(filter.subCategories);
 
@@ -527,8 +360,6 @@ export default function AssignmentNew() {
 		filter.notificationSubCat = notificationSubCat.length > 0 ? notificationSubCat : null;
 		filter.notification = normalizedNotification.length > 0 ? normalizedNotification : null;
 		delete filter.subCategories;
-
-		// Step 3️⃣ - final payload prep
 		setCurrentPage(1);
 
 		if (Array.isArray(filter.notification)) {
@@ -542,12 +373,6 @@ export default function AssignmentNew() {
 }
 		console.log("🚀 Final Payload:", filter);
 		await fetchAssignments(1, filter);
-	};
-
-	const handleChange = (field: string, value: any) => {
-		setForm((f) => ({ ...f, [field]: value }));
-		setErrors({});
-		setShowErrors(false);
 	};
 
 	const handleClientSelect = (
@@ -627,7 +452,6 @@ export default function AssignmentNew() {
 			hasError ? "border-red-500 focus:ring-red-500" : ""
 		}`;
 	};
-
 	const validate = () => {
 		const e: any = {};
 		if (!form.clientId) e.clientId = "Client is required";
@@ -691,7 +515,6 @@ export default function AssignmentNew() {
 			notification: form.notification,
 			notificationSubCat: form.notificationSubCat,
 		};
-		console.log("input", input);
 		try {
 			setSubmitLoader(true);
 			if (isEditing && editId !== null) {
@@ -717,42 +540,57 @@ export default function AssignmentNew() {
 	};
 
 	const handleEdit = (record: any) => {
-		setIsEditing(true);
-		setEditId(record.id);
+  setIsEditing(true);
+  setEditId(record.id);
 
-		const mappedNotifications = Array.isArray(record.notification)
-			? record.notification.map((notif) => notificationMapping[notif] || notif)
-			: [];
+  const mappedNotifications = Array.isArray(record.notification)
+    ? record.notification.map((notif) => notificationMapping[notif] || notif)
+    : [];
 
-		const mappedSubCats = Array.isArray(record.notificationSubCat)
-			? record.notificationSubCat.map((notif: string) => notif)
-			: [];
+  const mappedSubCats = Array.isArray(record.notificationSubCat)
+    ? record.notificationSubCat.map((notif: string) => notif)
+    : [];
 
-		setForm({
-			clientId: String(record.client?.id || ""),
-			addressId: String(record.address?.id || ""),
-			userId: String(record.user?.id || ""),
-			guardId: String(record.guard?.id || ""),
-			role: record.role || "",
-			access: record.access || "",
-			notification: mappedNotifications,
-			notificationSubCat: mappedSubCats,
-		});
-		setClientSearch(record.client?.name || "");
-		const fullAddress = [
-			record.address?.address || record.address?.label,
-			(record.address as any)?.city,
-			(record.address as any)?.state,
-			(record.address as any)?.pincode,
-		]
-			.filter(Boolean)
-			.join(", ");
-		setSelectedAddressText(fullAddress);
-		setUserSearch(record.user?.name + " " + record.user?.lastName || "");
-		setGuardSearch(record.guard?.name + " " + record.guard?.lastName || "");
+  // 🔹 decide what to use for "guard" visually and for guardId
+  const guardEntity = record.guard || record.clientregistration;
 
-		window.scrollTo({ top: 0, behavior: "smooth" });
-	};
+  // if it's a client-role assignment, we want to send clientRegId as guardId in input
+  const effectiveGuardId =
+    record.role?.toLowerCase() === "client"
+      ? record.clientRegId
+      : record.guardId;
+
+  setForm({
+    clientId: String(record.client?.id || ""),
+    addressId: String(record.address?.id || ""),
+    userId: String(record.user?.id || ""),
+    guardId: effectiveGuardId ? String(effectiveGuardId) : "",
+    role: record.role || "",
+    access: record.access || "",
+    notification: mappedNotifications,
+    notificationSubCat: mappedSubCats,
+  });
+
+  const fullAddress = [
+    record.address?.address || record.address?.label,
+    (record.address as any)?.city,
+    (record.address as any)?.state,
+    (record.address as any)?.pincode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  setSelectedAddressText(fullAddress);
+
+  setUserSearch(record.user?.name + " " + record.user?.lastName || "");
+
+  const guardFullName = [guardEntity?.name, guardEntity?.lastName]
+    .filter(Boolean)
+    .join(" ");
+  setGuardSearch(guardFullName || "");
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
 
 	const handleDelete = (record: any) => {
 		setDeleteModal({ isOpen: true, record });
@@ -768,13 +606,11 @@ export default function AssignmentNew() {
 			let updatedSubCats: string[];
 
 			if (alreadySelected) {
-				// Remove category + its subcats
 				updatedCategories = prev.notification.filter((c) => c !== category);
 				updatedSubCats = prev.notificationSubCat.filter(
 					(sub) => !subCategories.some((s) => s.value === sub),
 				);
 			} else {
-				// Add category + all subcats
 				updatedCategories = [...prev.notification, category];
 				updatedSubCats = [
 					...prev.notificationSubCat,
@@ -805,7 +641,6 @@ export default function AssignmentNew() {
 				updatedSubCats = [...prev.notificationSubCat, subCat];
 			}
 
-			// 🔥 NEW: if at least 1 subcategory is selected → mark parent checked
 			const anySelected = subCategories.some((s) =>
 				updatedSubCats.includes(s.value),
 			);
@@ -841,18 +676,9 @@ export default function AssignmentNew() {
 		setDeleteModal({ isOpen: false, record: null });
 		setDeleteLoader(false);
 	};
-	// const formatNotificationText = (notification: string): string => {
-	//   if (notification == "geo_location") {
-	//     return "GeoLocation"
-	//   }
-	//   return notification
-	//     .replace(/_/g, ' ')
-	//     .replace(/\b\w/g, (char) => char.toUpperCase());
-	// };
+	
 	const formatNotificationText = (notification: string): string => {
 		if (!notification) return "-";
-
-		// 1️⃣ Handle known special cases first
 		const specialCases: Record<string, string> = {
 			geo_location: "Geo Location",
 			otp_alert: "OTP Alert",
@@ -862,24 +688,15 @@ export default function AssignmentNew() {
 		if (specialCases[notification]) {
 			return specialCases[notification];
 		}
-
-		// 2️⃣ Replace underscores or dots with spaces and clean up
 		let formatted = notification.replace(/[_\.]/g, " ");
-
-		// 3️⃣ Capitalize each word properly
 		formatted = formatted.replace(/\b\w/g, (char) => char.toUpperCase());
-
-		// 4️⃣ Optional: handle nested keys like "email.welcome" => "Email / Welcome"
 		formatted = formatted.replace(/\s*\.\s*/g, " / ");
-
-		// 5️⃣ Trim any extra spaces
 		return formatted.trim();
 	};
 
 	const flattenedCategories = flattenNotificationCategories(
 		notificationCategories,
 	);
-	console.log({ flattenedCategories });
 	const tableColumns: TableColumn[] = [
 		{
 			key: "client.name",
@@ -917,9 +734,6 @@ export default function AssignmentNew() {
 				const pin = (a?.pincode || a?.zipcode) ?? "";
 
 				const full = [streetAddress, city, state, pin].filter(Boolean).join(", ");
-
-				// Format: street address, city (line 1), state, pin (line 2)
-				// If any line is more than 50 chars, break it
 				const formatAddressLine = (text: string) => {
 					if (text.length <= 50) return [text];
 					const words = text.split(" ");
@@ -961,22 +775,28 @@ export default function AssignmentNew() {
 			},
 		},
 		{
-			key: "guard.name",
-			label: "User Name",
-			sortable: true,
-			searchable: true,
-			searchType: "text", // Keep as text search
-			width: "250px",
-			render: (_: any, row: any) => {
-				const a = row.guard;
-				const full = [a?.name ?? "", a?.lastName ?? ""].filter(Boolean).join(" ");
-				return (
-					<div className='truncate' title={full}>
-						{full || "-"}
-					</div>
-				);
-			},
-		},
+  key: "guard.name",
+  label: "User Name",
+  sortable: true,
+  searchable: true,
+  searchType: "text",
+  width: "250px",
+  render: (_: any, row: any) => {
+    // 🔹 Prefer guard (User). If null, fallback to clientregistration.
+    const src = row.guard || row.clientregistration;
+
+    const full = [src?.name ?? "", src?.lastName ?? ""]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <div className="truncate" title={full}>
+        {full || "-"}
+      </div>
+    );
+  },
+},
+
 		{
 			key: "role",
 			label: "User Role",
@@ -1028,32 +848,14 @@ export default function AssignmentNew() {
 			searchable: true,
 			searchType: "dropdown",
 			width: "400px",
-			// searchOptions: [ // Add this // TODO:
-			//   { label: 'Geolocation', value: 'geo_location' },
-			//   { label: 'Time Clock', value: 'time_clock' },
-			//   { label: 'Weekly Hours', value: 'weekly_Hours' },
-			//   { label: 'Schedule', value: 'schedule' }
-			// ],
-			// searchOptions: notificationCategories.map((cat) => ({
-			//   label: cat.label,
-			//   value: cat.value,
-			//   subCategories: cat.subCategories.map((sub) => ({
-			//     label: sub.label,
-			//     value: sub.value
-			//   }))
-			// })),
 			searchOptions: notificationCategories,
 			render: (value: NotificationOption[] | string[] | null | undefined) => {
 				if (!value || !Array.isArray(value) || value.length === 0) {
 					return "-";
 				}
-
-				// Transform backend format to display format
-				console.log({ value });
 				const formattedNotifications = value.map((notification: string) =>
 					formatNotificationText(notification),
 				);
-				// return formattedNotifications.join(", ");
 				return formattedNotifications.join(", ");
 			},
 		},
@@ -1451,33 +1253,6 @@ export default function AssignmentNew() {
 									)}
 								</div>
 							</div>
-
-							{/* {showNotificationDropdown && (
-                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
-                  {notificationOptions.map((option) => (
-                    <label
-                      key={option}
-                      className="flex items-center p-2 hover:bg-gray-50 cursor-pointer text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.notification.includes(option)}
-                        onChange={() => handleCheckbox(option)}
-                        className="mr-3 text-[#004175] focus:ring-[#004175] focus:ring-2"
-                      />
-                      <span
-                        className={`${form.notification.includes(option)
-                          ? "text-blue-800"
-                          : "text-gray-700"
-                          }`}
-                      >
-                        {option}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )} */}
-
 							{showNotificationDropdown && (
 								<div className='absolute left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-64 overflow-y-auto z-50'>
 									{notificationCategories.map((cat) => (

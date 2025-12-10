@@ -119,6 +119,13 @@ export const GET_ASSIGNMENTS = gql`
         notification
         notificationSubCat
         createdAt
+
+        clientRegId
+        clientregistration {
+          name
+          lastName
+        }
+
         user {
           id
           name
@@ -147,6 +154,7 @@ export const GET_ASSIGNMENTS = gql`
     }
   }
 `;
+
 
 // ----------- GUARD QUERIES -----------
 

@@ -20,18 +20,36 @@ export interface Address {
 export interface Assignment {
   id: number;
   userId: number;
-  guardId: number;
+  guardId: number | null;         // make nullable to match backend reality
   clientId: number;
-  user: any;        // (Or your actual User type)
-  guard: any;       // (Or your actual Guard type)
-  client: any;      // (Or your actual Client type)
-  notification: string[];
-  address: Address;
   addressId: number;
   role: string;
   access: string;
+  notification: string[];
+  notificationSubCat?: string[];
   createdAt: string;
+
+  clientRegId?: number | null;    // 🔹 NEW
+
+  user?: { id: number; name: string; lastName?: string };
+  guard?: { id: number; name: string; lastName?: string };
+
+  clientregistration?: {          // 🔹 NEW
+    name: string;
+    lastName?: string;
+  };
+
+  client?: { id: number; name: string; lastName?: string };
+  address?: {
+    id: number;
+    label: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
 }
+
 
 export type GuardStatus = "active" | "inactive";
 

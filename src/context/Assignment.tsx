@@ -10,7 +10,7 @@ import { useToast } from "../hooks/use-toast";
 export interface Assignment {
   id: number;
   userId: number;
-  guardId: number;
+  guardId: number | null;         // make nullable to match backend reality
   clientId: number;
   addressId: number;
   role: string;
@@ -18,13 +18,28 @@ export interface Assignment {
   notification: string[];
   notificationSubCat?: string[];
   createdAt: string;
-  user?: { id: number; name: string };
-  guard?: { id: number; name: string };
-  client?: { id: number; name: string };
-  address?: { id: number; label: string ,
+
+  clientRegId?: number | null;    // 🔹 NEW
+
+  user?: { id: number; name: string; lastName?: string };
+  guard?: { id: number; name: string; lastName?: string };
+
+  clientregistration?: {          // 🔹 NEW
+    name: string;
+    lastName?: string;
+  };
+
+  client?: { id: number; name: string; lastName?: string };
+  address?: {
+    id: number;
+    label: string;
     address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
   };
 }
+
 
 interface AssignmentContextType {
   assignments: Assignment[];
