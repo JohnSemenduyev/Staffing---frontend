@@ -48,7 +48,7 @@ export const UniformCompliance = () => {
   const [userSearch, setUserSearch] = useState("");
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const { data: searchedUsers = [], isLoading: loadingUsers } =
-    useSearchUsers(debouncedUserSearch);
+    useSearchUsers(debouncedUserSearch, form.clientId, form.addressId);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [tableHeight, setTableHeight] = useState<string>("400px");
