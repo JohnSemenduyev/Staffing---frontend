@@ -53,7 +53,7 @@ export const Notification = () => {
   const [userSearch, setUserSearch] = useState("");
   const debouncedUserSearch = useDebounce(userSearch, 300);
   const { data: searchedUsers = [], isLoading: loadingUsers } =
-    useSearchUsers(debouncedUserSearch);
+    useSearchUsers(debouncedUserSearch, form.clientId, form.addressId);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);

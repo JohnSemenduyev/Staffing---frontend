@@ -341,7 +341,11 @@ export const ViewSchedule = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [userSearch, setUserSearch] = useState("");
   const debouncedUserSearch = useDebounce(userSearch, 300);
-  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
+  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(
+    debouncedUserSearch,
+    selectedClient?.clientId,
+    selectedClient?.addressId
+  );
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [submitLoader, setSubmitLoader] = useState(false);
   const [auto, setAuto] = useState(false);

@@ -289,7 +289,11 @@ export const PrepareSchedule = () => {
   const [userSearch, setUserSearch] = useState("");
 
   const debouncedUserSearch = useDebounce(userSearch, 300);
-  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(debouncedUserSearch);
+  const { data: searchedUsers = [], isLoading: loadingUsers } = useSearchUsers(
+    debouncedUserSearch,
+    form.clientId,
+    form.addressId
+  );
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   const [editingId, setEditingId] = useState(null);
@@ -1249,9 +1253,27 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
               <input
                 type="text"
                 value={userSearch}
-                onFocus={() => setShowUserDropdown(true)}
+                onFocus={() => {
+                  if (!form.clientId || !form.addressId) {
+                    toast({
+                      title: "Select client first",
+                      description: "Please choose a client and address before searching for users.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setShowUserDropdown(true);
+                }}
                 onBlur={() => setTimeout(() => setShowUserDropdown(false), 200)}
                 onChange={e => {
+                  if (!form.clientId || !form.addressId) {
+                    toast({
+                      title: "Select client first",
+                      description: "Please choose a client and address before searching for users.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   setUserSearch(e.target.value);
                   setForm(f => ({ ...f, userId: "" }));
                 }}
