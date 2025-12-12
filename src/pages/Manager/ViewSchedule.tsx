@@ -1756,19 +1756,72 @@ export const ViewSchedule = () => {
   
     try {
       setIsSavingDraft(true);
-      console.log("scheduleData111", scheduleData);
   
       const selectedDateObj = parseLocalYMD(selectedDate);
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       const startDate = toLocalYMD(weekRange.startOfWeek);
       const endDate = toLocalYMD(weekRange.endOfWeek);
   
-      // =========================================================
-      // Collect ALL draft shifts (existing + new) grouped by draftScheduleSessionId
-      // Include isDelete flag for deleted shifts
-      // =========================================================
-
-      type DraftSessionKey = string; // draftScheduleSessionId or "new-{userId}-{clientId}-{addressId}"
+      // ---- helpers ----
+      const normalizeYMD = (raw?: string) => {
+        if (!raw) return "";
+        if (raw.includes("T")) return raw.split("T")[0]; // ISO -> YYYY-MM-DD
+        // already YYYY-MM-DD in your UI
+        return raw;
+      };
+  
+      const sameShift = (a: any, b: any) => {
+        if (!a || !b) return false;
+  
+        // match by draftShiftId first (draft updates)
+        const aDraftId = a?.draftShiftId ?? null;
+        const bDraftId = b?.draftShiftId ?? null;
+        if (aDraftId && bDraftId) return aDraftId === bDraftId;
+  
+        // otherwise match by shift.id (published shift update / same shift)
+        return a?.id != null && b?.id != null && a.id === b.id;
+      };
+  
+      const isShiftChanged = (curShift: any, curItem: any) => {
+        const curDelete = curShift?.isDelete === true;
+  
+        const origItem = originalScheduleData?.find(
+          (x) => x.userId === curItem.userId && x.startDate === curItem.startDate
+        );
+  
+        const origShift = origItem?.shifts?.find((s: any) => sameShift(curShift, s)) ?? null;
+  
+        // deleted shift: send only if it existed before
+        if (curDelete) {
+          // If it has a real draftShiftId, it's persisted draft data -> must be sent for deletion
+          if (curShift?.draftShiftId) return true;
+        
+          // If it belongs to a draftScheduleSession, also treat as change
+          if (curShift?.draftScheduleSessionId) return true;
+        
+          // Otherwise fall back to original snapshot (covers non-draft deletes if you ever route them here)
+          return !!origShift;
+        }
+        
+  
+        // brand new shift (not in original): send
+        if (!origShift) return true;
+  
+        // compare fields
+        const curDate = normalizeYMD(curShift.date || curItem.startDate);
+        const origDate = normalizeYMD(origShift.date || origItem.startDate);
+  
+        return (
+          curDate !== origDate ||
+          curShift.startTime !== origShift.startTime ||
+          curShift.endTime !== origShift.endTime ||
+          Number(curShift.hours || 0) !== Number(origShift.hours || 0) ||
+          Boolean(curShift.auto) !== Boolean(origShift.auto)
+        );
+      };
+  
+      // ---- group building ----
+      type DraftSessionKey = string;
       type DraftSessionGroup = {
         draftScheduleSessionId: number | null;
         scheduleSessionId: number | null;
@@ -1777,100 +1830,112 @@ export const ViewSchedule = () => {
         userId: number;
         checkScheduleSessionId: number | null;
         auto: boolean;
-        shifts: any[];
+  
+        // all shifts (for weeklyHours)
+        shiftsForHours: { isDelete: boolean; hours: number }[];
+  
+        // only changed/new/deleted shifts (payload)
+        shiftsToSend: any[];
       };
-
+  
       const draftSessionMap = new Map<DraftSessionKey, DraftSessionGroup>();
-
-      scheduleData.forEach(item => {
+  
+      scheduleData.forEach((item) => {
         const checkKey = `${item.clientId}-${item.addressId}-${item.userId}`;
         const checkScheduleSessionId = checkScheduleSessionIdMap.get(checkKey) || null;
-
-        item.shifts.forEach(shift => {
-          // Check if this is a draft shift
-          const draftShiftId = (shift as any)?.draftShiftId;
-          const draftScheduleSessionId = (shift as any)?.draftScheduleSessionId ?? null;
-          const isClientGeneratedId = shift.id > 1_000_000_000_000;
-          const isDraftShift = draftShiftId || draftScheduleSessionId || isClientGeneratedId;
-
-          if (!isDraftShift) {
-            // Skip non-draft shifts
-            return;
-          }
-
-          // Determine the key for grouping
+  
+        item.shifts.forEach((shift: any) => {
+          const draftShiftId = shift?.draftShiftId ?? null;
+          const draftScheduleSessionId = shift?.draftScheduleSessionId ?? null;
+          const scheduleSessionId = shift?.scheduleSessionId ?? null;
+  
+          // Determine grouping key
           let sessionKey: DraftSessionKey;
           if (draftScheduleSessionId) {
             sessionKey = `draft-${draftScheduleSessionId}`;
-          } else if (!shift.scheduleSessionId) {
-            // New draft schedule session
-            sessionKey = `new-${item.userId}-${item.clientId}-${item.addressId}`;
+          } else if (scheduleSessionId) {
+            sessionKey = `existing-${scheduleSessionId}`;
           } else {
-            // Draft shifts attached to existing schedule session
-            sessionKey = `existing-${shift.scheduleSessionId}`;
+            sessionKey = `new-${item.userId}-${item.clientId}-${item.addressId}`;
           }
-
+  
           if (!draftSessionMap.has(sessionKey)) {
             draftSessionMap.set(sessionKey, {
-              draftScheduleSessionId: draftScheduleSessionId,
-              scheduleSessionId: shift.scheduleSessionId ?? null,
+              draftScheduleSessionId,
+              scheduleSessionId,
               clientId: item.clientId,
               addressId: item.addressId,
               userId: item.userId,
               checkScheduleSessionId,
               auto: item.auto || false,
-              shifts: [],
+              shiftsForHours: [],
+              shiftsToSend: [],
             });
           }
-
+  
           const group = draftSessionMap.get(sessionKey)!;
+  
+          const isDelete = shift?.isDelete === true;
+  
+          // always count for weeklyHours (even unchanged)
+          group.shiftsForHours.push({
+            isDelete,
+            hours: shift?.hours || 0,
+          });
+  
+          // only send if changed/new/deleted
+          if (!isShiftChanged(shift, item)) return;
+  
           const shiftDate = convertDateFormat(shift.date || item.startDate);
-          const shiftData: any = {
-            isDelete: (shift as any).isDelete === true,
+  
+          const payloadShift: any = {
+            isDelete,
             startTime: shift.startTime,
             endTime: shift.endTime,
             hours: shift.hours,
             auto: shift.auto || false,
             date: shiftDate,
           };
-
-          // Include draftShiftId for existing draft shifts
+  
+          // include draftShiftId ONLY if it's an existing draft shift (update/delete)
           if (draftShiftId) {
-            shiftData.draftShiftId = draftShiftId;
+            payloadShift.draftShiftId = draftShiftId;
+          } else {
+            // for edited published shifts OR new shifts
+            payloadShift.draftShiftId = null;
           }
-
-          group.shifts.push(shiftData);
+  
+          group.shiftsToSend.push(payloadShift);
         });
       });
-
-      // Build final payload
+  
+      // ---- final payload ----
       const draftInput: any[] = [];
-
-      draftSessionMap.forEach((group, sessionKey) => {
-        // Filter out deleted shifts for weeklyHours calculation
-        const activeShifts = group.shifts.filter(s => !s.isDelete);
-        const weeklyHours = activeShifts.reduce(
-          (total, s) => total + (s.hours || 0),
-          0
-        );
-
+  
+      draftSessionMap.forEach((group) => {
+        if (group.shiftsToSend.length === 0) return;
+  
+        const weeklyHours = group.shiftsForHours
+          .filter((s) => !s.isDelete)
+          .reduce((t, s) => t + (s.hours || 0), 0);
+  
         if (group.draftScheduleSessionId) {
-          // Existing draft schedule session - send all shifts (including deletions)
+          // Existing draft schedule session
           draftInput.push({
-            shifts: group.shifts,
             draftScheduleSessionId: group.draftScheduleSessionId,
+            shifts: group.shiftsToSend,
             weeklyHours: parseFloat(weeklyHours.toFixed(2)),
           });
         } else if (group.scheduleSessionId) {
-          // New draft shifts for existing schedule session
+          // Draft shifts attached to existing schedule session
           draftInput.push({
-            shifts: group.shifts,
             scheduleSessionId: group.scheduleSessionId,
+            shifts: group.shiftsToSend,
           });
         } else {
           // New draft schedule session
           draftInput.push({
-            shifts: group.shifts,
+            shifts: group.shiftsToSend,
             weeklyHours: parseFloat(weeklyHours.toFixed(2)),
             clientId: group.clientId,
             addressId: group.addressId,
@@ -1887,20 +1952,20 @@ export const ViewSchedule = () => {
       if (draftInput.length === 0) {
         toast({
           title: "Info",
-          description:
-            "No new or changed draft data to save. All shifts are already up to date.",
+          description: "No new or changed draft data to save.",
         });
         return;
       }
   
+      console.log("DRAFT INPUT (changed only):", JSON.stringify(draftInput, null, 2));
       await createDraftScheduleSessions(draftInput);
-      
+  
       toast({
         title: "Success",
         description: "Draft schedule saved successfully!",
       });
   
-      // refresh data
+      // refresh
       try {
         const clientId = selectedClient?.clientId;
         const addressId = selectedClient?.addressId;
@@ -1920,12 +1985,8 @@ export const ViewSchedule = () => {
       if (error.message) {
         if (error.message.includes("No authentication token found")) {
           errorMessage = "Authentication token not found. Please log in again.";
-        } else if (
-          error.message.includes("Network Error") ||
-          error.message.includes("fetch")
-        ) {
-          errorMessage =
-            "Network error. Please check your internet connection and try again.";
+        } else if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
         } else if (error.response?.errors && error.response.errors.length > 0) {
           errorMessage = error.response.errors[0].message || errorMessage;
         } else {
@@ -1942,6 +2003,7 @@ export const ViewSchedule = () => {
       setIsSavingDraft(false);
     }
   };
+  
   
   
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {

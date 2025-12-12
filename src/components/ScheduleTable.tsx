@@ -1057,14 +1057,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       confirm: false,
       reject: false,
       scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId,
+      draftShiftId: null,
+      draftScheduleSessionId: null,
       isDraft: true, // new copied shifts are draft until published
     });
 
     if (existingSchedule) {
-      const sortedShifts = sortShiftsByTime(existingSchedule.shifts);
+      const sortedShifts = sortShiftsByTime(
+        existingSchedule.shifts.filter((s: any) => !(s as any).isDelete)
+      );
+    
       const targetCellHasData = targetRowIdx < sortedShifts.length;
-
+    
       if (targetCellHasData) {
+        // ---- Replace (update existing cell) ----
         const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
           if (index === targetRowIdx) return false;
           return doTimesOverlap(
@@ -1074,22 +1080,44 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             existingShift.endTime
           );
         });
-
+    
         if (hasLocalOverlap) {
           handleOverlapError(
             "Cannot drop shift here - it overlaps with existing shifts for this user and date."
           );
           return;
         }
-
-        const originalShiftId = sortedShifts[targetRowIdx].id;
-        const replacementShift = createCopiedShift();
-        replacementShift.id = originalShiftId;
-
+    
+        // This is the shift currently sitting in the target cell
+        const targetExisting = sortedShifts[targetRowIdx];
+    
+        // Make a copied shift (new values), but KEEP the identity of the target cell
+        const replacementShift: any = createCopiedShift();
+    
+        // ✅ keep the target cell's id so UI replaces in-place
+        replacementShift.id = targetExisting.id;
+    
+        // ✅ if target cell is a DRAFT shift, keep its draft identifiers so backend UPDATES it
+        replacementShift.draftShiftId =
+          (targetExisting as any)?.draftShiftId ?? null;
+    
+        replacementShift.draftScheduleSessionId =
+          (targetExisting as any)?.draftScheduleSessionId ?? null;
+    
+        // ✅ keep scheduleSessionId from target if present, else from replacement
+        replacementShift.scheduleSessionId =
+          (targetExisting as any)?.scheduleSessionId ??
+          replacementShift.scheduleSessionId ??
+          null;
+    
         const updatedScheduleData = scheduleData.map((item) => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
-            const updatedShifts = [...item.shifts];
-            updatedShifts[targetRowIdx] = replacementShift;
+            // IMPORTANT: replace by matching the targetExisting.id, not by array index,
+            // because item.shifts may not be in the same order as sortedShifts.
+            const updatedShifts = item.shifts.map((s: any) =>
+              s.id === targetExisting.id ? replacementShift : s
+            );
+    
             return {
               ...item,
               shifts: sortShiftsByTime(updatedShifts),
@@ -1097,9 +1125,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           }
           return item;
         });
-
+    
         onScheduleDataChange(updatedScheduleData);
       } else {
+        // ---- Add (new row in that date) ----
         const hasLocalOverlap = sortedShifts.some((existingShift) =>
           doTimesOverlap(
             shift.startTime,
@@ -1108,15 +1137,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             existingShift.endTime
           )
         );
-
+    
         if (hasLocalOverlap) {
           handleOverlapError(
             "Cannot drop shift here - it overlaps with existing shifts for this user and date."
           );
           return;
         }
-
-        const copiedShift = createCopiedShift();
+    
+        const copiedShift: any = createCopiedShift();
+    
+        // ✅ New shift must be NEW draft (no draft ids)
+        copiedShift.draftShiftId = null;
+        copiedShift.draftScheduleSessionId = null;
+    
         const updatedScheduleData = scheduleData.map((item) => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
             const updatedShifts = [...item.shifts, copiedShift];
@@ -1127,10 +1161,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           }
           return item;
         });
-
+    
         onScheduleDataChange(updatedScheduleData);
       }
-    } else {
+    }
+    else {
       if (checkBackendOverlap()) {
         handleOverlapError(
           "Cannot drop shift here - it overlaps with existing shifts from backend."
@@ -1510,12 +1545,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                       const dayTotal = daySchedules.reduce(
                         (t, s) =>
                           t +
-                          s.shifts.reduce(
-                            (st, sh) => st + sh.hours,
-                            0
-                          ),
+                          s.shifts
+                            .filter((sh: any) => !(sh as any).isDelete) // ✅ ignore deleted draft shifts
+                            .reduce((st, sh: any) => st + (sh.hours || 0), 0),
                         0
                       );
+                      
                       const rounded = parseFloat(dayTotal.toFixed(2));
                       return (
                         <td
