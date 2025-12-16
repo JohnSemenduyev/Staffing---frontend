@@ -440,6 +440,12 @@ export const LOGIN_USER = gql`
 `;
 
 // -------------------- AUTH --------------------
+export const REQUEST_PASSWORD_RESET = gql`
+  mutation RequestPasswordReset($email: String!) {
+    requestPasswordReset(email: $email)
+  }
+`;
+
 export const UPDATE_PASSWORD = gql`
   mutation UpdatePassword(
     $token: String!

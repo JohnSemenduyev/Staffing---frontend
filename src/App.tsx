@@ -45,6 +45,7 @@ import { UserRegistrationProvider } from "./context/SignupContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminVerify from "./pages/AdminVerify";
 import ResetPassword from "./pages/ResetPassword";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
                                         <Route path="/login" element={<Login />} />
                                         <Route path="/signup" element={<Signup />} />
                                         <Route path="/api/admin/verify" element={<AdminVerify />} />
+                                        <Route path="/forgot-password" element={<ForgotPassword />} />
                                         <Route path="/reset-password" element={<ResetPassword />} />
 
                                         <Route element={<AppLayout />}>
