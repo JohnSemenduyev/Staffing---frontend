@@ -8,6 +8,8 @@ import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { downloadListPdf } from "../../PDF/admin";
 import { exportUserListToExcel } from "../../utils/adminExcel";
+import { useDebounce } from "../../hooks/useDebounce";
+import ResetButton from "../../components/ui/ResetButton";
 
 export const Manager = () => {
   const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
@@ -33,9 +35,51 @@ export const Manager = () => {
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; userId: number | null; userName: string }>({ isOpen: false, userId: null, userName: "" });
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const debouncedSearchTerms = useDebounce(searchTerms, 300);
+  const hasSearchFilters = useMemo(
+    () => Object.values(searchTerms).some((v) => v && String(v).trim() !== ""),
+    [searchTerms]
+  );
+
   useEffect(() => {
-    fetchUsersByRole("manager", currentPage);
-  }, [currentPage]);
+    const loadData = async () => {
+      try {
+        const filter = {
+          name: debouncedSearchTerms.name || undefined,
+          lastName: debouncedSearchTerms.lastName || undefined,
+          email: debouncedSearchTerms.email || undefined,
+          phone: debouncedSearchTerms.phone || undefined,
+          address: debouncedSearchTerms.address || undefined,
+          city: debouncedSearchTerms.city || undefined,
+          state: debouncedSearchTerms.state || undefined,
+          zipcode: debouncedSearchTerms.zipcode || undefined,
+        };
+
+        await fetchUsersByRole("manager", currentPage, filter);
+      } catch (error: any) {
+        console.error("Error loading manager data:", error);
+        let errorMessage = "Failed to load manager data. Please try again.";
+
+        if (error.message) {
+          if (error.message.includes("Network Error") || error.message.includes("fetch")) {
+            errorMessage = "Network error. Please check your internet connection and try again.";
+          } else if (error.response?.errors && error.response.errors.length > 0) {
+            errorMessage = error.response.errors[0].message || errorMessage;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadData();
+  }, [currentPage, debouncedSearchTerms]);
 
   useEffect(() => {
     const calculateTableHeight = () => {
@@ -71,22 +115,24 @@ export const Manager = () => {
     }));
   };
 
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = (users || []).filter((record) => {
-      const fields = ["name", "lastName", "email", "phone", "address", "city", "state", "zipcode"] as const;
-      for (const field of fields) {
-        if (searchTerms[field]) {
-          const value = getNestedValue(record, field);
-          if (!value || !String(value).toLowerCase().includes(searchTerms[field].toLowerCase())) {
-            return false;
-          }
-        }
-      }
-      return true;
-    });
+  const handleSearchChange = (field: string, value: string) => {
+    setSearchTerms(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleResetSearch = () => {
+    setSearchTerms({});
+    setCurrentPage(1);
+  };
+
+  const sortedData = useMemo(() => {
+    const data = [...(users || [])];
 
     if (sortConfig.key) {
-      filtered.sort((a, b) => {
+      data.sort((a, b) => {
         const aValue = getNestedValue(a, sortConfig.key!);
         const bValue = getNestedValue(b, sortConfig.key!);
         if (aValue === null || aValue === undefined) return 1;
@@ -103,8 +149,8 @@ export const Manager = () => {
       });
     }
 
-    return filtered;
-  }, [users, searchTerms, sortConfig]);
+    return data;
+  }, [users, sortConfig]);
 
   const handleEdit = (user: any) => {
     setEditingUserId(user.id);
@@ -284,7 +330,15 @@ export const Manager = () => {
                 </tr>
 
                 <tr className="bg-white text-gray-700 font-sans w-full">
-                  <th className="px-4 py-2 text-left" style={{ width: "120px" }}></th>
+                  <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
+                    {hasSearchFilters && (
+                      <ResetButton
+                        onClick={handleResetSearch}
+                        confirmTitle="Confirm Reset"
+                        confirmMessage="This will clear all search filters. Proceed?"
+                      />
+                    )}
+                  </th>
                   {[
                     { key: "name", width: "200px", placeholder: "Search first name" },
                     { key: "lastName", width: "200px", placeholder: "Search last name" },
@@ -301,7 +355,7 @@ export const Manager = () => {
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                         type="text"
                         value={searchTerms[col.key] || ''}
-                        onChange={(e) => setSearchTerms(prev => ({ ...prev, [col.key]: e.target.value }))}
+                        onChange={(e) => handleSearchChange(col.key, e.target.value)}
                         style={{ maxWidth: '100%', minWidth: `calc(${col.width} - 32px)` }}
                       />
                     </th>
@@ -323,7 +377,7 @@ export const Manager = () => {
                   </tr>
                 ) : (
                   <>
-                    {filteredAndSortedData.map((record: any, index: number) => {
+                    {sortedData.map((record: any, index: number) => {
                       const isEditing = editingUserId === record.id;
                       return (
                         <tr key={`manager-${record.id ?? index}`} className={`hover:bg-blue-50 bg-white ${isEditing ? 'bg-blue-50' : ''}`}>
@@ -386,7 +440,7 @@ export const Manager = () => {
                       );
                     })}
 
-                    {filteredAndSortedData.length === 0 && (
+                    {sortedData.length === 0 && (
                       <tr>
                         <td colSpan={9} className="relative p-0" style={{ height: "calc(400px - 150px)" }}>
                           <div className="absolute inset-0 flex items-center justify-center bg-white">

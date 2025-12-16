@@ -9,6 +9,8 @@ import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
 import { downloadClientsPdf } from "../../PDF/guard";
 import { exportClientAddressToExcel } from "../../utils/clientAddressExcel";
+import { useDebounce } from "../../hooks/useDebounce";
+import ResetButton from "../../components/ui/ResetButton";
 
 export const Client = () => {
   const { toast } = useToast();
@@ -36,8 +38,6 @@ export const Client = () => {
   // Loading states
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Client editing state
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [editClientForm, setEditClientForm] = useState({
     name: "",
@@ -59,10 +59,32 @@ export const Client = () => {
     direction: "asc",
   });
 
+  const debouncedSearchTerms = useDebounce(searchTerms, 300);
+  const hasSearchFilters = useMemo(
+    () => Object.values(searchTerms).some((v) => v && String(v).trim() !== ""),
+    [searchTerms]
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        await fetchClientAddresses(currentPage);
+        const rawFilter: Record<string, any> = {
+          name: debouncedSearchTerms["client.name"] || undefined,
+          lastName: debouncedSearchTerms["client.lastName"] || undefined,
+          email: debouncedSearchTerms["client.email"] || undefined,
+          phone: debouncedSearchTerms["client.phone"] || undefined,
+          company: debouncedSearchTerms["client.company"] || undefined,
+          address: debouncedSearchTerms["address"] || undefined,
+          city: debouncedSearchTerms["city"] || undefined,
+          state: debouncedSearchTerms["state"] || undefined,
+          pincode: debouncedSearchTerms["pincode"] || undefined,
+        };
+
+        const filter = Object.fromEntries(
+          Object.entries(rawFilter).filter(([, v]) => v !== undefined && v !== null && v !== "")
+        );
+
+        await fetchClientAddresses(currentPage, Object.keys(filter).length ? filter : undefined);
       } catch (error: any) {
         console.error("Error loading client data:", error);
         let errorMessage = "Failed to load client data. Please try again.";
@@ -86,7 +108,7 @@ export const Client = () => {
     };
 
     loadData();
-  }, [currentPage]);
+  }, [currentPage, debouncedSearchTerms]);
 
   // Calculate table height dynamically
   useEffect(() => {
@@ -345,77 +367,24 @@ export const Client = () => {
     setCancelEditModal({ isOpen: false });
   };
 
-  // Filter and sort data
+  const handleSearchChange = (field: string, value: string) => {
+    setSearchTerms(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleResetSearch = () => {
+    setSearchTerms({});
+    setCurrentPage(1);
+  };
+
   const filteredAndSortedData = useMemo(() => {
-    let filtered = (addresses || []).filter((record) => {
-      if (searchTerms["client.name"]) {
-        const clientName = getNestedValue(record, "client.name");
-        if (!clientName || !String(clientName).toLowerCase().includes(searchTerms["client.name"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["client.lastName"]) {
-        const lastName = getNestedValue(record, "client.lastName");
-        if (!lastName || !String(lastName).toLowerCase().includes(searchTerms["client.lastName"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["client.email"]) {
-        const email = getNestedValue(record, "client.email");
-        if (!email || !String(email).toLowerCase().includes(searchTerms["client.email"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["client.phone"]) {
-        const phone = getNestedValue(record, "client.phone");
-        if (!phone || !String(phone).toLowerCase().includes(searchTerms["client.phone"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["client.company"]) {
-        const company = getNestedValue(record, "client.company");
-        if (!company || !String(company).toLowerCase().includes(searchTerms["client.company"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["address"]) {
-        const address = getNestedValue(record, "address");
-        if (!address || !String(address).toLowerCase().includes(searchTerms["address"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["city"]) {
-        const city = getNestedValue(record, "city");
-        if (!city || !String(city).toLowerCase().includes(searchTerms["city"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["state"]) {
-        const state = getNestedValue(record, "state");
-        if (!state || !String(state).toLowerCase().includes(searchTerms["state"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["pincode"]) {
-        const pincode = getNestedValue(record, "pincode");
-        if (!pincode || !String(pincode).toLowerCase().includes(searchTerms["pincode"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      return true;
-    });
+    let filtered = (addresses || []);
 
     if (sortConfig.key) {
-      filtered.sort((a, b) => {
+      filtered = [...filtered].sort((a, b) => {
         const aValue = getNestedValue(a, sortConfig.key!);
         const bValue = getNestedValue(b, sortConfig.key!);
 
@@ -441,7 +410,7 @@ export const Client = () => {
     }
 
     return filtered;
-  }, [addresses, searchTerms, sortConfig]);
+  }, [addresses, sortConfig]);
 
   if (error) {
     return (
@@ -630,7 +599,13 @@ export const Client = () => {
 
                 <tr className="bg-white text-gray-700 font-sans w-full">
                   <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
-                    {/* Actions column - no search input */}
+                    {hasSearchFilters && (
+                      <ResetButton
+                        onClick={handleResetSearch}
+                        confirmTitle="Confirm Reset"
+                        confirmMessage="This will clear all search filters. Proceed?"
+                      />
+                    )}
                   </th>
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
@@ -638,7 +613,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["client.name"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "client.name": e.target.value }))}
+                      onChange={(e) => handleSearchChange("client.name", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -648,7 +623,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["client.lastName"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "client.lastName": e.target.value }))}
+                      onChange={(e) => handleSearchChange("client.lastName", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -658,7 +633,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["client.email"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "client.email": e.target.value }))}
+                      onChange={(e) => handleSearchChange("client.email", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -668,7 +643,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["client.phone"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "client.phone": e.target.value }))}
+                      onChange={(e) => handleSearchChange("client.phone", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -678,7 +653,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["client.company"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "client.company": e.target.value }))}
+                      onChange={(e) => handleSearchChange("client.company", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -688,7 +663,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["address"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "address": e.target.value }))}
+                      onChange={(e) => handleSearchChange("address", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(250px - 32px)' }}
                     />
                   </th>
@@ -698,7 +673,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["city"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "city": e.target.value }))}
+                      onChange={(e) => handleSearchChange("city", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(150px - 32px)' }}
                     />
                   </th>
@@ -708,7 +683,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["state"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "state": e.target.value }))}
+                      onChange={(e) => handleSearchChange("state", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(100px - 32px)' }}
                     />
                   </th>
@@ -718,7 +693,7 @@ export const Client = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["pincode"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "pincode": e.target.value }))}
+                      onChange={(e) => handleSearchChange("pincode", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>

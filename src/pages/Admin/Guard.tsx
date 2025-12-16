@@ -4,6 +4,8 @@ import { Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
 import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
+import { useDebounce } from "../../hooks/useDebounce";
+import ResetButton from "../../components/ui/ResetButton";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
 import { Button } from "../../components/ui/button";
@@ -22,7 +24,6 @@ export const Guard = () => {
     lastPage,
     fetchUsersByRole,
     setCurrentPage,
-    // refreshUsers
   } = useUsers();
 
   // State for search and sort
@@ -60,10 +61,27 @@ export const Guard = () => {
     direction: "asc",
   });
 
+  const debouncedSearchTerms = useDebounce(searchTerms, 300);
+  const hasSearchFilters = useMemo(
+    () => Object.values(searchTerms).some((v) => v && String(v).trim() !== ""),
+    [searchTerms]
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        await fetchUsersByRole("guard", currentPage);
+        const filter = {
+          name: debouncedSearchTerms.name || undefined,
+          lastName: debouncedSearchTerms.lastName || undefined,
+          email: debouncedSearchTerms.email || undefined,
+          phone: debouncedSearchTerms.phone || undefined,
+          address: debouncedSearchTerms.address || undefined,
+          city: debouncedSearchTerms.city || undefined,
+          state: debouncedSearchTerms.state || undefined,
+          zipcode: debouncedSearchTerms.zipcode || undefined,
+        };
+
+        await fetchUsersByRole("guard", currentPage, filter);
       } catch (error: any) {
         console.error("Error loading guard data:", error);
         let errorMessage = "Failed to load guard data. Please try again.";
@@ -87,7 +105,7 @@ export const Guard = () => {
     };
 
     loadData();
-  }, [currentPage]);
+  }, [currentPage, debouncedSearchTerms]);
 
   // Calculate table height dynamically
   useEffect(() => {
@@ -128,6 +146,19 @@ export const Guard = () => {
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   }; 
+
+  const handleSearchChange = (field: string, value: string) => {
+    setSearchTerms(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleResetSearch = () => {
+    setSearchTerms({});
+    setCurrentPage(1);
+  };
 
   const handleExportToPDF = async (data: any) =>{
    await downloadListPdf(data, {
@@ -343,70 +374,12 @@ export const Guard = () => {
     setCancelEditModal({ isOpen: false });
   };
 
-  // Filter and sort data
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = (users || []).filter((record) => {
-      if (searchTerms["name"]) {
-        const name = getNestedValue(record, "name");
-        if (!name || !String(name).toLowerCase().includes(searchTerms["name"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["lastName"]) {
-        const lastName = getNestedValue(record, "lastName");
-        if (!lastName || !String(lastName).toLowerCase().includes(searchTerms["lastName"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["email"]) {
-        const email = getNestedValue(record, "email");
-        if (!email || !String(email).toLowerCase().includes(searchTerms["email"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["phone"]) {
-        const phone = getNestedValue(record, "phone");
-        if (!phone || !String(phone).toLowerCase().includes(searchTerms["phone"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["address"]) {
-        const address = getNestedValue(record, "address");
-        if (!address || !String(address).toLowerCase().includes(searchTerms["address"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["city"]) {
-        const city = getNestedValue(record, "city");
-        if (!city || !String(city).toLowerCase().includes(searchTerms["city"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["state"]) {
-        const state = getNestedValue(record, "state");
-        if (!state || !String(state).toLowerCase().includes(searchTerms["state"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      if (searchTerms["zipcode"]) {
-        const zipcode = getNestedValue(record, "zipcode");
-        if (!zipcode || !String(zipcode).toLowerCase().includes(searchTerms["zipcode"].toLowerCase())) {
-          return false;
-        }
-      }
-
-      return true;
-    });
+  // Sort data (filtering is handled on the server via fetchUsersByRole)
+  const sortedData = useMemo(() => {
+    const data = [...(users || [])];
 
     if (sortConfig.key) {
-      filtered.sort((a, b) => {
+      data.sort((a, b) => {
         const aValue = getNestedValue(a, sortConfig.key!);
         const bValue = getNestedValue(b, sortConfig.key!);
 
@@ -431,8 +404,8 @@ export const Guard = () => {
       });
     }
 
-    return filtered;
-  }, [users, searchTerms, sortConfig]);
+    return data;
+  }, [users, sortConfig]);
 
   if (error) {
     return (
@@ -604,7 +577,13 @@ export const Guard = () => {
 
                 <tr className="bg-white text-gray-700 font-sans w-full">
                   <th className="px-4 py-2 text-left" style={{ width: "120px" }}>
-                    {/* Actions column - no search input */}
+                    {hasSearchFilters && (
+                      <ResetButton
+                        onClick={handleResetSearch}
+                        confirmTitle="Confirm Reset"
+                        confirmMessage="This will clear all search filters. Proceed?"
+                      />
+                    )}
                   </th>
                   <th className="px-4 py-2 text-left" style={{ width: "200px" }}>
                     <input
@@ -612,7 +591,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["name"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "name": e.target.value }))}
+                      onChange={(e) => handleSearchChange("name", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -622,7 +601,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["lastName"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "lastName": e.target.value }))}
+                      onChange={(e) => handleSearchChange("lastName", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -632,7 +611,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["email"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "email": e.target.value }))}
+                      onChange={(e) => handleSearchChange("email", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -642,7 +621,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["phone"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "phone": e.target.value }))}
+                      onChange={(e) => handleSearchChange("phone", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(200px - 32px)' }}
                     />
                   </th>
@@ -652,7 +631,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["address"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "address": e.target.value }))}
+                      onChange={(e) => handleSearchChange("address", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(250px - 32px)' }}
                     />
                   </th>
@@ -662,7 +641,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["city"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "city": e.target.value }))}
+                      onChange={(e) => handleSearchChange("city", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(150px - 32px)' }}
                     />
                   </th>
@@ -672,7 +651,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["state"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "state": e.target.value }))}
+                      onChange={(e) => handleSearchChange("state", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(100px - 32px)' }}
                     />
                   </th>
@@ -682,7 +661,7 @@ export const Guard = () => {
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175]"
                       type="text"
                       value={searchTerms["zipcode"] || ''}
-                      onChange={(e) => setSearchTerms(prev => ({ ...prev, "zipcode": e.target.value }))}
+                      onChange={(e) => handleSearchChange("zipcode", e.target.value)}
                       style={{ maxWidth: '100%', minWidth: 'calc(120px - 32px)' }}
                     />
                   </th>
@@ -707,7 +686,7 @@ export const Guard = () => {
                   </tr>
                 ) : (
                   <>
-                    {filteredAndSortedData.map((record, index) => {
+                    {sortedData.map((record, index) => {
                       const isEditing = editingUserId === record.id;
 
                       return (
@@ -867,7 +846,7 @@ export const Guard = () => {
                       );
                     })}
 
-                    {filteredAndSortedData.length === 0 && (
+                    {sortedData.length === 0 && (
                       <tr>
                         <td
                           colSpan={9}
