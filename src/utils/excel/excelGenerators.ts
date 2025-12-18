@@ -360,10 +360,7 @@ export async function generateScheduleStyledExcel(
     .filter(Boolean)
     .join(' ');
   const clientAddress = [
-    selectedClient?.address,
-    selectedClient?.city,
-    selectedClient?.state,
-    selectedClient?.pincode
+    selectedClient?.address
   ]
     .filter(Boolean)
     .join(', ');
@@ -796,10 +793,7 @@ export async function generateScheduledFormatExcel(
     .filter(Boolean)
     .join(' ');
   const clientAddress = [
-    selectedClient?.address,
-    selectedClient?.city,
-    selectedClient?.state,
-    selectedClient?.pincode
+    selectedClient?.address
   ]
     .filter(Boolean)
     .join(', ');

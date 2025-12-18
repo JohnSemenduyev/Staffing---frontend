@@ -2005,7 +2005,6 @@ export const ViewSchedule = () => {
   };
   
   
-  
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
     setScheduleData(prev => prev.map(item =>
       item.userId === userId
@@ -2713,7 +2712,7 @@ export const ViewSchedule = () => {
                     : [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(" "))}
                 </div>
                {selectedUserId ? null : <div className="text-sm text-gray-500">
-                  {[selectedClient.address, selectedClient.city, selectedClient.state, selectedClient.pincode].filter(Boolean).join(", ")}
+                  {[selectedClient.address].filter(Boolean).join(", ")}
                 </div>}
               </div>
             )}
