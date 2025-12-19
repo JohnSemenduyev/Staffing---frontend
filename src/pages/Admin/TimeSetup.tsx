@@ -6,7 +6,7 @@ import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useTimeSetupContext } from "../../context/TimeStemp";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
-import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaRegEdit, FaRegTrashAlt, FaFilePdf, FaFileExport } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
 import SubmitButton from "../../components/ui/ButtonUi";
 import { inputClasses } from "./GeoLocationSetup";
@@ -16,6 +16,7 @@ import { useToast } from "../../hooks/use-toast";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { Button } from "../../components/ui/button";
 import ResetButton from "../../components/ui/ResetButton";
+import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -351,6 +352,75 @@ export const TimeSetup = () => {
     { label: "Edit", icon: <FaRegEdit className="w-4 h-4" color="blue" />, onClick: handleEdit, className: "text-blue-500 hover:text-green-700" },
     { label: "Delete", icon: <FaRegTrashAlt className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
   ];
+
+  // Prepare data for export (flatten nested structures)
+  const exportData = useMemo(() => {
+    return (timeSetups || []).map((row: any) => {
+      const client = row.client;
+      const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
+      
+      const address = row.address;
+      const addressText = address 
+        ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+        : "-";
+
+      return {
+        clientName,
+        address: addressText,
+        distance: `${row.distance} Mile`,
+        scheduledTime: `${row.actualScheduledTime} Min`,
+        weeklyHours: `${row.weeklyHours} Hr`,
+        reminderTime: `${row.reminderTime} Hr`,
+        overlap: row.overlap ? "Yes" : "No",
+        unscheduledTime: row.unscheduledTime ? "Yes" : "No",
+      };
+    });
+  }, [timeSetups]);
+
+  // Export column definitions
+  const exportColumns: ExportColumn[] = useMemo(() => [
+    { key: "clientName", header: "Client Name" },
+    { key: "address", header: "Client Location" },
+    { key: "distance", header: "Distance (Miles)" },
+    { key: "scheduledTime", header: "Scheduled Time" },
+    { key: "weeklyHours", header: "Weekly Hours" },
+    { key: "reminderTime", header: "Reminder Time" },
+    { key: "overlap", header: "Overlap" },
+    { key: "unscheduledTime", header: "Unscheduled Time" },
+  ], []);
+
+  // Handle PDF export
+  const handleExportToPDF = () => {
+    if (!exportData || exportData.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+    exportToPDF(exportData, exportColumns, {
+      title: "Time Setup",
+      fileName: "time_setups.pdf",
+    });
+    toast.success("PDF exported successfully!");
+  };
+
+  // Handle Excel export
+  const handleExportToExcel = async () => {
+    if (!exportData || exportData.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+    const result = await exportToExcel(exportData, exportColumns, {
+      fileName: "time_setups",
+      includeTimestamp: true,
+      worksheetName: "Time Setups",
+    });
+
+    if (result.success) {
+      toast.success(`Excel file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(result.error || "Failed to export Excel file");
+    }
+  };
+
   const handleSearch = (formData: { [key: string]: any }) => {
     const filterEntries = Object.entries(formData).filter(
       ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
@@ -387,9 +457,29 @@ export const TimeSetup = () => {
     <div className="w-full overflow-x-hidden p-6">
 
       <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-1">
-        <h2 className="text-lg font-semibold mb-2">
-          {editId ? "Edit Time Setup" : "Add Time Setup"}
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold">
+            {editId ? "Edit Time Setup" : "Add Time Setup"}
+          </h2>
+          {exportData && exportData.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportToPDF}
+                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                title="Export to PDF"
+              >
+                <FaFilePdf className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleExportToExcel}
+                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                title="Export to Excel"
+              >
+                <FaFileExport className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </div>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
             <div className="relative">

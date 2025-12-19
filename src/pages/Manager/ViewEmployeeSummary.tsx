@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiEye } from "react-icons/fi";
+import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { Button } from "../../components/ui/button";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { useEmployeeSummary } from "../../context/ViewEmployeeSummaryContext";
@@ -17,6 +18,8 @@ import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
 import ResetButton from "../../components/ui/ResetButton";
 import Pagination from "../../components/Pagination";
 import { useDebounce } from "../../hooks/useDebounce";
+import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
+import { toast } from "sonner";
 
 type EmployeeSummaryRow = {
   userId?: string | number;
@@ -218,6 +221,55 @@ export const ViewEmployeeSummary: React.FC = () => {
     };
   }, [sortedRows]);
 
+  // Export column definitions matching the table structure
+  const exportColumns: ExportColumn[] = useMemo(() => [
+    { key: "employeeName", header: "Employee Name" },
+    { key: "regularScheduled", header: "Regular Scheduled Hours" },
+    { key: "regularActual", header: "Regular Actual Hours" },
+    { key: "regularDifference", header: "Regular Difference" },
+    { key: "overtimeScheduled", header: "Overtime Scheduled Hours" },
+    { key: "overtimeActual", header: "Overtime Actual Hours" },
+    { key: "overtimeDifference", header: "Overtime Difference" },
+  ], []);
+
+  // Handle PDF export
+  const handleExportToPDF = () => {
+    if (!sortedRows || sortedRows.length === 0) {
+      toast.error("No data to export. Please select a date range with data.");
+      return;
+    }
+
+    const weekStart = selectedDate || toLocalYMD(new Date());
+    const timestamp = weekStart.replace(/-/g, "");
+    exportToPDF(sortedRows, exportColumns, {
+      title: "Employee Summary",
+      fileName: `employee_summary_${timestamp}.pdf`,
+    });
+    toast.success("PDF exported successfully!");
+  };
+
+  // Handle Excel export
+  const handleExportToExcel = async () => {
+    if (!sortedRows || sortedRows.length === 0) {
+      toast.error("No data to export. Please select a date range with data.");
+      return;
+    }
+
+    const weekStart = selectedDate || toLocalYMD(new Date());
+    const timestamp = weekStart.replace(/-/g, "");
+    const result = await exportToExcel(sortedRows, exportColumns, {
+      fileName: `employee_summary_${timestamp}`,
+      includeTimestamp: false,
+      worksheetName: "Employee Summary",
+    });
+
+    if (result.success) {
+      toast.success(`Excel file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(result.error || "Failed to export Excel file");
+    }
+  };
+
   
 
   const resetSearch = () => {
@@ -348,12 +400,32 @@ export const ViewEmployeeSummary: React.FC = () => {
           <h1 className="text-xl font-semibold text-gray-800">
             View Employee Summary
           </h1>
-          <div className="w-full md:w-auto">
-            <DateNavigation
-              selectedDate={selectedDate}
-              onDateChange={validateAndNavigate}
-              currentWeekRange={currentWeekRange}
-            />
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 w-full md:w-auto">
+            {sortedRows && sortedRows.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportToPDF}
+                  className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  title="Export to PDF"
+                >
+                  <FaFilePdf className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleExportToExcel}
+                  className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  title="Export to Excel"
+                >
+                  <FaFileExport className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+            <div className="w-full md:w-auto">
+              <DateNavigation
+                selectedDate={selectedDate}
+                onDateChange={validateAndNavigate}
+                currentWeekRange={currentWeekRange}
+              />
+            </div>
           </div>
         </div>
         {error && <ErrorMessage message={error} />}

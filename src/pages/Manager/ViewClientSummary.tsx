@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiEye } from "react-icons/fi";
 import { ChevronDown, X } from "lucide-react";
+import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
 import { Button } from "../../components/ui/button";
@@ -14,6 +15,7 @@ import { getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/
 import { graphQLClient } from "../../GraphqlClient";
 import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
 import { toast } from "sonner";
+import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
 
 const splitAddress = (address: string) => {
   if (!address || address === "-") {
@@ -351,6 +353,97 @@ export const ViewClientSummary = () => {
       })),
     [data]
   );
+
+  // Export column definitions matching the table structure
+  const exportColumns: ExportColumn[] = useMemo(() => {
+    const baseColumns: ExportColumn[] = [
+      { key: "clientName", header: "Client Name" },
+      { key: "location", header: "Location" },
+    ];
+
+    // Add columns based on selected filters (or all if none selected)
+    const allFilterValues = filterOptions.map((f) => f.value);
+    const activeFilterSet = new Set<FilterOption>(
+      selectedFilters.length === 0 || selectedFilters.length === filterOptions.length
+        ? allFilterValues
+        : selectedFilters
+    );
+
+    // Contract vs Scheduled
+    if (activeFilterSet.has("contractVsScheduled")) {
+      baseColumns.push(
+        { key: "contractHours", header: "Contract Hours" },
+        { key: "totalWeeklyHours", header: "Scheduled Hours" },
+        { key: "diffContractMinusScheduled", header: "Difference" }
+      );
+    }
+
+    // Unconfirmed and Rejected
+    if (activeFilterSet.has("unconfirmed")) {
+      baseColumns.push({ key: "unconfirmedHours", header: "Unconfirmed Hours" });
+    }
+    if (activeFilterSet.has("rejected")) {
+      baseColumns.push({ key: "rejectedHours", header: "Rejected Hours" });
+    }
+
+    // Scheduled vs Actual
+    if (activeFilterSet.has("scheduledVsActual")) {
+      baseColumns.push(
+        { key: "scheduledHoursActual", header: "Scheduled Hours" },
+        { key: "totalActualHours", header: "Actual Hours" },
+        { key: "diffScheduledMinusActual", header: "Difference" }
+      );
+    }
+
+    // Contract vs Actual
+    if (activeFilterSet.has("contractVsActual")) {
+      baseColumns.push(
+        { key: "contractHoursActual", header: "Contract Hours" },
+        { key: "totalActualHoursContract", header: "Actual Hours" },
+        { key: "diffContractMinusActual", header: "Difference" }
+      );
+    }
+
+    return baseColumns;
+  }, [selectedFilters]);
+
+  // Handle PDF export
+  const handleExportToPDF = () => {
+    if (!rows || rows.length === 0) {
+      toast.error("No data to export. Please select a date range with data.");
+      return;
+    }
+
+    const weekStart = selectedDate || toLocalYMD(new Date());
+    const timestamp = weekStart.replace(/-/g, "");
+    exportToPDF(rows, exportColumns, {
+      title: "Client Summary",
+      fileName: `client_summary_${timestamp}.pdf`,
+    });
+    toast.success("PDF exported successfully!");
+  };
+
+  // Handle Excel export
+  const handleExportToExcel = async () => {
+    if (!rows || rows.length === 0) {
+      toast.error("No data to export. Please select a date range with data.");
+      return;
+    }
+
+    const weekStart = selectedDate || toLocalYMD(new Date());
+    const timestamp = weekStart.replace(/-/g, "");
+    const result = await exportToExcel(rows, exportColumns, {
+      fileName: `client_summary_${timestamp}`,
+      includeTimestamp: false,
+      worksheetName: "Client Summary",
+    });
+
+    if (result.success) {
+      toast.success(`Excel file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(result.error || "Failed to export Excel file");
+    }
+  };
   const validateAndNavigate = async (newDate: string) => {
     const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
     const weekStartStr = toLocalYMD(week.startOfWeek);
@@ -482,6 +575,24 @@ export const ViewClientSummary = () => {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl font-semibold text-gray-800">View Client Summary</h1>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 w-full md:w-auto">
+            {rows && rows.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportToPDF}
+                  className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  title="Export to PDF"
+                >
+                  <FaFilePdf className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleExportToExcel}
+                  className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  title="Export to Excel"
+                >
+                  <FaFileExport className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           <div className="relative w-full md:w-[250px]" ref={filterDropdownRef}>
             <button
               type="button"

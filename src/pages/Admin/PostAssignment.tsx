@@ -1,7 +1,7 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useEffect, useState, useMemo, useRef } from "react";
-import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaRegEdit, FaRegTrashAlt, FaFilePdf, FaFileExport } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
 import { usePostAssignContext } from "../../context/PostAssignm";
@@ -15,6 +15,7 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSearch";
 import { Button } from "../../components/ui/button";
 import ResetButton from "../../components/ui/ResetButton";
+import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
 
 export const PostAssignment = () => {
   const [form, setForm] = useState({
@@ -343,6 +344,65 @@ export const PostAssignment = () => {
       title: "Delete"
     }
   ];
+
+  // Prepare data for export (flatten nested structures)
+  const exportData = useMemo(() => {
+    return (postAssigns || []).map((row: any) => {
+      const client = row.client;
+      const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
+      
+      const address = row.address;
+      const addressText = address 
+        ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+        : "-";
+
+      return {
+        clientName,
+        address: addressText,
+        post: row.post || "-",
+      };
+    });
+  }, [postAssigns]);
+
+  // Export column definitions
+  const exportColumns: ExportColumn[] = useMemo(() => [
+    { key: "clientName", header: "Client Name" },
+    { key: "address", header: "Client Location" },
+    { key: "post", header: "Post Name" },
+  ], []);
+
+  // Handle PDF export
+  const handleExportToPDF = () => {
+    if (!exportData || exportData.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+    exportToPDF(exportData, exportColumns, {
+      title: "Post Assignment",
+      fileName: "post_assignments.pdf",
+    });
+    toast.success("PDF exported successfully!");
+  };
+
+  // Handle Excel export
+  const handleExportToExcel = async () => {
+    if (!exportData || exportData.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+    const result = await exportToExcel(exportData, exportColumns, {
+      fileName: "post_assignments",
+      includeTimestamp: true,
+      worksheetName: "Post Assignments",
+    });
+
+    if (result.success) {
+      toast.success(`Excel file exported successfully: ${result.filename}`);
+    } else {
+      toast.error(result.error || "Failed to export Excel file");
+    }
+  };
+
   const handleSearch = (formData: { [key: string]: any }) => {
     const filterEntries = Object.entries(formData).filter(
       ([_, v]) => v !== undefined && v !== null && String(v).trim() !== ""
@@ -371,9 +431,29 @@ export const PostAssignment = () => {
     <div className="w-full overflow-x-hidden p-6">
 
       <div ref={formRef} className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2">
-        <h2 className="text-[18px] font-bold mb-2" style={{ lineHeight: '28px' }}>
-          {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-[18px] font-bold" style={{ lineHeight: '28px' }}>
+            {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
+          </h2>
+          {exportData && exportData.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportToPDF}
+                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                title="Export to PDF"
+              >
+                <FaFilePdf className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleExportToExcel}
+                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                title="Export to Excel"
+              >
+                <FaFileExport className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </div>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {/* Client Search */}

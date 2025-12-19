@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
+import { FaRegEdit, FaRegTrashAlt, FaFilePdf, FaFileExport } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { X, RotateCcw, Search } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -27,6 +27,8 @@ import {
 	SearchResultItem,
 	SearchResultsDropdown,
 } from "../../components/ui/search-result-item";
+import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
+import { toast } from "sonner";
 
 const notificationOptions = [
 	"Geolocation",
@@ -878,15 +880,111 @@ export default function AssignmentNew() {
 		},
 	];
 
+	// Prepare data for export (flatten nested structures)
+	const exportData = useMemo(() => {
+		return (assignments || []).map((row: any) => {
+			const client = row.client;
+			const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
+			
+			const address = row.address;
+			const addressText = address 
+				? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+				: "-";
+			
+			const guard = row.guard || row.clientregistration;
+			const guardName = guard ? [guard.name ?? "", guard.lastName ?? ""].filter(Boolean).join(" ") : "-";
+			
+			const user = row.user;
+			const userName = user ? [user.name ?? "", user.lastName ?? ""].filter(Boolean).join(" ") : "-";
+			
+			const notifications = row.notification && Array.isArray(row.notification) && row.notification.length > 0
+				? row.notification.map((n: string) => formatNotificationText(n)).join(", ")
+				: "-";
+
+			return {
+				clientName,
+				address: addressText,
+				guardName,
+				role: formatRoleLabel(row.role),
+				access: row.access || "-",
+				userName,
+				notification: notifications,
+			};
+		});
+	}, [assignments]);
+
+	// Export column definitions
+	const exportColumns: ExportColumn[] = useMemo(() => [
+		{ key: "clientName", header: "Client Name" },
+		{ key: "address", header: "Client Location" },
+		{ key: "guardName", header: "User Name" },
+		{ key: "role", header: "User Role" },
+		{ key: "access", header: "Schedule Access" },
+		{ key: "userName", header: "User Notified" },
+		{ key: "notification", header: "Notification" },
+	], []);
+
+	// Handle PDF export
+	const handleExportToPDF = () => {
+		if (!exportData || exportData.length === 0) {
+			toast.error("No data to export. Please select a date range with data.");
+			return;
+		}
+		exportToPDF(exportData, exportColumns, {
+			title: "Assignment List",
+			fileName: "assignments.pdf",
+		});
+		toast.success("PDF exported successfully!");
+	};
+
+	// Handle Excel export
+	const handleExportToExcel = async () => {
+		if (!exportData || exportData.length === 0) {
+			toast.error("No data to export. Please select a date range with data.");
+			return;
+		}
+		const result = await exportToExcel(exportData, exportColumns, {
+			fileName: "assignments",
+			includeTimestamp: true,
+			worksheetName: "Assignments",
+		});
+
+		if (result.success) {
+			toast.success(`Excel file exported successfully: ${result.filename}`);
+		} else {
+			toast.error(result.error || "Failed to export Excel file");
+		}
+	};
+
 	return (
 		<div className='w-full overflow-x-hidden p-6'>
 			<div
 				ref={formRef}
 				className='bg-white p-4 rounded-2xl shadow-md border border-gray-100 space-y-2 grid mb-2'
 			>
-				<h2 className='text-lg font-semibold mb-2'>
-					{isEditing ? "Edit Assignment" : "Add Assignment"}
-				</h2>
+				<div className="flex justify-between items-center mb-2">
+					<h2 className='text-lg font-semibold'>
+						{isEditing ? "Edit Assignment" : "Add Assignment"}
+					</h2>
+					{exportData && exportData.length > 0 && (
+						<div className="flex items-center gap-2">
+							<button
+								onClick={handleExportToPDF}
+								className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+								title="Export to PDF"
+							>
+								<FaFilePdf className="w-5 h-5" />
+							</button>
+							<button
+								onClick={handleExportToExcel}
+								className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+								title="Export to Excel"
+							>
+								<FaFileExport className="w-5 h-5" />
+							</button>
+						</div>
+					)}
+				</div>
 				<form onSubmit={onSubmit} autoComplete='off'>
 					<div className='grid grid-cols-1 sm:grid-cols-3  lg:grid-cols-4 xxl:grid-cols-3 gap-2'>
 						<div className='relative'>
