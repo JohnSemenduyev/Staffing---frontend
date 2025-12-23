@@ -124,7 +124,7 @@
 // export default UserRegistrationContext;
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { graphQLClient } from '../GraphqlClient';
-import { CREATE_USER_, CREATE_CLIENT_REGISTRATION } from '../graphql/mutation';
+import { CREATE_USER_ } from '../graphql/mutation';
 
 // TypeScript Interfaces for User
 export interface CreateUserInput {
@@ -132,6 +132,7 @@ export interface CreateUserInput {
   email: string;
   password: string;
   role: 'admin' | 'manager' | 'guard' | 'client';
+  company?: string;
   address?: string;
   zipcode?: string;
   state?: string;
@@ -148,50 +149,9 @@ export interface CreateUserResponse {
   };
 }
 
-// TypeScript Interfaces for Client Registration
-export interface AddressRegistrationInput {
-  label?: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  industry?: string;
-}
-
-export interface CreateClientRegistrationInput {
-  name: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  password: string;
-  addresses: AddressRegistrationInput[];
-}
-
-export interface CreateClientRegistrationResponse {
-  createClientRegistration: {
-    id: string;
-    name: string;
-    lastName: string;
-    email: string;
-    company: string;
-    createdAt: string;
-    addresses: {
-      id: string;
-      label: string;
-      address: string;
-      city: string;
-      state: string;
-      pincode: string;
-      industry: string;
-    }[];
-  };
-}
-
 // Context Interface
 interface UserRegistrationContextType {
   createUser: (userData: CreateUserInput) => Promise<{ success: boolean; data?: CreateUserResponse; error?: string }>;
-  createClientRegistration: (clientData: CreateClientRegistrationInput) => Promise<{ success: boolean; data?: CreateClientRegistrationResponse; error?: string }>;
   loading: boolean;
   error: string | null;
   clearError: () => void;
@@ -223,6 +183,7 @@ export const UserRegistrationProvider: React.FC<UserRegistrationProviderProps> =
         email: userData.email,
         password: userData.password,
         role: userData.role,
+        company: userData.company,
         lastName: userData.lastName,
         phone: userData.phone,
         address: userData.address,
@@ -256,65 +217,12 @@ export const UserRegistrationProvider: React.FC<UserRegistrationProviderProps> =
     }
   };
 
-  const createClientRegistration = async (clientData: CreateClientRegistrationInput): Promise<{ success: boolean; data?: CreateClientRegistrationResponse; error?: string }> => {
-    console.log('🚀 Context createClientRegistration called with:', clientData);
-        
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Prepare variables for GraphQL mutation
-      const variables = {
-        input: {
-          name: clientData.name,
-          lastName: clientData.lastName,
-          email: clientData.email,
-          phone: clientData.phone,
-          company: clientData.company,
-          password: clientData.password,
-          addresses: clientData.addresses.map(address => ({
-            label: address.label,
-            address: address.address,
-            city: address.city,
-            state: address.state,
-            pincode: address.pincode,
-            industry: address.industry,
-          })),
-        }
-      };
-
-      console.log('📋 Client Registration Variables prepared:', variables);
-      console.log('📝 Client Registration Mutation:', CREATE_CLIENT_REGISTRATION);
-      console.log('📡 Making GraphQL request using graphQLClient');
-
-      // Execute mutation
-      const data = await graphQLClient.request<CreateClientRegistrationResponse>(CREATE_CLIENT_REGISTRATION, variables);
-
-      console.log('✅ Client Registration GraphQL response:', data);
-      setLoading(false);
-      return { success: true, data };
-    } catch (err: any) {
-      console.error('❌ Client Registration GraphQL error:', err);
-      console.error('❌ Client Registration Error details:', {
-        message: err?.message,
-        response: err?.response,
-        errors: err?.response?.errors
-      });
-            
-      const errorMessage = err?.response?.errors?.[0]?.message || err?.message || 'Failed to create client registration';
-      setError(errorMessage);
-      setLoading(false);
-      return { success: false, error: errorMessage };
-    }
-  };
-
   const clearError = () => {
     setError(null);
   };
 
   const value: UserRegistrationContextType = {
     createUser,
-    createClientRegistration,
     loading,
     error,
     clearError,

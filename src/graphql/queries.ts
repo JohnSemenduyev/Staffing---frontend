@@ -120,12 +120,6 @@ export const GET_ASSIGNMENTS = gql`
         notificationSubCat
         createdAt
 
-        clientRegId
-        clientregistration {
-          name
-          lastName
-        }
-
         user {
           id
           name
@@ -270,6 +264,50 @@ export const GET_GUARD_USERS = gql`
         role
       }
       lastPage
+    }
+  }
+`;
+
+export const GET_CLIENT_USERS = gql`
+  query ClientUsers(
+    $limit: Int
+    $page: Int
+    $company: String
+    $name: String
+    $lastName: String
+    $email: String
+    $phone: String
+    $address: String
+    $city: String
+    $state: String
+    $zipcode: String
+  ) {
+    clientUsers(
+      limit: $limit
+      page: $page
+      company: $company
+      name: $name
+      lastName: $lastName
+      email: $email
+      phone: $phone
+      address: $address
+      city: $city
+      state: $state
+      zipcode: $zipcode
+    ) {
+      lastPage
+      data {
+        id
+        name
+        lastName
+        email
+        phone
+        company
+        address
+        city
+        state
+        zipcode
+      }
     }
   }
 `;

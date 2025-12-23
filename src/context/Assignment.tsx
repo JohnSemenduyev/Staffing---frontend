@@ -19,15 +19,8 @@ export interface Assignment {
   notificationSubCat?: string[];
   createdAt: string;
 
-  clientRegId?: number | null;    // 🔹 NEW
-
   user?: { id: number; name: string; lastName?: string };
   guard?: { id: number; name: string; lastName?: string };
-
-  clientregistration?: {          // 🔹 NEW
-    name: string;
-    lastName?: string;
-  };
 
   client?: { id: number; name: string; lastName?: string };
   address?: {

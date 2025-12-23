@@ -69,7 +69,7 @@ export const GET_SCHEDULE_SESSIONS = `
 `;
 export const CREATE_ASSIGNMENT = gql`
   mutation CreateAssignment(
-    $userId: Int!,
+    $userId: Int,
     $guardId: Int!,
     $clientId: Int!,
     $notification: [String!]!,
@@ -104,7 +104,7 @@ export const CREATE_ASSIGNMENT = gql`
 export const UPDATE_ASSIGNMENT = gql`
   mutation UpdateAssignment(
     $id: Int!,
-    $userId: Int!,
+    $userId: Int,
     $guardId: Int!,
     $clientId: Int!,
     $notification: [String!]!,
@@ -512,6 +512,7 @@ export const CREATE_USER_ = gql`
     $email: String!
     $password: String!
     $role: UserRole!
+    $company: String
     $address: String
     $zipcode: String
     $state: String
@@ -524,6 +525,7 @@ export const CREATE_USER_ = gql`
       email: $email
       password: $password
       role: $role
+      company: $company
       address: $address
       zipcode: $zipcode
       state: $state

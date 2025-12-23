@@ -456,14 +456,16 @@ export default function AssignmentNew() {
 	};
 	const validate = () => {
 		const e: any = {};
+		const isClientRole = form.role?.toLowerCase() === "client";
+
 		if (!form.clientId) e.clientId = "Client is required";
-		if (!form.userId) e.userId = "User is required";
-		if (!form.guardId) e.guardId = "User Notified required";
+		if (!isClientRole && !form.userId) e.userId = "User is required";
+		if (!isClientRole && !form.guardId) e.guardId = "User Notified required";
 		if (!form.addressId) e.addressId = "Address is required";
 		if (!form.role) e.role = "Role is required";
 		if (!form.access) e.access = "Access level is required";
-		if (!form.notification.length)
-			e.notification = "Please select at least one notification";
+		// if (!form.notification.length)
+		// 	e.notification = "Please select at least one notification";
 		setErrors(e);
 		setShowErrors(true);
 		return Object.keys(e).length === 0;
@@ -507,9 +509,11 @@ export default function AssignmentNew() {
 		e.preventDefault();
 		if (!validate()) return;
 
+		const isClientRole = form.role?.toLowerCase() === "client";
+
 		const input = {
-			userId: Number(form.userId),
-			guardId: Number(form.guardId),
+			userId: form.userId ? Number(form.userId) : null,
+			guardId: form.guardId ? Number(form.guardId) : null,
 			clientId: Number(form.clientId),
 			addressId: Number(form.addressId),
 			role: form.role,
@@ -553,14 +557,10 @@ export default function AssignmentNew() {
     ? record.notificationSubCat.map((notif: string) => notif)
     : [];
 
-  // 🔹 decide what to use for "guard" visually and for guardId
-  const guardEntity = record.guard || record.clientregistration;
+  // 🔹 guard is always from guard entity now
+  const guardEntity = record.guard;
 
-  // if it's a client-role assignment, we want to send clientRegId as guardId in input
-  const effectiveGuardId =
-    record.role?.toLowerCase() === "client"
-      ? record.clientRegId
-      : record.guardId;
+  const effectiveGuardId = record.guardId;
 
   setForm({
     clientId: String(record.client?.id || ""),
@@ -583,11 +583,14 @@ export default function AssignmentNew() {
     .join(", ");
   setSelectedAddressText(fullAddress);
 
-  setUserSearch(record.user?.name + " " + record.user?.lastName || "");
+  const userFullName = [record.user?.name, record.user?.lastName].filter(Boolean).join(" ");
+  setUserSearch(userFullName || "");
+  setNotifiedUserEmail((record.user as any)?.email || "");
 
-  const guardFullName = [guardEntity?.name, guardEntity?.lastName]
-    .filter(Boolean)
-    .join(" ");
+  const clientFullName = [record.client?.name, record.client?.lastName].filter(Boolean).join(" ");
+  setClientSearch(clientFullName || "");
+
+  const guardFullName = [guardEntity?.name, guardEntity?.lastName].filter(Boolean).join(" ");
   setGuardSearch(guardFullName || "");
 
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -784,8 +787,8 @@ export default function AssignmentNew() {
   searchType: "text",
   width: "250px",
   render: (_: any, row: any) => {
-    // 🔹 Prefer guard (User). If null, fallback to clientregistration.
-    const src = row.guard || row.clientregistration;
+    // 🔹 Prefer guard (User); clientregistration removed.
+    const src = row.guard;
 
     const full = [src?.name ?? "", src?.lastName ?? ""]
       .filter(Boolean)
@@ -891,7 +894,7 @@ export default function AssignmentNew() {
 				? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
 				: "-";
 			
-			const guard = row.guard || row.clientregistration;
+			const guard = row.guard;
 			const guardName = guard ? [guard.name ?? "", guard.lastName ?? ""].filter(Boolean).join(" ") : "-";
 			
 			const user = row.user;
@@ -927,20 +930,20 @@ export default function AssignmentNew() {
 	// Handle PDF export
 	const handleExportToPDF = () => {
 		if (!exportData || exportData.length === 0) {
-			toast.error("No data to export. Please select a date range with data.");
+			toast({ title: "ERROR", description: "No data to export" });
 			return;
 		}
 		exportToPDF(exportData, exportColumns, {
 			title: "Assignment List",
 			fileName: "assignments.pdf",
 		});
-		toast.success("PDF exported successfully!");
+		toast({ title: "SUCCESS", description: "PDF exported successfully" });
 	};
 
 	// Handle Excel export
 	const handleExportToExcel = async () => {
 		if (!exportData || exportData.length === 0) {
-			toast.error("No data to export. Please select a date range with data.");
+			toast({ title: "ERROR", description: "No data to export" });
 			return;
 		}
 		const result = await exportToExcel(exportData, exportColumns, {
@@ -950,9 +953,9 @@ export default function AssignmentNew() {
 		});
 
 		if (result.success) {
-			toast.success(`Excel file exported successfully: ${result.filename}`);
+			toast({ title: "SUCCESS", description: `Excel file exported successfully: ${result.filename}` });
 		} else {
-			toast.error(result.error || "Failed to export Excel file");
+			toast({ title: "ERROR", description: result.error || "Failed to export Excel file" });
 		}
 	};
 

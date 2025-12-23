@@ -52,7 +52,7 @@ const Signup = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { createUser, createClientRegistration, loading: contextLoading } = useUserRegistration();
+  const { createUser, loading: contextLoading } = useUserRegistration();
 
   const handleRoleSelect = (role: RoleType) => {
     setSelectedRole(role);
@@ -159,28 +159,24 @@ const Signup = () => {
 
     try {
       if (formData.role === 'client') {
-        // Handle client role with actual API call
-        const clientData = {
+        // Handle client role with createUser mutation (with optional company)
+        const primaryAddress = formData.addresses[0];
+
+        const userData = {
           name: formData.name,
           lastName: formData.lastname,
           email: formData.email,
           phone: formData.phoneNumber,
-          company: formData.company || undefined,
           password: formData.password,
           role: formData.role.toLowerCase() as 'client',
-          addresses: formData.addresses.map((addr, index) => ({
-            label: `Address ${index + 1}`, // Default label
-            address: addr.address,
-            city: addr.city,
-            state: addr.state,
-            pincode: addr.zipcode, // Map zipcode to pincode
-            industry: undefined // Optional field
-          }))
+          company: formData.company || undefined,
+          address: primaryAddress.address,
+          city: primaryAddress.city,
+          state: primaryAddress.state,
+          zipcode: primaryAddress.zipcode,
         };
 
-        // console.log('🚀 Client Registration Data:', clientData);
-
-        const result = await createClientRegistration(clientData);
+        const result = await createUser(userData);
 
         if (result.success) {
           toast({

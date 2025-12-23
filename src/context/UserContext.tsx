@@ -5,6 +5,7 @@ import {
   GET_ADMIN_USERS,
   GET_MANAGER_USERS,
   GET_GUARD_USERS,
+  GET_CLIENT_USERS,
 } from "../graphql/queries";
 
 export type User = {
@@ -17,8 +18,9 @@ export type User = {
   city: string;
   state: string;
   zipcode: string;
-  status: boolean
-  role: "admin" | "manager" | "guard";
+  company?: string;
+  status?: boolean | null;
+  role?: "admin" | "manager" | "guard" | "client";
 };
 
 interface UserContextType {
@@ -28,7 +30,7 @@ interface UserContextType {
   currentPage: number;
   lastPage: number;
   currentFilter: Record<string, any> | null;
-  fetchUsersByRole: (role: "admin" | "manager" | "guard", page?: number, filter?: Record<string, any>) => Promise<void>;
+  fetchUsersByRole: (role: "admin" | "manager" | "guard" | "client", page?: number, filter?: Record<string, any>) => Promise<void>;
   setCurrentPage: (page: number) => void;
 }
 
@@ -43,7 +45,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastPage, setLastPage] = useState<number>(1);
   const [currentFilter, setCurrentFilter] = useState<Record<string, any> | null>(null);
 
-  const fetchUsersByRole = async (role: "admin" | "manager" | "guard", page: number = 1, filter?: Record<string, any>) => {
+  const fetchUsersByRole = async (role: "admin" | "manager" | "guard" | "client", page: number = 1, filter?: Record<string, any>) => {
     setLoading(true);
     try {
       let data;
@@ -70,6 +72,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data = await graphQLClient.request<{ guardUsers: { data: User[]; lastPage: number } }>(GET_GUARD_USERS, variables);
         setUsers(data.guardUsers.data);
         setLastPage(data.guardUsers.lastPage);
+      } else if (role === "client") {
+        const clientVariables = { limit: 20, ...variables };
+        data = await graphQLClient.request<{ clientUsers: { data: User[]; lastPage: number } }>(GET_CLIENT_USERS, clientVariables);
+        setUsers(data.clientUsers.data);
+        setLastPage(data.clientUsers.lastPage);
       }
       
       setCurrentFilter(filter || null);

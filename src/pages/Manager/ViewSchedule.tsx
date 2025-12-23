@@ -50,7 +50,8 @@ import ResetButton from "../../components/ui/ResetButton";
         params.set(key, String(value));
       }
     });
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    const queryString = params.toString();
+    const newUrl = queryString ? `${window.location.pathname}?${queryString}` : `${window.location.pathname}`;
     window.history.replaceState({}, '', newUrl);
   }
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
