@@ -392,20 +392,20 @@ export const TimeSetup = () => {
   // Handle PDF export
   const handleExportToPDF = () => {
     if (!exportData || exportData.length === 0) {
-      toast.error("No data to export.");
+      toast({ title: "ERROR", description: "No data to export" });
       return;
     }
     exportToPDF(exportData, exportColumns, {
       title: "Time Setup",
       fileName: "time_setups.pdf",
     });
-    toast.success("PDF exported successfully!");
+    toast({ title: "SUCCESS", description: "PDF exported successfully" });
   };
 
   // Handle Excel export
   const handleExportToExcel = async () => {
     if (!exportData || exportData.length === 0) {
-      toast.error("No data to export.");
+      toast({ title: "ERROR", description: "No data to export" });
       return;
     }
     const result = await exportToExcel(exportData, exportColumns, {
@@ -415,9 +415,9 @@ export const TimeSetup = () => {
     });
 
     if (result.success) {
-      toast.success(`Excel file exported successfully: ${result.filename}`);
+      toast({ title: "SUCCESS", description: `Excel file exported successfully: ${result.filename}` });
     } else {
-      toast.error(result.error || "Failed to export Excel file");
+      toast({ title: "ERROR", description: result.error || "Failed to export Excel file" });
     }
   };
 
