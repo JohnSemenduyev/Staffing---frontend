@@ -106,8 +106,8 @@ export const GET_ALL_ADDRESSES = gql`
 // ----------- ASSIGNMENT QUERY -----------
 
 export const GET_ASSIGNMENTS = gql`
-  query GetAssignments($page: Int, $filter: AssignmentFilter) {
-    assignments(page: $page, filter: $filter) {
+  query GetAssignments($page: Int, $filter: AssignmentFilter, $export: Boolean) {
+    assignments(page: $page, filter: $filter, export: $export) {
       data {
         id
         userId
@@ -207,8 +207,8 @@ export const SEARCH_USERS = gql`
 `;
 
 export const GET_ADMIN_USERS = gql`
-  query AdminUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
-    adminUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+  query AdminUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String, $export: Boolean) {
+    adminUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode, export: $export) {
       data {
         id
         name
@@ -229,8 +229,8 @@ export const GET_ADMIN_USERS = gql`
 
 
 export const GET_MANAGER_USERS = gql`
-  query ManagerUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
-    managerUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+  query ManagerUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String, $export: Boolean) {
+    managerUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode, export: $export) {
       data {
         id
         name
@@ -249,8 +249,8 @@ export const GET_MANAGER_USERS = gql`
 `;
 
 export const GET_GUARD_USERS = gql`
-  query GuardUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String) {
-    guardUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode) {
+  query GuardUsers($page: Int, $name: String, $lastName: String, $email: String, $phone: String, $address: String, $city: String, $state: String, $zipcode: String, $export: Boolean) {
+    guardUsers(page: $page, name: $name, lastName: $lastName, email: $email, phone: $phone, address: $address, city: $city, state: $state, zipcode: $zipcode, export: $export) {
       data {
         id
         name
@@ -281,6 +281,7 @@ export const GET_CLIENT_USERS = gql`
     $city: String
     $state: String
     $zipcode: String
+    $export: Boolean
   ) {
     clientUsers(
       limit: $limit
@@ -294,6 +295,7 @@ export const GET_CLIENT_USERS = gql`
       city: $city
       state: $state
       zipcode: $zipcode
+      export: $export
     ) {
       lastPage
       data {
@@ -315,8 +317,8 @@ export const GET_CLIENT_USERS = gql`
 // ----------- GEOLOCATION QUERY -----------
 
 export const GET_GEOLOCATIONS = gql`
-  query GeoLocations($page: Int, $filter: GeoLocationFilter) {
-    geoLocations(page: $page, filter: $filter) {
+  query GeoLocations($page: Int, $filter: GeoLocationFilter, $export: Boolean) {
+    geoLocations(page: $page, filter: $filter, export: $export) {
       data {
         id
         clientId
@@ -346,8 +348,8 @@ export const GET_GEOLOCATIONS = gql`
 // ----------- TIME SETUP QUERY -----------
 
 export const GET_TIME_SETUP = gql`
-  query TimeSetup($page: Int, $filter: TimeSetupFilter) {
-    timeSetup(page: $page, filter: $filter) {
+  query TimeSetup($page: Int, $filter: TimeSetupFilter, $export: Boolean) {
+    timeSetup(page: $page, filter: $filter, export: $export) {
       data {
         id
         clientId
@@ -382,8 +384,8 @@ export const GET_TIME_SETUP = gql`
 // ----------- POST ASSIGN QUERY -----------
 
 export const GET_POST_ASSIGN = gql`
-  query GetPostAssigns($page: Int, $filter: PostAssignFilter) {
-    postAssigns(page: $page, filter: $filter) {
+  query GetPostAssigns($page: Int, $filter: PostAssignFilter, $export: Boolean) {
+    postAssigns(page: $page, filter: $filter, export: $export) {
       data {
         id
         clientId
@@ -482,7 +484,8 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
     $endDate: String,
     $addressId: Int,
     $clientId: Int,
-    $userId: Int
+    $userId: Int,
+    $export: Boolean
   ) {
     uniformCompliancesByScheduleFilter(
       page: $page,
@@ -491,7 +494,8 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
       endDate: $endDate,
       addressId: $addressId,
       clientId: $clientId,
-      userId: $userId
+      userId: $userId,
+      export: $export
     ) {
       data {
         shift {
@@ -702,6 +706,7 @@ export const GET_NOTIFICATIONS = gql`
     $userId: Int
     $notificationType: [String!]
     $subcategory: [String!]
+    $export: Boolean
   ) {
     notifications(
       startDate: $startDate
@@ -713,6 +718,7 @@ export const GET_NOTIFICATIONS = gql`
       userId: $userId
       notificationType: $notificationType
       subcategory: $subcategory
+      export: $export
     ) {
       lastPage
       data {
@@ -817,11 +823,10 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
 `;
 
 export const GET_USER_HOURS_SUMMARY = gql`
-  query UserHoursSummary($date: String!, $page: Int, $limit: Int, $userName: String) {
-    UserHoursSummary(date: $date, page: $page, limit: $limit, userName: $userName) {
+  query UserHoursSummary($date: String!, $page: Int, $limit: Int, $export: Boolean) {
+    UserHoursSummary(date: $date, page: $page, limit: $limit, export: $export) {
       lastPage
       data {
-        userId
         userName
         scheduledHours
         actualHours
@@ -829,6 +834,15 @@ export const GET_USER_HOURS_SUMMARY = gql`
         overTimeSchedule
         overTimeActualHours
         overTimediffScheduledMinusActual
+      }
+      totals {
+        scheduledHours
+        actualHours
+        diffScheduledMinusActual
+        overTimeSchedule
+        overTimeActualHours
+        overTimediffScheduledMinusActual
+        totalUsers
       }
     }
   }

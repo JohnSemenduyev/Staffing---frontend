@@ -71,8 +71,9 @@ type NotificationsContextType = {
       shiftId?: number;
       notificationType?: string[];
       subcategory?: string[];
+      export?: boolean;
     }
-  ) => Promise<void>;
+  ) => Promise<NotificationEntry[] | void>;
 };
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
@@ -137,9 +138,13 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     shiftId?: number;
     notificationType?: string[];
     subcategory?: string[];
+    export?: boolean;
   }) => {
-    setLoading(true);
-    setError(null);
+    // Only set loading state if not exporting (to avoid showing loader on table during export)
+    if (!variables.export) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const token = sessionStorage.getItem("token");
 
@@ -159,6 +164,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         if (Array.isArray(v.subcategory) && v.subcategory.length > 0) {
           out.subcategory = v.subcategory;
         }
+        if (v.export !== undefined) out.export = v.export;
         return out;
       };
 
@@ -178,8 +184,6 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       
       console.log("response", response);
       
-      setLastPage(paginatedData?.lastPage || null);
-      
       const transformed: NotificationEntry[] = rawData.map((n) => ({
         guardFirst: { name: n.user?.name || "" },
         guardLast: { name: n.user?.lastName || "" },
@@ -198,12 +202,25 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
         subcategory: n.subcategory,
       }));
 
+      if (variables.export) {
+        return transformed;
+      }
+
+      setLastPage(paginatedData?.lastPage || null);
       setData(transformed);
     } catch (err: any) {
       console.error("Error fetching notifications:", err);
-      setError("Failed to fetch notifications.");
+      if (!variables.export) {
+        setError("Failed to fetch notifications.");
+      }
+      if (variables.export) {
+        throw err;
+      }
     } finally {
-      setLoading(false);
+      // Only set loading to false if not exporting
+      if (!variables.export) {
+        setLoading(false);
+      }
     }
   };
 

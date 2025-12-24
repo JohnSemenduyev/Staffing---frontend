@@ -1,6 +1,6 @@
 import { useSearchClient } from "../../hooks/usesearchClient";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { FaRegEdit, FaRegTrashAlt, FaFilePdf, FaFileExport } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { Check, X, AlertTriangle, RotateCcw, Search } from "lucide-react";
@@ -16,6 +16,8 @@ import { GenericSearchForm, FieldConfig } from "../../components/GenericFormSear
 import { Button } from "../../components/ui/button";
 import ResetButton from "../../components/ui/ResetButton";
 import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
+import { graphQLClient } from "../../GraphqlClient";
+import { GET_POST_ASSIGN } from "../../graphql/queries";
 
 export const PostAssignment = () => {
   const [form, setForm] = useState({
@@ -46,7 +48,8 @@ export const PostAssignment = () => {
     loading,
     deletePostAssign,
     updatePostAssign,
-    error
+    error,
+    currentFilter
   } = usePostAssignContext();
 
   useEffect(() => {
@@ -345,24 +348,51 @@ export const PostAssignment = () => {
     }
   ];
 
-  // Prepare data for export (flatten nested structures)
-  const exportData = useMemo(() => {
-    return (postAssigns || []).map((row: any) => {
-      const client = row.client;
-      const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
-      
-      const address = row.address;
-      const addressText = address 
-        ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
-        : "-";
+  // Reusable function to transform post assignment data for export
+  const transformPostAssignForExport = useCallback((row: any) => {
+    const client = row.client;
+    const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
+    
+    const address = row.address;
+    const addressText = address 
+      ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+      : "-";
 
-      return {
-        clientName,
-        address: addressText,
-        post: row.post || "-",
-      };
-    });
-  }, [postAssigns]);
+    return {
+      clientName,
+      address: addressText,
+      post: row.post || "-",
+    };
+  }, []);
+
+  // Prepare data for export (flatten nested structures) - for UI display
+  const exportData = useMemo(() => {
+    return (postAssigns || []).map(transformPostAssignForExport);
+  }, [postAssigns, transformPostAssignForExport]);
+
+  // Fetch all post assignments for export (separate from UI state)
+  const fetchAllPostAssignsForExport = useCallback(async (): Promise<any[]> => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const effectiveFilter = currentFilter || undefined;
+      const variables: any = { page: 1, export: true };
+      
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
+      
+      const response = await graphQLClient.request<{ postAssigns: { data: any[]; lastPage: number } }>(
+        GET_POST_ASSIGN,
+        variables,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.postAssigns.data;
+    } catch (error) {
+      console.error("Error fetching post assignments for export:", error);
+      throw error;
+    }
+  }, [currentFilter]);
 
   // Export column definitions
   const exportColumns: ExportColumn[] = useMemo(() => [
@@ -372,34 +402,48 @@ export const PostAssignment = () => {
   ], []);
 
   // Handle PDF export
-  const handleExportToPDF = () => {
-    if (!exportData || exportData.length === 0) {
-      toast.error("No data to export.");
-      return;
+  const handleExportToPDF = async () => {
+    try {
+      const allPostAssigns = await fetchAllPostAssignsForExport();
+      if (!allPostAssigns || allPostAssigns.length === 0) {
+        toast.error("No data to export.");
+        return;
+      }
+      const exportDataForPDF = allPostAssigns.map(transformPostAssignForExport);
+      exportToPDF(exportDataForPDF, exportColumns, {
+        title: "Post Assignment",
+        fileName: "post_assignments.pdf",
+      });
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF");
     }
-    exportToPDF(exportData, exportColumns, {
-      title: "Post Assignment",
-      fileName: "post_assignments.pdf",
-    });
-    toast.success("PDF exported successfully!");
   };
 
   // Handle Excel export
   const handleExportToExcel = async () => {
-    if (!exportData || exportData.length === 0) {
-      toast.error("No data to export.");
-      return;
-    }
-    const result = await exportToExcel(exportData, exportColumns, {
-      fileName: "post_assignments",
-      includeTimestamp: true,
-      worksheetName: "Post Assignments",
-    });
+    try {
+      const allPostAssigns = await fetchAllPostAssignsForExport();
+      if (!allPostAssigns || allPostAssigns.length === 0) {
+        toast.error("No data to export.");
+        return;
+      }
+      const exportDataForExcel = allPostAssigns.map(transformPostAssignForExport);
+      const result = await exportToExcel(exportDataForExcel, exportColumns, {
+        fileName: "post_assignments",
+        includeTimestamp: true,
+        worksheetName: "Post Assignments",
+      });
 
-    if (result.success) {
-      toast.success(`Excel file exported successfully: ${result.filename}`);
-    } else {
-      toast.error(result.error || "Failed to export Excel file");
+      if (result.success) {
+        toast.success(`Excel file exported successfully: ${result.filename}`);
+      } else {
+        toast.error(result.error || "Failed to export Excel file");
+      }
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast.error("Failed to export Excel");
     }
   };
 
@@ -435,24 +479,6 @@ export const PostAssignment = () => {
           <h2 className="text-[18px] font-bold" style={{ lineHeight: '28px' }}>
             {isEditMode ? "Edit Post Assignment" : "Post Assignment"}
           </h2>
-          {exportData && exportData.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleExportToPDF}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                title="Export to PDF"
-              >
-                <FaFilePdf className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleExportToExcel}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                title="Export to Excel"
-              >
-                <FaFileExport className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -585,6 +611,26 @@ export const PostAssignment = () => {
         onSearch={handleSearch}
         tableHeight={tableHeight}
       />
+
+      {/* Export buttons below table */}
+      {!loading && exportData && exportData.length > 0 && (
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         <Pagination

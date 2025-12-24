@@ -248,6 +248,23 @@ const calculateGrandTotal = (scheduleData: ScheduleItem[]) => {
   return parseFloat(total.toFixed(2));
 };
 
+export const addressTwoLines = (address?: string) => {
+  if (!address) return { line1: "", line2: "" };
+
+  const parts = address.split(",").map(p => p.trim()).filter(Boolean);
+
+  // If we have at least 3 parts, break after the 2nd
+  if (parts.length >= 3) {
+    return {
+      line1: `${parts[0]}, ${parts[1]},`,
+      line2: parts.slice(2).join(", "),
+    };
+  }
+
+  // Fallback: no split or only one comma
+  return { line1: address, line2: "" };
+};
+
 export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   scheduleData,
   sessionData = [],
@@ -947,7 +964,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   const handleDragLeave = (e: React.DragEvent) => {
     setDragOverCell(null);
-  };
+  };  
 
   const handleDrop = (
     e: React.DragEvent,
@@ -1263,20 +1280,34 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                         (rowIndex + rowIdx) % 2 === 0 ? "bg-gray-50" : "bg-white"
                       }`}
                     >
-                      {rowIdx === 0 && (
-                        <td
-                          className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
-                          rowSpan={rowCount}
-                        >
-                          <div className="font-medium text-gray-800">
-                            {selectedUserId ? row.clientName : row.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {selectedUserId ? row.address : formatUSPhone(row.phone)}
-                          </div>
-                        </td>
-                      )}
 
+                     {rowIdx === 0 && (
+                       <td
+                         className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                         rowSpan={rowCount}
+                       >
+                         <div className="font-medium text-gray-800">
+                           {selectedUserId ? row.clientName : row.name}
+                         </div>
+                     
+                         <div className="text-xs text-gray-500 whitespace-normal">
+                           {selectedUserId ? (
+                             (() => {
+                               const { line1, line2 } = addressTwoLines(row.address);
+                               return (
+                                 <>
+                                   {line1}
+                                   {line2 ? <br /> : null}
+                                   {line2}
+                                 </>
+                               );
+                             })()
+                           ) : (
+                             formatUSPhone(row.phone)
+                           )}
+                         </div>
+                       </td>
+                     )}
                       {dateColumns.map((dateCol) => {
                         const daySchedules = scheduleData.filter((item) => {
                           const itemDate = item.startDate.includes("T")

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { Check, X } from "lucide-react";
 import { FaFilePdf, FaFileExport, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
@@ -6,13 +6,15 @@ import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
+import { GET_MANAGER_USERS } from "../../graphql/queries";
 import { downloadListPdf } from "../../PDF/admin";
 import { exportUserListToExcel } from "../../utils/adminExcel";
 import { useDebounce } from "../../hooks/useDebounce";
 import ResetButton from "../../components/ui/ResetButton";
+import type { User } from "../../context/UserContext";
 
 export const Manager = () => {
-  const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
+  const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage, currentFilter } = useUsers();
   const { toast } = useToast();
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
@@ -205,43 +207,82 @@ export const Manager = () => {
     setEditingUserId(null);
   };
 
-    const handleExportToPDF = async (data: any) =>{
-     await downloadListPdf(data, {
-  title: "Managers",
-  fileName: "managers.pdf",
-});
-  
+  // Fetch all managers for export (separate from UI state)
+  const fetchAllManagersForExport = useCallback(async (): Promise<User[]> => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const effectiveFilter = currentFilter || undefined;
+      const variables: any = { page: 1, export: true };
+      
+      if (effectiveFilter) {
+        Object.entries(effectiveFilter).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            variables[key] = value;
+          }
+        });
+      }
+      
+      const response = await graphQLClient.request<{ managerUsers: { data: User[]; lastPage: number } }>(
+        GET_MANAGER_USERS,
+        variables,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.managerUsers.data;
+    } catch (error) {
+      console.error("Error fetching managers for export:", error);
+      throw error;
     }
+  }, [currentFilter]);
 
-    const handleExportToExcel = async (data: any) => {
-      try {
-        console.log('Exporting Excel - Data received:', data);
-        console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
-        console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
-        
-        const result = await exportUserListToExcel(data, 'managers', false);
-        if (result.success) {
-          toast({
-            title: "Success",
-            description: `Excel file exported successfully: ${result.filename}`,
-            variant: "default"
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to export Excel file",
-            variant: "destructive"
-          });
-        }
-      } catch (error: any) {
-        console.error("Error exporting to Excel:", error);
+  const handleExportToPDF = async () => {
+    try {
+      const allManagers = await fetchAllManagersForExport();
+      if (!allManagers || allManagers.length === 0) {
+        toast({ title: "Error", description: "No data to export", variant: "destructive" });
+        return;
+      }
+      await downloadListPdf(allManagers, {
+        title: "Managers",
+        fileName: "managers.pdf",
+      });
+      toast({ title: "Success", description: "PDF exported successfully", variant: "default" });
+    } catch (error: any) {
+      console.error("Error exporting PDF:", error);
+      toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    try {
+      const allManagers = await fetchAllManagersForExport();
+      if (!allManagers || allManagers.length === 0) {
+        toast({ title: "Error", description: "No data to export", variant: "destructive" });
+        return;
+      }
+      const result = await exportUserListToExcel(allManagers, 'managers', false);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `Excel file exported successfully: ${result.filename}`,
+          variant: "default"
+        });
+      } else {
         toast({
           title: "Error",
-          description: error?.message || "Failed to export Excel file",
+          description: result.error || "Failed to export Excel file",
           variant: "destructive"
         });
       }
-    };
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to export Excel file",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleDelete = (userId: number, userName: string) => {
     setDeleteModal({ isOpen: true, userId, userName });
@@ -457,6 +498,26 @@ export const Manager = () => {
         </div>
       </div>
 
+      {/* Export buttons below table */}
+      {!loading && users && users.length > 0 && (
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
    <div className="mt-6 flex items-center justify-between">
         <Pagination
           currentPage={currentPage}
@@ -467,24 +528,6 @@ export const Manager = () => {
           }}
           loading={loading}
         />
-        {users && users.length > 0 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleExportToPDF(users)}
-              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              title="Export to PDF"
-            >
-              <FaFilePdf className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => handleExportToExcel(users)}
-              className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              title="Export to Excel"
-            >
-              <FaFileExport className="w-5 h-5" />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Delete Confirmation Modal */}

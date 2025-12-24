@@ -9,7 +9,7 @@ import { graphQLClient } from "../GraphqlClient";
 import { GET_USER_HOURS_SUMMARY } from "../graphql/queries";
 
 export type EmployeeHoursSummary = {
-  userId: string;
+  userId?: string;
   userName: string;
   scheduledHours: number;
   actualHours: number;
@@ -19,13 +19,24 @@ export type EmployeeHoursSummary = {
   overTimediffScheduledMinusActual?: number;
 };
 
+export type Totals = {
+  scheduledHours: number;
+  actualHours: number;
+  diffScheduledMinusActual: number;
+  overTimeSchedule: number;
+  overTimeActualHours: number;
+  overTimediffScheduledMinusActual: number;
+  totalUsers: number;
+};
+
 type EmployeeSummaryContextType = {
   data: EmployeeHoursSummary[];
+  totals: Totals | null;
   loading: boolean;
   error: string | null;
   currentPage: number;
   lastPage: number;
-  fetchEmployeeSummary: (date: string, page?: number, limit?: number, userName?: string) => Promise<void>;
+  fetchEmployeeSummary: (date: string, page?: number, limit?: number, exportData?: boolean) => Promise<EmployeeHoursSummary[] | void>;
   setCurrentPage: (page: number) => void;
 };
 
@@ -44,15 +55,19 @@ export const ViewEmployeeSummaryProvider = ({
   children: ReactNode;
 }) => {
   const [data, setData] = useState<EmployeeHoursSummary[]>([]);
+  const [totals, setTotals] = useState<Totals | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [lastPage, setLastPage] = useState<number>(1);
 
   const fetchEmployeeSummary = useCallback(
-    async (date: string, page: number = 1, limit: number = 10, userName?: string) => {
-      setLoading(true);
-      setError(null);
+    async (date: string, page: number = 1, limit: number = 10, exportData: boolean = false) => {
+      // Only set loading state if not exporting (to avoid showing loader on table during export)
+      if (!exportData) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const token = sessionStorage.getItem("token");
 
@@ -60,6 +75,7 @@ export const ViewEmployeeSummaryProvider = ({
           UserHoursSummary: {
             lastPage: number;
             data: EmployeeHoursSummary[];
+            totals: Totals;
           };
         }>(
           GET_USER_HOURS_SUMMARY,
@@ -67,21 +83,33 @@ export const ViewEmployeeSummaryProvider = ({
             date: toApiDate(date),
             page,
             limit,
-            userName: userName && userName.trim() ? userName.trim() : undefined,
+            export: exportData,
           },
           token ? { Authorization: `Bearer ${token}` } : undefined
         );
 
+        if (exportData) {
+          return response.UserHoursSummary?.data || [];
+        }
+
         setData(response.UserHoursSummary?.data || []);
+        setTotals(response.UserHoursSummary?.totals || null);
         setLastPage(response.UserHoursSummary?.lastPage || 1);
         setCurrentPage(page);
       } catch (err) {
         console.error("Failed to fetch employee summary", err);
-        setError("Failed to load employee summary.");
-        setData([]);
-        setLastPage(1);
+        if (!exportData) {
+          setError("Failed to load employee summary.");
+          setData([]);
+          setTotals(null);
+          setLastPage(1);
+        }
+        throw err;
       } finally {
-        setLoading(false);
+        // Only set loading to false if not exporting
+        if (!exportData) {
+          setLoading(false);
+        }
       }
     },
     []
@@ -90,7 +118,8 @@ export const ViewEmployeeSummaryProvider = ({
   return (
     <ViewEmployeeSummaryContext.Provider
       value={{ 
-        data, 
+        data,
+        totals,
         loading, 
         error, 
         currentPage,

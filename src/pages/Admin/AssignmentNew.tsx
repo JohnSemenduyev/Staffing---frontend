@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { FaRegEdit, FaRegTrashAlt, FaFilePdf, FaFileExport } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import { X, RotateCcw, Search } from "lucide-react";
@@ -29,6 +29,9 @@ import {
 } from "../../components/ui/search-result-item";
 import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
 import { toast } from "sonner";
+import { graphQLClient } from "../../GraphqlClient";
+import { GET_ASSIGNMENTS } from "../../graphql/queries";
+import type { Assignment } from "../../context/Assignment";
 
 const notificationOptions = [
 	"Geolocation",
@@ -161,6 +164,7 @@ export default function AssignmentNew() {
 		setSubmitError,
 		updateAssignment,
 		deleteAssignment,
+		currentFilter,
 	} = useAssignment();
 	const { toast } = useToast();
 	const { syncRolesFromSession } = useAuth();
@@ -883,38 +887,72 @@ export default function AssignmentNew() {
 		},
 	];
 
-	// Prepare data for export (flatten nested structures)
-	const exportData = useMemo(() => {
-		return (assignments || []).map((row: any) => {
-			const client = row.client;
-			const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
-			
-			const address = row.address;
-			const addressText = address 
-				? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
-				: "-";
-			
-			const guard = row.guard;
-			const guardName = guard ? [guard.name ?? "", guard.lastName ?? ""].filter(Boolean).join(" ") : "-";
-			
-			const user = row.user;
-			const userName = user ? [user.name ?? "", user.lastName ?? ""].filter(Boolean).join(" ") : "-";
-			
-			const notifications = row.notification && Array.isArray(row.notification) && row.notification.length > 0
-				? row.notification.map((n: string) => formatNotificationText(n)).join(", ")
-				: "-";
+	// Reusable function to transform assignment data for export
+	const transformAssignmentForExport = useCallback((row: Assignment) => {
+		const client = row.client;
+		const clientName = client ? [client.name ?? "", client.lastName ?? ""].filter(Boolean).join(" ") : "-";
+		
+		const address = row.address;
+		const addressText = address 
+			? [address.label ?? "", address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+			: "-";
+		
+		const guard = row.guard;
+		const guardName = guard ? [guard.name ?? "", guard.lastName ?? ""].filter(Boolean).join(" ") : "-";
+		
+		const user = row.user;
+		const userName = user ? [user.name ?? "", user.lastName ?? ""].filter(Boolean).join(" ") : "-";
+		
+		const notifications = row.notification && Array.isArray(row.notification) && row.notification.length > 0
+			? row.notification.map((n: string) => formatNotificationText(n)).join(", ")
+			: "-";
 
-			return {
-				clientName,
-				address: addressText,
-				guardName,
-				role: formatRoleLabel(row.role),
-				access: row.access || "-",
-				userName,
-				notification: notifications,
+		return {
+			clientName,
+			address: addressText,
+			guardName,
+			role: formatRoleLabel(row.role),
+			access: row.access || "-",
+			userName,
+			notification: notifications,
+		};
+	}, []);
+
+	// Prepare data for export (flatten nested structures) - for UI display
+	const exportData = useMemo(() => {
+		return (assignments || []).map(transformAssignmentForExport);
+	}, [assignments, transformAssignmentForExport]);
+
+	// Fetch all assignments for export (separate from UI state)
+	const fetchAllAssignmentsForExport = async (): Promise<Assignment[]> => {
+		try {
+			type GetAssignmentsResponse = {
+				assignments: {
+					data: Assignment[];
+					lastPage: number;
+				};
 			};
-		});
-	}, [assignments]);
+			
+			const token = sessionStorage.getItem("token");
+			const effectiveFilter = currentFilter || undefined;
+			const variables: any = { page: 1, export: true };
+			
+			if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+				variables.filter = effectiveFilter;
+			}
+			
+			const response = await graphQLClient.request<GetAssignmentsResponse>(
+				GET_ASSIGNMENTS,
+				variables,
+				{ Authorization: `Bearer ${token}` }
+			);
+			
+			return response.assignments.data;
+		} catch (error) {
+			console.error("Error fetching assignments for export:", error);
+			throw error;
+		}
+	};
 
 	// Export column definitions
 	const exportColumns: ExportColumn[] = useMemo(() => [
@@ -928,34 +966,58 @@ export default function AssignmentNew() {
 	], []);
 
 	// Handle PDF export
-	const handleExportToPDF = () => {
-		if (!exportData || exportData.length === 0) {
-			toast({ title: "ERROR", description: "No data to export" });
-			return;
+	const handleExportToPDF = async () => {
+		try {
+			// Fetch all data with export: true (kept in local variable, not updating UI)
+			const allAssignments = await fetchAllAssignmentsForExport();
+			
+			if (!allAssignments || allAssignments.length === 0) {
+				toast({ title: "ERROR", description: "No data to export" });
+				return;
+			}
+
+			// Transform data for export using reusable function
+			const exportDataForPDF = allAssignments.map(transformAssignmentForExport);
+
+			exportToPDF(exportDataForPDF, exportColumns, {
+				title: "Assignment List",
+				fileName: "assignments.pdf",
+			});
+			toast({ title: "SUCCESS", description: "PDF exported successfully" });
+		} catch (error) {
+			console.error("Error exporting PDF:", error);
+			toast({ title: "ERROR", description: "Failed to export PDF" });
 		}
-		exportToPDF(exportData, exportColumns, {
-			title: "Assignment List",
-			fileName: "assignments.pdf",
-		});
-		toast({ title: "SUCCESS", description: "PDF exported successfully" });
 	};
 
 	// Handle Excel export
 	const handleExportToExcel = async () => {
-		if (!exportData || exportData.length === 0) {
-			toast({ title: "ERROR", description: "No data to export" });
-			return;
-		}
-		const result = await exportToExcel(exportData, exportColumns, {
-			fileName: "assignments",
-			includeTimestamp: true,
-			worksheetName: "Assignments",
-		});
+		try {
+			// Fetch all data with export: true (kept in local variable, not updating UI)
+			const allAssignments = await fetchAllAssignmentsForExport();
+			
+			if (!allAssignments || allAssignments.length === 0) {
+				toast({ title: "ERROR", description: "No data to export" });
+				return;
+			}
 
-		if (result.success) {
-			toast({ title: "SUCCESS", description: `Excel file exported successfully: ${result.filename}` });
-		} else {
-			toast({ title: "ERROR", description: result.error || "Failed to export Excel file" });
+			// Transform data for export using reusable function
+			const exportDataForExcel = allAssignments.map(transformAssignmentForExport);
+
+			const result = await exportToExcel(exportDataForExcel, exportColumns, {
+				fileName: "assignments",
+				includeTimestamp: true,
+				worksheetName: "Assignments",
+			});
+
+			if (result.success) {
+				toast({ title: "SUCCESS", description: `Excel file exported successfully: ${result.filename}` });
+			} else {
+				toast({ title: "ERROR", description: result.error || "Failed to export Excel file" });
+			}
+		} catch (error) {
+			console.error("Error exporting Excel:", error);
+			toast({ title: "ERROR", description: "Failed to export Excel" });
 		}
 	};
 
@@ -969,24 +1031,6 @@ export default function AssignmentNew() {
 					<h2 className='text-lg font-semibold'>
 						{isEditing ? "Edit Assignment" : "Add Assignment"}
 					</h2>
-					{exportData && exportData.length > 0 && (
-						<div className="flex items-center gap-2">
-							<button
-								onClick={handleExportToPDF}
-								className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-								title="Export to PDF"
-							>
-								<FaFilePdf className="w-5 h-5" />
-							</button>
-							<button
-								onClick={handleExportToExcel}
-								className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-								title="Export to Excel"
-							>
-								<FaFileExport className="w-5 h-5" />
-							</button>
-						</div>
-					)}
 				</div>
 				<form onSubmit={onSubmit} autoComplete='off'>
 					<div className='grid grid-cols-1 sm:grid-cols-3  lg:grid-cols-4 xxl:grid-cols-3 gap-2'>
@@ -1446,6 +1490,26 @@ export default function AssignmentNew() {
 				onSearch={handleSearch}
 				tableHeight={tableHeight}
 			/>
+
+			{/* Export buttons below table */}
+			{!loading && exportData && exportData.length > 0 && (
+				<div className="mt-4 flex justify-end gap-2">
+					<button
+						onClick={handleExportToPDF}
+						className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+						title="Export to PDF"
+					>
+						<FaFilePdf className="w-5 h-5" />
+					</button>
+					<button
+						onClick={handleExportToExcel}
+						className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+						title="Export to Excel"
+					>
+						<FaFileExport className="w-5 h-5" />
+					</button>
+				</div>
+			)}
 
 			<div className='mt-6'>
 				<Pagination

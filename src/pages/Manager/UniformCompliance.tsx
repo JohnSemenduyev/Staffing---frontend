@@ -55,6 +55,7 @@ export const UniformCompliance = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const formRef = useRef<HTMLDivElement>(null);
   const { uniformCompliances, lastPage, error, fetchUniformCompliances } = useUniformCompliance();
+  const [exportLoading, setExportLoading] = useState<{ pdf: boolean; excel: boolean }>({ pdf: false, excel: false });
   const fieldInputClasses = inputClasses;
   // Calculate table height dynamically
   useEffect(() => {
@@ -319,14 +320,41 @@ export const UniformCompliance = () => {
     }
   };
 
-  const handleExportToExcel = async () => {
+  // Fetch all uniform compliances for export
+  const fetchAllUniformCompliancesForExport = async () => {
     try {
-      if (!uniformCompliances || uniformCompliances.length === 0) {
+      const backendStartDate = form.startDate;
+      const backendEndDate = form.endDate;
+
+      const allData = await fetchUniformCompliances({
+        page: 1,
+        limit: 10,
+        startDate: toMDY(backendStartDate),
+        endDate: toMDY(backendEndDate),
+        ...(form.addressId && { addressId: Number(form.addressId) }),
+        ...(form.clientId && { clientId: Number(form.clientId) }),
+        ...(form.userId && { userId: Number(form.userId) }),
+        export: true,
+      }) as any[];
+
+      return allData || [];
+    } catch (error) {
+      console.error("Error fetching uniform compliances for export:", error);
+      toast.error("Failed to fetch all uniform compliance data for export.");
+      throw error;
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    setExportLoading(prev => ({ ...prev, excel: true }));
+    try {
+      const allData = await fetchAllUniformCompliancesForExport();
+      if (!allData || allData.length === 0) {
         toast.error("No data to export");
         return;
       }
 
-      const result = await exportUniformComplianceToExcel(uniformCompliances as any, 'uniform_compliance');
+      const result = await exportUniformComplianceToExcel(allData as any, 'uniform_compliance');
       
       if (result.success) {
         toast.success("Uniform compliance report exported to Excel successfully!");
@@ -336,17 +364,21 @@ export const UniformCompliance = () => {
     } catch (error) {
       console.error("Error exporting to Excel:", error);
       toast.error("Failed to export Excel report");
+    } finally {
+      setExportLoading(prev => ({ ...prev, excel: false }));
     }
   };
 
-  const handleExportToPDF = () => {
+  const handleExportToPDF = async () => {
+    setExportLoading(prev => ({ ...prev, pdf: true }));
     try {
-      if (!uniformCompliances || uniformCompliances.length === 0) {
+      const allData = await fetchAllUniformCompliancesForExport();
+      if (!allData || allData.length === 0) {
         toast.error("No data to export");
         return;
       }
 
-      const result = exportUniformComplianceToPDF(uniformCompliances as any, 'uniform_compliance');
+      const result = exportUniformComplianceToPDF(allData as any, 'uniform_compliance');
       
       if (result.success) {
         toast.success("Uniform compliance report exported to PDF successfully!");
@@ -356,6 +388,8 @@ export const UniformCompliance = () => {
     } catch (error) {
       console.error("Error exporting to PDF:", error);
       toast.error("Failed to export PDF report");
+    } finally {
+      setExportLoading(prev => ({ ...prev, pdf: false }));
     }
   };
 
@@ -770,18 +804,34 @@ export const UniformCompliance = () => {
         <div className="flex justify-end items-center gap-2 mt-4 mb-2">
           <button
             onClick={handleExportToPDF}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            disabled={exportLoading.pdf || exportLoading.excel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to PDF"
           >
-            <FaFilePdf className="w-5 h-5" />
+            {exportLoading.pdf ? (
+              <svg className="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <FaFilePdf className="w-5 h-5" />
+            )}
           </button>
 
           <button
             onClick={handleExportToExcel}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            disabled={exportLoading.pdf || exportLoading.excel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to Excel"
           >
-            <FaFileExport className="w-5 h-5" />
+            {exportLoading.excel ? (
+              <svg className="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <FaFileExport className="w-5 h-5" />
+            )}
           </button>
         </div>
       )}

@@ -60,6 +60,7 @@ export const Notification = () => {
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
+  const [exportLoading, setExportLoading] = useState<{ pdf: boolean; excel: boolean }>({ pdf: false, excel: false });
 
   const fieldInputClasses = inputClasses;
 
@@ -241,46 +242,87 @@ export const Notification = () => {
     }
   };
 
-  // Export functions using utility
-  const handleExportToExcel = async () => {
-    if (!data || data.length === 0) {
-      toast.error("No data to export. Please fetch data first.");
-      return;
-    }
-
-    console.log("Exporting Excel with data:", data);
+  // Fetch all notifications for export
+  const fetchAllNotificationsForExport = async () => {
     try {
-      const result = await exportNotificationToExcel(data, 'notifications');
-      console.log("Excel export result:", result);
-      if (result.success) {
-        toast.success(`Excel file exported successfully: ${result.filename}`);
-      } else {
-        toast.error(`Failed to export Excel: ${result.error}`);
-      }
+      const allData = await fetchNotifications({
+        startDate: toMDY(form.Startdate),
+        endDate: toMDY(form.Enddate),
+        ...(form.clientId && { clientId: Number(form.clientId) }),
+        ...(form.addressId && { addressId: Number(form.addressId) }),
+        ...(form.userId && { userId: Number(form.userId) }),
+        notificationType: form.notification.map(n => notificationTypeMap[n]),
+        subcategory: form.notificationSubCat,
+        page: 1,
+        export: true,
+      }) as any[];
+
+      return allData || [];
     } catch (error) {
-      console.error("Excel Export - Unexpected error:", error);
-      toast.error(`Unexpected error during Excel export: ${error.message}`);
+      console.error("Error fetching notifications for export:", error);
+      toast.error("Failed to fetch all notification data for export.");
+      throw error;
     }
   };
 
-  const handleExportToPDF = () => {
-    if (!data || data.length === 0) {
-      toast.error("No data to export. Please fetch data first.");
-      return;
-    }
-
-    console.log("Exporting PDF with data:", data);
+  // Export functions using utility
+  const handleExportToExcel = async () => {
+    setExportLoading(prev => ({ ...prev, excel: true }));
     try {
-      const result = exportNotificationToPDF(data, 'notifications');
-      console.log("PDF export result:", result);
-      if (result.success) {
-        toast.success(`PDF file exported successfully: ${result.filename}`);
-      } else {
-        toast.error(`Failed to export PDF: ${result.error}`);
+      const allData = await fetchAllNotificationsForExport();
+      if (!allData || allData.length === 0) {
+        toast.error("No data to export. Please fetch data first.");
+        return;
+      }
+
+      console.log("Exporting Excel with data:", allData);
+      try {
+        const result = await exportNotificationToExcel(allData, 'notifications');
+        console.log("Excel export result:", result);
+        if (result.success) {
+          toast.success(`Excel file exported successfully: ${result.filename}`);
+        } else {
+          toast.error(`Failed to export Excel: ${result.error}`);
+        }
+      } catch (error) {
+        console.error("Excel Export - Unexpected error:", error);
+        toast.error(`Unexpected error during Excel export: ${error.message}`);
       }
     } catch (error) {
-      console.error("PDF Export - Unexpected error:", error);
-      toast.error(`Unexpected error during PDF export: ${error.message}`);
+      console.error("Error exporting Excel:", error);
+      toast.error("Failed to export Excel");
+    } finally {
+      setExportLoading(prev => ({ ...prev, excel: false }));
+    }
+  };
+
+  const handleExportToPDF = async () => {
+    setExportLoading(prev => ({ ...prev, pdf: true }));
+    try {
+      const allData = await fetchAllNotificationsForExport();
+      if (!allData || allData.length === 0) {
+        toast.error("No data to export. Please fetch data first.");
+        return;
+      }
+
+      console.log("Exporting PDF with data:", allData);
+      try {
+        const result = exportNotificationToPDF(allData, 'notifications');
+        console.log("PDF export result:", result);
+        if (result.success) {
+          toast.success(`PDF file exported successfully: ${result.filename}`);
+        } else {
+          toast.error(`Failed to export PDF: ${result.error}`);
+        }
+      } catch (error) {
+        console.error("PDF Export - Unexpected error:", error);
+        toast.error(`Unexpected error during PDF export: ${error.message}`);
+      }
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF");
+    } finally {
+      setExportLoading(prev => ({ ...prev, pdf: false }));
     }
   };
 
@@ -839,18 +881,34 @@ const handleSubCategoryToggle = (
         <div className="flex justify-end items-center gap-2 mt-2 mb-2">
           <button
             onClick={handleExportToPDF}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            disabled={exportLoading.pdf || exportLoading.excel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to PDF"
           >
-            <FaFilePdf className="w-5 h-5" />
+            {exportLoading.pdf ? (
+              <svg className="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <FaFilePdf className="w-5 h-5" />
+            )}
           </button>
 
           <button
             onClick={handleExportToExcel}
-            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            disabled={exportLoading.pdf || exportLoading.excel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to Excel"
           >
-            <FaFileExport className="w-5 h-5" />
+            {exportLoading.excel ? (
+              <svg className="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <FaFileExport className="w-5 h-5" />
+            )}
           </button>
         </div>
       )}

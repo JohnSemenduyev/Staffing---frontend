@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { GoPlus } from "react-icons/go";
 import { AlertTriangle, RotateCcw, Search } from "lucide-react";
 import ToggleSwitch from "../../components/ui/toggle";
@@ -17,6 +17,8 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { Button } from "../../components/ui/button";
 import ResetButton from "../../components/ui/ResetButton";
 import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
+import { graphQLClient } from "../../GraphqlClient";
+import { GET_TIME_SETUP } from "../../graphql/queries";
 
 export const TimeSetup = () => {
   const [form, setForm] = useState({
@@ -42,7 +44,7 @@ export const TimeSetup = () => {
   const [deleteLoader, setDeleteLoader] = useState(false);
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
-  const { timeSetups, createTimeSetup, error, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading } = useTimeSetupContext();
+  const { timeSetups, createTimeSetup, error, updateTimeSetup, deleteTimeSetup, currentPage, lastPage, fetchTimeSetups, setCurrentPage, loading, currentFilter } = useTimeSetupContext();
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
 
 
@@ -353,29 +355,56 @@ export const TimeSetup = () => {
     { label: "Delete", icon: <FaRegTrashAlt className="w-4 h-4" />, onClick: handleDelete, className: "text-red-500 hover:text-red-700" },
   ];
 
-  // Prepare data for export (flatten nested structures)
-  const exportData = useMemo(() => {
-    return (timeSetups || []).map((row: any) => {
-      const client = row.client;
-      const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
-      
-      const address = row.address;
-      const addressText = address 
-        ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
-        : "-";
+  // Reusable function to transform time setup data for export
+  const transformTimeSetupForExport = useCallback((row: any) => {
+    const client = row.client;
+    const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
+    
+    const address = row.address;
+    const addressText = address 
+      ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+      : "-";
 
-      return {
-        clientName,
-        address: addressText,
-        distance: `${row.distance} Mile`,
-        scheduledTime: `${row.actualScheduledTime} Min`,
-        weeklyHours: `${row.weeklyHours} Hr`,
-        reminderTime: `${row.reminderTime} Hr`,
-        overlap: row.overlap ? "Yes" : "No",
-        unscheduledTime: row.unscheduledTime ? "Yes" : "No",
-      };
-    });
-  }, [timeSetups]);
+    return {
+      clientName,
+      address: addressText,
+      distance: `${row.distance} Mile`,
+      scheduledTime: `${row.actualScheduledTime} Min`,
+      weeklyHours: `${row.weeklyHours} Hr`,
+      reminderTime: `${row.reminderTime} Hr`,
+      overlap: row.overlap ? "Yes" : "No",
+      unscheduledTime: row.unscheduledTime ? "Yes" : "No",
+    };
+  }, []);
+
+  // Prepare data for export (flatten nested structures) - for UI display
+  const exportData = useMemo(() => {
+    return (timeSetups || []).map(transformTimeSetupForExport);
+  }, [timeSetups, transformTimeSetupForExport]);
+
+  // Fetch all time setups for export (separate from UI state)
+  const fetchAllTimeSetupsForExport = useCallback(async (): Promise<any[]> => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const effectiveFilter = currentFilter || undefined;
+      const variables: any = { page: 1, export: true };
+      
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
+      
+      const response = await graphQLClient.request<{ timeSetup: { data: any[]; lastPage: number } }>(
+        GET_TIME_SETUP,
+        variables,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.timeSetup.data;
+    } catch (error) {
+      console.error("Error fetching time setups for export:", error);
+      throw error;
+    }
+  }, [currentFilter]);
 
   // Export column definitions
   const exportColumns: ExportColumn[] = useMemo(() => [
@@ -390,34 +419,48 @@ export const TimeSetup = () => {
   ], []);
 
   // Handle PDF export
-  const handleExportToPDF = () => {
-    if (!exportData || exportData.length === 0) {
-      toast({ title: "ERROR", description: "No data to export" });
-      return;
+  const handleExportToPDF = async () => {
+    try {
+      const allTimeSetups = await fetchAllTimeSetupsForExport();
+      if (!allTimeSetups || allTimeSetups.length === 0) {
+        toast({ title: "ERROR", description: "No data to export" });
+        return;
+      }
+      const exportDataForPDF = allTimeSetups.map(transformTimeSetupForExport);
+      exportToPDF(exportDataForPDF, exportColumns, {
+        title: "Time Setup",
+        fileName: "time_setups.pdf",
+      });
+      toast({ title: "SUCCESS", description: "PDF exported successfully" });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({ title: "ERROR", description: "Failed to export PDF" });
     }
-    exportToPDF(exportData, exportColumns, {
-      title: "Time Setup",
-      fileName: "time_setups.pdf",
-    });
-    toast({ title: "SUCCESS", description: "PDF exported successfully" });
   };
 
   // Handle Excel export
   const handleExportToExcel = async () => {
-    if (!exportData || exportData.length === 0) {
-      toast({ title: "ERROR", description: "No data to export" });
-      return;
-    }
-    const result = await exportToExcel(exportData, exportColumns, {
-      fileName: "time_setups",
-      includeTimestamp: true,
-      worksheetName: "Time Setups",
-    });
+    try {
+      const allTimeSetups = await fetchAllTimeSetupsForExport();
+      if (!allTimeSetups || allTimeSetups.length === 0) {
+        toast({ title: "ERROR", description: "No data to export" });
+        return;
+      }
+      const exportDataForExcel = allTimeSetups.map(transformTimeSetupForExport);
+      const result = await exportToExcel(exportDataForExcel, exportColumns, {
+        fileName: "time_setups",
+        includeTimestamp: true,
+        worksheetName: "Time Setups",
+      });
 
-    if (result.success) {
-      toast({ title: "SUCCESS", description: `Excel file exported successfully: ${result.filename}` });
-    } else {
-      toast({ title: "ERROR", description: result.error || "Failed to export Excel file" });
+      if (result.success) {
+        toast({ title: "SUCCESS", description: `Excel file exported successfully: ${result.filename}` });
+      } else {
+        toast({ title: "ERROR", description: result.error || "Failed to export Excel file" });
+      }
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast({ title: "ERROR", description: "Failed to export Excel" });
     }
   };
 
@@ -461,24 +504,6 @@ export const TimeSetup = () => {
           <h2 className="text-lg font-semibold">
             {editId ? "Edit Time Setup" : "Add Time Setup"}
           </h2>
-          {exportData && exportData.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleExportToPDF}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                title="Export to PDF"
-              >
-                <FaFilePdf className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleExportToExcel}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                title="Export to Excel"
-              >
-                <FaFileExport className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -596,6 +621,26 @@ export const TimeSetup = () => {
         onSearch={handleSearch}
         tableHeight={tableHeight}
       />
+
+      {/* Export buttons below table */}
+      {!loading && exportData && exportData.length > 0 && (
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         <Pagination

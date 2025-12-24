@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { Check, X } from "lucide-react";
 import { FaFilePdf, FaFileExport, FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
@@ -6,10 +6,12 @@ import { useUsers } from "../../context/UserContext";
 import { useToast } from '../../hooks/use-toast';
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
+import { GET_ADMIN_USERS } from "../../graphql/queries";
 import { downloadListPdf } from "../../PDF/admin";
 import { exportUserListToExcel } from "../../utils/adminExcel";
 import { useDebounce } from "../../hooks/useDebounce";
 import ResetButton from "../../components/ui/ResetButton";
+import type { User } from "../../context/UserContext";
 
 const StatusBadge = ({ value }: { value: boolean | null | undefined }) => {
   const isApproved = !!value;
@@ -29,7 +31,7 @@ const StatusBadge = ({ value }: { value: boolean | null | undefined }) => {
 
 
 export const Admin = () => {
-  const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage } = useUsers();
+  const { users, loading, error, currentPage, lastPage, fetchUsersByRole, setCurrentPage, currentFilter } = useUsers();
   const { toast } = useToast();
   const [tableHeight, setTableHeight] = useState<string>("400px");
   const formRef = useRef<HTMLDivElement>(null);
@@ -120,21 +122,60 @@ export const Admin = () => {
     };
   }, []);
 
-    const handleExportToPDF = async (data: any) =>{
-   await downloadListPdf(data, {
-  title: "Admins",
-  fileName: "admins.pdf",
-});
-
-  }
-
-  const handleExportToExcel = async (data: any) => {
+  // Fetch all admins for export (separate from UI state)
+  const fetchAllAdminsForExport = useCallback(async (): Promise<User[]> => {
     try {
-      console.log('Exporting Excel - Data received:', data);
-      console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
-      console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
+      const token = sessionStorage.getItem("token");
+      const effectiveFilter = currentFilter || undefined;
+      const variables: any = { page: 1, export: true };
       
-      const result = await exportUserListToExcel(data, 'admins');
+      if (effectiveFilter) {
+        Object.entries(effectiveFilter).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            variables[key] = value;
+          }
+        });
+      }
+      
+      const response = await graphQLClient.request<{ adminUsers: { data: User[]; lastPage: number } }>(
+        GET_ADMIN_USERS,
+        variables,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.adminUsers.data;
+    } catch (error) {
+      console.error("Error fetching admins for export:", error);
+      throw error;
+    }
+  }, [currentFilter]);
+
+  const handleExportToPDF = async () => {
+    try {
+      const allAdmins = await fetchAllAdminsForExport();
+      if (!allAdmins || allAdmins.length === 0) {
+        toast({ title: "Error", description: "No data to export", variant: "destructive" });
+        return;
+      }
+      await downloadListPdf(allAdmins, {
+        title: "Admins",
+        fileName: "admins.pdf",
+      });
+      toast({ title: "Success", description: "PDF exported successfully", variant: "default" });
+    } catch (error: any) {
+      console.error("Error exporting PDF:", error);
+      toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    try {
+      const allAdmins = await fetchAllAdminsForExport();
+      if (!allAdmins || allAdmins.length === 0) {
+        toast({ title: "Error", description: "No data to export", variant: "destructive" });
+        return;
+      }
+      const result = await exportUserListToExcel(allAdmins, 'admins');
       if (result.success) {
         toast({
           title: "Success",
@@ -527,17 +568,17 @@ export const Admin = () => {
           loading={loading}
         />
 
-        {users && users.length > 0 && (
+        {!loading && users && users.length > 0 && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExportToPDF(users)}
+              onClick={handleExportToPDF}
               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               title="Export to PDF"
             >
               <FaFilePdf className="w-5 h-5" />
             </button>
             <button
-              onClick={() => handleExportToExcel(users)}
+              onClick={handleExportToExcel}
               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               title="Export to Excel"
             >

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { formatDateLocal, formatDateStringLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
 import { Button } from "./ui/button";
+import { addressTwoLines } from "./ScheduleTable";
 
 interface Shift {
   id: number;
@@ -843,9 +844,19 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = ({
                               <div className="font-medium text-gray-800">
                                 {row.clientName}
                               </div>
-                              <div className="text-xs text-gray-500">
-                                {row.address}
-                              </div>
+                              <div className="text-xs text-gray-500 whitespace-normal">
+                               {(() => {
+                                 const { line1, line2 } = addressTwoLines(row.address);
+                                 return (
+                                   <>
+                                     {line1}
+                                     {line2 ? <br /> : null}                             
+                                     {line2}
+                                   </>
+                                 );
+                               })()}
+                             </div>
+
                             </td>
                           )}
 

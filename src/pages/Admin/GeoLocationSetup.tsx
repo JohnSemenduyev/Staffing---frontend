@@ -15,6 +15,8 @@ import { twMerge } from "tailwind-merge";
 import ResetButton from "../../components/ui/ResetButton";
 import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
 import { toast } from "sonner";
+import { graphQLClient } from "../../GraphqlClient";
+import { GET_GEOLOCATIONS } from "../../graphql/queries";
 
 export const inputClasses = twMerge(
   "w-full text-black  placeholder:text-gray-500 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] transition"
@@ -34,7 +36,7 @@ export const GeoLocationSetup = () => {
   const formRef = useRef<HTMLDivElement>(null);
   const debouncedClientSearch = useDebounce(clientSearch, 300);
   const { data: searchedClients = [], isLoading: loadingClients } = useSearchClient(debouncedClientSearch);
-  const { fetchGeoLocations, createGeoLocation, updateGeoLocation, setCurrentPage,loading,setSubmitError,error, lastPage, deleteGeoLocation,currentPage,geoLocations,submitLoader,submitError} = useGeoLocation();
+  const { fetchGeoLocations, createGeoLocation, updateGeoLocation, setCurrentPage,loading,setSubmitError,error, lastPage, deleteGeoLocation,currentPage,geoLocations,submitLoader,submitError,currentFilter} = useGeoLocation();
 
   useEffect(() => {
     fetchGeoLocations(currentPage);
@@ -323,25 +325,52 @@ export const GeoLocationSetup = () => {
     }
   ];
 
-  // Prepare data for export (flatten nested structures)
-  const exportData = useMemo(() => {
-    return (geoLocations || []).map((row: any) => {
-      const client = row.client;
-      const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
-      
-      const address = row.address;
-      const addressText = address 
-        ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
-        : "-";
+  // Reusable function to transform geo location data for export
+  const transformGeoLocationForExport = useCallback((row: GeoLocation) => {
+    const client = row.client;
+    const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
+    
+    const address = row.address;
+    const addressText = address 
+      ? [address.address ?? "", address.city ?? "", address.state ?? "", address.pincode ?? ""].filter(Boolean).join(", ")
+      : "-";
 
-      return {
-        clientName,
-        address: addressText,
-        distance: `${row.distance} Mile`,
-        time: `${row.time} Mins`,
-      };
-    });
-  }, [geoLocations]);
+    return {
+      clientName,
+      address: addressText,
+      distance: `${row.distance} Mile`,
+      time: `${row.time} Mins`,
+    };
+  }, []);
+
+  // Prepare data for export (flatten nested structures) - for UI display
+  const exportData = useMemo(() => {
+    return (geoLocations || []).map(transformGeoLocationForExport);
+  }, [geoLocations, transformGeoLocationForExport]);
+
+  // Fetch all geo locations for export (separate from UI state)
+  const fetchAllGeoLocationsForExport = useCallback(async (): Promise<GeoLocation[]> => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const effectiveFilter = currentFilter || undefined;
+      const variables: any = { page: 1, export: true };
+      
+      if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
+        variables.filter = effectiveFilter;
+      }
+      
+      const response = await graphQLClient.request<{ geoLocations: { data: GeoLocation[]; lastPage: number } }>(
+        GET_GEOLOCATIONS,
+        variables,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.geoLocations.data;
+    } catch (error) {
+      console.error("Error fetching geo locations for export:", error);
+      throw error;
+    }
+  }, [currentFilter]);
 
   // Export column definitions
   const exportColumns: ExportColumn[] = useMemo(() => [
@@ -352,34 +381,48 @@ export const GeoLocationSetup = () => {
   ], []);
 
   // Handle PDF export
-  const handleExportToPDF = () => {
-    if (!exportData || exportData.length === 0) {
-      toast.error("No data to export.");
-      return;
+  const handleExportToPDF = async () => {
+    try {
+      const allGeoLocations = await fetchAllGeoLocationsForExport();
+      if (!allGeoLocations || allGeoLocations.length === 0) {
+        toast.error("No data to export.");
+        return;
+      }
+      const exportDataForPDF = allGeoLocations.map(transformGeoLocationForExport);
+      exportToPDF(exportDataForPDF, exportColumns, {
+        title: "Geo Location Setup",
+        fileName: "geo_locations.pdf",
+      });
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Failed to export PDF");
     }
-    exportToPDF(exportData, exportColumns, {
-      title: "Geo Location Setup",
-      fileName: "geo_locations.pdf",
-    });
-    toast.success("PDF exported successfully!");
   };
 
   // Handle Excel export
   const handleExportToExcel = async () => {
-    if (!exportData || exportData.length === 0) {
-      toast.error("No data to export.");
-      return;
-    }
-    const result = await exportToExcel(exportData, exportColumns, {
-      fileName: "geo_locations",
-      includeTimestamp: true,
-      worksheetName: "Geo Locations",
-    });
+    try {
+      const allGeoLocations = await fetchAllGeoLocationsForExport();
+      if (!allGeoLocations || allGeoLocations.length === 0) {
+        toast.error("No data to export.");
+        return;
+      }
+      const exportDataForExcel = allGeoLocations.map(transformGeoLocationForExport);
+      const result = await exportToExcel(exportDataForExcel, exportColumns, {
+        fileName: "geo_locations",
+        includeTimestamp: true,
+        worksheetName: "Geo Locations",
+      });
 
-    if (result.success) {
-      toast.success(`Excel file exported successfully: ${result.filename}`);
-    } else {
-      toast.error(result.error || "Failed to export Excel file");
+      if (result.success) {
+        toast.success(`Excel file exported successfully: ${result.filename}`);
+      } else {
+        toast.error(result.error || "Failed to export Excel file");
+      }
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast.error("Failed to export Excel");
     }
   };
 
@@ -426,24 +469,6 @@ export const GeoLocationSetup = () => {
           <h2 className="text-xl font-semibold">
             {isEditing ? "Edit Geolocation Setup" : "Geolocation Setup"}
           </h2>
-          {exportData && exportData.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleExportToPDF}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                title="Export to PDF"
-              >
-                <FaFilePdf className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleExportToExcel}
-                className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                title="Export to Excel"
-              >
-                <FaFileExport className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
         <form onSubmit={onSubmit} autoComplete="off">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -608,6 +633,26 @@ export const GeoLocationSetup = () => {
         onSearch={handleSearch}
         tableHeight={tableHeight}
       />
+
+      {/* Export buttons below table */}
+      {!loading && exportData && exportData.length > 0 && (
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Pagination Section */}
       <div className="mt-6">

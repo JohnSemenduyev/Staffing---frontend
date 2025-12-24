@@ -41,19 +41,8 @@ import {
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 
- export const updateUrlParams = (updates: Record<string, string | boolean | null>) => {
-    const params = new URLSearchParams(window.location.search);
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null) {
-        params.delete(key);
-      } else {
-        params.set(key, String(value));
-      }
-    });
-    const queryString = params.toString();
-    const newUrl = queryString ? `${window.location.pathname}?${queryString}` : `${window.location.pathname}`;
-    window.history.replaceState({}, '', newUrl);
-  }
+
+
 const makeShiftKey = (shift: { date: string; startTime: string; endTime: string }) => {
   let normalizedDate: string;
   if (shift.date.includes('T') && shift.date.includes('Z')) {
@@ -134,22 +123,25 @@ export const DateNavigation = ({
     </div>
   );
 };
+const hasRealQueryParams = (search: string) =>
+  new URLSearchParams(search).toString().length > 0;
 export const ViewSchedule = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const getUrlParams = () => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     return {
-      clientId: params.get('clientId'),
-      addressId: params.get('addressId'),
-      selectedDate: params.get('selectedDate'),
-      showSchedule: params.get('showSchedule') === 'true',
-      viewClient: params.get('view-client') === 'true',
-      viewEmployee: params.get('view-employee') === 'true',
-      userId: params.get('userid')
+      clientId: params.get("clientId"),
+      addressId: params.get("addressId"),
+      selectedDate: params.get("selectedDate"),
+      showSchedule: params.get("showSchedule") === "true",
+      viewClient: params.get("view-client") === "true",
+      viewEmployee: params.get("view-employee") === "true",
+      userId: params.get("userid"),
     };
   };
+  
   const {
     clientSessions,
     loading,
@@ -182,16 +174,77 @@ export const ViewSchedule = () => {
   }, []);
   const [showScheduleTable, setShowScheduleTable] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.location.search.length > 0;
+    return hasRealQueryParams(window.location.search);
   });
+  
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   useEffect(() => {
-    const hasQuery = location.search.length > 0;
+    const hasQuery = hasRealQueryParams(location.search);
+  
     setShowScheduleTable(hasQuery);
     setScheduleData([]);
     setSessionData([]);
     setHasApiData(false);
+  
+    // ✅ when there are no query params, clear selection state
+    if (!hasQuery) {
+      setSelectedClient(null);
+      setSelectedUserId(null);
+      setSelectedUserDisplayName("");
+  
+      // optional but usually makes the UI consistent
+      setModalOpen(false);
+      setCurrentWeekRange(null);
+      setSelectedDate("");
+      hasRestoredState.current = false;
+    }
   }, [location.search]);
+
+
+  
+  useEffect(() => {
+    const hasQuery = hasRealQueryParams(location.search);
+  
+    setShowScheduleTable(hasQuery);
+    setScheduleData([]);
+    setSessionData([]);
+    setHasApiData(false);
+  
+    // ✅ When URL is /view-schedule (no params), reset selection state
+    if (!hasQuery) {
+      setSelectedClient(null);
+      setSelectedUserId(null);
+      setSelectedUserDisplayName("");
+      setCurrentWeekRange(null);
+      setSelectedDate("");
+      setModalOpen(false);
+  
+      hasRestoredState.current = false;
+  
+      clearScheduleData();
+      clearSessionData();
+    }
+  }, [location.search]);
+  
+
+  const updateUrlParams = React.useCallback(
+    (updates: Record<string, string | boolean | null>) => {
+      const params = new URLSearchParams(location.search);
+  
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null) params.delete(key);
+        else params.set(key, String(value));
+      });
+  
+      const qs = params.toString();
+      navigate(
+        { pathname: location.pathname, search: qs ? `?${qs}` : "" },
+        { replace: true }
+      );
+    },
+    [navigate, location.pathname, location.search]
+  );
+  
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);

@@ -55,6 +55,7 @@ interface FetchVariables {
   addressId?: number;
   clientId?: number;
   userId?: number;
+  export?: boolean;
 }
 
 interface UniformComplianceContextType {
@@ -62,7 +63,7 @@ interface UniformComplianceContextType {
   lastPage: number;
   loading: boolean;
   error: string | null;
-  fetchUniformCompliances: (variables: FetchVariables) => Promise<void>;
+  fetchUniformCompliances: (variables: FetchVariables) => Promise<UniformCompliance[] | void>;
 }
 // === Context Creation ===
 const UniformComplianceContext = createContext<UniformComplianceContextType | undefined>(undefined);
@@ -75,8 +76,11 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
   const [error, setError] = useState<string | null>(null);
 
   const fetchUniformCompliances = async (variables: FetchVariables) => {
-    setLoading(true);
-    setError(null);
+    // Only set loading state if not exporting (to avoid showing loader on table during export)
+    if (!variables.export) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       // Get fresh token for each request
       const token = sessionStorage.getItem('token');
@@ -90,13 +94,26 @@ export const UniformComplianceProvider: React.FC<{ children: React.ReactNode }> 
           Authorization: `Bearer ${token}` // Headers
         }
       );
+
+      if (variables.export) {
+        return data.uniformCompliancesByScheduleFilter.data;
+      }
+
       setUniformCompliances(data.uniformCompliancesByScheduleFilter.data);
       setLastPage(data.uniformCompliancesByScheduleFilter.lastPage);
     } catch (err: any) {
       console.error("Fetch error:", err);
-      setError(err.message || "Error fetching uniform compliances");
+      if (!variables.export) {
+        setError(err.message || "Error fetching uniform compliances");
+      }
+      if (variables.export) {
+        throw err;
+      }
     } finally {
-      setLoading(false);
+      // Only set loading to false if not exporting
+      if (!variables.export) {
+        setLoading(false);
+      }
     }
   };
 

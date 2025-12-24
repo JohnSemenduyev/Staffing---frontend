@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
 import { Check, X } from "lucide-react";
 import Pagination from "../../components/Pagination";
@@ -8,10 +8,12 @@ import { useDebounce } from "../../hooks/useDebounce";
 import ResetButton from "../../components/ui/ResetButton";
 import { graphQLClient } from "../../GraphqlClient";
 import { UPDATE_USER_PROFILE, DELETE_USER } from "../../graphql/mutation";
+import { GET_GUARD_USERS } from "../../graphql/queries";
 import { Button } from "../../components/ui/button";
 import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { downloadListPdf } from "../../PDF/admin";
 import { exportUserListToExcel } from "../../utils/adminExcel";
+import type { User } from "../../context/UserContext";
 
 
 export const Guard = () => {
@@ -24,6 +26,7 @@ export const Guard = () => {
     lastPage,
     fetchUsersByRole,
     setCurrentPage,
+    currentFilter,
   } = useUsers();
 
   // State for search and sort
@@ -160,21 +163,60 @@ export const Guard = () => {
     setCurrentPage(1);
   };
 
-  const handleExportToPDF = async (data: any) =>{
-   await downloadListPdf(data, {
-  title: "Guards",
-  fileName: "guards.pdf",
-});
-
-  }
-
-  const handleExportToExcel = async (data: any) => {
+  // Fetch all guards for export (separate from UI state)
+  const fetchAllGuardsForExport = useCallback(async (): Promise<User[]> => {
     try {
-      console.log('Exporting Excel - Data received:', data);
-      console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
-      console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
+      const token = sessionStorage.getItem("token");
+      const effectiveFilter = currentFilter || undefined;
+      const variables: any = { page: 1, export: true };
       
-      const result = await exportUserListToExcel(data, 'securityguards', false);
+      if (effectiveFilter) {
+        Object.entries(effectiveFilter).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            variables[key] = value;
+          }
+        });
+      }
+      
+      const response = await graphQLClient.request<{ guardUsers: { data: User[]; lastPage: number } }>(
+        GET_GUARD_USERS,
+        variables,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      return response.guardUsers.data;
+    } catch (error) {
+      console.error("Error fetching guards for export:", error);
+      throw error;
+    }
+  }, [currentFilter]);
+
+  const handleExportToPDF = async () => {
+    try {
+      const allGuards = await fetchAllGuardsForExport();
+      if (!allGuards || allGuards.length === 0) {
+        toast({ title: "Error", description: "No data to export", variant: "destructive" });
+        return;
+      }
+      await downloadListPdf(allGuards, {
+        title: "Guards",
+        fileName: "guards.pdf",
+      });
+      toast({ title: "Success", description: "PDF exported successfully", variant: "default" });
+    } catch (error: any) {
+      console.error("Error exporting PDF:", error);
+      toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    try {
+      const allGuards = await fetchAllGuardsForExport();
+      if (!allGuards || allGuards.length === 0) {
+        toast({ title: "Error", description: "No data to export", variant: "destructive" });
+        return;
+      }
+      const result = await exportUserListToExcel(allGuards, 'securityguards', false);
       if (result.success) {
         toast({
           title: "Success",
@@ -869,6 +911,26 @@ export const Guard = () => {
         </div>
       </div>
 
+      {/* Export buttons below table */}
+      {!loading && users && users.length > 0 && (
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={handleExportToPDF}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to PDF"
+          >
+            <FaFilePdf className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Export to Excel"
+          >
+            <FaFileExport className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Delete Guard Confirmation Modal */}
       {deleteGuardModal.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1015,25 +1077,6 @@ export const Guard = () => {
     loading={loading}
   />
 
-  {/* Right side — PDF and Excel export icons */}
-  {users && users.length > 0 && (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => handleExportToPDF(users)}
-        className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-        title="Export to PDF"
-      >
-        <FaFilePdf className="w-5 h-5" />
-      </button>
-      <button
-        onClick={() => handleExportToExcel(users)}
-        className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-        title="Export to Excel"
-      >
-        <FaFileExport className="w-5 h-5" />
-      </button>
-    </div>
-  )}
 </div>
 
     </div>
