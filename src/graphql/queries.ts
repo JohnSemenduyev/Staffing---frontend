@@ -827,6 +827,7 @@ export const GET_USER_HOURS_SUMMARY = gql`
     UserHoursSummary(date: $date, page: $page, limit: $limit, export: $export) {
       lastPage
       data {
+        userId
         userName
         scheduledHours
         actualHours
