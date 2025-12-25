@@ -14,8 +14,8 @@ import { DateNavigation } from "./ViewSchedule";
 import { getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
 import { SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../../graphql/queries";
-import { toast } from "sonner";
 import { exportToPDF, exportToExcel, ExportColumn } from "../../utils/exportData";
+import { useToast } from "../../hooks/use-toast";
 
 const splitAddress = (address: string) => {
   if (!address || address === "-") {
@@ -181,6 +181,7 @@ export const ViewClientSummary = () => {
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [showDateModal, setShowDateModal] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  const {toast} = useToast();
   const [noScheduleModal, setNoScheduleModal] = useState<{
     isOpen: boolean;
     clientName: string;
@@ -262,7 +263,12 @@ export const ViewClientSummary = () => {
       setShowDateModal(false);
     } catch (error) {
       console.error("Failed to load schedule data:", error);
-      toast.error("Failed to load schedule data. Please try again.");
+      toast({
+      title: "ERROR",
+      description: "Failed to load schedule data",
+      variant: "destructive",
+      duration: 3000,
+    });
     } finally {
       setModalLoading(false);
     }
@@ -410,7 +416,7 @@ export const ViewClientSummary = () => {
   // Handle PDF export
   const handleExportToPDF = () => {
     if (!rows || rows.length === 0) {
-      toast.error("No data to export. Please select a date range with data.");
+      toast({title : "ERROR", description : "No data to export."});
       return;
     }
 
@@ -420,13 +426,13 @@ export const ViewClientSummary = () => {
       title: "Client Summary",
       fileName: `client_summary_${timestamp}.pdf`,
     });
-    toast.success("PDF exported successfully!");
+    toast({title : "SUCCESS", description : "PDF exported successfully!"});
   };
 
   // Handle Excel export
   const handleExportToExcel = async () => {
     if (!rows || rows.length === 0) {
-      toast.error("No data to export. Please select a date range with data.");
+      toast({title : "ERROR", description : "No data to export."});
       return;
     }
 
@@ -439,9 +445,9 @@ export const ViewClientSummary = () => {
     });
 
     if (result.success) {
-      toast.success(`Excel file exported successfully: ${result.filename}`);
+      toast({title : "SUCCESS", description : `Excel file exported successfully: ${result.filename}`});
     } else {
-      toast.error(result.error || "Failed to export Excel file");
+      toast({title : "ERROR", description : result.error || "Failed to export Excel file"});
     }
   };
   const validateAndNavigate = async (newDate: string) => {
@@ -523,8 +529,6 @@ export const ViewClientSummary = () => {
         }
   
         const borderClass = borders.join(" ");
-
-        // Slight left padding for metric data cells only (not actions/client/location)
         const combinedClassName = [groupBg, borderClass, "pl-10"]
           .filter(Boolean)
           .join(" ")
