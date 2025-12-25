@@ -325,9 +325,9 @@ export const GeoLocationSetup = () => {
     }
   ];
 
-  // Reusable function to transform geo location data for export
   const transformGeoLocationForExport = useCallback((row: GeoLocation) => {
     const client = row.client;
+    console.log(row)
     const clientName = [client?.name ?? "", client?.lastName ?? ""].filter(Boolean).join(" ");
     
     const address = row.address;

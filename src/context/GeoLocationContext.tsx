@@ -22,6 +22,9 @@ export interface GeoLocation {
     id: number;
     label: string;
     address: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
   };
 }
 
