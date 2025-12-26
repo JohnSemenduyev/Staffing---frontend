@@ -45,13 +45,17 @@ export const doTimesOverlap = (start1: string, end1: string, start2: string, end
   const ranges1 = toRanges(start1, end1);
   const ranges2 = toRanges(start2, end2);
 
-  // Overlap if there's not at least a 1-minute gap between any pair
+  // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
   for (const a of ranges1) {
     for (const b of ranges2) {
       const aStart = a[0], aEnd = a[1];
       const bStart = b[0], bEnd = b[1];
-      const hasRequiredGap = (aEnd + 1 <= bStart) || (bEnd + 1 <= aStart);
-      if (!hasRequiredGap) return true;
+      const overlapStart = Math.max(aStart, bStart);
+      const overlapEnd = Math.min(aEnd, bEnd);
+      if (overlapStart < overlapEnd) {
+        const overlapMinutes = overlapEnd - overlapStart;
+        if (overlapMinutes > 1) return true;
+      }
     }
   }
   return false;

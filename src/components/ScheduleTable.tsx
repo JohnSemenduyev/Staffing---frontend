@@ -153,8 +153,13 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
         aEnd = a[1];
       const bStart = b[0],
         bEnd = b[1];
-      const hasRequiredGap = aEnd + 1 <= bStart || bEnd + 1 <= aStart;
-      if (!hasRequiredGap) return true;
+      // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
+      const overlapStart = Math.max(aStart, bStart);
+      const overlapEnd = Math.min(aEnd, bEnd);
+      if (overlapStart < overlapEnd) {
+        const overlapMinutes = overlapEnd - overlapStart;
+        if (overlapMinutes > 1) return true;
+      }
     }
   }
   return false;

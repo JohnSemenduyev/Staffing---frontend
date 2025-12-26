@@ -159,9 +159,12 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
   if(start1 === end1 || start2 === end2){
     return true;
   }
-  // Require at least 1-minute gap between sessions
-  const hasRequiredGap = (end1Minutes + 1 <= start2Minutes) || (end2Minutes + 1 <= start1Minutes);
-  return !hasRequiredGap;
+  // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
+  const overlapStart = Math.max(start1Minutes, start2Minutes);
+  const overlapEnd = Math.min(end1Minutes, end2Minutes);
+  if (overlapStart >= overlapEnd) return false; // No overlap
+  const overlapMinutes = overlapEnd - overlapStart;
+  return overlapMinutes > 1;
 };
 
 const sortSessionsByTime = (sessions: SessionItem[]) => {

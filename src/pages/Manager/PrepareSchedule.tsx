@@ -55,7 +55,13 @@ const getShiftIntervalFromShift = (shift: { date: string; startTime: string; end
 
 const intervalsOverlap = (a: ShiftInterval | null, b: ShiftInterval | null) => {
   if (!a || !b) return false;
-  return a.start < b.end && a.end > b.start;
+  // Check if intervals overlap
+  if (a.start >= b.end || a.end <= b.start) return false;
+  // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
+  const overlapStart = new Date(Math.max(a.start.getTime(), b.start.getTime()));
+  const overlapEnd = new Date(Math.min(a.end.getTime(), b.end.getTime()));
+  const overlapMinutes = (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60);
+  return overlapMinutes > 1;
 };
 
 const intervalToLogPayload = (interval: ShiftInterval | null) =>
