@@ -4,6 +4,7 @@ import { GripVertical, RotateCcw, Send, Calendar, Save } from "lucide-react";
 import ToggleSwitch from "./ui/toggle";
 import { useToast } from "../hooks/use-toast";
 import { formatDateLocal, formatTimeDisplay, formatUSPhone } from "../lib/utils";
+import { shiftSpansNextDay, getAdjustedDate } from "../pages/Manager/ViewSchedule/utils";
 import { graphQLClient } from "../GraphqlClient";
 import {
   CREATE_DRAFT_SCHEDULE_SESSIONS,
@@ -366,12 +367,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   ) => {
     const key = `${clientId}-${addressId}-${userId}`;
     const userShifts = apiExistingShiftsData.get(key) || [];
-    const overlappingShift = userShifts.find((shift: any) => {
+    
+    // Check same day shifts
+    let overlappingShift = userShifts.find((shift: any) => {
       const shiftDateStr = shift.date.includes("T")
         ? shift.date.split("T")[0]
         : shift.date;
       const dateMatch = shiftDateStr === date;
       if (!dateMatch) return false;
+      if (excludeShiftId && shift.id === excludeShiftId) return false;
       const hasOverlap = doTimesOverlap(
         startTime,
         endTime,
@@ -380,6 +384,49 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       );
       return hasOverlap;
     });
+
+    // Always check previous day shifts (they may span into current day)
+    // Shifts are treated as starting on current day, so previous day shifts might overlap
+    // Exclude the shift if excludeShiftId is provided
+    if (!overlappingShift) {
+      const prevDate = getAdjustedDate(date, -1);
+      overlappingShift = userShifts.find((shift: any) => {
+        const shiftDateStr = shift.date.includes("T")
+          ? shift.date.split("T")[0]
+          : shift.date;
+        const dateMatch = shiftDateStr === prevDate;
+        if (!dateMatch) return false;
+        if (excludeShiftId && shift.id === excludeShiftId) return false;
+        if (!shiftSpansNextDay(shift.startTime, shift.endTime)) return false;
+        const hasOverlap = doTimesOverlap(
+          startTime,
+          endTime,
+          shift.startTime,
+          shift.endTime
+        );
+        return hasOverlap;
+      });
+    }
+
+    // Check next day shifts if current shift spans into next day
+    // Shifts are treated as starting on current day and may extend to next day
+    if (!overlappingShift && shiftSpansNextDay(startTime, endTime)) {
+      const nextDate = getAdjustedDate(date, 1);
+      overlappingShift = userShifts.find((shift: any) => {
+        const shiftDateStr = shift.date.includes("T")
+          ? shift.date.split("T")[0]
+          : shift.date;
+        const dateMatch = shiftDateStr === nextDate;
+        if (!dateMatch) return false;
+        const hasOverlap = doTimesOverlap(
+          startTime,
+          endTime,
+          shift.startTime,
+          shift.endTime
+        );
+        return hasOverlap;
+      });
+    }
 
     if (overlappingShift) {
       const shiftDateStr = overlappingShift.date.includes("T")
@@ -677,6 +724,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       return;
     }
 
+    // Check local shifts - current day
     const localExistingShifts = scheduleData
       .filter((item) => item.userId === userId && item.startDate === date)
       .flatMap((item) => item.shifts);
@@ -698,6 +746,61 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           variant: "destructive",
         });
         return;
+      }
+    }
+
+    // Always check previous day shifts (they may span into current day)
+    // Shifts are treated as starting on current day, so previous day shifts might overlap
+    const prevDate = getAdjustedDate(date, -1);
+    const prevDayShifts = scheduleData
+      .filter((item) => item.userId === userId && item.startDate === prevDate)
+      .flatMap((item) => item.shifts)
+      .filter((s) => shiftSpansNextDay(s.startTime, s.endTime));
+
+    for (const existingShift of prevDayShifts) {
+      if (
+        doTimesOverlap(
+          editForm.starttime,
+          editForm.endtime,
+          existingShift.startTime,
+          existingShift.endTime
+        )
+      ) {
+        hookToast({
+          title: "Overlapping Shift",
+          description:
+            "Shift time overlaps with existing shift from previous day",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Check next day shifts if current shift spans into next day
+    // Shifts are treated as starting on current day and may extend to next day
+    if (shiftSpansNextDay(editForm.starttime, editForm.endtime)) {
+      const nextDate = getAdjustedDate(date, 1);
+      const nextDayShifts = scheduleData
+        .filter((item) => item.userId === userId && item.startDate === nextDate)
+        .flatMap((item) => item.shifts);
+
+      for (const existingShift of nextDayShifts) {
+        if (
+          doTimesOverlap(
+            editForm.starttime,
+            editForm.endtime,
+            existingShift.startTime,
+            existingShift.endTime
+          )
+        ) {
+          hookToast({
+            title: "Overlapping Shift",
+            description:
+              "Shift time overlaps with existing shift on next day",
+            variant: "destructive",
+          });
+          return;
+        }
       }
     }
 
@@ -1000,7 +1103,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     }
 
     const checkBackendOverlap = () => {
-      return existingShifts.some((existingShift) => {
+      // Check same day
+      const sameDayOverlap = existingShifts.some((existingShift) => {
         const shiftDateStr = existingShift.date.includes("T")
           ? existingShift.date.split("T")[0]
           : existingShift.date;
@@ -1015,6 +1119,56 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           )
         );
       });
+      if (sameDayOverlap) return true;
+
+      // Always check previous day shifts (they may span into current day)
+      // Shifts are treated as starting on current day, so previous day shifts might overlap
+      // Exclude the source shift if dragging from previous day
+      const prevDate = getAdjustedDate(targetDate, -1);
+      const prevDayOverlap = existingShifts.some((existingShift) => {
+        const shiftDateStr = existingShift.date.includes("T")
+          ? existingShift.date.split("T")[0]
+          : existingShift.date;
+
+        // Exclude the source shift if dragging from previous day
+        if (sourceDate === prevDate && existingShift.id === shift.id) return false;
+
+        return (
+          shiftDateStr === prevDate &&
+          shiftSpansNextDay(existingShift.startTime, existingShift.endTime) &&
+          doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          )
+        );
+      });
+      if (prevDayOverlap) return true;
+
+      // Check next day shifts if current shift spans into next day
+      // Shifts are treated as starting on current day and may extend to next day
+      if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+        const nextDate = getAdjustedDate(targetDate, 1);
+        const nextDayOverlap = existingShifts.some((existingShift) => {
+          const shiftDateStr = existingShift.date.includes("T")
+            ? existingShift.date.split("T")[0]
+            : existingShift.date;
+
+          return (
+            shiftDateStr === nextDate &&
+            doTimesOverlap(
+              shift.startTime,
+              shift.endTime,
+              existingShift.startTime,
+              existingShift.endTime
+            )
+          );
+        });
+        if (nextDayOverlap) return true;
+      }
+
+      return false;
     };
 
     const handleOverlapError = (message: string) => {
@@ -1047,7 +1201,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         targetSchedule.addressId,
         targetDate,
         shift.startTime,
-        shift.endTime
+        shift.endTime,
+        sourceDate === targetDate ? undefined : shift.id // Exclude source shift if dragging from different day
       );
     };
 
@@ -1093,6 +1248,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     
       if (targetCellHasData) {
         // ---- Replace (update existing cell) ----
+        // Check same day overlaps
         const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
           if (index === targetRowIdx) return false;
           return doTimesOverlap(
@@ -1108,6 +1264,59 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             "Cannot drop shift here - it overlaps with existing shifts for this user and date."
           );
           return;
+        }
+
+        // Always check previous day shifts (they may span into current day)
+        // Shifts are treated as starting on current day, so previous day shifts might overlap
+        const prevDate = getAdjustedDate(targetDate, -1);
+        const prevDayShifts = scheduleData
+          .filter((item) => item.userId === targetUserId && item.startDate === prevDate)
+          .flatMap((item) => item.shifts)
+          .filter((s) => {
+            // Exclude the source shift if dragging from previous day
+            if (sourceDate === prevDate && s.id === shift.id) return false;
+            return shiftSpansNextDay(s.startTime, s.endTime);
+          });
+
+        const hasPrevDayOverlap = prevDayShifts.some((existingShift) => {
+          return doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          );
+        });
+
+        if (hasPrevDayOverlap) {
+          handleOverlapError(
+            "Cannot drop shift here - it overlaps with existing shifts from previous day."
+          );
+          return;
+        }
+
+        // Check next day shifts if current shift spans into next day
+        // Shifts are treated as starting on current day and may extend to next day
+        if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+          const nextDate = getAdjustedDate(targetDate, 1);
+          const nextDayShifts = scheduleData
+            .filter((item) => item.userId === targetUserId && item.startDate === nextDate)
+            .flatMap((item) => item.shifts);
+
+          const hasNextDayOverlap = nextDayShifts.some((existingShift) => {
+            return doTimesOverlap(
+              shift.startTime,
+              shift.endTime,
+              existingShift.startTime,
+              existingShift.endTime
+            );
+          });
+
+          if (hasNextDayOverlap) {
+            handleOverlapError(
+              "Cannot drop shift here - it overlaps with existing shifts on next day."
+            );
+            return;
+          }
         }
     
         // This is the shift currently sitting in the target cell
@@ -1151,6 +1360,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         onScheduleDataChange(updatedScheduleData);
       } else {
         // ---- Add (new row in that date) ----
+        // Check same day overlaps
         const hasLocalOverlap = sortedShifts.some((existingShift) =>
           doTimesOverlap(
             shift.startTime,
@@ -1165,6 +1375,59 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             "Cannot drop shift here - it overlaps with existing shifts for this user and date."
           );
           return;
+        }
+
+        // Always check previous day shifts (they may span into current day)
+        // Shifts are treated as starting on current day, so previous day shifts might overlap
+        const prevDate = getAdjustedDate(targetDate, -1);
+        const prevDayShifts = scheduleData
+          .filter((item) => item.userId === targetUserId && item.startDate === prevDate)
+          .flatMap((item) => item.shifts)
+          .filter((s) => {
+            // Exclude the source shift if dragging from previous day
+            if (sourceDate === prevDate && s.id === shift.id) return false;
+            return shiftSpansNextDay(s.startTime, s.endTime);
+          });
+
+        const hasPrevDayOverlap = prevDayShifts.some((existingShift) => {
+          return doTimesOverlap(
+            shift.startTime,
+            shift.endTime,
+            existingShift.startTime,
+            existingShift.endTime
+          );
+        });
+
+        if (hasPrevDayOverlap) {
+          handleOverlapError(
+            "Cannot drop shift here - it overlaps with existing shifts from previous day."
+          );
+          return;
+        }
+
+        // Check next day shifts if current shift spans into next day
+        // Shifts are treated as starting on current day and may extend to next day
+        if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+          const nextDate = getAdjustedDate(targetDate, 1);
+          const nextDayShifts = scheduleData
+            .filter((item) => item.userId === targetUserId && item.startDate === nextDate)
+            .flatMap((item) => item.shifts);
+
+          const hasNextDayOverlap = nextDayShifts.some((existingShift) => {
+            return doTimesOverlap(
+              shift.startTime,
+              shift.endTime,
+              existingShift.startTime,
+              existingShift.endTime
+            );
+          });
+
+          if (hasNextDayOverlap) {
+            handleOverlapError(
+              "Cannot drop shift here - it overlaps with existing shifts on next day."
+            );
+            return;
+          }
         }
     
         const copiedShift: any = createCopiedShift();

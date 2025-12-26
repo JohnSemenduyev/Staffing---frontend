@@ -31,7 +31,9 @@ import {
   calculateHours,
   doTimesOverlap,
   minutesDiffWithWrap,
-  checkApiOverlap
+  checkApiOverlap,
+  shiftSpansNextDay,
+  getAdjustedDate
 } from "./ViewSchedule/utils";
 import {
   FormData,
@@ -1280,14 +1282,42 @@ export const ViewSchedule = () => {
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(dateObj);
+          // Check same day local shifts
           const existingShiftsForDate = updatedScheduleData
             .filter(item => item.userId === Number(form.userId) && item.startDate === dateStr)
             .flatMap(item => item.shifts);
 
-          const hasLocalOverlap = existingShiftsForDate.some(existingShift => {
-
+          let hasLocalOverlap = existingShiftsForDate.some(existingShift => {
             return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
           });
+
+          // Always check previous day shifts (they may span into current day)
+          // Shifts are treated as starting on current day, so previous day shifts might overlap
+          if (!hasLocalOverlap) {
+            const prevDate = getAdjustedDate(dateStr, -1);
+            const prevDayShifts = updatedScheduleData
+              .filter(item => item.userId === Number(form.userId) && item.startDate === prevDate)
+              .flatMap(item => item.shifts)
+              .filter(shift => shiftSpansNextDay(shift.startTime, shift.endTime));
+
+            hasLocalOverlap = prevDayShifts.some(existingShift => {
+              return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
+            });
+          }
+
+          // Check next day shifts if current shift spans into next day
+          // Shifts are treated as starting on current day and may extend to next day
+          if (!hasLocalOverlap && shiftSpansNextDay(form.starttime, form.endtime)) {
+            const nextDate = getAdjustedDate(dateStr, 1);
+            const nextDayShifts = updatedScheduleData
+              .filter(item => item.userId === Number(form.userId) && item.startDate === nextDate)
+              .flatMap(item => item.shifts);
+
+            hasLocalOverlap = nextDayShifts.some(existingShift => {
+              return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
+            });
+          }
+
           let hasApiOverlap = false;
           if (selectedClient) {
             hasApiOverlap = checkApiOverlap(

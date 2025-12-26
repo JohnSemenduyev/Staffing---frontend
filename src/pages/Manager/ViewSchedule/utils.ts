@@ -1,5 +1,5 @@
 import { ScheduleItem, Shift, WeekRange, DateColumn, FormData } from './types';
-import { formatDateLocal } from "../../../lib/utils";
+import { formatDateLocal, parseLocalYMD } from "../../../lib/utils";
 
 
 export const getWeekRangeFromDateUTC = (baseDate: Date): WeekRange => {
@@ -23,6 +23,22 @@ export const getWeekRangeFromDateUTC = (baseDate: Date): WeekRange => {
 export const timeToMinutes = (timeStr: string): number => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
+};
+
+// Check if a shift spans into the next day (crosses midnight)
+export const shiftSpansNextDay = (startTime: string, endTime: string): boolean => {
+  if (!startTime || !endTime) return false;
+  if (startTime === endTime) return true; // treated as full-day shift
+  return timeToMinutes(endTime) <= timeToMinutes(startTime);
+};
+
+// Get date string offset by N days
+export const getAdjustedDate = (dateStr: string, offset: number): string => {
+  if (!dateStr) return dateStr;
+  const baseDate = parseLocalYMD(dateStr);
+  if (!baseDate || Number.isNaN(baseDate.getTime())) return dateStr;
+  baseDate.setDate(baseDate.getDate() + offset);
+  return formatDateLocal(baseDate);
 };
 
 export const minutesDiffWithWrap = (start: string, end: string): number => {
@@ -202,7 +218,7 @@ export const validateForm = (
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
     console.log("existing data", scheduleData);
     
-    // Check local schedule data overlaps
+    // Check local schedule data overlaps - current day
     const existingShifts = scheduleData
       .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
       .flatMap(item => item.shifts);
@@ -213,6 +229,38 @@ export const validateForm = (
       if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
         e.overlap = "Shift time overlaps with existing shift for this user and date";
         break;
+      }
+    }
+
+    // Always check previous day shifts (they may span into current day)
+    // Shifts are treated as starting on current day, so previous day shifts might overlap
+    if (!e.overlap) {
+      const prevDate = getAdjustedDate(formData.date, -1);
+      const prevDayShifts = scheduleData
+        .filter(item => item.userId === Number(formData.userId) && item.startDate === prevDate)
+        .flatMap(item => item.shifts)
+        .filter(shift => shiftSpansNextDay(shift.startTime, shift.endTime)); // Only check shifts that span into current day
+
+      for (const shift of prevDayShifts) {
+        if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+          e.overlap = "Shift time overlaps with existing shift from previous day";
+          break;
+        }
+      }
+    }
+
+    // Check next day shifts if current shift spans into next day
+    if (!e.overlap && shiftSpansNextDay(formData.starttime, formData.endtime)) {
+      const nextDate = getAdjustedDate(formData.date, 1);
+      const nextDayShifts = scheduleData
+        .filter(item => item.userId === Number(formData.userId) && item.startDate === nextDate)
+        .flatMap(item => item.shifts);
+
+      for (const shift of nextDayShifts) {
+        if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+          e.overlap = "Shift time overlaps with existing shift on next day";
+          break;
+        }
       }
     }
 
@@ -235,6 +283,35 @@ export const validateForm = (
             }
           }
         }
+
+        // Always check previous day API shifts (they may span into current day)
+        // Shifts are treated as starting on current day, so previous day shifts might overlap
+        if (!e.overlap) {
+          const prevDate = getAdjustedDate(formData.date, -1);
+          for (const apiShift of apiShifts) {
+            const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+            if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
+              if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+                e.overlap = "Shift time overlaps with existing shift in the system from previous day";
+                break;
+              }
+            }
+          }
+        }
+
+        // Check next day API shifts if current shift spans into next day
+        if (!e.overlap && shiftSpansNextDay(formData.starttime, formData.endtime)) {
+          const nextDate = getAdjustedDate(formData.date, 1);
+          for (const apiShift of apiShifts) {
+            const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+            if (apiShiftDate === nextDate) {
+              if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+                e.overlap = "Shift time overlaps with existing shift in the system on next day";
+                break;
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -254,8 +331,8 @@ export const checkApiOverlap = (
   const combinationKey = `${clientId}-${addressId}-${userId}`;
   const apiShifts = apiExistingShifts.get(combinationKey) || [];
   
+  // Check same day shifts
   for (const apiShift of apiShifts) {
-    // Check if the API shift is for the same date
     const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
     if (apiShiftDate === date) {
       if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
@@ -263,6 +340,32 @@ export const checkApiOverlap = (
       }
     }
   }
+
+  // Always check previous day shifts (they may span into current day)
+  // Shifts are treated as starting on current day, so previous day shifts might overlap
+  const prevDate = getAdjustedDate(date, -1);
+  for (const apiShift of apiShifts) {
+    const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+    if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
+      if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
+        return true;
+      }
+    }
+  }
+
+  // Check next day shifts if current shift spans into next day
+  if (shiftSpansNextDay(startTime, endTime)) {
+    const nextDate = getAdjustedDate(date, 1);
+    for (const apiShift of apiShifts) {
+      const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+      if (apiShiftDate === nextDate) {
+        if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
+          return true;
+        }
+      }
+    }
+  }
+
   return false;
 };
 
