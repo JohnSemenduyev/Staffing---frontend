@@ -26,10 +26,12 @@ export const timeToMinutes = (timeStr: string): number => {
 };
 
 // Check if a shift spans into the next day (crosses midnight)
+// Simple rule: if startTime >= endTime, it means endTime is in the next day
 export const shiftSpansNextDay = (startTime: string, endTime: string): boolean => {
   if (!startTime || !endTime) return false;
-  if (startTime === endTime) return true; // treated as full-day shift
-  return timeToMinutes(endTime) <= timeToMinutes(startTime);
+  const startM = timeToMinutes(startTime);
+  const endM = timeToMinutes(endTime);
+  return startM >= endM; // if start >= end, end is in next day
 };
 
 // Get date string offset by N days
@@ -53,10 +55,20 @@ export const doTimesOverlap = (start1: string, end1: string, start2: string, end
   const toRanges = (s: string, e: string): Array<[number, number]> => {
     const ss = timeToMinutes(s);
     const ee = timeToMinutes(e);
-    if (ss === ee) return [[0, 24 * 60]]; // full day
-    if (ee > ss) return [[ss, ee]];
-    return [[ss, 24 * 60], [0, ee]]; // overnight
+    // Simple rule: if start >= end, end is in next day
+    if (ss >= ee) {
+      // Overnight shift: [start, 24*60] and [0, end]
+      return [[ss, 24 * 60], [0, ee]];
+    }
+    // Same day shift: [start, end]
+    return [[ss, ee]];
   };
+
+  // Special case: 24:00 (end of day) should not overlap with 00:00 (start of next day)
+  // If shift1 ends at 24:00 and shift2 starts at 00:00, they don't overlap (boundary case)
+  if (end1 === '24:00' && start2 === '00:00') return false;
+  // If shift2 ends at 24:00 and shift1 starts at 00:00, they don't overlap (boundary case)
+  if (end2 === '24:00' && start1 === '00:00') return false;
 
   const ranges1 = toRanges(start1, end1);
   const ranges2 = toRanges(start2, end2);
@@ -66,6 +78,14 @@ export const doTimesOverlap = (start1: string, end1: string, start2: string, end
     for (const b of ranges2) {
       const aStart = a[0], aEnd = a[1];
       const bStart = b[0], bEnd = b[1];
+      
+      // Special handling: if a shift ends at 24:00 (1440 minutes), treat it as exclusive end
+      // If another shift starts at 00:00 (0 minutes), they meet at boundary but don't overlap
+      if ((aEnd === 24 * 60 && end1 === '24:00' && bStart === 0 && start2 === '00:00') ||
+          (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
+        continue; // Skip this range comparison
+      }
+      
       const overlapStart = Math.max(aStart, bStart);
       const overlapEnd = Math.min(aEnd, bEnd);
       if (overlapStart < overlapEnd) {
@@ -227,6 +247,12 @@ export const validateForm = (
       if (shift.id === editingShiftId) continue; // Skip current shift when editing
 
       if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+        console.log("⚠️ OVERLAP DETECTED - Same Day:", {
+          date: formData.date,
+          newShift: `${formData.starttime}-${formData.endtime}`,
+          existingShift: `${shift.startTime}-${shift.endTime}`,
+          shiftId: shift.id
+        });
         e.overlap = "Shift time overlaps with existing shift for this user and date";
         break;
       }
@@ -243,6 +269,13 @@ export const validateForm = (
 
       for (const shift of prevDayShifts) {
         if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+          console.log("⚠️ OVERLAP DETECTED - Previous Day:", {
+            currentDate: formData.date,
+            previousDate: prevDate,
+            newShift: `${formData.starttime}-${formData.endtime}`,
+            existingShift: `${shift.startTime}-${shift.endTime}`,
+            shiftId: shift.id
+          });
           e.overlap = "Shift time overlaps with existing shift from previous day";
           break;
         }
@@ -258,6 +291,13 @@ export const validateForm = (
 
       for (const shift of nextDayShifts) {
         if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+          console.log("⚠️ OVERLAP DETECTED - Next Day:", {
+            currentDate: formData.date,
+            nextDate: nextDate,
+            newShift: `${formData.starttime}-${formData.endtime}`,
+            existingShift: `${shift.startTime}-${shift.endTime}`,
+            shiftId: shift.id
+          });
           e.overlap = "Shift time overlaps with existing shift on next day";
           break;
         }
@@ -278,6 +318,12 @@ export const validateForm = (
           const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
           if (apiShiftDate === formData.date) {
             if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+              console.log("⚠️ OVERLAP DETECTED - Same Day (API):", {
+                date: formData.date,
+                newShift: `${formData.starttime}-${formData.endtime}`,
+                existingShift: `${apiShift.startTime}-${apiShift.endTime}`,
+                shiftId: apiShift.id
+              });
               e.overlap = "Shift time overlaps with existing shift in the system for this user and date";
               break;
             }
@@ -292,6 +338,13 @@ export const validateForm = (
             const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
             if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
               if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+                console.log("⚠️ OVERLAP DETECTED - Previous Day (API):", {
+                  currentDate: formData.date,
+                  previousDate: prevDate,
+                  newShift: `${formData.starttime}-${formData.endtime}`,
+                  existingShift: `${apiShift.startTime}-${apiShift.endTime}`,
+                  shiftId: apiShift.id
+                });
                 e.overlap = "Shift time overlaps with existing shift in the system from previous day";
                 break;
               }
@@ -306,6 +359,13 @@ export const validateForm = (
             const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
             if (apiShiftDate === nextDate) {
               if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+                console.log("⚠️ OVERLAP DETECTED - Next Day (API):", {
+                  currentDate: formData.date,
+                  nextDate: nextDate,
+                  newShift: `${formData.starttime}-${formData.endtime}`,
+                  existingShift: `${apiShift.startTime}-${apiShift.endTime}`,
+                  shiftId: apiShift.id
+                });
                 e.overlap = "Shift time overlaps with existing shift in the system on next day";
                 break;
               }

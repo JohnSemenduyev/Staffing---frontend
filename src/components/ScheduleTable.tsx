@@ -134,15 +134,23 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
     return hours * 60 + minutes;
   };
 
+  // Special case: 24:00 (end of day) should not overlap with 00:00 (start of next day)
+  if (end1 === '24:00' && start2 === '00:00') return false;
+  if (end2 === '24:00' && start1 === '00:00') return false;
+
   const toRanges = (s: string, e: string): Array<[number, number]> => {
     const ss = timeToMinutes(s);
     const ee = timeToMinutes(e);
-    if (ss === ee) return [[0, 24 * 60]];
-    if (ee > ss) return [[ss, ee]];
-    return [
-      [ss, 24 * 60],
-      [0, ee],
-    ];
+    // Simple rule: if start >= end, end is in next day
+    if (ss >= ee) {
+      // Overnight shift: [start, 24*60] and [0, end]
+      return [
+        [ss, 24 * 60],
+        [0, ee],
+      ];
+    }
+    // Same day shift: [start, end]
+    return [[ss, ee]];
   };
 
   const ranges1 = toRanges(start1, end1);
@@ -154,6 +162,13 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
         aEnd = a[1];
       const bStart = b[0],
         bEnd = b[1];
+      
+      // Special handling: if a shift ends at 24:00 and another starts at 00:00, no overlap
+      if ((aEnd === 24 * 60 && end1 === '24:00' && bStart === 0 && start2 === '00:00') ||
+          (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
+        continue; // Skip this range comparison
+      }
+      
       // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
       const overlapStart = Math.max(aStart, bStart);
       const overlapEnd = Math.min(aEnd, bEnd);
@@ -382,6 +397,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         shift.startTime,
         shift.endTime
       );
+      if (hasOverlap) {
+        console.log("⚠️ OVERLAP DETECTED - Same Day (API):", {
+          date: date,
+          newShift: `${startTime}-${endTime}`,
+          existingShift: `${shift.startTime}-${shift.endTime}`,
+          shiftId: shift.id
+        });
+      }
       return hasOverlap;
     });
 
@@ -404,6 +427,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           shift.startTime,
           shift.endTime
         );
+        if (hasOverlap) {
+          console.log("⚠️ OVERLAP DETECTED - Previous Day (API):", {
+            currentDate: date,
+            previousDate: prevDate,
+            newShift: `${startTime}-${endTime}`,
+            existingShift: `${shift.startTime}-${shift.endTime}`,
+            shiftId: shift.id
+          });
+        }
         return hasOverlap;
       });
     }
@@ -424,6 +456,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           shift.startTime,
           shift.endTime
         );
+        if (hasOverlap) {
+          console.log("⚠️ OVERLAP DETECTED - Next Day (API):", {
+            currentDate: date,
+            nextDate: nextDate,
+            newShift: `${startTime}-${endTime}`,
+            existingShift: `${shift.startTime}-${shift.endTime}`,
+            shiftId: shift.id
+          });
+        }
         return hasOverlap;
       });
     }
@@ -739,6 +780,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           existingShift.endTime
         )
       ) {
+        console.log("⚠️ OVERLAP DETECTED - Same Day (Local):", {
+          date: date,
+          newShift: `${editForm.starttime}-${editForm.endtime}`,
+          existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+          shiftId: existingShift.id
+        });
         hookToast({
           title: "Overlapping Shift",
           description:
@@ -766,6 +813,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           existingShift.endTime
         )
       ) {
+        console.log("⚠️ OVERLAP DETECTED - Previous Day (Local):", {
+          currentDate: date,
+          previousDate: prevDate,
+          newShift: `${editForm.starttime}-${editForm.endtime}`,
+          existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+          shiftId: existingShift.id
+        });
         hookToast({
           title: "Overlapping Shift",
           description:
@@ -793,6 +847,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             existingShift.endTime
           )
         ) {
+          console.log("⚠️ OVERLAP DETECTED - Next Day (Local):", {
+            currentDate: date,
+            nextDate: nextDate,
+            newShift: `${editForm.starttime}-${editForm.endtime}`,
+            existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+            shiftId: existingShift.id
+          });
           hookToast({
             title: "Overlapping Shift",
             description:
@@ -822,6 +883,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       return;
     }
 
+    // Check backend shifts (existingShifts) - same day
     const hasBackendOverlap = existingShifts?.some((backendShift) => {
       const shiftDateStr = backendShift.date.includes("T")
         ? backendShift.date.split("T")[0]
@@ -829,13 +891,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const dateMatch = shiftDateStr === date;
       if (!dateMatch) return false;
       if (backendShift.id === shift.id) return false;
-      return doTimesOverlap(
+      const hasOverlap = doTimesOverlap(
         editForm.starttime,
         editForm.endtime,
         backendShift.startTime,
         backendShift.endTime
       );
-    });
+      if (hasOverlap) {
+        console.log("⚠️ OVERLAP DETECTED - Same Day (Backend):", {
+          date: date,
+          newShift: `${editForm.starttime}-${editForm.endtime}`,
+          existingShift: `${backendShift.startTime}-${backendShift.endTime}`,
+          shiftId: backendShift.id
+        });
+      }
+      return hasOverlap;
+    }); 
 
     if (hasBackendOverlap) {
       hookToast({
@@ -844,6 +915,83 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         variant: "destructive",
       });
       return;
+    }
+
+    // Always check previous day backend shifts (they may span into current day)
+    // Shifts are treated as starting on current day, so previous day shifts might overlap
+    if (!hasBackendOverlap) {
+      const prevDate = getAdjustedDate(date, -1);
+      const prevDayBackendOverlap = existingShifts?.some((backendShift) => {
+        const shiftDateStr = backendShift.date.includes("T")
+          ? backendShift.date.split("T")[0]
+          : backendShift.date;
+        const dateMatch = shiftDateStr === prevDate;
+        if (!dateMatch) return false;
+        if (!shiftSpansNextDay(backendShift.startTime, backendShift.endTime)) return false;
+        const hasOverlap = doTimesOverlap(
+          editForm.starttime,
+          editForm.endtime,
+          backendShift.startTime,
+          backendShift.endTime
+        );
+        if (hasOverlap) {
+          console.log("⚠️ OVERLAP DETECTED - Previous Day (Backend):", {
+            currentDate: date,
+            previousDate: prevDate,
+            newShift: `${editForm.starttime}-${editForm.endtime}`,
+            existingShift: `${backendShift.startTime}-${backendShift.endTime}`,
+            shiftId: backendShift.id
+          });
+        }
+        return hasOverlap;
+      });
+
+      if (prevDayBackendOverlap) {
+        hookToast({
+          title: "Overlapping Shift",
+          description: "Shift time overlaps with existing shifts from backend (previous day).",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Check next day backend shifts if current shift spans into next day
+    // Shifts are treated as starting on current day and may extend to next day
+    if (!hasBackendOverlap && shiftSpansNextDay(editForm.starttime, editForm.endtime)) {
+      const nextDate = getAdjustedDate(date, 1);
+      const nextDayBackendOverlap = existingShifts?.some((backendShift) => {
+        const shiftDateStr = backendShift.date.includes("T")
+          ? backendShift.date.split("T")[0]
+          : backendShift.date;
+        const dateMatch = shiftDateStr === nextDate;
+        if (!dateMatch) return false;
+        const hasOverlap = doTimesOverlap(
+          editForm.starttime,
+          editForm.endtime,
+          backendShift.startTime,
+          backendShift.endTime
+        );
+        if (hasOverlap) {
+          console.log("⚠️ OVERLAP DETECTED - Next Day (Backend):", {
+            currentDate: date,
+            nextDate: nextDate,
+            newShift: `${editForm.starttime}-${editForm.endtime}`,
+            existingShift: `${backendShift.startTime}-${backendShift.endTime}`,
+            shiftId: backendShift.id
+          });
+        }
+        return hasOverlap;
+      });
+
+      if (nextDayBackendOverlap) {
+        hookToast({
+          title: "Overlapping Shift",
+          description: "Shift time overlaps with existing shifts from backend (next day).",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     const calculateHours = (start: string, end: string) => {
@@ -1109,15 +1257,23 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           ? existingShift.date.split("T")[0]
           : existingShift.date;
 
-        return (
-          shiftDateStr === targetDate &&
+        const hasOverlap = shiftDateStr === targetDate &&
           doTimesOverlap(
             shift.startTime,
             shift.endTime,
             existingShift.startTime,
             existingShift.endTime
-          )
-        );
+          );
+        
+        if (hasOverlap) {
+          console.log("⚠️ OVERLAP DETECTED - Same Day (Drag & Drop - Backend):", {
+            targetDate: targetDate,
+            newShift: `${shift.startTime}-${shift.endTime}`,
+            existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+            shiftId: existingShift.id
+          });
+        }
+        return hasOverlap;
       });
       if (sameDayOverlap) return true;
 
@@ -1133,16 +1289,25 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         // Exclude the source shift if dragging from previous day
         if (sourceDate === prevDate && existingShift.id === shift.id) return false;
 
-        return (
-          shiftDateStr === prevDate &&
+        const hasOverlap = shiftDateStr === prevDate &&
           shiftSpansNextDay(existingShift.startTime, existingShift.endTime) &&
           doTimesOverlap(
             shift.startTime,
             shift.endTime,
             existingShift.startTime,
             existingShift.endTime
-          )
-        );
+          );
+        
+        if (hasOverlap) {
+          console.log("⚠️ OVERLAP DETECTED - Previous Day (Drag & Drop - Backend):", {
+            targetDate: targetDate,
+            previousDate: prevDate,
+            newShift: `${shift.startTime}-${shift.endTime}`,
+            existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+            shiftId: existingShift.id
+          });
+        }
+        return hasOverlap;
       });
       if (prevDayOverlap) return true;
 
@@ -1155,15 +1320,24 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             ? existingShift.date.split("T")[0]
             : existingShift.date;
 
-          return (
-            shiftDateStr === nextDate &&
+          const hasOverlap = shiftDateStr === nextDate &&
             doTimesOverlap(
               shift.startTime,
               shift.endTime,
               existingShift.startTime,
               existingShift.endTime
-            )
-          );
+            );
+          
+          if (hasOverlap) {
+            console.log("⚠️ OVERLAP DETECTED - Next Day (Drag & Drop - Backend):", {
+              targetDate: targetDate,
+              nextDate: nextDate,
+              newShift: `${shift.startTime}-${shift.endTime}`,
+              existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+              shiftId: existingShift.id
+            });
+          }
+          return hasOverlap;
         });
         if (nextDayOverlap) return true;
       }
@@ -1251,12 +1425,21 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         // Check same day overlaps
         const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
           if (index === targetRowIdx) return false;
-          return doTimesOverlap(
+          const hasOverlap = doTimesOverlap(
             shift.startTime,
             shift.endTime,
             existingShift.startTime,
             existingShift.endTime
           );
+          if (hasOverlap) {
+            console.log("⚠️ OVERLAP DETECTED - Same Day (Drag & Drop - Local Replace):", {
+              targetDate: targetDate,
+              newShift: `${shift.startTime}-${shift.endTime}`,
+              existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+              shiftId: existingShift.id
+            });
+          }
+          return hasOverlap;
         });
     
         if (hasLocalOverlap) {
@@ -1279,12 +1462,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           });
 
         const hasPrevDayOverlap = prevDayShifts.some((existingShift) => {
-          return doTimesOverlap(
+          const hasOverlap = doTimesOverlap(
             shift.startTime,
             shift.endTime,
             existingShift.startTime,
             existingShift.endTime
           );
+          if (hasOverlap) {
+            console.log("⚠️ OVERLAP DETECTED - Previous Day (Drag & Drop - Local Replace):", {
+              targetDate: targetDate,
+              previousDate: prevDate,
+              newShift: `${shift.startTime}-${shift.endTime}`,
+              existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+              shiftId: existingShift.id
+            });
+          }
+          return hasOverlap;
         });
 
         if (hasPrevDayOverlap) {
@@ -1303,12 +1496,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             .flatMap((item) => item.shifts);
 
           const hasNextDayOverlap = nextDayShifts.some((existingShift) => {
-            return doTimesOverlap(
+            const hasOverlap = doTimesOverlap(
               shift.startTime,
               shift.endTime,
               existingShift.startTime,
               existingShift.endTime
             );
+            if (hasOverlap) {
+              console.log("⚠️ OVERLAP DETECTED - Next Day (Drag & Drop - Local Replace):", {
+                targetDate: targetDate,
+                nextDate: nextDate,
+                newShift: `${shift.startTime}-${shift.endTime}`,
+                existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+                shiftId: existingShift.id
+              });
+            }
+            return hasOverlap;
           });
 
           if (hasNextDayOverlap) {
@@ -1361,14 +1564,23 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       } else {
         // ---- Add (new row in that date) ----
         // Check same day overlaps
-        const hasLocalOverlap = sortedShifts.some((existingShift) =>
-          doTimesOverlap(
+        const hasLocalOverlap = sortedShifts.some((existingShift) => {
+          const hasOverlap = doTimesOverlap(
             shift.startTime,
             shift.endTime,
             existingShift.startTime,
             existingShift.endTime
-          )
-        );
+          );
+          if (hasOverlap) {
+            console.log("⚠️ OVERLAP DETECTED - Same Day (Drag & Drop - Local Add):", {
+              targetDate: targetDate,
+              newShift: `${shift.startTime}-${shift.endTime}`,
+              existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+              shiftId: existingShift.id
+            });
+          }
+          return hasOverlap;
+        });
     
         if (hasLocalOverlap) {
           handleOverlapError(
@@ -1390,12 +1602,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           });
 
         const hasPrevDayOverlap = prevDayShifts.some((existingShift) => {
-          return doTimesOverlap(
+          const hasOverlap = doTimesOverlap(
             shift.startTime,
             shift.endTime,
             existingShift.startTime,
             existingShift.endTime
           );
+          if (hasOverlap) {
+            console.log("⚠️ OVERLAP DETECTED - Previous Day (Drag & Drop - Local Add):", {
+              targetDate: targetDate,
+              previousDate: prevDate,
+              newShift: `${shift.startTime}-${shift.endTime}`,
+              existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+              shiftId: existingShift.id
+            });
+          }
+          return hasOverlap;
         });
 
         if (hasPrevDayOverlap) {
@@ -1414,12 +1636,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             .flatMap((item) => item.shifts);
 
           const hasNextDayOverlap = nextDayShifts.some((existingShift) => {
-            return doTimesOverlap(
+            const hasOverlap = doTimesOverlap(
               shift.startTime,
               shift.endTime,
               existingShift.startTime,
               existingShift.endTime
             );
+            if (hasOverlap) {
+              console.log("⚠️ OVERLAP DETECTED - Next Day (Drag & Drop - Local Add):", {
+                targetDate: targetDate,
+                nextDate: nextDate,
+                newShift: `${shift.startTime}-${shift.endTime}`,
+                existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
+                shiftId: existingShift.id
+              });
+            }
+            return hasOverlap;
           });
 
           if (hasNextDayOverlap) {
