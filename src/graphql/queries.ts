@@ -823,8 +823,8 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
 `;
 
 export const GET_USER_HOURS_SUMMARY = gql`
-  query UserHoursSummary($date: String!, $page: Int, $limit: Int, $export: Boolean) {
-    UserHoursSummary(date: $date, page: $page, limit: $limit, export: $export) {
+  query UserHoursSummary($date: String!, $page: Int, $limit: Int, $export: Boolean,$userName: String) {
+    UserHoursSummary(date: $date, page: $page, limit: $limit, export: $export, userName: $userName) {
       lastPage
       data {
         userId

@@ -90,14 +90,28 @@ export const ViewEmployeeSummary: React.FC = () => {
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
     setCurrentWeekRange(weekRange);
     setCurrentPage(1);
-    fetchEmployeeSummary(weekStartStr, 1, 10);
+    fetchEmployeeSummary(weekStartStr, 1, 10,false, "");
   }, [today, fetchEmployeeSummary, setCurrentPage]);
+
+  useEffect(() => {
+  if (isInitialMount.current) {
+    isInitialMount.current = false;
+    return;
+  }
+
+  if (selectedDate) {
+    setCurrentPage(1);
+    fetchEmployeeSummary(selectedDate, 1, 10, false, debouncedSearchTerm);
+  }
+}, [debouncedSearchTerm]);
 
   const formatDateForApi = (ymd: string) => {
     if (!ymd) return "";
     const [year, month, day] = ymd.split("-");
     return `${month}-${day}-${year}`;
   };
+
+  console.log(noScheduleModal)
 
   const handleDateSubmit = async (value: string) => {
     if (!selectedRow) {
@@ -211,35 +225,37 @@ export const ViewEmployeeSummary: React.FC = () => {
     { key: "overtimeDifference", header: "Overtime Difference" },
   ], []);
 
-  // Fetch all employee summary data for export
-  const fetchAllEmployeeSummaryForExport = async (): Promise<EmployeeSummaryRow[]> => {
-    try {
-      const weekStart = selectedDate || toLocalYMD(new Date());
-      const allData = await fetchEmployeeSummary(weekStart, 1, 10, true) as EmployeeHoursSummary[];
-      
-      if (!allData || allData.length === 0) {
-        return [];
-      }
+const fetchAllEmployeeSummaryForExport = async (): Promise<EmployeeSummaryRow[]> => {
+  try {
+    const weekStart = selectedDate || toLocalYMD(new Date());
 
-      // Transform to export format (using formatValue to match UI display format)
-      return allData.map((item) => ({
-        userId: item.userId,
-        employeeName: item.userName || "-",
-        regularScheduled: formatValue(item.scheduledHours),
-        regularActual: formatValue(item.actualHours),
-        regularDifference: formatValue(item.diffScheduledMinusActual),
-        overtimeScheduled: formatValue(item.overTimeSchedule),
-        overtimeActual: formatValue(item.overTimeActualHours),
-        overtimeDifference: formatValue(item.overTimediffScheduledMinusActual),
-      }));
-    } catch (error) {
-      console.error("Error fetching employee summary for export:", error);
-      toast.error("Failed to fetch all employee data for export.");
-      throw error;
-    }
-  };
+    const allData = await fetchEmployeeSummary(
+      weekStart,
+      1,
+      10,
+      true,
+      debouncedSearchTerm
+    ) as EmployeeHoursSummary[];
 
-  // Handle PDF export
+    if (!allData || allData.length === 0) return [];
+
+    return allData.map((item) => ({
+      userId: item.userId,
+      employeeName: item.userName || "-",
+      regularScheduled: formatValue(item.scheduledHours),
+      regularActual: formatValue(item.actualHours),
+      regularDifference: formatValue(item.diffScheduledMinusActual),
+      overtimeScheduled: formatValue(item.overTimeSchedule),
+      overtimeActual: formatValue(item.overTimeActualHours),
+      overtimeDifference: formatValue(item.overTimediffScheduledMinusActual),
+    }));
+  } catch (error) {
+    console.error("Error fetching employee summary for export:", error);
+    toast.error("Failed to fetch all employee data for export.");
+    throw error;
+  }
+};
+
   const handleExportToPDF = async () => {
     setExportLoading(prev => ({ ...prev, pdf: true }));
     try {
@@ -377,25 +393,8 @@ export const ViewEmployeeSummary: React.FC = () => {
     setCurrentWeekRange(weekRange);
     setDate(week.startOfWeek);
     setCurrentPage(1);
-    await fetchEmployeeSummary(weekStartStr, 1, 10);
+    await fetchEmployeeSummary(weekStartStr, 1, 10, false ,  debouncedSearchTerm);
   };
-
-  // Handle search term changes - reset to page 1 and fetch
-  useEffect(() => {
-    // Skip on initial mount - initial load handles the first fetch
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    
-    if (selectedDate) {
-      setCurrentPage(1);
-      fetchEmployeeSummary(selectedDate, 1, 10);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm]);
-
-  // dynamic table height
   useEffect(() => {
     const updateTableHeight = () => {
       if (!tableContainerRef.current) return;
@@ -661,7 +660,7 @@ export const ViewEmployeeSummary: React.FC = () => {
             onPageChange={async (page) => {
               try {
                 setCurrentPage(page);
-                await fetchEmployeeSummary(selectedDate, page, 10);
+                await fetchEmployeeSummary(selectedDate, page, 10,false, debouncedSearchTerm);
               } catch (error) {
                 console.error("Error changing page:", error);
               }
