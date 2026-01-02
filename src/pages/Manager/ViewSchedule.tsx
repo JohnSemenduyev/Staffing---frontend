@@ -178,7 +178,7 @@ export const ViewSchedule = () => {
     if (typeof window === "undefined") return false;
     return hasRealQueryParams(window.location.search);
   });
-  
+  // console.log(apiScheduleData)
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   useEffect(() => {
     const hasQuery = hasRealQueryParams(location.search);
@@ -814,113 +814,121 @@ export const ViewSchedule = () => {
       const keyedByUserDate = new Map<string, any>();
       let derivedClientInfo: any = null;
   
-      const normalizeDate = (raw: string) => {
-        if (!raw) return "";
-        if (raw.includes("T")) {
-          return raw.split("T")[0];
-        }
-        return formatDateLocal(new Date(raw));
-      };
+     const normalizeDate = (raw: string) => {
+  if (!raw) return "";
+  if (raw.includes("T")) return raw.split("T")[0];
+  return formatDateLocal(new Date(raw));
+};
   
       const ensureDerivedClientInfo = (group: any) => {
-        if (derivedClientInfo) return;
-        derivedClientInfo = {
-          clientId: group.clientId,
-          addressId: group.addressId,
-          name: group.client?.name ?? "",
-          lastName: (group.client as any)?.lastName ?? "",
-          address: group.address?.address ?? "",
-          city: group.address?.city ?? "",
-          state: group.address?.state ?? "",
-          pincode: group.address?.pincode ?? "",
-          addresses: (group.client as any)?.addresses || [],
-        };
-      };
+  if (derivedClientInfo) return;
+  derivedClientInfo = {
+    clientId: group.clientId,
+    addressId: group.addressId,
+    name: group.client?.name ?? "",
+    lastName: (group.client as any)?.lastName ?? "",
+    address: group.address?.address ?? "",
+    city: group.address?.city ?? "",
+    state: group.address?.state ?? "",
+    pincode: group.address?.pincode ?? "",
+    addresses: (group.client as any)?.addresses || [],
+  };
+};
   
       const addShiftToMap = (params: {
-        group: any;
-        userId: number;
-        userName: string;
-        userPhone: string;
-        shift: any;
-        isDraft: boolean;
-        groupAuto: boolean;
-        isDraftScheduleSession: boolean;
-      }) => {
-        const {
-          group,
-          userId,
-          userName,
-          userPhone,
-          shift,
-          isDraft,
-          groupAuto,
-          isDraftScheduleSession,
-        } = params;
-        if (!shift?.date || userId == null) return;
-  
-        const date = normalizeDate(shift.date);
-        const key = `${userId}-${date}`;
-  
-        let item = keyedByUserDate.get(key);
-        if (!item) {
-          item = {
-            id: keyedByUserDate.size + 1,
-            clientId: group.clientId,
-            addressId: group.addressId,
-            userId,
-            startDate: date,
-            auto: groupAuto ?? false,
-            shifts: [],
-            clientName:
-              [group.client?.name, (group.client as any)?.lastName]
-                .filter(Boolean)
-                .join(" ") || "Unknown Client",
-            address:
-              [
-                group.address?.address,
-                group.address?.city,
-                group.address?.state,
-                group.address?.pincode,
-              ]
-                .filter(Boolean)
-                .join(", ") || "Unknown Address",
-            userName,
-            userPhone,
-            draftScheduleSession: isDraftScheduleSession,
-          };
-          keyedByUserDate.set(key, item);
-        }
-        if (item && isDraftScheduleSession) {
-          item.draftScheduleSession = true;
-        }
-  
-        // For draft shifts we give them a big synthetic id so they are treated as "new"
-        const baseId = shift.id ?? 0;
-        const syntheticId = isDraft ? 2000000000000 + baseId : baseId;
+  group: any;
+  userId: number;
+  userName: string;
+  userPhone: string;
+  shift: any;
+  isDraft: boolean;
+  groupAuto: boolean;
+  isDraftScheduleSession: boolean;
+}) => {
+  const {
+    group,
+    userId,
+    userName,
+    userPhone,
+    shift,
+    isDraft,
+    groupAuto,
+    isDraftScheduleSession,
+  } = params;
 
-        const shiftData: any = {
-          id: syntheticId,
-          date: shift.date,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          hours: shift.hours,
-          scheduleSessionId: shift.scheduleSessionId ?? null,
-          auto: (shift as any)?.auto ?? false,
-          confirm: (shift as any)?.confirm ?? false,
-          reject: (shift as any)?.reject ?? false,
-        };
+  if (!shift?.date || userId == null) return;
 
-        // Preserve draft-specific IDs for delete/update operations
-        if (isDraft) {
-          // draftShiftId is the original database ID (baseId)
-          shiftData.draftShiftId = baseId;
-          // draftScheduleSessionId comes from the shift object or the group
-          shiftData.draftScheduleSessionId = (shift as any)?.draftScheduleSessionId ?? (group as any)?.draftScheduleSessionId ?? null;
-        }
+  const date = normalizeDate(shift.date);
 
-        item.shifts.push(shiftData);
-      };
+  // ✅ IMPORTANT: include schedule session identity to avoid accidental merging
+  const bucketSessionId =
+    shift.scheduleSessionId ??
+    (shift as any)?.draftScheduleSessionId ??
+    (group as any)?.draftScheduleSessionId ??
+    "no-session";
+
+  // ✅ OLD (buggy): const key = `${userId}-${date}`;
+  const key = `${group.clientId}-${group.addressId}-${userId}-${date}-${bucketSessionId}`;
+
+  let item = keyedByUserDate.get(key);
+  if (!item) {
+    item = {
+      id: keyedByUserDate.size + 1,
+      clientId: group.clientId,
+      addressId: group.addressId,
+      userId,
+      startDate: date,
+      auto: groupAuto ?? false,
+      shifts: [],
+      clientName:
+        [group.client?.name, (group.client as any)?.lastName]
+          .filter(Boolean)
+          .join(" ") || "Unknown Client",
+      address:
+        [
+          group.address?.address,
+          group.address?.city,
+          group.address?.state,
+          group.address?.pincode,
+        ]
+          .filter(Boolean)
+          .join(", ") || "Unknown Address",
+      userName,
+      userPhone,
+      draftScheduleSession: isDraftScheduleSession,
+    };
+    keyedByUserDate.set(key, item);
+  }
+
+  if (item && isDraftScheduleSession) {
+    item.draftScheduleSession = true;
+  }
+
+  const baseId = shift.id ?? 0;
+  const syntheticId = isDraft ? 2000000000000 + baseId : baseId;
+
+  const shiftData: any = {
+    id: syntheticId,
+    date: shift.date,
+    startTime: shift.startTime,
+    endTime: shift.endTime,
+    hours: shift.hours,
+    scheduleSessionId: shift.scheduleSessionId ?? null,
+    auto: (shift as any)?.auto ?? false,
+    confirm: (shift as any)?.confirm ?? false,
+    reject: (shift as any)?.reject ?? false,
+  };
+
+  if (isDraft) {
+    shiftData.draftShiftId = baseId;
+    shiftData.draftScheduleSessionId =
+      (shift as any)?.draftScheduleSessionId ??
+      (group as any)?.draftScheduleSessionId ??
+      null;
+  }
+
+  item.shifts.push(shiftData);
+};
   
       // 2.a. Handle main scheduleSessions (shifts + draftShifts)
       scheduleSessions.forEach((group: any) => {
