@@ -78,14 +78,14 @@ export const doTimesOverlap = (start1: string, end1: string, start2: string, end
     for (const b of ranges2) {
       const aStart = a[0], aEnd = a[1];
       const bStart = b[0], bEnd = b[1];
-      
+
       // Special handling: if a shift ends at 24:00 (1440 minutes), treat it as exclusive end
       // If another shift starts at 00:00 (0 minutes), they meet at boundary but don't overlap
       if ((aEnd === 24 * 60 && end1 === '24:00' && bStart === 0 && start2 === '00:00') ||
-          (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
+        (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
         continue; // Skip this range comparison
       }
-      
+
       const overlapStart = Math.max(aStart, bStart);
       const overlapEnd = Math.min(aEnd, bEnd);
       if (overlapStart < overlapEnd) {
@@ -192,7 +192,7 @@ export const convertDateFormat = (dateStr: string): string => {
   if (dateStr.includes('T')) {
     dateStr = dateStr.split('T')[0];
   }
-  
+
   // Handle date strings with timezone info (e.g., "08-21T00:00:00.000Z-2025")
   if (dateStr.includes('T') && dateStr.includes('-2025')) {
     const parts = dateStr.split('-');
@@ -201,7 +201,7 @@ export const convertDateFormat = (dateStr: string): string => {
     const year = parts[parts.length - 1];
     return `${month}-${day}-${year}`;
   }
-  
+
   // Handle standard YYYY-MM-DD format
   const [year, month, day] = dateStr.split('-');
   return `${month}-${day}-${year}`;
@@ -215,8 +215,8 @@ export const convertTimestampToDate = (timestamp: string): string => {
 
 // Form validation function
 export const validateForm = (
-  formData: FormData, 
-  scheduleData: ScheduleItem[], 
+  formData: FormData,
+  scheduleData: ScheduleItem[],
   editingShiftId?: number,
   apiExistingShifts?: Map<string, any[]>
 ): { [key: string]: string } => {
@@ -237,7 +237,7 @@ export const validateForm = (
   // Check for overlapping shifts (both local and API data)
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
     console.log("existing data", scheduleData);
-    
+
     // Check local schedule data overlaps - current day
     const existingShifts = scheduleData
       .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
@@ -268,7 +268,7 @@ export const validateForm = (
         .filter(shift => shiftSpansNextDay(shift.startTime, shift.endTime)); // Only check shifts that span into current day
 
       for (const shift of prevDayShifts) {
-        if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+        if (doTimesOverlap(formData.starttime, formData.endtime, "00:00", shift.endTime)) {
           console.log("⚠️ OVERLAP DETECTED - Previous Day:", {
             currentDate: formData.date,
             previousDate: prevDate,
@@ -308,11 +308,11 @@ export const validateForm = (
     if (apiExistingShifts && !e.overlap) {
       const clientId = scheduleData.find(item => item.userId === Number(formData.userId))?.clientId;
       const addressId = scheduleData.find(item => item.userId === Number(formData.userId))?.addressId;
-      
+
       if (clientId && addressId) {
         const combinationKey = `${clientId}-${addressId}-${formData.userId}`;
         const apiShifts = apiExistingShifts.get(combinationKey) || [];
-        
+
         for (const apiShift of apiShifts) {
           // Check if the API shift is for the same date
           const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
@@ -337,7 +337,7 @@ export const validateForm = (
           for (const apiShift of apiShifts) {
             const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
             if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
-              if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+              if (doTimesOverlap(formData.starttime, formData.endtime, "00:00", apiShift.endTime)) {
                 console.log("⚠️ OVERLAP DETECTED - Previous Day (API):", {
                   currentDate: formData.date,
                   previousDate: prevDate,
@@ -390,7 +390,7 @@ export const checkApiOverlap = (
 ): boolean => {
   const combinationKey = `${clientId}-${addressId}-${userId}`;
   const apiShifts = apiExistingShifts.get(combinationKey) || [];
-  
+
   // Check same day shifts
   for (const apiShift of apiShifts) {
     const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
@@ -407,7 +407,7 @@ export const checkApiOverlap = (
   for (const apiShift of apiShifts) {
     const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
     if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
-      if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
+      if (doTimesOverlap(startTime, endTime, "00:00", apiShift.endTime)) {
         return true;
       }
     }

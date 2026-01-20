@@ -144,6 +144,10 @@ const isDraftShift = (shift: Shift): boolean => {
 
 // ---------- Time helpers ----------
 
+const overlapsWithPrevDayShift = (newStart: string, newEnd: string, prevShiftEnd: string) => {
+  return doTimesOverlap(newStart, newEnd, "00:00", prevShiftEnd);
+};
+
 const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string) => {
   const timeToMinutes = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(":").map(Number);
@@ -437,10 +441,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         if (!dateMatch) return false;
         if (excludeShiftId && shift.id === excludeShiftId) return false;
         if (!shiftSpansNextDay(shift.startTime, shift.endTime)) return false;
-        const hasOverlap = doTimesOverlap(
+        const hasOverlap = overlapsWithPrevDayShift(
           startTime,
           endTime,
-          shift.startTime,
           shift.endTime
         );
         if (hasOverlap) {
@@ -817,7 +820,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     // Check local shifts - current day
     const localExistingShifts = scheduleData
       .filter((item) => item.userId === userId && item.startDate === date)
-      .flatMap((item) => item.shifts);
+      .flatMap((item) => item.shifts)
+      .filter((s) => !(s as any).isDelete);
 
     for (const existingShift of localExistingShifts) {
       if (existingShift.id === shift.id) continue;
@@ -855,14 +859,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     const prevDayShifts = scheduleData
       .filter((item) => item.userId === userId && item.startDate === prevDate)
       .flatMap((item) => item.shifts)
-      .filter((s) => shiftSpansNextDay(s.startTime, s.endTime));
+      .filter((s) => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime));
 
     for (const existingShift of prevDayShifts) {
       if (
         doTimesOverlap(
           editForm.starttime,
           editForm.endtime,
-          existingShift.startTime,
+          "00:00",
           existingShift.endTime
         )
       ) {
@@ -894,7 +898,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const nextDate = getAdjustedDate(date, 1);
       const nextDayShifts = scheduleData
         .filter((item) => item.userId === userId && item.startDate === nextDate)
-        .flatMap((item) => item.shifts);
+        .flatMap((item) => item.shifts)
+        .filter((s) => !(s as any).isDelete);
 
       for (const existingShift of nextDayShifts) {
         if (
@@ -993,10 +998,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         const dateMatch = shiftDateStr === prevDate;
         if (!dateMatch) return false;
         if (!shiftSpansNextDay(backendShift.startTime, backendShift.endTime)) return false;
-        const hasOverlap = doTimesOverlap(
+        const hasOverlap = overlapsWithPrevDayShift(
           editForm.starttime,
           editForm.endtime,
-          backendShift.startTime,
           backendShift.endTime
         );
         if (hasOverlap) {
@@ -1369,10 +1373,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
         const hasOverlap = shiftDateStr === prevDate &&
           shiftSpansNextDay(existingShift.startTime, existingShift.endTime) &&
-          doTimesOverlap(
+          overlapsWithPrevDayShift(
             shift.startTime,
             shift.endTime,
-            existingShift.startTime,
             existingShift.endTime
           );
 
@@ -1501,6 +1504,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const targetCellHasData = targetRowIdx < sortedShifts.length;
 
       if (targetCellHasData) {
+        // This is the shift currently sitting in the target cell
+        const targetExisting = sortedShifts[targetRowIdx];
+
         // ---- Replace (update existing cell) ----
         // Check same day overlaps
         const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
@@ -1537,29 +1543,34 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           .filter((item) => item.userId === targetUserId && item.startDate === prevDate)
           .flatMap((item) => item.shifts)
           .filter((s) => {
-            // Exclude the source shift if dragging from previous day
-            if (sourceDate === prevDate && s.id === shift.id) return false;
+            if ((s as any).isDelete) return false;
+            // ❗ exclude dragged shift
+            if (s.id === shift.id) return false;
+
+            // ❗ exclude shift being replaced
+            if (s.id === targetExisting.id) return false;
+
             return shiftSpansNextDay(s.startTime, s.endTime);
           });
 
         const hasPrevDayOverlap = prevDayShifts.some((existingShift) => {
-          const hasOverlap = doTimesOverlap(
+          // ✅ NEW: allow continuity with existing target shift
+          if (
+            targetExisting &&
+            existingShift.startTime === targetExisting.startTime &&
+            existingShift.endTime === targetExisting.endTime
+          ) {
+            return false;
+          }
+
+          return doTimesOverlap(
             shift.startTime,
             shift.endTime,
-            existingShift.startTime,
+            "00:00",
             existingShift.endTime
           );
-          if (hasOverlap) {
-            console.log("⚠️ OVERLAP DETECTED - Previous Day (Drag & Drop - Local Replace):", {
-              targetDate: targetDate,
-              previousDate: prevDate,
-              newShift: `${shift.startTime}-${shift.endTime}`,
-              existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
-              shiftId: existingShift.id
-            });
-          }
-          return hasOverlap;
         });
+
 
         if (hasPrevDayOverlap) {
           logScheduleState("Drop Blocked - Local Overlap (Replace - Previous Day)", scheduleData, { targetDate, prevDate });
@@ -1575,7 +1586,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           const nextDate = getAdjustedDate(targetDate, 1);
           const nextDayShifts = scheduleData
             .filter((item) => item.userId === targetUserId && item.startDate === nextDate)
-            .flatMap((item) => item.shifts);
+            .flatMap((item) => item.shifts)
+            .filter((s) => s.id !== shift.id && s.id !== targetExisting.id && !(s as any).isDelete);
 
           const hasNextDayOverlap = nextDayShifts.some((existingShift) => {
             const hasOverlap = doTimesOverlap(
@@ -1604,9 +1616,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             return;
           }
         }
-
-        // This is the shift currently sitting in the target cell
-        const targetExisting = sortedShifts[targetRowIdx];
 
         // Make a copied shift (new values), but KEEP the identity of the target cell
         const replacementShift: any = createCopiedShift();
@@ -1685,6 +1694,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           .filter((item) => item.userId === targetUserId && item.startDate === prevDate)
           .flatMap((item) => item.shifts)
           .filter((s) => {
+            if ((s as any).isDelete) return false;
             // Exclude the source shift if dragging from previous day
             if (sourceDate === prevDate && s.id === shift.id) return false;
             return shiftSpansNextDay(s.startTime, s.endTime);
@@ -1694,7 +1704,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           const hasOverlap = doTimesOverlap(
             shift.startTime,
             shift.endTime,
-            existingShift.startTime,
+            "00:00",
             existingShift.endTime
           );
           if (hasOverlap) {
@@ -1723,7 +1733,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           const nextDate = getAdjustedDate(targetDate, 1);
           const nextDayShifts = scheduleData
             .filter((item) => item.userId === targetUserId && item.startDate === nextDate)
-            .flatMap((item) => item.shifts);
+            .flatMap((item) => item.shifts)
+            .filter((s) => !(s as any).isDelete);
 
           const hasNextDayOverlap = nextDayShifts.some((existingShift) => {
             const hasOverlap = doTimesOverlap(
