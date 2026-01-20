@@ -65,7 +65,7 @@ const autoChangedForUser = (userId: number, scheduleDataParam: ScheduleItem[], o
     const byId = new Map(p.shifts.map(s => [s.id, s]));
     for (const s of c.shifts) {
       const ps = byId.get(s.id);
-        if (ps && (!!s.auto !== !!ps.auto)) return true;
+      if (ps && (!!s.auto !== !!ps.auto)) return true;
     }
   }
   return false;
@@ -143,7 +143,7 @@ export const ViewSchedule = () => {
       userId: params.get("userid"),
     };
   };
-  
+
   const {
     clientSessions,
     loading,
@@ -182,18 +182,18 @@ export const ViewSchedule = () => {
   const [scheduleData, setScheduleData] = useState<ScheduleItem[]>([]);
   useEffect(() => {
     const hasQuery = hasRealQueryParams(location.search);
-  
+
     setShowScheduleTable(hasQuery);
     setScheduleData([]);
     setSessionData([]);
     setHasApiData(false);
-  
+
     // ✅ when there are no query params, clear selection state
     if (!hasQuery) {
       setSelectedClient(null);
       setSelectedUserId(null);
       setSelectedUserDisplayName("");
-  
+
       // optional but usually makes the UI consistent
       setModalOpen(false);
       setCurrentWeekRange(null);
@@ -203,15 +203,15 @@ export const ViewSchedule = () => {
   }, [location.search]);
 
 
-  
+
   useEffect(() => {
     const hasQuery = hasRealQueryParams(location.search);
-  
+
     setShowScheduleTable(hasQuery);
     setScheduleData([]);
     setSessionData([]);
     setHasApiData(false);
-  
+
     // ✅ When URL is /view-schedule (no params), reset selection state
     if (!hasQuery) {
       setSelectedClient(null);
@@ -220,24 +220,24 @@ export const ViewSchedule = () => {
       setCurrentWeekRange(null);
       setSelectedDate("");
       setModalOpen(false);
-  
+
       hasRestoredState.current = false;
-  
+
       clearScheduleData();
       clearSessionData();
     }
   }, [location.search]);
-  
+
 
   const updateUrlParams = React.useCallback(
     (updates: Record<string, string | boolean | null>) => {
       const params = new URLSearchParams(location.search);
-  
+
       Object.entries(updates).forEach(([key, value]) => {
         if (value === null) params.delete(key);
         else params.set(key, String(value));
       });
-  
+
       const qs = params.toString();
       navigate(
         { pathname: location.pathname, search: qs ? `?${qs}` : "" },
@@ -246,7 +246,7 @@ export const ViewSchedule = () => {
     },
     [navigate, location.pathname, location.search]
   );
-  
+
   const [currentWeekRange, setCurrentWeekRange] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
@@ -259,6 +259,7 @@ export const ViewSchedule = () => {
   const [originalSessionData, setOriginalSessionData] = useState([]);
   const [schedulePublishModal, setSchedulePublishModal] = useState({ isOpen: false });
   const [actualTimePublishModal, setActualTimePublishModal] = useState({ isOpen: false });
+  const shouldUpdateOriginalDataRef = useRef(false);
   const originalShiftsRef = useRef<Map<number, Set<string>>>(new Map());
   const [sessionData, setSessionData] = useState([]);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -501,7 +502,7 @@ export const ViewSchedule = () => {
           });
       }
     }
-  }, [clientSessions]); 
+  }, [clientSessions]);
 
   const resetUIForWeekNavigation = () => {
     setModalOpen(false);
@@ -572,7 +573,7 @@ export const ViewSchedule = () => {
     const week = getWeekRangeFromDateLocal(parseLocalYMD(newDate));
     const weekStartStr = toLocalYMD(week.startOfWeek);
     setPreviousDate(selectedDate);
-    setTargetDate(weekStartStr); 
+    setTargetDate(weekStartStr);
     setIsNavigationAttempt(true);
     setSelectedDate(weekStartStr);
     const weekRange = getWeekRangeFromDateLocal(parseLocalYMD(weekStartStr));
@@ -682,13 +683,14 @@ export const ViewSchedule = () => {
   };
   const handleCancelPrepareSchedule = () => {
     setNoScheduleConfirmModal(
-      {  isOpen: false,
+      {
+        isOpen: false,
         clientName: "",
         formattedDate: "",
         clientId: null as number | null,
         addressId: null as number | null,
         selectedDate: ""
-       });
+      });
   };
 
   useEffect(() => {
@@ -723,11 +725,11 @@ export const ViewSchedule = () => {
     if (apiScheduleData) {
       const scheduleSessions = apiScheduleData.scheduleSessions ?? [];
       const draftScheduleSessions = apiScheduleData.draftScheduleSessions ?? [];
-  
+
       const hasAnyData =
         (scheduleSessions && scheduleSessions.length > 0) ||
         (draftScheduleSessions && draftScheduleSessions.length > 0);
-  
+
       // -------------------------
       // 1. No schedule / draft data
       // -------------------------
@@ -736,15 +738,15 @@ export const ViewSchedule = () => {
           [selectedClient?.name, selectedClient?.lastName]
             .filter(Boolean)
             .join(" ") || "this client";
-  
+
         const formattedDate = targetDate
           ? new Date(targetDate).toLocaleDateString("en-US", {
-              month: "2-digit",
-              day: "2-digit",
-              year: "numeric",
-            })
+            month: "2-digit",
+            day: "2-digit",
+            year: "numeric",
+          })
           : "";
-  
+
         // Same UX as before
         if (navigationSource === "modal" && openedFromViewButton) {
           if (selectedClient && selectedDate) {
@@ -766,7 +768,7 @@ export const ViewSchedule = () => {
             variant: "destructive",
           });
         }
-  
+
         if (isNavigationAttempt) {
           toast({
             title: "No Schedule Found",
@@ -774,173 +776,178 @@ export const ViewSchedule = () => {
             variant: "destructive",
           });
         }
-  
+
         setHasApiData(false);
-  
+
         if (isNavigationAttempt && targetDate) {
           if (navigationSource === "week") {
             if (!showScheduleTable) setShowScheduleTable(true);
           }
         }
-  
+
         setIsNavigationAttempt(false);
         setTargetDate("");
         return;
       }
-  
+
       // -------------------------
       // 2. We DO have schedule or draft data
       // -------------------------
       setHasApiData(true);
-  
+
       if (isNavigationAttempt && targetDate) {
         if (!showScheduleTable) setShowScheduleTable(true);
-  
+
         if (navigationSource === "modal") {
           if (!noScheduleConfirmModal.isOpen) {
             setModalOpen(false);
             setOpenedFromViewButton(false);
           }
         }
-  
+
         if (navigationSource === "week") {
           resetUIForWeekNavigation();
         }
       }
-  
+
       setIsNavigationAttempt(false);
       setTargetDate("");
-  
+
       const keyedByUserDate = new Map<string, any>();
       let derivedClientInfo: any = null;
-  
-     const normalizeDate = (raw: string) => {
-  if (!raw) return "";
-  if (raw.includes("T")) return raw.split("T")[0];
-  return formatDateLocal(new Date(raw));
-};
-  
+
+      const normalizeDate = (raw: string) => {
+        if (!raw) return "";
+        if (raw.includes("T")) return raw.split("T")[0];
+        return formatDateLocal(new Date(raw));
+      };
+
       const ensureDerivedClientInfo = (group: any) => {
-  if (derivedClientInfo) return;
-  derivedClientInfo = {
-    clientId: group.clientId,
-    addressId: group.addressId,
-    name: group.client?.name ?? "",
-    lastName: (group.client as any)?.lastName ?? "",
-    address: group.address?.address ?? "",
-    city: group.address?.city ?? "",
-    state: group.address?.state ?? "",
-    pincode: group.address?.pincode ?? "",
-    addresses: (group.client as any)?.addresses || [],
-  };
-};
-  
+        if (derivedClientInfo) return;
+        derivedClientInfo = {
+          clientId: group.clientId,
+          addressId: group.addressId,
+          name: group.client?.name ?? "",
+          lastName: (group.client as any)?.lastName ?? "",
+          address: group.address?.address ?? "",
+          city: group.address?.city ?? "",
+          state: group.address?.state ?? "",
+          pincode: group.address?.pincode ?? "",
+          addresses: (group.client as any)?.addresses || [],
+        };
+      };
+
       const addShiftToMap = (params: {
-  group: any;
-  userId: number;
-  userName: string;
-  userPhone: string;
-  shift: any;
-  isDraft: boolean;
-  groupAuto: boolean;
-  isDraftScheduleSession: boolean;
-}) => {
-  const {
-    group,
-    userId,
-    userName,
-    userPhone,
-    shift,
-    isDraft,
-    groupAuto,
-    isDraftScheduleSession,
-  } = params;
+        group: any;
+        userId: number;
+        userName: string;
+        userPhone: string;
+        shift: any;
+        isDraft: boolean;
+        groupAuto: boolean;
+        isDraftScheduleSession: boolean;
+        timeSetup?: { actualScheduledTime: number };
+      }) => {
+        const {
+          group,
+          userId,
+          userName,
+          userPhone,
+          shift,
+          isDraft,
+          groupAuto,
+          isDraftScheduleSession,
+          timeSetup,
+        } = params;
 
-  if (!shift?.date || userId == null) return;
+        if (!shift?.date || userId == null) return;
 
-  const date = normalizeDate(shift.date);
+        const date = normalizeDate(shift.date);
 
-  // ✅ IMPORTANT: include schedule session identity to avoid accidental merging
-  const bucketSessionId =
-    shift.scheduleSessionId ??
-    (shift as any)?.draftScheduleSessionId ??
-    (group as any)?.draftScheduleSessionId ??
-    "no-session";
+        // ✅ IMPORTANT: include schedule session identity to avoid accidental merging
+        const bucketSessionId =
+          shift.scheduleSessionId ??
+          (shift as any)?.draftScheduleSessionId ??
+          (group as any)?.draftScheduleSessionId ??
+          "no-session";
 
-  // ✅ OLD (buggy): const key = `${userId}-${date}`;
-  const key = `${group.clientId}-${group.addressId}-${userId}-${date}-${bucketSessionId}`;
+        // ✅ OLD (buggy): const key = `${userId}-${date}`;
+        const key = `${group.clientId}-${group.addressId}-${userId}-${date}-${bucketSessionId}`;
 
-  let item = keyedByUserDate.get(key);
-  if (!item) {
-    item = {
-      id: keyedByUserDate.size + 1,
-      clientId: group.clientId,
-      addressId: group.addressId,
-      userId,
-      startDate: date,
-      auto: groupAuto ?? false,
-      shifts: [],
-      clientName:
-        [group.client?.name, (group.client as any)?.lastName]
-          .filter(Boolean)
-          .join(" ") || "Unknown Client",
-      address:
-        [
-          group.address?.address,
-          group.address?.city,
-          group.address?.state,
-          group.address?.pincode,
-        ]
-          .filter(Boolean)
-          .join(", ") || "Unknown Address",
-      userName,
-      userPhone,
-      draftScheduleSession: isDraftScheduleSession,
-    };
-    keyedByUserDate.set(key, item);
-  }
+        let item = keyedByUserDate.get(key);
+        if (!item) {
+          item = {
+            id: keyedByUserDate.size + 1,
+            clientId: group.clientId,
+            addressId: group.addressId,
+            userId,
+            startDate: date,
+            auto: groupAuto ?? false,
+            shifts: [],
+            clientName:
+              [group.client?.name, (group.client as any)?.lastName]
+                .filter(Boolean)
+                .join(" ") || "Unknown Client",
+            address:
+              [
+                group.address?.address,
+                group.address?.city,
+                group.address?.state,
+                group.address?.pincode,
+              ]
+                .filter(Boolean)
+                .join(", ") || "Unknown Address",
+            userName,
+            userPhone,
+            draftScheduleSession: isDraftScheduleSession,
+            timeSetup: timeSetup,
+            uniqueKey: key,
+          };
+          keyedByUserDate.set(key, item);
+        }
 
-  if (item && isDraftScheduleSession) {
-    item.draftScheduleSession = true;
-  }
+        if (item && isDraftScheduleSession) {
+          item.draftScheduleSession = true;
+        }
 
-  const baseId = shift.id ?? 0;
-  const syntheticId = isDraft ? 2000000000000 + baseId : baseId;
+        const baseId = shift.id ?? 0;
+        const syntheticId = isDraft ? 2000000000000 + baseId : baseId;
 
-  const shiftData: any = {
-    id: syntheticId,
-    date: shift.date,
-    startTime: shift.startTime,
-    endTime: shift.endTime,
-    hours: shift.hours,
-    scheduleSessionId: shift.scheduleSessionId ?? null,
-    auto: (shift as any)?.auto ?? false,
-    confirm: (shift as any)?.confirm ?? false,
-    reject: (shift as any)?.reject ?? false,
-  };
+        const shiftData: any = {
+          id: syntheticId,
+          date: shift.date,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          hours: shift.hours,
+          scheduleSessionId: shift.scheduleSessionId ?? null,
+          auto: (shift as any)?.auto ?? false,
+          confirm: (shift as any)?.confirm ?? false,
+          reject: (shift as any)?.reject ?? false,
+        };
 
-  if (isDraft) {
-    shiftData.draftShiftId = baseId;
-    shiftData.draftScheduleSessionId =
-      (shift as any)?.draftScheduleSessionId ??
-      (group as any)?.draftScheduleSessionId ??
-      null;
-  }
+        if (isDraft) {
+          shiftData.draftShiftId = baseId;
+          shiftData.draftScheduleSessionId =
+            (shift as any)?.draftScheduleSessionId ??
+            (group as any)?.draftScheduleSessionId ??
+            null;
+        }
 
-  item.shifts.push(shiftData);
-};
-  
+        item.shifts.push(shiftData);
+      };
+
       // 2.a. Handle main scheduleSessions (shifts + draftShifts)
       scheduleSessions.forEach((group: any) => {
         ensureDerivedClientInfo(group);
-  
+
         const userId = group.user?.id;
         const userName = [group.user?.name, (group.user as any)?.lastName]
           .filter(Boolean)
           .join(" ");
         const userPhone = (group.user as any)?.phone ?? "";
         const groupAuto = group.auto ?? false;
-  
+        const timeSetup = group.TimeSetup;
+
         // Real scheduled shifts
         group.shifts?.forEach((shift: any) => {
           addShiftToMap({
@@ -952,9 +959,10 @@ export const ViewSchedule = () => {
             isDraft: false,
             groupAuto,
             isDraftScheduleSession: false,
+            timeSetup,
           });
         });
-  
+
         // Draft shifts attached to existing scheduleSession
         group.draftShifts?.forEach((shift: any) => {
           addShiftToMap({
@@ -966,24 +974,25 @@ export const ViewSchedule = () => {
             isDraft: true,
             groupAuto: groupAuto || !!shift.auto,
             isDraftScheduleSession: false,
+            timeSetup,
           });
         });
       });
-  
+
       // 2.b. Handle draftScheduleSessions (draft-only sessions)
       draftScheduleSessions.forEach((group: any) => {
         ensureDerivedClientInfo(group);
-  
+
         const userId = group.user?.id;
         const userName = [group.user?.name, (group.user as any)?.lastName]
           .filter(Boolean)
           .join(" ");
         const userPhone = (group.user as any)?.phone ?? "";
-  
+
         // For draft schedule sessions, derive auto from shifts
         const groupAuto =
           group.draftShifts?.some((s: any) => s.auto) ?? false;
-  
+
         group.draftShifts?.forEach((shift: any) => {
           addShiftToMap({
             group,
@@ -994,16 +1003,17 @@ export const ViewSchedule = () => {
             isDraft: true,
             groupAuto,
             isDraftScheduleSession: true,
+            timeSetup: group.TimeSetup,
           });
         });
       });
-  
+
       // -------------------------
       // 3. Final transformed data
       // -------------------------
       const transformedData = Array.from(keyedByUserDate.values());
       setScheduleData(transformedData);
-  
+
       // Keep selectedClient in sync (same logic as before)
       if (transformedData.length > 0) {
         const first = transformedData[0];
@@ -1019,7 +1029,7 @@ export const ViewSchedule = () => {
             pincode: prev?.pincode ?? "",
             addresses: prev?.addresses ?? [],
           };
-  
+
           if (
             !prev ||
             prev.clientId !== next.clientId ||
@@ -1032,7 +1042,13 @@ export const ViewSchedule = () => {
           return prev;
         });
       }
-  
+
+      // Update original data snapshot if this fetch was triggered by a save
+      if (shouldUpdateOriginalDataRef.current) {
+        setOriginalScheduleData(JSON.parse(JSON.stringify(transformedData)));
+        shouldUpdateOriginalDataRef.current = false;
+      }
+
       // Set selected employee display name if viewing by employee
       if (selectedUserId) {
         const match = transformedData.find(
@@ -1042,18 +1058,18 @@ export const ViewSchedule = () => {
           setSelectedUserDisplayName(match.userName ?? "");
         }
       }
-  
+
       const urlParams = getUrlParams();
       if (urlParams.viewEmployee && transformedData.length > 0) {
         const firstUserId = transformedData[0]?.userId ?? null;
         setSelectedUserId(firstUserId);
         setSelectedUserDisplayName(transformedData[0]?.userName ?? "");
       }
-  
+
       if (!selectedClient && derivedClientInfo) {
         setSelectedClient(derivedClientInfo);
       }
-  
+
       // Build originalShiftsRef (used for change detection)
       const baseMap = new Map<number, Set<string>>();
       transformedData.forEach((item) => {
@@ -1062,7 +1078,7 @@ export const ViewSchedule = () => {
         baseMap.set(item.userId, set);
       });
       originalShiftsRef.current = baseMap;
-  
+
       // Fetch session data for all scheduleSessionIds (only real sessions)
       if (transformedData.length > 0) {
         const scheduleSessionIds = Array.from(
@@ -1074,7 +1090,7 @@ export const ViewSchedule = () => {
             )
           )
         );
-  
+
         if (scheduleSessionIds.length > 0) {
           fetchSessionData(scheduleSessionIds);
         }
@@ -1092,7 +1108,7 @@ export const ViewSchedule = () => {
     showScheduleTable,
     navigationSource,
   ]);
-  
+
   useEffect(() => {
     if (apiSessionData) {
       setSessionData(apiSessionData);
@@ -1235,11 +1251,11 @@ export const ViewSchedule = () => {
     e.preventDefault();
     setSubmitLoader(true)
     const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
-      const result = await fetchApiExistingShifts(Number(form.userId));
-      if (result === null) {
-        setSubmitLoader(false);
-        return;
-      }
+    const result = await fetchApiExistingShifts(Number(form.userId));
+    if (result === null) {
+      setSubmitLoader(false);
+      return;
+    }
     if (applyAllWeek && currentWeekRange) {
       const weekErrors: { [key: string]: string } = {};
       if (!form.userId) weekErrors.userId = "Required";
@@ -1353,7 +1369,7 @@ export const ViewSchedule = () => {
               ...updatedScheduleData[existingScheduleIndex].shifts,
               {
                 ...newShift,
-                id: Date.now() + i, 
+                id: Date.now() + i,
                 date: dateStr,
               }
             ];
@@ -1402,7 +1418,7 @@ export const ViewSchedule = () => {
             ...updatedScheduleData[existingScheduleIndex],
             shifts: sortShiftsByTime(newShifts)
           };
-          addedDays = 1; 
+          addedDays = 1;
         } else {
           updatedScheduleData.push({
             id: Date.now(),
@@ -1423,7 +1439,7 @@ export const ViewSchedule = () => {
             userName: [selectedUser.name, (selectedUser as any)?.lastName].filter(Boolean).join(" "),
             userPhone: (selectedUser as any)?.phone || '',
           });
-          addedDays = 1; 
+          addedDays = 1;
         }
       }
       setScheduleData(updatedScheduleData);
@@ -1555,10 +1571,10 @@ export const ViewSchedule = () => {
   //       const mapKey = `${userSchedule.clientId}-${userSchedule.addressId}-${userSchedule.userId}`;
   //       const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
   //       console.log(`User ${userSchedule.userId}: mapKey=${mapKey}, mapped checkScheduleSessionId=${mappedCheckScheduleSessionId}`);
-        
+
   //       // Remove hasDraftShifts before sending to server
   //       const { hasDraftShifts, ...scheduleSessionData } = userSchedule;
-        
+
   //       return {
   //         ...scheduleSessionData,
   //         weeklyHours: parseFloat(weeklyHours.toFixed(2)),
@@ -1586,7 +1602,7 @@ export const ViewSchedule = () => {
   //       setIsPublishing(false);
   //     } catch (refreshError) {
   //       console.error("Error refreshing schedule data after publish:", refreshError);
-       
+
   //     }
   //     setIsScheduleEditMode(false);
   //     setSchedulePublishModal({ isOpen: false });
@@ -1628,20 +1644,20 @@ export const ViewSchedule = () => {
       });
       return;
     }
-  
+
     try {
       setIsPublishing(true);
       const selectedDateObj = parseLocalYMD(selectedDate);
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       const startDate = toLocalYMD(weekRange.startOfWeek);
       const endDate = toLocalYMD(weekRange.endOfWeek);
-  
+
       const userScheduleMap = new Map();
       scheduleData.forEach(item => {
         const userId = item.userId;
         const scheduleSessionId = item.shifts.find(shift => shift.scheduleSessionId)?.scheduleSessionId || null;
         const hasDraftShiftsForItem = item.shifts.some((s: any) => !!(s?.draftShiftId));
-  
+
         if (!userScheduleMap.has(userId)) {
           userScheduleMap.set(userId, {
             scheduleSessionId: scheduleSessionId,
@@ -1652,7 +1668,7 @@ export const ViewSchedule = () => {
             endDate: convertDateFormat(endDate),
             auto: item.auto,
             weeklyHours: 0,
-            shifts: [],
+            shifts: new Map(), // Changed to a Map for deduplication
             hasDraftShifts: hasDraftShiftsForItem || false,
           });
         } else {
@@ -1665,32 +1681,39 @@ export const ViewSchedule = () => {
             existingSchedule.hasDraftShifts = true;
           }
         }
-  
+
         const userSchedule = userScheduleMap.get(userId);
         item.shifts.forEach(shift => {
           const isClientGeneratedId = shift.id > 1000000000000;
           const isDraftShift = !!(shift as any)?.draftShiftId;
           const shiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
-  
-          userSchedule.shifts.push({
-            date: convertDateFormat(shift.date),
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            hours: shift.hours,
-            shiftId: shiftId,
-            auto: (shift as any)?.auto ?? null
-          });
+
+          const formattedDate = convertDateFormat(shift.date);
+          const shiftKey = `${formattedDate}-${shift.startTime}-${shift.endTime}`;
+
+          // Only add if not already present, or overwrite if needed (usually treating duplicates as same shift)
+          if (!userSchedule.shifts.has(shiftKey)) {
+            userSchedule.shifts.set(shiftKey, {
+              date: formattedDate,
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+              hours: shift.hours,
+              shiftId: shiftId,
+              auto: (shift as any)?.auto ?? null
+            });
+          }
         });
       });
-  
+
       const scheduleInput = Array.from(userScheduleMap.values()).map(userSchedule => {
-        const weeklyHours = userSchedule.shifts.reduce((total, shift) => total + shift.hours, 0);
+        const shiftsArray = Array.from(userSchedule.shifts.values()); // Convert Map to Array
+        const weeklyHours = shiftsArray.reduce((total: number, shift: any) => total + shift.hours, 0); // Use typed array reduce
         const originalSet = originalShiftsRef.current.get(userSchedule.userId) || new Set<string>();
         const currentSet = new Set<string>();
         scheduleData
           .filter(i => i.userId === userSchedule.userId)
           .forEach(i => i.shifts.forEach(s => currentSet.add(makeShiftKey(s))));
-  
+
         let changed = false;
         if (originalSet.size !== currentSet.size) {
           changed = true;
@@ -1699,42 +1722,43 @@ export const ViewSchedule = () => {
             if (!originalSet.has(k)) { changed = true; break; }
           }
         }
-  
+
         if (!changed && autoChangedForUser(userSchedule.userId, scheduleData, originalScheduleData)) {
           changed = true;
         }
-  
+
         if (userSchedule.hasDraftShifts) {
           changed = true;
         }
-  
+
         const mapKey = `${userSchedule.clientId}-${userSchedule.addressId}-${userSchedule.userId}`;
         const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
         console.log(`User ${userSchedule.userId}: mapKey=${mapKey}, mapped checkScheduleSessionId=${mappedCheckScheduleSessionId}`);
-  
+
         const { hasDraftShifts, ...scheduleSessionData } = userSchedule;
-  
+
         return {
           ...scheduleSessionData,
-          weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+          shifts: shiftsArray, // Explicitly assign the array of shifts, replacing the Map
+          weeklyHours: parseFloat((weeklyHours as number).toFixed(2)), // Ensure weeklyHours is treated as number
           change: changed,
           checkScheduleSessionId: mappedCheckScheduleSessionId
         };
       });
-  
+
       await bulkUpsertScheduleSessions(scheduleInput);
-  
+
       const draftDeletePayload: any[] = [];
       const draftScheduleSessionIds = new Set<number>();
-  
+
       const scheduleSessionDraftMap = new Map<number, Set<number>>();
-  
+
       scheduleData.forEach(item => {
         item.shifts.forEach((shift: any) => {
           const draftScheduleSessionId = shift.draftScheduleSessionId as number | null | undefined;
           const draftShiftId = shift.draftShiftId as number | null | undefined;
           const scheduleSessionId = shift.scheduleSessionId as number | null | undefined;
-  
+
           if (draftScheduleSessionId && !draftScheduleSessionIds.has(draftScheduleSessionId)) {
             draftScheduleSessionIds.add(draftScheduleSessionId);
             draftDeletePayload.push({
@@ -1742,7 +1766,7 @@ export const ViewSchedule = () => {
               isDelete: true,
             });
           }
-  
+
           if (draftShiftId && scheduleSessionId) {
             if (!scheduleSessionDraftMap.has(scheduleSessionId)) {
               scheduleSessionDraftMap.set(scheduleSessionId, new Set());
@@ -1751,7 +1775,7 @@ export const ViewSchedule = () => {
           }
         });
       });
-  
+
       scheduleSessionDraftMap.forEach((draftShiftIds, scheduleSessionId) => {
         draftDeletePayload.push({
           scheduleSessionId,
@@ -1761,7 +1785,7 @@ export const ViewSchedule = () => {
           })),
         });
       });
-  
+
       console.log(
         "Draft delete payload after publish:",
         JSON.stringify(draftDeletePayload, null, 2)
@@ -1774,17 +1798,17 @@ export const ViewSchedule = () => {
           console.error("Failed to delete draft data after publish:", draftDeleteErr);
         }
       }
-  
+
       toast({
         title: "Success",
         description: "Schedule published successfully!",
       });
-  
+
       try {
         const clientId = selectedClient?.clientId;
         const addressId = selectedClient?.addressId;
         const formattedDate = convertDateFormat(selectedDate);
-  
+
         if (selectedUserId) {
           await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
         } else if (clientId && addressId) {
@@ -1794,13 +1818,13 @@ export const ViewSchedule = () => {
       } catch (refreshError) {
         console.error("Error refreshing schedule data after publish:", refreshError);
       }
-  
+
       setIsScheduleEditMode(false);
       setSchedulePublishModal({ isOpen: false });
-  
+
     } catch (error: any) {
       let errorMessage = "Failed to publish schedule. Please try again.";
-  
+
       if (error.message) {
         if (error.message.includes("No authentication token found")) {
           errorMessage = "Authentication token not found. Please log in again.";
@@ -1812,7 +1836,7 @@ export const ViewSchedule = () => {
           errorMessage = error.message;
         }
       }
-  
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -1823,7 +1847,7 @@ export const ViewSchedule = () => {
       setIsPublishing(false);
     }
   };
-  
+
   const cancelSchedulePublish = () => {
     setSchedulePublishModal({ isOpen: false });
   };
@@ -1845,15 +1869,15 @@ export const ViewSchedule = () => {
       });
       return;
     }
-  
+
     try {
       setIsSavingDraft(true);
-  
+
       const selectedDateObj = parseLocalYMD(selectedDate);
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       const startDate = toLocalYMD(weekRange.startOfWeek);
       const endDate = toLocalYMD(weekRange.endOfWeek);
-  
+
       // ---- helpers ----
       const normalizeYMD = (raw?: string) => {
         if (!raw) return "";
@@ -1861,48 +1885,53 @@ export const ViewSchedule = () => {
         // already YYYY-MM-DD in your UI
         return raw;
       };
-  
+
       const sameShift = (a: any, b: any) => {
         if (!a || !b) return false;
-  
+
         // match by draftShiftId first (draft updates)
         const aDraftId = a?.draftShiftId ?? null;
         const bDraftId = b?.draftShiftId ?? null;
-        if (aDraftId && bDraftId) return aDraftId === bDraftId;
-  
+        if (aDraftId && bDraftId) return aDraftId == bDraftId; // loose equality
+
         // otherwise match by shift.id (published shift update / same shift)
-        return a?.id != null && b?.id != null && a.id === b.id;
+        return a?.id != null && b?.id != null && a.id == b.id; // loose equality
       };
-  
+
       const isShiftChanged = (curShift: any, curItem: any) => {
         const curDelete = curShift?.isDelete === true;
-  
+
         const origItem = originalScheduleData?.find(
-          (x) => x.userId === curItem.userId && x.startDate === curItem.startDate
+          (x) => {
+            // Match by uniqueKey if available (robust)
+            if (curItem.uniqueKey && x.uniqueKey) return x.uniqueKey === curItem.uniqueKey;
+            // Fallback to userId + startDate (legacy/split items without key)
+            return x.userId === curItem.userId && x.startDate === curItem.startDate;
+          }
         );
-  
+
         const origShift = origItem?.shifts?.find((s: any) => sameShift(curShift, s)) ?? null;
-  
+
         // deleted shift: send only if it existed before
         if (curDelete) {
           // If it has a real draftShiftId, it's persisted draft data -> must be sent for deletion
           if (curShift?.draftShiftId) return true;
-        
+
           // If it belongs to a draftScheduleSession, also treat as change
           if (curShift?.draftScheduleSessionId) return true;
-        
+
           // Otherwise fall back to original snapshot (covers non-draft deletes if you ever route them here)
           return !!origShift;
         }
-        
-  
+
+
         // brand new shift (not in original): send
         if (!origShift) return true;
-  
+
         // compare fields
         const curDate = normalizeYMD(curShift.date || curItem.startDate);
         const origDate = normalizeYMD(origShift.date || origItem.startDate);
-  
+
         return (
           curDate !== origDate ||
           curShift.startTime !== origShift.startTime ||
@@ -1911,7 +1940,7 @@ export const ViewSchedule = () => {
           Boolean(curShift.auto) !== Boolean(origShift.auto)
         );
       };
-  
+
       // ---- group building ----
       type DraftSessionKey = string;
       type DraftSessionGroup = {
@@ -1922,25 +1951,25 @@ export const ViewSchedule = () => {
         userId: number;
         checkScheduleSessionId: number | null;
         auto: boolean;
-  
+
         // all shifts (for weeklyHours)
         shiftsForHours: { isDelete: boolean; hours: number }[];
-  
+
         // only changed/new/deleted shifts (payload)
         shiftsToSend: any[];
       };
-  
+
       const draftSessionMap = new Map<DraftSessionKey, DraftSessionGroup>();
-  
+
       scheduleData.forEach((item) => {
         const checkKey = `${item.clientId}-${item.addressId}-${item.userId}`;
         const checkScheduleSessionId = checkScheduleSessionIdMap.get(checkKey) || null;
-  
+
         item.shifts.forEach((shift: any) => {
           const draftShiftId = shift?.draftShiftId ?? null;
           const draftScheduleSessionId = shift?.draftScheduleSessionId ?? null;
           const scheduleSessionId = shift?.scheduleSessionId ?? null;
-  
+
           // Determine grouping key
           let sessionKey: DraftSessionKey;
           if (draftScheduleSessionId) {
@@ -1950,7 +1979,7 @@ export const ViewSchedule = () => {
           } else {
             sessionKey = `new-${item.userId}-${item.clientId}-${item.addressId}`;
           }
-  
+
           if (!draftSessionMap.has(sessionKey)) {
             draftSessionMap.set(sessionKey, {
               draftScheduleSessionId,
@@ -1964,22 +1993,22 @@ export const ViewSchedule = () => {
               shiftsToSend: [],
             });
           }
-  
+
           const group = draftSessionMap.get(sessionKey)!;
-  
+
           const isDelete = shift?.isDelete === true;
-  
+
           // always count for weeklyHours (even unchanged)
           group.shiftsForHours.push({
             isDelete,
             hours: shift?.hours || 0,
           });
-  
+
           // only send if changed/new/deleted
           if (!isShiftChanged(shift, item)) return;
-  
+
           const shiftDate = convertDateFormat(shift.date || item.startDate);
-  
+
           const payloadShift: any = {
             isDelete,
             startTime: shift.startTime,
@@ -1988,7 +2017,7 @@ export const ViewSchedule = () => {
             auto: shift.auto || false,
             date: shiftDate,
           };
-  
+
           // include draftShiftId ONLY if it's an existing draft shift (update/delete)
           if (draftShiftId) {
             payloadShift.draftShiftId = draftShiftId;
@@ -1996,21 +2025,21 @@ export const ViewSchedule = () => {
             // for edited published shifts OR new shifts
             payloadShift.draftShiftId = null;
           }
-  
+
           group.shiftsToSend.push(payloadShift);
         });
       });
-  
+
       // ---- final payload ----
       const draftInput: any[] = [];
-  
+
       draftSessionMap.forEach((group) => {
         if (group.shiftsToSend.length === 0) return;
-  
+
         const weeklyHours = group.shiftsForHours
           .filter((s) => !s.isDelete)
           .reduce((t, s) => t + (s.hours || 0), 0);
-  
+
         if (group.draftScheduleSessionId) {
           // Existing draft schedule session
           draftInput.push({
@@ -2040,7 +2069,7 @@ export const ViewSchedule = () => {
           });
         }
       });
-  
+
       if (draftInput.length === 0) {
         toast({
           title: "Info",
@@ -2048,21 +2077,22 @@ export const ViewSchedule = () => {
         });
         return;
       }
-  
+
       console.log("DRAFT INPUT (changed only):", JSON.stringify(draftInput, null, 2));
       await createDraftScheduleSessions(draftInput);
-  
+
       toast({
         title: "Success",
         description: "Draft schedule saved successfully!",
       });
-  
+
       // refresh
       try {
+        shouldUpdateOriginalDataRef.current = true;
         const clientId = selectedClient?.clientId;
         const addressId = selectedClient?.addressId;
         const formattedDate = convertDateFormat(selectedDate);
-  
+
         if (selectedUserId) {
           await fetchScheduleData(undefined, undefined, formattedDate, selectedUserId);
         } else if (clientId && addressId) {
@@ -2070,10 +2100,11 @@ export const ViewSchedule = () => {
         }
       } catch (refreshError) {
         console.error("Error refreshing schedule data after save:", refreshError);
+        shouldUpdateOriginalDataRef.current = false;
       }
     } catch (error: any) {
       let errorMessage = "Failed to save draft schedule. Please try again.";
-  
+
       if (error.message) {
         if (error.message.includes("No authentication token found")) {
           errorMessage = "Authentication token not found. Please log in again.";
@@ -2085,7 +2116,7 @@ export const ViewSchedule = () => {
           errorMessage = error.message;
         }
       }
-  
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -2095,8 +2126,8 @@ export const ViewSchedule = () => {
       setIsSavingDraft(false);
     }
   };
-  
-  
+
+
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
     setScheduleData(prev => prev.map(item =>
       item.userId === userId
@@ -2169,12 +2200,12 @@ export const ViewSchedule = () => {
       if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
       return (x.clockIn || '').localeCompare(y.clockIn || '');
     }).map(normalizeSession);
-    
+
     const sortedB = [...b].sort((x, y) => {
       if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
       return (x.clockIn || '').localeCompare(y.clockIn || '');
     }).map(normalizeSession);
-    
+
     return JSON.stringify(sortedA) === JSON.stringify(sortedB);
   };
   const schedulesEqual = (a: ScheduleItem[], b: ScheduleItem[]) => {
@@ -2253,7 +2284,7 @@ export const ViewSchedule = () => {
             clockIn: s.clockIn!,
           };
           if (s.clockOut) {
-            base.clockOut = s.clockOut; 
+            base.clockOut = s.clockOut;
           }
           return base;
         });
@@ -2394,7 +2425,7 @@ export const ViewSchedule = () => {
       return 0;
     }
     if (session.clockIn === session.clockOut) {
-      return 24.0; 
+      return 24.0;
     }
     return calculateHours(session.clockIn, session.clockOut);
   };
@@ -2450,9 +2481,9 @@ export const ViewSchedule = () => {
               userName: user.name,
               startDate: date,
               shifts: [{
-                id: session.shiftId,  
-                startTime: session.clockIn || 'N/A',  
-                endTime: session.clockOut || 'N/A',  
+                id: session.shiftId,
+                startTime: session.clockIn || 'N/A',
+                endTime: session.clockOut || 'N/A',
                 hours: hasCompleteTime ? calculateWorkedTimeForExcel(session) : 'N/A'
               }]
             });
@@ -2794,16 +2825,16 @@ export const ViewSchedule = () => {
             </div>
           )}
           <div className="flex w-full justify-between items-center  my-0 py-2 px-4 rounded-t-lg bg-gray-50">
-            {selectedClient && !scheduleLoading && !tableLoading &&  (
+            {selectedClient && !scheduleLoading && !tableLoading && (
               <div className="text-left">
                 <div className="text-lg font-medium text-gray-800">
-                {selectedUserId
-                  ? (selectedUserDisplayName || "Employee")
-                  : (selectedClient?.lastName && String(selectedClient?.name || "").trim().endsWith(String(selectedClient.lastName))
-                    ? selectedClient?.name
-                    : [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(" "))}
+                  {selectedUserId
+                    ? (selectedUserDisplayName || "Employee")
+                    : (selectedClient?.lastName && String(selectedClient?.name || "").trim().endsWith(String(selectedClient.lastName))
+                      ? selectedClient?.name
+                      : [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(" "))}
                 </div>
-               {selectedUserId ? null : <div className="text-sm text-gray-500">
+                {selectedUserId ? null : <div className="text-sm text-gray-500">
                   {[selectedClient.address].filter(Boolean).join(", ")}
                 </div>}
               </div>

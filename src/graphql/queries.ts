@@ -582,6 +582,9 @@ export const SCHEDULE_SESSIONS_WITH_DRAFT_DATA = gql`
           id
           actualHours
         }
+        TimeSetup {
+          actualScheduledTime
+        }
         draftShifts {
           draftScheduleSessionId
           scheduleSessionId

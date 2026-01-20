@@ -67,9 +67,9 @@ const intervalsOverlap = (a: ShiftInterval | null, b: ShiftInterval | null) => {
 const intervalToLogPayload = (interval: ShiftInterval | null) =>
   interval
     ? {
-        start: interval.start.toISOString(),
-        end: interval.end.toISOString(),
-      }
+      start: interval.start.toISOString(),
+      end: interval.end.toISOString(),
+    }
     : undefined;
 
 const convertDateFormat = (dateStr: string) => {
@@ -86,7 +86,7 @@ const sortShiftsByTime = (shifts: Shift[]) => {
 const calculateHours = (start: string, end: string) => {
   const [startH, startM] = start.split(":").map(Number);
   const [endH, endM] = end.split(":").map(Number);
-  if(startH === endH && startM === endM) return 24;
+  if (startH === endH && startM === endM) return 24;
   let hours = endH - startH + (endM - startM) / 60;
   if (hours < 0) hours += 24;
   return parseFloat(hours.toFixed(2));
@@ -234,7 +234,7 @@ interface ScheduleItem {
   userPhone: string;
 }
 import { graphQLClient } from "../../GraphqlClient";
-import { CREATE_MULTIPLE_SCHEDULE_SESSIONS } from "../../graphql/mutation";
+import { CREATE_MULTIPLE_SCHEDULE_SESSIONS, CREATE_DRAFT_SCHEDULE_SESSIONS } from "../../graphql/mutation";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { CustomDatePicker } from "../../components/CustomDatePicker";
@@ -243,6 +243,7 @@ import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/sea
 import { formatDateLocal, getWeekRangeFromDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
 import { useToast } from "../../hooks/use-toast";
 import ResetButton from "../../components/ui/ResetButton";
+import { GET_TIME_SETUP } from "../../graphql/queries";
 
 interface FormData {
   clientId: string;
@@ -282,6 +283,7 @@ export const PrepareSchedule = () => {
     starttime: "",
     endtime: "",
   });
+  const [timeSetupId, setTimeSetupId] = useState<number | undefined>(undefined);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
@@ -289,6 +291,7 @@ export const PrepareSchedule = () => {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [selectedAddressText, setSelectedAddressText] = useState("");
   const [submitLoader, setSubmitLoader] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [auto, setAuto] = useState(false);
   const [publishLoader, setPublishLoader] = useState(false);
   const { createSession, checkClientWeekSchedule } = useScheduleSession();
@@ -476,6 +479,37 @@ export const PrepareSchedule = () => {
       clientId: String(client.id),
       addressId: String(addressId),
     }));
+
+    // Explicitly fetch TimeSetup for the selected client and address
+    (async () => {
+      try {
+        const token = sessionStorage.getItem('token');
+        if (client.id && addressId && token) {
+          const response = await graphQLClient.request<any>(
+            GET_TIME_SETUP,
+            {
+              filter: {
+                clientId: Number(client.id),
+                addressId: Number(addressId)
+              }
+            },
+            { Authorization: `Bearer ${token}` }
+          );
+          if (response?.timeSetup?.data?.length > 0) {
+            const setup = response.timeSetup.data[0];
+            console.log("Fetched TimeSetup:", setup);
+            setTimeSetupId(setup.id);
+          } else {
+            console.warn("No TimeSetup found for this client/address");
+            setTimeSetupId(undefined);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching TimeSetup:", err);
+        setTimeSetupId(undefined);
+      }
+    })();
+
     const fullClientName = [client.name, client.lastName].filter(Boolean).join(" ");
     setClientSearch(fullClientName);
     setShowClientDropdown(false);
@@ -536,66 +570,206 @@ export const PrepareSchedule = () => {
   // Get unique users from schedule data
   const uniqueUsers = getUniqueUsers(scheduleData);
 
-// Updated handleUserAutoToggle - updates user's schedule and all their shifts
-const handleUserAutoToggle = (userId: number, enabled: boolean) => {
-  setScheduleData(prev => prev.map(item => {
-    if (item.userId === userId) {
-      return {
-        ...item,
-        auto: enabled,
-        shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
-      };
-    }
-    return item;
-  }));
-
-  toast({
-    title: "Success",
-    description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
-  });
-};
-
-// Updated handleShiftAutoToggle - updates individual shift and schedule auto with proper logic
-const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
-  setScheduleData(prev => prev.map(item => {
-    if (item.userId === userId && item.startDate === date) {
-      const updatedShifts = item.shifts.map(s => 
-        s.id === shiftId ? { ...s, auto: enabled } : s
-      );
-      
-      // Logic for schedule auto:
-      let scheduleAuto;
-      if (enabled) {
-        // When enabling a shift, always enable schedule auto (or keep it enabled if already enabled)
-        scheduleAuto = true;
-      } else {
-        // When disabling a shift, check if any other shifts still have auto enabled
-        scheduleAuto = updatedShifts.some(shift => shift.auto === true);
+  // Updated handleUserAutoToggle - updates user's schedule and all their shifts
+  const handleUserAutoToggle = (userId: number, enabled: boolean) => {
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId) {
+        return {
+          ...item,
+          auto: enabled,
+          shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+        };
       }
-      
-      return {
-        ...item,
-        auto: scheduleAuto,
-        shifts: updatedShifts
-      };
+      return item;
+    }));
+
+    toast({
+      title: "Success",
+      description: `Auto setting ${enabled ? 'enabled' : 'disabled'} for user.`,
+    });
+  };
+
+  // Updated handleShiftAutoToggle - updates individual shift and schedule auto with proper logic
+  const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
+    setScheduleData(prev => prev.map(item => {
+      if (item.userId === userId && item.startDate === date) {
+        const updatedShifts = item.shifts.map(s =>
+          s.id === shiftId ? { ...s, auto: enabled } : s
+        );
+
+        // Logic for schedule auto:
+        let scheduleAuto;
+        if (enabled) {
+          // When enabling a shift, always enable schedule auto (or keep it enabled if already enabled)
+          scheduleAuto = true;
+        } else {
+          // When disabling a shift, check if any other shifts still have auto enabled
+          scheduleAuto = updatedShifts.some(shift => shift.auto === true);
+        }
+
+        return {
+          ...item,
+          auto: scheduleAuto,
+          shifts: updatedShifts
+        };
+      }
+      return item;
+    }));
+  };
+
+  // Add back the handleScheduleAutoToggle function for table-level auto control
+  const handleScheduleAutoToggle = (enabled: boolean) => {
+    setScheduleData(prev => prev.map(item => ({
+      ...item,
+      auto: enabled,
+      shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+    })));
+
+    toast({
+      title: "Success",
+      description: `Schedule auto setting ${enabled ? 'enabled' : 'disabled'} for all users and shifts.`,
+    });
+  };
+
+
+  const handleSaveDraft = async () => {
+    if (scheduleData.length === 0) {
+      toast({
+        title: "Error",
+        description: "No schedule data to save.",
+        variant: "destructive",
+      });
+      return;
     }
-    return item;
-  }));
-};
 
-// Add back the handleScheduleAutoToggle function for table-level auto control
-const handleScheduleAutoToggle = (enabled: boolean) => {
-  setScheduleData(prev => prev.map(item => ({
-    ...item,
-    auto: enabled,
-    shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
-  })));
+    setIsSavingDraft(true);
+    try {
+      // Get fresh token
+      const freshToken = sessionStorage.getItem('token');
+      if (!freshToken) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in again.",
+          variant: "destructive",
+        });
+        setIsSavingDraft(false);
+        return;
+      }
 
-  toast({
-    title: "Success",
-    description: `Schedule auto setting ${enabled ? 'enabled' : 'disabled'} for all users and shifts.`,
-  });
-};
+      // Map over uniqueUsers asynchronously to handle side-effect API calls if needed
+      const draftPayload = [];
+
+      for (const user of uniqueUsers) {
+        // Get all schedule items for this user
+        const userSchedules = scheduleData.filter(item => item.userId === user.id);
+        const firstSchedule = userSchedules[0];
+
+        // Ensure we have checkScheduleSessionId
+        const mapKey = `${firstSchedule?.clientId}-${firstSchedule?.addressId}-${user.id}`;
+        let checkScheduleSessionId = checkScheduleSessionIdMapRef.current.get(mapKey);
+
+        if (!checkScheduleSessionId && currentWeekRange?.startOfWeek) {
+          try {
+            // Attempt to fetch it if missing (e.g. after page reload)
+            const startOfWeekStr = formatDateLocal(currentWeekRange.startOfWeek);
+            // Verify we have valid numbers
+            if (firstSchedule?.clientId && firstSchedule?.addressId && user.id) {
+              const checkResult = await checkClientWeekSchedule(
+                firstSchedule.clientId,
+                startOfWeekStr,
+                firstSchedule.addressId,
+                user.id,
+                "prepare"
+              );
+              if (checkResult && checkResult.id) {
+                checkScheduleSessionId = checkResult.id;
+                checkScheduleSessionIdMapRef.current.set(mapKey, checkResult.id);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to fetch checkScheduleSessionId for user", user.id, e);
+          }
+        }
+
+        // Create a map to deduplicate shifts by date and time
+        const shiftMap = new Map();
+
+        userSchedules.forEach(schedule => {
+          schedule.shifts.forEach(shift => {
+            const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
+            if (!shiftMap.has(shiftKey)) {
+              shiftMap.set(shiftKey, {
+                // Formatting date to MM-DD-YYYY to match handlePublish behavior
+                date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'),
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+                hours: shift.hours,
+                auto: shift.auto ?? null,
+                isDelete: false,
+                draftShiftId: null
+              });
+            }
+          });
+        });
+
+        const userShifts = Array.from(shiftMap.values());
+        const weeklyHours = parseFloat(userShifts.reduce((total: number, shift: any) => total + shift.hours, 0).toFixed(2));
+
+        draftPayload.push({
+          clientId: firstSchedule?.clientId,
+          addressId: firstSchedule?.addressId,
+          userId: user.id,
+          startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)),
+          endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)),
+          checkScheduleSessionId: checkScheduleSessionId || null,
+          scheduleSessionId: null,
+          weeklyHours: weeklyHours,
+          shifts: userShifts,
+          auto: firstSchedule?.auto || false
+        });
+      }
+
+      console.log('Draft Payload:', draftPayload);
+
+      await graphQLClient.request(
+        CREATE_DRAFT_SCHEDULE_SESSIONS,
+        { input: draftPayload },
+        { Authorization: `Bearer ${freshToken}` }
+      );
+
+      // Reset everything after successful API call
+      setScheduleData([]);
+      sessionStorage.removeItem('scheduleData');
+      setIsPublished(false);
+      setCurrentWeekRange(null);
+      resetForm();
+
+      toast({
+        title: "Success",
+        description: "Schedule saved in draft",
+      });
+
+    } catch (err: any) {
+      console.error("Error saving draft:", err);
+      let errorMessage = "Failed to save draft. Please try again.";
+      if (err.message) {
+        if (err.message.includes("Network Error") || err.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (err.response?.errors && err.response.errors.length > 0) {
+          errorMessage = err.response.errors[0].message || errorMessage;
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
   const handlePublish = async () => {
     setPublishModal({ isOpen: true });
@@ -617,7 +791,10 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       }
 
       // Transform data structure for backend
-      const backendData = uniqueUsers.map(user => {
+      // map to handle async fetching of missing IDs
+      const backendData = [];
+
+      for (const user of uniqueUsers) {
         // Get all schedule items for this user
         const userSchedules = scheduleData.filter(item => item.userId === user.id);
 
@@ -632,11 +809,21 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
             if (!shiftMap.has(shiftKey)) {
               shiftMap.set(shiftKey, {
-                date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'), // Convert to MM-DD-YYYY
+                // Revert to MM-DD-YYYY using split/slice/concat logic which is verified for drafts
+                date: shift.date.split('-').slice(1).concat(shift.date.split('-')[0]).join('-'),
                 startTime: shift.startTime,
                 endTime: shift.endTime,
                 hours: shift.hours,
-                auto: shift.auto ?? null
+                auto: shift.auto ?? null,
+                // Add timeSetupId if we have one (usually from the first selected client/address context)
+                // Note: timeSetupId is global to the form state, assuming one client context per publish batch 
+                // (which is true for PrepareSchedule as it handles one set of schedules). However, if scheduleData contains multiple clients (via add?), 
+                // we might need to derive it from each item. But scheduleData items don't store timeSetupId currently.
+                // We'll rely on the state captured during selection OR attempt to find it if we can.
+                // For now, use the state variable.
+                // Actually, backend needs it at session level or shift level? 
+                // Error showed it at session level: `timeSetupId: undefined`.
+                // So I will add it to the SESSION object below, not shift map.
               });
             }
           });
@@ -647,23 +834,46 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
 
         // Calculate total weekly hours for this user
         const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
-      
+
         // Get the checkScheduleSessionId from the map
         const mapKey = `${firstSchedule?.clientId}-${firstSchedule?.addressId}-${user.id}`;
-        const checkScheduleSessionId = checkScheduleSessionIdMapRef.current.get(mapKey) || null;
-        
-        return {
+        let checkScheduleSessionId = checkScheduleSessionIdMapRef.current.get(mapKey);
+
+        // Fetch ID if missing
+        if (!checkScheduleSessionId && currentWeekRange?.startOfWeek) {
+          try {
+            const startOfWeekStr = formatDateLocal(currentWeekRange.startOfWeek);
+            if (firstSchedule?.clientId && firstSchedule?.addressId && user.id) {
+              const checkResult = await checkClientWeekSchedule(
+                firstSchedule.clientId,
+                startOfWeekStr,
+                firstSchedule.addressId,
+                user.id,
+                "prepare"
+              );
+              if (checkResult && checkResult.id) {
+                checkScheduleSessionId = checkResult.id;
+                checkScheduleSessionIdMapRef.current.set(mapKey, checkResult.id);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to fetch checkScheduleSessionId in publish for user", user.id, e);
+          }
+        }
+
+        backendData.push({
           clientId: firstSchedule?.clientId,
           addressId: firstSchedule?.addressId,
           userId: user.id,
-          startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Convert to MM-DD-YYYY
-          endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Convert to MM-DD-YYYY
-          checkScheduleSessionId: checkScheduleSessionId,
+          startDate: convertDateFormat(formatDateLocal(currentWeekRange?.startOfWeek)), // Revert to MM-DD-YYYY
+          endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Revert to MM-DD-YYYY
+          checkScheduleSessionId: checkScheduleSessionId || null,
           weeklyHours: weeklyHours,
           shifts: userShifts,
-          auto: firstSchedule?.auto || false
-        };
-      });
+          auto: firstSchedule?.auto || false,
+          timeSetupId: timeSetupId // Pass the captured timeSetupId
+        });
+      }
 
       console.log('Backend Data Structure:', backendData);
       console.log('CheckScheduleSessionIdMap contents:', Array.from(checkScheduleSessionIdMapRef.current.entries()));
@@ -746,7 +956,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
       );
 
       // message === null -> allowed (same as previous overlap === true)
-      if (result ) {
+      if (result) {
         // Store id in map using combination of parameters as key
         const mapKey = `${clientId}-${addressId}-${userId}`;
         if (result.id) {
@@ -757,7 +967,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         console.log("Existing Shifts:", JSON.stringify(result.shifts));
         return result; // Return the full result object
       }
-    
+
       // message present -> blocked; show server message
       if (result?.message) {
         // Check if it's an assignment not found error
@@ -817,17 +1027,17 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         setSubmitLoader(false);
         return;
       }
-      
+
       // Get existing shifts from the results
       const currentExistingShifts = results?.shifts || [];
       console.log("Results from handleCheck:", JSON.stringify(results));
       console.log("Current existing shifts:", JSON.stringify(currentExistingShifts));
-      
+
       // OK → proceed
       setHasOverlapError(false);
       const newShiftWraps = shiftSpansNextDay(form.starttime, form.endtime);
       const newInterval = buildShiftInterval(form.date, form.starttime, form.endtime);
-      
+
       // Check for local overlap before proceeding
       const localCandidates = getLocalShiftCandidates(
         scheduleData,
@@ -840,7 +1050,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         return newInterval && intervalsOverlap(newInterval, shiftInterval);
       });
       const hasLocalOverlap = Boolean(localOverlapShift);
-      
+
       if (hasLocalOverlap) {
         logOverlapEvent("submit-local-check", {
           userId: form.userId,
@@ -860,20 +1070,20 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
         setSubmitLoader(false);
         return;
       }
-      
+
       let newScheduleItems = [];
       if (applyAllWeek && currentWeekRange) {
         // Add for each day in the week (Thu-Wed)
         const startDate = new Date(currentWeekRange.startOfWeek);
         const updatedScheduleData = [...scheduleData];
         for (let i = 0; i < 7; i++) {
-        
+
           const dateObj = new Date(startDate);
           dateObj.setDate(startDate.getDate() + i);
           const dateStr = formatDateLocal(dateObj);
-          
+
           const loopInterval = buildShiftInterval(dateStr, form.starttime, form.endtime);
-          
+
           // Check if shift overlaps with server-side existing shifts, including adjacent-day spans
           const serverCandidates = getServerShiftCandidates(
             currentExistingShifts,
@@ -890,7 +1100,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             return hasOverlap;
           });
           const hasServerOverlap = Boolean(serverConflict);
-          
+
           // Check if shift overlaps with local existing shifts plus adjacent-day spans
           const localCandidatesForDate = getLocalShiftCandidates(
             scheduleData,
@@ -908,7 +1118,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             return hasOverlap;
           });
           const hasLocalOverlapPerDate = Boolean(localConflict);
-          
+
           if (hasServerOverlap) {
             logOverlapEvent("apply-all-week-server", {
               userId: form.userId,
@@ -929,8 +1139,8 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
               conflictingInterval: intervalToLogPayload(localConflictInterval),
             });
           }
-          
-          if (hasServerOverlap || hasLocalOverlapPerDate){
+
+          if (hasServerOverlap || hasLocalOverlapPerDate) {
             toast({
               title: "Overlapping Shift",
               description: "Shift time overlaps with existing shift for this user and date",
@@ -938,7 +1148,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             });
             continue; // Skip overlapping shifts
           }
-          
+
           // Check if user already has a schedule for this date
           const existingScheduleIndex = updatedScheduleData.findIndex(
             item => item.userId === Number(form.userId) && item.startDate === dateStr
@@ -983,14 +1193,14 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 },
               ],
               clientName: scheduleData[0]?.clientName
-              || clientSearch
-              || [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ')
-              || "Unknown Client",
+                || clientSearch
+                || [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ')
+                || "Unknown Client",
               address: scheduleData[0]?.address || selectedAddressText || selectedAddress?.address || "Unknown Address",
               userName: userSearch || selectedUser?.name || "Unknown User",
               userPhone: selectedUserPhone || selectedUser?.phone || '',
-            
-          });
+
+            });
           }
         }
 
@@ -1013,7 +1223,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           return hasOverlap;
         });
         const hasServerOverlap = Boolean(serverConflict);
-        
+
         // Check if shift overlaps with local existing shifts (including adjacent spans)
         const localCandidatesSingleDay = getLocalShiftCandidates(
           scheduleData,
@@ -1031,7 +1241,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           return hasOverlap;
         });
         const hasLocalOverlapSingleDay = Boolean(localConflict);
-        
+
         if (hasServerOverlap) {
           logOverlapEvent("single-day-server", {
             userId: form.userId,
@@ -1052,7 +1262,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             conflictingInterval: intervalToLogPayload(localConflictInterval),
           });
         }
-        
+
         if (hasServerOverlap || hasLocalOverlapSingleDay) {
           toast({
             title: "Overlapping Shift",
@@ -1062,7 +1272,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
           setSubmitLoader(false);
           return; // Skip if overlapping
         }
-        
+
         // Check if user already has a schedule for this date
         const existingScheduleIndex = scheduleData.findIndex(
           item => item.userId === Number(form.userId) && item.startDate === form.date
@@ -1109,11 +1319,11 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
               },
             ],
             clientName: clientSearch
-            || [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ')
-            || "Unknown Client",
-          address: selectedAddressText || selectedAddress?.address || "Unknown Address",
-          userName: userSearch || selectedUser?.name || "Unknown User",
-          userPhone: selectedUserPhone || selectedUser?.phone || '',
+              || [selectedClient?.name, selectedClient?.lastName].filter(Boolean).join(' ')
+              || "Unknown Client",
+            address: selectedAddressText || selectedAddress?.address || "Unknown Address",
+            userName: userSearch || selectedUser?.name || "Unknown User",
+            userPhone: selectedUserPhone || selectedUser?.phone || '',
           });
         }
       }
@@ -1246,7 +1456,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 value={selectedAddressText}
                 placeholder="Location"
                 readOnly
-                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished  ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
+                className={`${inputClasses} ${scheduleData.length > 0 && !isPublished ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
               />
               {errors.addressId && (
                 <ErrorMessage message={errors.addressId} />
@@ -1434,9 +1644,9 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
                 //   Reset
                 // </Button>
                 <ResetButton
-                onClick={resetForm}
-                confirmTitle="Confirm Reset"
-                confirmMessage="This will clear the form. Proceed?"
+                  onClick={resetForm}
+                  confirmTitle="Confirm Reset"
+                  confirmMessage="This will clear the form. Proceed?"
                 />
               )}
             </div>
@@ -1465,6 +1675,8 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             isEditMode={true}
             onScheduleDataChange={setScheduleData}
             onPublish={handlePublish}
+            onSave={handleSaveDraft}
+            isSaving={isSavingDraft}
             onPrint={() => { }}
             onDownloadExcel={() => { }}
             onToggleEditMode={() => { }}
@@ -1475,7 +1687,7 @@ const handleScheduleAutoToggle = (enabled: boolean) => {
             onUserAutoToggle={handleUserAutoToggle}
             onShiftAutoToggle={handleShiftAutoToggle}
             onScheduleAutoToggle={handleScheduleAutoToggle}
-            hideActionButtons={true}
+            hideActionButtons={false}
             existingShifts={existingShifts}
             hasChanges={true}
           />

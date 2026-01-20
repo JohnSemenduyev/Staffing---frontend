@@ -68,6 +68,10 @@ export interface ScheduleItem {
   userName: string;
   userPhone: string;
   draftScheduleSession?: boolean;
+  timeSetup?: {
+    actualScheduledTime: number;
+  };
+  uniqueKey?: string;
 }
 
 export interface WeekRange {

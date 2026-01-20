@@ -42,6 +42,9 @@ interface ScheduleItem {
   userName: string;
   userPhone: string;
   draftScheduleSession?: boolean;
+  timeSetup?: {
+    actualScheduledTime: number;
+  };
 }
 
 interface RowGroup {
@@ -101,12 +104,25 @@ interface ScheduleTableProps {
 
 const hasTimeMismatch = (
   shift: Shift,
-  session?: { clockIn?: string; clockOut?: string }
+  session?: { clockIn?: string; clockOut?: string },
+  toleranceMinutes: number = 0
 ): boolean => {
   if (!session) return false;
-  const startTimeMismatch = shift.startTime !== session.clockIn;
-  const endTimeMismatch = shift.endTime !== session.clockOut;
-  return startTimeMismatch || endTimeMismatch;
+
+  const timeToMinutes = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const getDiff = (t1?: string, t2?: string) => {
+    if (!t1 || !t2) return 0;
+    return Math.abs(timeToMinutes(t1) - timeToMinutes(t2));
+  };
+
+  const startTimeDiff = getDiff(shift.startTime, session.clockIn);
+  const endTimeDiff = getDiff(shift.endTime, session.clockOut);
+
+  return startTimeDiff > toleranceMinutes || endTimeDiff > toleranceMinutes;
 };
 
 const findSessionForShift = (
@@ -162,13 +178,13 @@ const doTimesOverlap = (start1: string, end1: string, start2: string, end2: stri
         aEnd = a[1];
       const bStart = b[0],
         bEnd = b[1];
-      
+
       // Special handling: if a shift ends at 24:00 and another starts at 00:00, no overlap
       if ((aEnd === 24 * 60 && end1 === '24:00' && bStart === 0 && start2 === '00:00') ||
-          (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
+        (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
         continue; // Skip this range comparison
       }
-      
+
       // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
       const overlapStart = Math.max(aStart, bStart);
       const overlapEnd = Math.min(aEnd, bEnd);
@@ -312,7 +328,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   hasChanges,
   selectedUserId,
   onSave,
-  isSaving = false,
+  isSaving,
 }) => {
   const { toast: hookToast } = useToast();
   // console.log("scheduleData", scheduleData);
@@ -382,7 +398,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   ) => {
     const key = `${clientId}-${addressId}-${userId}`;
     const userShifts = apiExistingShiftsData.get(key) || [];
-    
+
     // Check same day shifts
     let overlappingShift = userShifts.find((shift: any) => {
       const shiftDateStr = shift.date.includes("T")
@@ -547,6 +563,25 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   const rowGroups = getRowGroups();
 
+  // ---------- Logging Helper ----------
+
+  const logScheduleState = (action: string, currentData: ScheduleItem[], extraDetails?: any) => {
+    const totalShifts = currentData.reduce((acc, item) => acc + item.shifts.filter(s => !(s as any).isDelete).length, 0);
+    const draftShifts = currentData.reduce((acc, item) =>
+      acc + item.shifts.filter(s =>
+        (!(s as any).isDelete) && ((s as any).isDraft || (s as any).draftShiftId || (s as any).draftScheduleSessionId)
+      ).length,
+      0);
+    const publishedShifts = totalShifts - draftShifts;
+
+    console.group(`📅 Schedule Action: ${action}`);
+    if (extraDetails) console.log("Details:", extraDetails);
+    console.log("Stats:", { totalShifts, draftShifts, publishedShifts });
+    // console.log("Full Schedule Data:", JSON.parse(JSON.stringify(currentData)));
+    console.dir(currentData, { depth: null, colors: true });
+    console.groupEnd();
+  };
+
   // ---------- Delete shift ----------
 
   const handleDeleteShift = (userId: number, date: string, shiftId: number) => {
@@ -557,24 +592,29 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     const { userId, date, shiftId } = deleteModal;
     if (userId == null || shiftId == null || !date) return;
 
+    logScheduleState("Delete Shift Attempt", scheduleData, { userId, date, shiftId });
+
     // Find the shift being deleted
     const shiftToDelete = scheduleData
       .find(item => item.userId === userId && item.startDate === date)
       ?.shifts.find(shift => shift.id === shiftId);
 
-    if (!shiftToDelete) return;
+    if (!shiftToDelete) {
+      console.warn("Shift to delete not found");
+      return;
+    }
 
     // Check if it's a draft shift
-    const isDraftShift = (shiftToDelete as any)?.draftShiftId || 
-                        (shiftToDelete as any)?.draftScheduleSessionId ||
-                        (shiftToDelete.id > 2000000000000);
-    
+    const isDraftShift = (shiftToDelete as any)?.draftShiftId ||
+      (shiftToDelete as any)?.draftScheduleSessionId ||
+      (shiftToDelete.id > 2000000000000);
+
     if (isDraftShift) {
       // For draft shifts, mark with isDelete flag instead of removing
       if (onDraftShiftDeletion) {
         onDraftShiftDeletion(shiftToDelete);
       }
-      
+
       const updatedData = scheduleData.map((item) => {
         if (item.userId === userId && item.startDate === date) {
           return {
@@ -588,12 +628,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       });
 
       onScheduleDataChange(updatedData);
+      logScheduleState("Delete Shift Success (Draft)", updatedData, { userId, date, shiftId });
       setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
       return;
     }
 
     // For non-draft shifts, use existing deletion logic
     if (isLastShiftForUser(userId, shiftId)) {
+      console.log("Deleting last shift for user - prompting for schedule deletion");
       setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
       setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
       return;
@@ -612,6 +654,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       .filter((item) => item.shifts.length > 0);
 
     onScheduleDataChange(updatedData);
+    logScheduleState("Delete Shift Success (Published)", updatedData, { userId, date, shiftId });
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
   };
 
@@ -625,6 +668,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     setDeletingLastShift(true);
     const { userId } = deleteLastShiftModal;
     if (userId == null) return;
+
+    logScheduleState("Delete Last Shift (Schedule Deletion) Attempt", scheduleData, { userId });
 
     try {
       const sessionIds = new Set<number>();
@@ -687,6 +732,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const updatedData = scheduleData.filter((item) => item.userId !== userId);
       onScheduleDataChange(updatedData);
       onToggleEditMode();
+
+      logScheduleState("Delete Last Shift (Schedule Deletion) Success", updatedData, { userId });
 
       hookToast({
         title: "Success",
@@ -756,6 +803,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     const { userId, date, shift } = editModal;
     if (!shift || userId == null || !date) return;
 
+    logScheduleState("Edit Shift Attempt", scheduleData, { userId, date, shiftId: shift.id, newTimes: editForm });
+
     if (!editForm.starttime || !editForm.endtime) {
       hookToast({
         title: "Validation Error",
@@ -785,6 +834,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           newShift: `${editForm.starttime}-${editForm.endtime}`,
           existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
           shiftId: existingShift.id
+        });
+        logScheduleState("Edit Shift Blocked - Local Overlap (Same Day)", scheduleData, {
+          targetDate: date,
+          conflictShiftId: existingShift.id
         });
         hookToast({
           title: "Overlapping Shift",
@@ -820,6 +873,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
           shiftId: existingShift.id
         });
+        logScheduleState("Edit Shift Blocked - Local Overlap (Previous Day)", scheduleData, {
+          targetDate: date,
+          prevDate,
+          conflictShiftId: existingShift.id
+        });
         hookToast({
           title: "Overlapping Shift",
           description:
@@ -854,6 +912,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             existingShift: `${existingShift.startTime}-${existingShift.endTime}`,
             shiftId: existingShift.id
           });
+          logScheduleState("Edit Shift Blocked - Local Overlap (Next Day)", scheduleData, {
+            targetDate: date,
+            nextDate,
+            conflictShiftId: existingShift.id
+          });
           hookToast({
             title: "Overlapping Shift",
             description:
@@ -880,6 +943,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         shift.id
       )
     ) {
+      logScheduleState("Edit Shift Blocked - API Overlap", scheduleData, { date });
       return;
     }
 
@@ -906,9 +970,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         });
       }
       return hasOverlap;
-    }); 
+    });
 
     if (hasBackendOverlap) {
+      logScheduleState("Edit Shift Blocked - Backend Overlap (Same Day)", scheduleData, { date });
       hookToast({
         title: "Overlapping Shift",
         description: "Shift time overlaps with existing shifts from backend.",
@@ -947,6 +1012,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       });
 
       if (prevDayBackendOverlap) {
+        logScheduleState("Edit Shift Blocked - Backend Overlap (Previous Day)", scheduleData, { date, prevDate });
         hookToast({
           title: "Overlapping Shift",
           description: "Shift time overlaps with existing shifts from backend (previous day).",
@@ -985,6 +1051,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       });
 
       if (nextDayBackendOverlap) {
+        logScheduleState("Edit Shift Blocked - Backend Overlap (Next Day)", scheduleData, { date, nextDate });
         hookToast({
           title: "Overlapping Shift",
           description: "Shift time overlaps with existing shifts from backend (next day).",
@@ -1014,16 +1081,16 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           shifts: item.shifts.map((s) =>
             s.id === shift.id
               ? {
-                  ...s,
-                  startTime: editForm.starttime,
-                  endTime: editForm.endtime,
-                  hours: calculateHours(
-                    editForm.starttime,
-                    editForm.endtime
-                  ),
-                  confirm: false,
-                  reject: false,
-                }
+                ...s,
+                startTime: editForm.starttime,
+                endTime: editForm.endtime,
+                hours: calculateHours(
+                  editForm.starttime,
+                  editForm.endtime
+                ),
+                confirm: false,
+                reject: false,
+              }
               : s
           ),
         };
@@ -1032,6 +1099,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     });
 
     onScheduleDataChange(updatedData);
+    logScheduleState("Edit Shift Success", updatedData, { userId, date, shiftId: shift.id });
     setEditModal({ isOpen: false, shift: null, userId: null, date: null });
     setEditForm({ starttime: "", endtime: "" });
   };
@@ -1051,6 +1119,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     setDeletingUser(true);
     const { userId } = deleteUserModal;
     if (userId == null) return;
+
+    logScheduleState("Delete User Data Attempt", scheduleData, { userId });
 
     try {
       const scheduleSessionIds = new Set<number>();
@@ -1140,6 +1210,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       onScheduleDataChange(updatedData);
       onToggleEditMode();
 
+      logScheduleState("Delete User Data Success", updatedData, { userId });
+
       hookToast({
         title: "Success",
         description: "Schedule deleted successfully!",
@@ -1174,15 +1246,15 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const updatedData = scheduleData.map((item) =>
         item.userId === userId
           ? {
-              ...item,
+            ...item,
+            auto: enabled,
+            shifts: item.shifts.map((s) => ({
+              ...s,
               auto: enabled,
-              shifts: item.shifts.map((s) => ({
-                ...s,
-                auto: enabled,
-                confirm: false,
-                reject: false,
-              })),
-            }
+              confirm: false,
+              reject: false,
+            })),
+          }
           : item
       );
       onScheduleDataChange(updatedData);
@@ -1220,7 +1292,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
   const handleDragLeave = (e: React.DragEvent) => {
     setDragOverCell(null);
-  };  
+  };
 
   const handleDrop = (
     e: React.DragEvent,
@@ -1235,6 +1307,12 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     }
 
     const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
+
+    logScheduleState("Drag & Drop Attempt", scheduleData, {
+      from: { userId: sourceUserId, date: sourceDate, shiftId: shift.id },
+      to: { userId: targetUserId, date: targetDate, rowIdx: targetRowIdx }
+    });
+
 
     const cleanupDragState = () => {
       setDraggedShift(null);
@@ -1264,7 +1342,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             existingShift.startTime,
             existingShift.endTime
           );
-        
+
         if (hasOverlap) {
           console.log("⚠️ OVERLAP DETECTED - Same Day (Drag & Drop - Backend):", {
             targetDate: targetDate,
@@ -1297,7 +1375,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             existingShift.startTime,
             existingShift.endTime
           );
-        
+
         if (hasOverlap) {
           console.log("⚠️ OVERLAP DETECTED - Previous Day (Drag & Drop - Backend):", {
             targetDate: targetDate,
@@ -1327,7 +1405,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
               existingShift.startTime,
               existingShift.endTime
             );
-          
+
           if (hasOverlap) {
             console.log("⚠️ OVERLAP DETECTED - Next Day (Drag & Drop - Backend):", {
               targetDate: targetDate,
@@ -1381,6 +1459,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     };
 
     if (checkBackendOverlap()) {
+      logScheduleState("Drop Blocked - Backend Overlap", scheduleData, { targetDate, shiftId: shift.id });
       handleOverlapError(
         "Cannot drop shift here - it overlaps with existing shifts from backend."
       );
@@ -1388,6 +1467,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     }
 
     if (checkApiOverlapFn()) {
+      logScheduleState("Drop Blocked - API Overlap", scheduleData, { targetDate, shiftId: shift.id });
       cleanupDragState();
       return;
     }
@@ -1417,9 +1497,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const sortedShifts = sortShiftsByTime(
         existingSchedule.shifts.filter((s: any) => !(s as any).isDelete)
       );
-    
+
       const targetCellHasData = targetRowIdx < sortedShifts.length;
-    
+
       if (targetCellHasData) {
         // ---- Replace (update existing cell) ----
         // Check same day overlaps
@@ -1441,8 +1521,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           }
           return hasOverlap;
         });
-    
+
         if (hasLocalOverlap) {
+          logScheduleState("Drop Blocked - Local Overlap (Replace - Same Day)", scheduleData, { targetDate });
           handleOverlapError(
             "Cannot drop shift here - it overlaps with existing shifts for this user and date."
           );
@@ -1481,6 +1562,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         });
 
         if (hasPrevDayOverlap) {
+          logScheduleState("Drop Blocked - Local Overlap (Replace - Previous Day)", scheduleData, { targetDate, prevDate });
           handleOverlapError(
             "Cannot drop shift here - it overlaps with existing shifts from previous day."
           );
@@ -1515,35 +1597,36 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           });
 
           if (hasNextDayOverlap) {
+            logScheduleState("Drop Blocked - Local Overlap (Replace - Next Day)", scheduleData, { targetDate, nextDate });
             handleOverlapError(
               "Cannot drop shift here - it overlaps with existing shifts on next day."
             );
             return;
           }
         }
-    
+
         // This is the shift currently sitting in the target cell
         const targetExisting = sortedShifts[targetRowIdx];
-    
+
         // Make a copied shift (new values), but KEEP the identity of the target cell
         const replacementShift: any = createCopiedShift();
-    
+
         // ✅ keep the target cell's id so UI replaces in-place
         replacementShift.id = targetExisting.id;
-    
+
         // ✅ if target cell is a DRAFT shift, keep its draft identifiers so backend UPDATES it
         replacementShift.draftShiftId =
           (targetExisting as any)?.draftShiftId ?? null;
-    
+
         replacementShift.draftScheduleSessionId =
           (targetExisting as any)?.draftScheduleSessionId ?? null;
-    
+
         // ✅ keep scheduleSessionId from target if present, else from replacement
         replacementShift.scheduleSessionId =
           (targetExisting as any)?.scheduleSessionId ??
           replacementShift.scheduleSessionId ??
           null;
-    
+
         const updatedScheduleData = scheduleData.map((item) => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
             // IMPORTANT: replace by matching the targetExisting.id, not by array index,
@@ -1551,7 +1634,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             const updatedShifts = item.shifts.map((s: any) =>
               s.id === targetExisting.id ? replacementShift : s
             );
-    
+
             return {
               ...item,
               shifts: sortShiftsByTime(updatedShifts),
@@ -1559,8 +1642,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           }
           return item;
         });
-    
+
         onScheduleDataChange(updatedScheduleData);
+        logScheduleState("Drop Success (Replace)", updatedScheduleData, {
+          targetUserId,
+          targetDate,
+          replacementShiftId: replacementShift.id
+        });
       } else {
         // ---- Add (new row in that date) ----
         // Check same day overlaps
@@ -1581,8 +1669,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           }
           return hasOverlap;
         });
-    
+
         if (hasLocalOverlap) {
+          logScheduleState("Drop Blocked - Local Overlap (Add - Same Day)", scheduleData, { targetDate });
           handleOverlapError(
             "Cannot drop shift here - it overlaps with existing shifts for this user and date."
           );
@@ -1621,6 +1710,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         });
 
         if (hasPrevDayOverlap) {
+          logScheduleState("Drop Blocked - Local Overlap (Add - Previous Day)", scheduleData, { targetDate, prevDate });
           handleOverlapError(
             "Cannot drop shift here - it overlaps with existing shifts from previous day."
           );
@@ -1655,19 +1745,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           });
 
           if (hasNextDayOverlap) {
+            logScheduleState("Drop Blocked - Local Overlap (Add - Next Day)", scheduleData, { targetDate, nextDate });
             handleOverlapError(
               "Cannot drop shift here - it overlaps with existing shifts on next day."
             );
             return;
           }
         }
-    
+
         const copiedShift: any = createCopiedShift();
-    
+
         // ✅ New shift must be NEW draft (no draft ids)
         copiedShift.draftShiftId = null;
         copiedShift.draftScheduleSessionId = null;
-    
+
         const updatedScheduleData = scheduleData.map((item) => {
           if (item.userId === targetUserId && item.startDate === targetDate) {
             const updatedShifts = [...item.shifts, copiedShift];
@@ -1678,12 +1769,18 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           }
           return item;
         });
-    
+
         onScheduleDataChange(updatedScheduleData);
+        logScheduleState("Drop Success (Add)", updatedScheduleData, {
+          targetUserId,
+          targetDate,
+          newShiftId: copiedShift.id
+        });
       }
     }
     else {
       if (checkBackendOverlap()) {
+        logScheduleState("Drop Blocked - Backend Overlap (New Row)", scheduleData, { targetDate });
         handleOverlapError(
           "Cannot drop shift here - it overlaps with existing shifts from backend."
         );
@@ -1691,6 +1788,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       }
 
       if (checkApiOverlapFn()) {
+        logScheduleState("Drop Blocked - API Overlap (New Row)", scheduleData, { targetDate });
         cleanupDragState();
         return;
       }
@@ -1717,7 +1815,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         userPhone: targetGroup?.phone || sourceSchedule.userPhone,
       };
 
-      onScheduleDataChange([...scheduleData, newSchedule]);
+      const newData = [...scheduleData, newSchedule];
+      onScheduleDataChange(newData);
+      logScheduleState("Drop Success (New Row)", newData, {
+        targetUserId,
+        targetDate,
+        newShiftId: copiedShift.id
+      });
     }
 
     hookToast({
@@ -1776,38 +1880,37 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   {[...Array(rowCount)].map((_, rowIdx) => (
                     <tr
                       key={`${row.id}-row-${rowIdx}`}
-                      className={`hover:bg-blue-50 transition-colors ${
-                        (rowIndex + rowIdx) % 2 === 0 ? "bg-gray-50" : "bg-white"
-                      }`}
+                      className={`hover:bg-blue-50 transition-colors ${(rowIndex + rowIdx) % 2 === 0 ? "bg-gray-50" : "bg-white"
+                        }`}
                     >
 
-                     {rowIdx === 0 && (
-                       <td
-                         className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
-                         rowSpan={rowCount}
-                       >
-                         <div className="font-medium text-gray-800">
-                           {selectedUserId ? row.clientName : row.name}
-                         </div>
-                     
-                         <div className="text-xs text-gray-500 whitespace-normal">
-                           {selectedUserId ? (
-                             (() => {
-                               const { line1, line2 } = addressTwoLines(row.address);
-                               return (
-                                 <>
-                                   {line1}
-                                   {line2 ? <br /> : null}
-                                   {line2}
-                                 </>
-                               );
-                             })()
-                           ) : (
-                             formatUSPhone(row.phone)
-                           )}
-                         </div>
-                       </td>
-                     )}
+                      {rowIdx === 0 && (
+                        <td
+                          className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                          rowSpan={rowCount}
+                        >
+                          <div className="font-medium text-gray-800">
+                            {selectedUserId ? row.clientName : row.name}
+                          </div>
+
+                          <div className="text-xs text-gray-500 whitespace-normal">
+                            {selectedUserId ? (
+                              (() => {
+                                const { line1, line2 } = addressTwoLines(row.address);
+                                return (
+                                  <>
+                                    {line1}
+                                    {line2 ? <br /> : null}
+                                    {line2}
+                                  </>
+                                );
+                              })()
+                            ) : (
+                              formatUSPhone(row.phone)
+                            )}
+                          </div>
+                        </td>
+                      )}
                       {dateColumns.map((dateCol) => {
                         const daySchedules = scheduleData.filter((item) => {
                           const itemDate = item.startDate.includes("T")
@@ -1817,7 +1920,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                           const sameClientGroup = !groupByClient
                             ? true
                             : item.clientId === row.clientId &&
-                              item.addressId === row.addressId;
+                            item.addressId === row.addressId;
                           return sameUser && sameClientGroup && itemDate === dateCol.date;
                         });
                         const sortedShifts = sortShiftsByTime(
@@ -1827,25 +1930,28 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                         const session = shift
                           ? findSessionForShift(shift.id, sessionData)
                           : null;
+
+                        // Get tolerance from the schedule item (row data)
+                        const tolerance = daySchedules[0]?.timeSetup?.actualScheduledTime ?? 0;
+
                         const hasMismatch = shift && session
-                          ? hasTimeMismatch(shift, session)
+                          ? hasTimeMismatch(shift, session, tolerance)
                           : false;
                         const draft = shift ? isDraftShift(shift) : false;
 
                         return (
                           <td
                             key={dateCol.date + "-" + rowIdx}
-                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${
-                              !readOnly &&
+                            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${!readOnly &&
                               dragOverCell?.userId === row.userId &&
                               dragOverCell?.date === dateCol.date
-                                ? "bg-blue-50 border-blue-300"
-                                : hasMismatch
+                              ? "bg-blue-50 border-blue-300"
+                              : hasMismatch
                                 ? "bg-red-100 border-red-300"
                                 : draft
-                                ? "bg-amber-50 border-amber-200"
-                                : ""
-                            }`}
+                                  ? "bg-amber-50 border-amber-200"
+                                  : ""
+                              }`}
                             onDragOver={
                               !readOnly
                                 ? (e) => handleDragOver(e, row.userId, dateCol.date, rowIdx)
@@ -1910,7 +2016,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   </span>
 
                                   {/* DRAFT BADGE */}
-                                 
+
 
                                   <div className="w-[50px] h-[20px]">
                                     <ToggleSwitch
@@ -1935,11 +2041,11 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                               const newShifts = item.shifts.map((s) =>
                                                 s.id === shift.id
                                                   ? {
-                                                      ...s,
-                                                      auto: enabled,
-                                                      confirm: false,
-                                                      reject: false,
-                                                    }
+                                                    ...s,
+                                                    auto: enabled,
+                                                    confirm: false,
+                                                    reject: false,
+                                                  }
                                                   : s
                                               );
                                               const anyOn = newShifts.some(
@@ -2039,7 +2145,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                   readOnly || !isEditMode
                                     ? undefined
                                     : (enabled) =>
-                                        handleUserAutoToggle(row.userId, enabled)
+                                      handleUserAutoToggle(row.userId, enabled)
                                 }
                               />
                             </div>
@@ -2050,9 +2156,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                   ))}
 
                   <tr
-                    className={`transition-colors ${
-                      rowIndex % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
-                    }`}
+                    className={`transition-colors ${rowIndex % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
+                      }`}
                   >
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                       Total
@@ -2066,7 +2171,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                         const sameClientGroup = !groupByClient
                           ? true
                           : item.clientId === row.clientId &&
-                            item.addressId === row.addressId;
+                          item.addressId === row.addressId;
                         return (
                           sameUser &&
                           sameClientGroup &&
@@ -2081,7 +2186,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                             .reduce((st, sh: any) => st + (sh.hours || 0), 0),
                         0
                       );
-                      
+
                       const rounded = parseFloat(dayTotal.toFixed(2));
                       return (
                         <td
@@ -2223,11 +2328,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
             <button
               onClick={handleEditModeToggle}
-              className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                isEditMode
-                  ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500"
-              }`}
+              className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
+                ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500"
+                }`}
               title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
             >
               <FaRegEdit className="w-5 h-5" color="blue" />
