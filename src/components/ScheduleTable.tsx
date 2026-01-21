@@ -636,28 +636,22 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
       return;
     }
 
-    // For non-draft shifts, use existing deletion logic
-    if (isLastShiftForUser(userId, shiftId)) {
-      console.log("Deleting last shift for user - prompting for schedule deletion");
-      setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
-      setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
-      return;
-    }
-
-    const updatedData = scheduleData
-      .map((item) => {
-        if (item.userId === userId && item.startDate === date) {
-          return {
-            ...item,
-            shifts: item.shifts.filter((shift) => shift.id !== shiftId),
-          };
-        }
-        return item;
-      })
-      .filter((item) => item.shifts.length > 0);
+    // For non-draft shifts, mark as isDelete: true (soft delete)
+    // This allows the save handler to detect pending deletions of published shifts
+    const updatedData = scheduleData.map((item) => {
+      if (item.userId === userId && item.startDate === date) {
+        return {
+          ...item,
+          shifts: item.shifts.map((shift) =>
+            shift.id === shiftId ? { ...shift, isDelete: true } : shift
+          ),
+        };
+      }
+      return item;
+    });
 
     onScheduleDataChange(updatedData);
-    logScheduleState("Delete Shift Success (Published)", updatedData, { userId, date, shiftId });
+    logScheduleState("Delete Shift Success (Published - Soft Delete)", updatedData, { userId, date, shiftId });
     setDeleteModal({ isOpen: false, shiftId: null, userId: null, date: null });
   };
 

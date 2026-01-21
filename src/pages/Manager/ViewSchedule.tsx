@@ -22,6 +22,7 @@ import {
   handlePrint
 } from "../../utils/printUtils";
 import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
+import { WarningModal } from "../../components/ui/WarningModal";
 import { Button } from "../../components/ui/button";
 import {
   timeToMinutes,
@@ -268,6 +269,7 @@ export const ViewSchedule = () => {
   const [apiExistingShifts, setApiExistingShifts] = useState<Map<string, any[]>>(new Map());
   const [hasScheduleChanges, setHasScheduleChanges] = useState(false);
   const [hasSessionChanges, setHasSessionChanges] = useState(false);
+  const [warningModalOpen, setWarningModalOpen] = useState(false);
   const fetchApiExistingShifts = async (userId?: number) => {
     if (!currentWeekRange || !selectedClient) return null;
     try {
@@ -1684,6 +1686,9 @@ export const ViewSchedule = () => {
 
         const userSchedule = userScheduleMap.get(userId);
         item.shifts.forEach(shift => {
+          // Skip shifts marked for deletion (they will be removed from backend by absence)
+          if ((shift as any).isDelete) return;
+
           const isClientGeneratedId = shift.id > 1000000000000;
           const isDraftShift = !!(shift as any)?.draftShiftId;
           const shiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
@@ -1867,6 +1872,27 @@ export const ViewSchedule = () => {
         description: "No data available to save!",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Check for any published shifts marked for deletion
+    // A published shift is one that is NOT a draft shift (no draftShiftId/draftScheduleSessionId)
+    // and has a "real" ID (not a large synthetic one)
+    const hasDeletedPublishedShifts = scheduleData.some(item =>
+      item.shifts.some(shift => {
+        if (!(shift as any).isDelete) return false;
+
+        // It is a published shift if it is NOT a draft
+        const isDraft = (shift as any)?.draftShiftId ||
+          (shift as any)?.draftScheduleSessionId ||
+          shift.id > 2000000000000;
+
+        return !isDraft;
+      })
+    );
+
+    if (hasDeletedPublishedShifts) {
+      setWarningModalOpen(true);
       return;
     }
 
@@ -3002,6 +3028,11 @@ export const ViewSchedule = () => {
               </div>
             </div>
           )}
+          <WarningModal
+            isOpen={warningModalOpen}
+            onClose={() => setWarningModalOpen(false)}
+            message="You have partially deleted published shift. Please publish before saving any data in draft"
+          />
         </div>
       )}
     </div>
