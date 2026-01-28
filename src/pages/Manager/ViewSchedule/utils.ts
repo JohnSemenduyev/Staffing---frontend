@@ -1,124 +1,52 @@
-import { ScheduleItem, Shift, WeekRange, DateColumn, FormData } from './types';
-import { formatDateLocal, parseLocalYMD } from "../../../lib/utils";
+import { WeekRange, DateColumn, FormData } from './types';
+// Ideally, this file should also use shared types
+import { Shift as SharedShift, ScheduleItem as SharedScheduleItem } from "../../../types/schedule";
+import {
+  formatDateLocal,
+  parseLocalYMD,
+  getWeekRangeFromDateLocal,
+  timeToMinutes as sharedTimeToMinutes,
+  shiftSpansNextDay as sharedShiftSpansNextDay,
+  getAdjustedDate as sharedGetAdjustedDate,
+  minutesDiffWithWrap as sharedMinutesDiffWithWrap,
+  doTimesOverlap as sharedDoTimesOverlap,
+  calculateHours as sharedCalculateHours
+} from "../../../lib/utils";
 
 
-export const getWeekRangeFromDateUTC = (baseDate: Date): WeekRange => {
-  const day = baseDate.getDay();
-  const daysSinceThursday = (day + 3) % 7;
+export const getWeekRangeFromDateUTC = getWeekRangeFromDateLocal;
 
-  const startOfWeek = new Date(baseDate);
-  startOfWeek.setDate(baseDate.getDate() - daysSinceThursday);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  return {
-    startOfWeek,
-    endOfWeek
-  };
-};
-
-export const timeToMinutes = (timeStr: string): number => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-};
+export const timeToMinutes = sharedTimeToMinutes;
 
 // Check if a shift spans into the next day (crosses midnight)
 // Simple rule: if startTime >= endTime, it means endTime is in the next day
-export const shiftSpansNextDay = (startTime: string, endTime: string): boolean => {
-  if (!startTime || !endTime) return false;
-  const startM = timeToMinutes(startTime);
-  const endM = timeToMinutes(endTime);
-  return startM >= endM; // if start >= end, end is in next day
-};
+export const shiftSpansNextDay = sharedShiftSpansNextDay;
 
 // Get date string offset by N days
-export const getAdjustedDate = (dateStr: string, offset: number): string => {
-  if (!dateStr) return dateStr;
-  const baseDate = parseLocalYMD(dateStr);
-  if (!baseDate || Number.isNaN(baseDate.getTime())) return dateStr;
-  baseDate.setDate(baseDate.getDate() + offset);
-  return formatDateLocal(baseDate);
-};
+export const getAdjustedDate = sharedGetAdjustedDate;
 
-export const minutesDiffWithWrap = (start: string, end: string): number => {
-  const startM = timeToMinutes(start);
-  const endM = timeToMinutes(end);
-  let diff = endM - startM;
-  if (diff <= 0) diff += 24 * 60;
-  return diff;
-};
+export const minutesDiffWithWrap = sharedMinutesDiffWithWrap;
 
-export const doTimesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
-  const toRanges = (s: string, e: string): Array<[number, number]> => {
-    const ss = timeToMinutes(s);
-    const ee = timeToMinutes(e);
-    // Simple rule: if start >= end, end is in next day
-    if (ss >= ee) {
-      // Overnight shift: [start, 24*60] and [0, end]
-      return [[ss, 24 * 60], [0, ee]];
-    }
-    // Same day shift: [start, end]
-    return [[ss, ee]];
-  };
+export const doTimesOverlap = sharedDoTimesOverlap;
 
-  // Special case: 24:00 (end of day) should not overlap with 00:00 (start of next day)
-  // If shift1 ends at 24:00 and shift2 starts at 00:00, they don't overlap (boundary case)
-  if (end1 === '24:00' && start2 === '00:00') return false;
-  // If shift2 ends at 24:00 and shift1 starts at 00:00, they don't overlap (boundary case)
-  if (end2 === '24:00' && start1 === '00:00') return false;
-
-  const ranges1 = toRanges(start1, end1);
-  const ranges2 = toRanges(start2, end2);
-
-  // Allow 1 minute overlap - only flag if overlap exceeds 1 minute
-  for (const a of ranges1) {
-    for (const b of ranges2) {
-      const aStart = a[0], aEnd = a[1];
-      const bStart = b[0], bEnd = b[1];
-
-      // Special handling: if a shift ends at 24:00 (1440 minutes), treat it as exclusive end
-      // If another shift starts at 00:00 (0 minutes), they meet at boundary but don't overlap
-      if ((aEnd === 24 * 60 && end1 === '24:00' && bStart === 0 && start2 === '00:00') ||
-        (bEnd === 24 * 60 && end2 === '24:00' && aStart === 0 && start1 === '00:00')) {
-        continue; // Skip this range comparison
-      }
-
-      const overlapStart = Math.max(aStart, bStart);
-      const overlapEnd = Math.min(aEnd, bEnd);
-      if (overlapStart < overlapEnd) {
-        const overlapMinutes = overlapEnd - overlapStart;
-        if (overlapMinutes > 1) return true;
-      }
-    }
-  }
-  return false;
-};
-
-export const sortShiftsByTime = (shifts: Shift[]): Shift[] => {
+export const sortShiftsByTime = (shifts: SharedShift[]): SharedShift[] => {
   return [...shifts].sort((a, b) => {
-    const timeToMinutes = (timeStr: string) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+    return sharedTimeToMinutes(a.startTime) - sharedTimeToMinutes(b.startTime);
   });
 };
 
-export const getMaxShiftsPerDay = (userId: number, scheduleData: ScheduleItem[]): number => {
+export const getMaxShiftsPerDay = (userId: number, scheduleData: SharedScheduleItem[]): number => {
   const userDays = scheduleData.filter(i => i.userId === userId);
   let max = 1;
   for (const d of userDays) max = Math.max(max, d.shifts.length);
   return max;
 };
 
-export const userHasMultiShiftDay = (userId: number, scheduleData: ScheduleItem[]): boolean => {
+export const userHasMultiShiftDay = (userId: number, scheduleData: SharedScheduleItem[]): boolean => {
   const userSchedules = scheduleData.filter(item => item.userId === userId);
 
   // Group shifts by date to check if any date has multiple shifts
-  const shiftsByDate = new Map<string, Shift[]>();
+  const shiftsByDate = new Map<string, SharedShift[]>();
 
   userSchedules.forEach(schedule => {
     schedule.shifts.forEach(shift => {
@@ -140,7 +68,7 @@ export const userHasMultiShiftDay = (userId: number, scheduleData: ScheduleItem[
   return false; // User has at most one shift per day
 };
 
-export const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]): { startTime: string; endTime: string }[] => {
+export const getUniqueShiftTimes = (userId: number, scheduleData: SharedScheduleItem[]): { startTime: string; endTime: string }[] => {
   const userSchedules = scheduleData.filter(item => item.userId === userId);
   const uniqueTimes = new Set<string>();
   const shiftTimes: { startTime: string; endTime: string }[] = [];
@@ -161,7 +89,7 @@ export const getUniqueShiftTimes = (userId: number, scheduleData: ScheduleItem[]
   return shiftTimes;
 };
 
-export const getShiftForUserDateAndTime = (userId: number, date: string, startTime: string, endTime: string, scheduleData: ScheduleItem[]): Shift | null => {
+export const getShiftForUserDateAndTime = (userId: number, date: string, startTime: string, endTime: string, scheduleData: SharedScheduleItem[]): SharedShift | null => {
   const daySchedules = scheduleData.filter(item =>
     item.userId === userId && item.startDate === date
   );
@@ -175,7 +103,7 @@ export const getShiftForUserDateAndTime = (userId: number, date: string, startTi
   return null;
 };
 
-export const calculateShiftTimeTotal = (userId: number, startTime: string, endTime: string, scheduleData: ScheduleItem[], dateColumns: DateColumn[]): number => {
+export const calculateShiftTimeTotal = (userId: number, startTime: string, endTime: string, scheduleData: SharedScheduleItem[], dateColumns: DateColumn[]): number => {
   let total = 0;
   dateColumns.forEach(dateCol => {
     const shift = getShiftForUserDateAndTime(userId, dateCol.date, startTime, endTime, scheduleData);
@@ -216,7 +144,7 @@ export const convertTimestampToDate = (timestamp: string): string => {
 // Form validation function
 export const validateForm = (
   formData: FormData,
-  scheduleData: ScheduleItem[],
+  scheduleData: SharedScheduleItem[],
   editingShiftId?: number,
   apiExistingShifts?: Map<string, any[]>
 ): { [key: string]: string } => {
@@ -429,13 +357,7 @@ export const checkApiOverlap = (
   return false;
 };
 
-export const calculateHours = (start: string, end: string): number => {
-  const [startH, startM] = start.split(":").map(Number);
-  const [endH, endM] = end.split(":").map(Number);
-  let hours = endH - startH + (endM - startM) / 60;
-  if (hours <= 0) hours += 24; // equal times => 24h, overnight => +24
-  return parseFloat(hours.toFixed(2));
-};
+export const calculateHours = sharedCalculateHours;
 
 export const generateDateColumns = (currentWeekRange: WeekRange | null): DateColumn[] => {
   if (!currentWeekRange) return [];
@@ -458,12 +380,14 @@ export const generateDateColumns = (currentWeekRange: WeekRange | null): DateCol
   return dates;
 };
 
-export const getUniqueUsers = (scheduleData: ScheduleItem[]): { id: number; name: string; phone: string }[] => {
+export const getUniqueUsers = (scheduleData: SharedScheduleItem[]): { id: number; name: string; phone: string }[] => {
   const userMap = new Map();
   scheduleData.forEach(item => {
-    if (!userMap.has(item.userId)) {
-      userMap.set(item.userId, {
-        id: item.userId,
+    // Ensure userId is a number
+    const userId = Number(item.userId);
+    if (!userMap.has(userId)) {
+      userMap.set(userId, {
+        id: userId,
         name: item.userName,
         phone: item.userPhone
       });
@@ -472,21 +396,21 @@ export const getUniqueUsers = (scheduleData: ScheduleItem[]): { id: number; name
   return Array.from(userMap.values());
 };
 
-export const calculateDayTotal = (date: string, scheduleData: ScheduleItem[]): number => {
+export const calculateDayTotal = (date: string, scheduleData: SharedScheduleItem[]): number => {
   const total = scheduleData
     .filter(item => item.startDate === date)
     .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   return parseFloat(total.toFixed(2));
 };
 
-export const calculateUserTotal = (userId: number, scheduleData: ScheduleItem[]): number => {
+export const calculateUserTotal = (userId: number, scheduleData: SharedScheduleItem[]): number => {
   const total = scheduleData
     .filter(item => item.userId === userId)
     .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   return parseFloat(total.toFixed(2));
 };
 
-export const calculateGrandTotal = (scheduleData: ScheduleItem[]): number => {
+export const calculateGrandTotal = (scheduleData: SharedScheduleItem[]): number => {
   const total = scheduleData.reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
   return parseFloat(total.toFixed(2));
 };

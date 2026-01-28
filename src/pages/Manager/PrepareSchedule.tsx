@@ -10,19 +10,40 @@ import { useScheduleSession } from "../../context/ScheduleContext";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { Button } from "../../components/ui/button";
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
-// Local utility functions
-const timeToMinutes = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-};
+import {
+  timeToMinutes,
+  minutesDiffWithWrap,
+  doTimesOverlap,
+  calculateHours,
+  shiftSpansNextDay,
+  getAdjustedDate,
+  formatDateLocal,
+  parseLocalYMD,
+  getWeekRangeFromDateLocal
+} from "../../lib/utils";
+import {
+  Shift,
+  ScheduleItem,
+  Client,
+  Address,
+  User
+} from "../../types/schedule";
 
-const minutesDiffWithWrap = (start: string, end: string) => {
-  const startM = timeToMinutes(start);
-  const endM = timeToMinutes(end);
-  let diff = endM - startM;
-  if (diff <= 0) diff += 24 * 60;
-  return diff;
-};
+// Local type definitions for PrepareSchedule
+// Types moved to src/types/schedule.ts
+import { graphQLClient } from "../../GraphqlClient";
+import { CREATE_MULTIPLE_SCHEDULE_SESSIONS, CREATE_DRAFT_SCHEDULE_SESSIONS } from "../../graphql/mutation";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { CustomDatePicker } from "../../components/CustomDatePicker";
+import { ErrorMessage } from "../../components/ui/error-message";
+import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
+import { useToast } from "../../hooks/use-toast";
+import ResetButton from "../../components/ui/ResetButton";
+import { GET_TIME_SETUP } from "../../graphql/queries";
+
+// Local utility functions
+// Time utils moved to src/lib/utils.ts
 
 type ShiftInterval = { start: Date; end: Date };
 
@@ -83,14 +104,7 @@ const sortShiftsByTime = (shifts: Shift[]) => {
   });
 };
 
-const calculateHours = (start: string, end: string) => {
-  const [startH, startM] = start.split(":").map(Number);
-  const [endH, endM] = end.split(":").map(Number);
-  if (startH === endH && startM === endM) return 24;
-  let hours = endH - startH + (endM - startM) / 60;
-  if (hours < 0) hours += 24;
-  return parseFloat(hours.toFixed(2));
-};
+// calculateHours moved to src/lib/utils.ts
 
 const generateDateColumns = (currentWeekRange: any) => {
   if (!currentWeekRange) return [];
@@ -135,24 +149,14 @@ const logOverlapEvent = (source: string, details: Record<string, unknown>) => {
  * Example: a shift starting Nov 20 @ 18:00 and ending Nov 21 @ 06:00 only blocks
  * Nov 20 18:00-23:59 and Nov 21 00:00-06:00, allowing another Nov 20 shift at 00:00-06:00.
  */
-const shiftSpansNextDay = (start: string, end: string) => {
-  if (!start || !end) return false;
-  if (start === end) return true; // treated as full-day shift
-  return timeToMinutes(end) <= timeToMinutes(start);
-};
+// shiftSpansNextDay moved to src/lib/utils.ts
 
 const normalizeShiftDate = (dateStr: string) => {
   if (!dateStr) return dateStr;
   return dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
 };
 
-const getAdjustedDate = (dateStr: string, offset: number) => {
-  if (!dateStr) return dateStr;
-  const baseDate = parseLocalYMD(dateStr);
-  if (!baseDate || Number.isNaN(baseDate.getTime())) return dateStr;
-  baseDate.setDate(baseDate.getDate() + offset);
-  return formatDateLocal(baseDate);
-};
+// getAdjustedDate moved to src/lib/utils.ts
 
 const getLocalShiftCandidates = (
   scheduleItems: ScheduleItem[],
@@ -210,41 +214,6 @@ const getServerShiftCandidates = (
   });
 };
 
-// Local type definitions for PrepareSchedule
-interface Shift {
-  id: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  hours: number;
-  auto?: boolean;
-}
-
-interface ScheduleItem {
-  id: number;
-  clientId: number;
-  addressId: number;
-  userId: number;
-  startDate: string;
-  auto: boolean;
-  shifts: Shift[];
-  clientName: string;
-  address: string;
-  userName: string;
-  userPhone: string;
-}
-import { graphQLClient } from "../../GraphqlClient";
-import { CREATE_MULTIPLE_SCHEDULE_SESSIONS, CREATE_DRAFT_SCHEDULE_SESSIONS } from "../../graphql/mutation";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { CustomDatePicker } from "../../components/CustomDatePicker";
-import { ErrorMessage } from "../../components/ui/error-message";
-import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
-import { formatDateLocal, getWeekRangeFromDateLocal, getWeekRangeFromDateUTC, parseLocalYMD } from "../../lib/utils";
-import { useToast } from "../../hooks/use-toast";
-import ResetButton from "../../components/ui/ResetButton";
-import { GET_TIME_SETUP } from "../../graphql/queries";
-
 interface FormData {
   clientId: string;
   addressId: string;
@@ -254,23 +223,7 @@ interface FormData {
   endtime: string;
 }
 
-interface User {
-  id: string | number;
-  name: string;
-  phone?: string;
-}
-
-interface Client {
-  id: string | number;
-  name: string;
-  addresses: Address[];
-}
-
-interface Address {
-  id: string | number;
-  address: string;
-  label?: string;
-}
+// Types moved to src/types/schedule.ts
 
 
 export const PrepareSchedule = () => {
