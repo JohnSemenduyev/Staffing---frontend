@@ -168,6 +168,9 @@ export const ViewSchedule = () => {
     updateSessionTimes,
     checkScheduleSession
   } = useClientSessions();
+
+  const lastFetchedSessionIdsRef = useRef<string | null>(null);
+
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -1097,11 +1100,17 @@ export const ViewSchedule = () => {
         );
 
         if (scheduleSessionIds.length > 0) {
-          fetchSessionData(scheduleSessionIds);
+          // Prevent redundant calls if IDs haven't changed
+          const idsKey = scheduleSessionIds.sort().join(',');
+          if (lastFetchedSessionIdsRef.current !== idsKey) {
+            fetchSessionData(scheduleSessionIds);
+            lastFetchedSessionIdsRef.current = idsKey;
+          }
         }
       }
     } else if (apiScheduleData === null) {
       setHasApiData(false);
+      lastFetchedSessionIdsRef.current = null;
     }
   }, [
     apiScheduleData,

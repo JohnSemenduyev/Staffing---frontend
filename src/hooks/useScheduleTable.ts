@@ -360,8 +360,19 @@ export const useScheduleTable = ({
 
     // Handlers
     const handleDeleteShift = useCallback((userId: number, date: string, shiftId: number) => {
-        setDeleteModal({ isOpen: true, shiftId, userId, date });
-    }, []);
+        const userShifts = scheduleData
+            .filter((item) => item.userId === userId)
+            .flatMap((item) => item.shifts)
+            .filter((s) => !(s as any).isDelete);
+
+        const isLast = userShifts.length === 1 && userShifts[0].id === shiftId;
+
+        if (isLast) {
+            setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
+        } else {
+            setDeleteModal({ isOpen: true, shiftId, userId, date });
+        }
+    }, [scheduleData]);
 
     const confirmDeleteShift = useCallback(() => {
         const { userId, date, shiftId } = deleteModal;
