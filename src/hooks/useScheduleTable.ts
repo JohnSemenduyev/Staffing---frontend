@@ -75,7 +75,7 @@ export const useScheduleTable = ({
 
     // State declarations
     const [deleteModal, setDeleteModal] = useState<ModalState>({ isOpen: false });
-    const [editModal, setEditModal] = useState<ModalState>({ isOpen: false });
+    const [editModal, setEditModal] = useState<ModalState>({ isOpen: false, shift: null });
     const [deleteUserModal, setDeleteUserModal] = useState<ModalState>({ isOpen: false });
     const [deleteLastShiftModal, setDeleteLastShiftModal] = useState<ModalState>({ isOpen: false });
     const [editModeConfirmModal, setEditModeConfirmModal] = useState({ isOpen: false });
@@ -255,6 +255,41 @@ export const useScheduleTable = ({
     const getScheduleItem = useCallback((userId: number, date: string): ScheduleItem | undefined => {
         return scheduleData.find(item => item.userId === userId && item.startDate === date);
     }, [scheduleData]);
+
+    const getVisualShifts = useCallback((userId: number, date: string): any[] => {
+        // 1. Current day shifts
+        const daySchedule = getScheduleItem(userId, date);
+        const currentDayShifts = daySchedule
+            ? daySchedule.shifts.filter((s) => !(s as any).isDelete).map(s => ({ ...s, isContinuation: false }))
+            : [];
+
+        // 2. Previous day shifts that span to today
+        const prevDate = getAdjustedDate(date, -1);
+        const prevDaySchedule = getScheduleItem(userId, prevDate);
+
+        const prevDaySpanningShifts = prevDaySchedule
+            ? prevDaySchedule.shifts
+                .filter(s => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+                .map(s => ({
+                    ...s,
+                    isContinuation: true,
+                    originalDate: prevDate,
+                    displayStartTime: "00:00"
+                }))
+            : [];
+
+        // 3. Merge and sort
+        const allShifts = [
+            ...currentDayShifts.map(s => ({ ...s, displayStartTime: s.startTime })),
+            ...prevDaySpanningShifts
+        ];
+
+        return allShifts.sort((a, b) => {
+            const timeA = (a as any).displayStartTime;
+            const timeB = (b as any).displayStartTime;
+            return timeToMinutes(timeA) - timeToMinutes(timeB);
+        });
+    }, [getScheduleItem, getAdjustedDate]);
 
     // Shift deletion helpers
     const markShiftAsDeleted = useCallback((
@@ -609,7 +644,7 @@ export const useScheduleTable = ({
         e.preventDefault();
         if (!draggedShift) return;
 
-        const { shift, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
+        const { shift: draggedShiftRef, sourceUserId, sourceDate, sourceRowIdx } = draggedShift;
 
         // Clean up drag state helper
         const cleanupDragState = () => {
@@ -629,6 +664,15 @@ export const useScheduleTable = ({
             return;
         }
 
+        // Retrieve the authentic shift record from the source schedule using the ID
+        // This ensures we get the clean object without visual properties like isContinuation
+        const shift = sourceSchedule.shifts.find(s => s.id === draggedShiftRef.id);
+
+        if (!shift) {
+            cleanupDragState();
+            return;
+        }
+
         // Helper to create a copied shift
         const createCopiedShift = (): any => ({
             ...shift,
@@ -641,6 +685,16 @@ export const useScheduleTable = ({
             draftScheduleSessionId: null,
             isDraft: true,
         });
+
+        // Determine if we are dropping onto an existing shift (visual or actual)
+        let excludeShiftId: number | undefined;
+        let targetExisting: any = null;
+
+        const visualShifts = getVisualShifts(targetUserId, targetDate);
+        if (targetRowIdx < visualShifts.length) {
+            targetExisting = visualShifts[targetRowIdx];
+            excludeShiftId = targetExisting.id;
+        }
 
         // Check overlaps with backend shifts
         const checkBackendOverlap = (): boolean => {
@@ -673,7 +727,7 @@ export const useScheduleTable = ({
         const checkApiOverlap = (): boolean => {
             let targetSchedule = getScheduleItem(targetUserId, targetDate);
             if (!targetSchedule) targetSchedule = sourceSchedule;
-            if (!targetSchedule) return false;
+            if (!targetSchedule) return false; // Should generally not happen if sourceSchedule exists, but specific TARGET data might be missing
 
             return checkOverlapWithApiShifts(
                 targetUserId,
@@ -681,8 +735,7 @@ export const useScheduleTable = ({
                 targetSchedule.addressId,
                 targetDate,
                 shift.startTime,
-                shift.endTime,
-                sourceDate === targetDate ? undefined : shift.id
+                shift.endTime
             );
         };
 
@@ -707,121 +760,81 @@ export const useScheduleTable = ({
             return;
         }
 
-        const existingSchedule = getScheduleItem(targetUserId, targetDate);
+        // Local overlap checks
+        // Check against ALL existing shifts in the target date (excluding itself if moving within same day)
+        // Note: when "adding", we generally don't exclude anything unless it's the exact same shift being moved.
+        const excludeId = (sourceUserId === targetUserId && sourceDate === targetDate) ? draggedShiftRef.id : undefined;
 
-        if (existingSchedule) {
-            const sortedShifts = sortShiftsByTime(
-                existingSchedule.shifts.filter((s: any) => !(s as any).isDelete)
-            );
-            const targetCellHasData = targetRowIdx < sortedShifts.length;
-
-            if (targetCellHasData) {
-                // Replace existing shift
-                const targetExisting = sortedShifts[targetRowIdx];
-
-                // Check local overlaps (excluding the target shift)
-                const hasLocalOverlap = sortedShifts.some((existingShift, index) => {
-                    if (index === targetRowIdx) return false;
-                    return checkShiftOverlap(shift, existingShift);
-                });
-
-                if (hasLocalOverlap) {
-                    handleOverlapError("Cannot drop shift here - it overlaps with existing shifts for this user and date.");
-                    return;
-                }
-
-                // Check adjacent day overlaps
-                if (checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'prev', targetExisting.id) ||
-                    (shiftSpansNextDay(shift.startTime, shift.endTime) &&
-                        checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'next', targetExisting.id))) {
-                    handleOverlapError("Cannot drop shift here - it overlaps with adjacent day shifts.");
-                    return;
-                }
-
-                // Create replacement shift
-                const replacementShift: any = createCopiedShift();
-                replacementShift.id = targetExisting.id;
-                replacementShift.draftShiftId = (targetExisting as any)?.draftShiftId ?? null;
-                replacementShift.draftScheduleSessionId = (targetExisting as any)?.draftScheduleSessionId ?? null;
-                replacementShift.scheduleSessionId = (targetExisting as any)?.scheduleSessionId ?? replacementShift.scheduleSessionId ?? null;
-
-                // Update schedule data
-                const updatedScheduleData = scheduleData.map((item) => {
-                    if (item.userId === targetUserId && item.startDate === targetDate) {
-                        const updatedShifts = item.shifts.map((s: any) =>
-                            s.id === targetExisting.id ? replacementShift : s
-                        );
-                        return { ...item, shifts: sortShiftsByTime(updatedShifts) };
-                    }
-                    return item;
-                });
-
-                onScheduleDataChange(updatedScheduleData);
-            } else {
-                // Add new shift
-                const hasLocalOverlap = sortedShifts.some(existingShift =>
-                    checkShiftOverlap(shift, existingShift)
-                );
-
-                if (hasLocalOverlap) {
-                    handleOverlapError("Cannot drop shift here - it overlaps with existing shifts for this user and date.");
-                    return;
-                }
-
-                // Check adjacent day overlaps
-                if (checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'prev') ||
-                    (shiftSpansNextDay(shift.startTime, shift.endTime) &&
-                        checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'next'))) {
-                    handleOverlapError("Cannot drop shift here - it overlaps with adjacent day shifts.");
-                    return;
-                }
-
-                const copiedShift: any = createCopiedShift();
-                copiedShift.draftShiftId = null;
-                copiedShift.draftScheduleSessionId = null;
-
-                const updatedScheduleData = scheduleData.map((item) => {
-                    if (item.userId === targetUserId && item.startDate === targetDate) {
-                        const updatedShifts = [...item.shifts, copiedShift];
-                        return { ...item, shifts: sortShiftsByTime(updatedShifts) };
-                    }
-                    return item;
-                });
-
-                onScheduleDataChange(updatedScheduleData);
-            }
-        } else {
-            // Create new schedule row
-            const groupByClient = Boolean(selectedUserId);
-            const targetGroupKey = groupByClient
-                ? `${targetUserId}-${sourceSchedule.clientId}-${sourceSchedule.addressId}`
-                : targetUserId;
-            const targetGroup = rowGroups.find((g) => g.id === targetGroupKey);
-
-            const copiedShift = createCopiedShift();
-
-            const newSchedule: ScheduleItem = {
-                id: Date.now(),
-                clientId: sourceSchedule.clientId,
-                addressId: sourceSchedule.addressId,
-                userId: targetUserId,
-                startDate: targetDate,
-                auto: sourceSchedule.auto,
-                shifts: [copiedShift],
-                clientName: sourceSchedule.clientName,
-                address: sourceSchedule.address,
-                userName: targetGroup?.name || sourceSchedule.userName,
-                userPhone: targetGroup?.phone || sourceSchedule.userPhone,
-            };
-
-            const newData = [...scheduleData, newSchedule];
-            onScheduleDataChange(newData);
+        if (checkLocalOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, excludeId)) {
+            handleOverlapError("Cannot drop shift here - it overlaps with existing shifts for this user and date.");
+            return;
         }
 
-        hookToast({ title: "Success", description: "Shift copied successfully!" });
+        // Check adjacent day overlaps
+        if (checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'prev', excludeId) ||
+            (shiftSpansNextDay(shift.startTime, shift.endTime) &&
+                checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'next', excludeId))) {
+            handleOverlapError("Cannot drop shift here - it overlaps with adjacent day shifts.");
+            return;
+        }
+
+        // Create the new shift
+        const copiedShift: any = createCopiedShift();
+        copiedShift.draftShiftId = null;
+        copiedShift.draftScheduleSessionId = null;
+        // Ensure new ID to prevent conflicts with source shift if it's a copy operation (though React DnD usually implies move/copy intent)
+        // If we are moving within same grid, we might technically be "moving" so we should probably keep ID?
+        // BUT logic says "Always Add", effectively "Copy".
+        // If it's a move, we usually delete source. But here we are just adding.
+        // User said: "it not affect the old shift". So it IS a copy.
+        // So we keep the ID generation from createCopiedShift (Date.now()).
+
+        const existingSchedule = getScheduleItem(targetUserId, targetDate);
+
+        let updatedScheduleData;
+
+        if (existingSchedule) {
+            updatedScheduleData = scheduleData.map((item) => {
+                if (item.userId === targetUserId && item.startDate === targetDate) {
+                    const updatedShifts = [...item.shifts, copiedShift];
+                    return { ...item, shifts: sortShiftsByTime(updatedShifts) };
+                }
+                return item;
+            });
+        } else {
+            // Create new ScheduleItem
+            // We need to clone structure from sourceSchedule but reset shifts
+            const newItem: ScheduleItem = {
+                ...sourceSchedule,
+                startDate: targetDate,
+                shifts: [copiedShift],
+                draftScheduleSession: undefined,
+            };
+            // We might need to fetch Client/Address ID if they differ?
+            // Usually rows are grouped by User/Client/Address.
+            // If we drop on a row, we assume same Client/Address context.
+            // But sourceSchedule might be different if dragging between users?
+            // If dragging between users, we use targetUserId.
+            // If target row exists (rowGroups), we should probably use row data?
+            // But existingSchedule check failed, so maybe we are adding to a sparse array.
+            // Safest is to use sourceSchedule logic but update userId/date.
+
+            // Wait, if I drag from User A to User B, and User B has NO schedule for that day,
+            // I need User B's details (Client/Address). 
+            // Logic: RowGroups are pre-calculated. If the user accepts drop, it must be valid.
+            // Let's assume extending sourceSchedule is "okay" structurally, but we must update userId.
+            newItem.userId = targetUserId;
+            updatedScheduleData = [...scheduleData, newItem];
+        }
+
+        onScheduleDataChange(updatedScheduleData);
         cleanupDragState();
+
+        hookToast({ title: "Success", description: "Shift copied successfully!" });
+
     }, [draggedShift, getScheduleItem, existingShifts, checkShiftOverlap, overlapsWithPrevDayShift,
         checkOverlapWithApiShifts, checkAdjacentDayOverlaps, scheduleData, selectedUserId,
+
         rowGroups, sortShiftsByTime, onScheduleDataChange, hookToast]);
 
     const handleUserAutoToggle = useCallback((userId: number, enabled: boolean) => {
@@ -869,47 +882,205 @@ export const useScheduleTable = ({
             return i.clientId === row.clientId && i.addressId === row.addressId;
         });
 
-        return userDays.reduce((max, d) => {
-            const activeShifts = d.shifts.filter((shift) => !(shift as any).isDelete);
-            return Math.max(max, activeShifts.length);
-        }, 1);
-    }, [scheduleData]);
+        // Loop through the visible dates to find the max shifts
+        let max = 1;
+
+        dateColumns.forEach(dateCol => {
+            const date = dateCol.date;
+
+            // 1. Shifts starting on this day
+            const startingShifts = userDays
+                .filter(d => {
+                    const dDate = d.startDate.includes("T") ? formatDateFromISO(d.startDate) : d.startDate;
+                    return dDate === date;
+                })
+                .flatMap(d => d.shifts)
+                .filter(s => !(s as any).isDelete);
+
+            // 2. Shifts from previous day spanning to this day
+            const prevDate = getAdjustedDate(date, -1);
+            const prevDayShifts = userDays
+                .filter(d => {
+                    const dDate = d.startDate.includes("T") ? formatDateFromISO(d.startDate) : d.startDate;
+                    return dDate === prevDate;
+                })
+                .flatMap(d => d.shifts)
+                .filter(s => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime));
+
+            const totalShiftsForDay = startingShifts.length + prevDayShifts.length;
+            max = Math.max(max, totalShiftsForDay);
+        });
+
+        return max;
+    }, [scheduleData, dateColumns, formatDateFromISO]);
+
+    const calculateEffectiveHours = useCallback((shift: any, targetDate: string): number => {
+        // If shift starts on targetDate
+        if (shift.startDate === targetDate || (shift.date && shift.date === targetDate)) {
+            if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+                // First half: Start to 24:00
+                return calculateShiftHours(shift.startTime, "24:00");
+            } else {
+                // Normal shift - calculate specifically from time to avoid backend 'hours' mismatch
+                return calculateShiftHours(shift.startTime, shift.endTime);
+            }
+        }
+
+        // If shift starts on previous day (continuation)
+        const prevDate = getAdjustedDate(targetDate, -1);
+        if (shift.startDate === prevDate || (shift.date && shift.date === prevDate)) {
+            if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+                // Second half: 00:00 to End
+                return calculateShiftHours("00:00", shift.endTime);
+            }
+        }
+
+        return 0;
+    }, [calculateShiftHours, getAdjustedDate]);
 
     const calculateRowTotal = useCallback((row: RowGroup, groupByClient: boolean): number => {
-        const total = scheduleData
-            .filter((item) => {
-                if (item.userId !== row.userId) return false;
-                if (!groupByClient) return true;
-                return item.clientId === row.clientId && item.addressId === row.addressId;
-            })
-            .reduce((total, item) => total + item.shifts
-                .filter((shift) => !(shift as any).isDelete)
-                .reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+        let total = 0;
+
+        dateColumns.forEach(dateCol => {
+            const currentDay = dateCol.date;
+            const prevDay = getAdjustedDate(currentDay, -1);
+
+            // 1. Shifts starting on currentDay
+            scheduleData.forEach(item => {
+                if (item.userId !== row.userId) return;
+                if (groupByClient && (item.clientId !== row.clientId || item.addressId !== row.addressId)) return;
+
+                const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
+
+                if (itemDate === currentDay) {
+                    // Shifts starting today
+                    item.shifts.forEach(s => {
+                        if (!(s as any).isDelete) {
+                            total += calculateEffectiveHours({ ...s, startDate: currentDay }, currentDay);
+                        }
+                    });
+                } else if (itemDate === prevDay) {
+                    // Shifts starting previous day
+                    item.shifts.forEach(s => {
+                        if (!(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime)) {
+                            total += calculateEffectiveHours({ ...s, startDate: prevDay }, currentDay);
+                        }
+                    });
+                }
+            });
+        });
 
         return parseFloat(total.toFixed(2));
-    }, [scheduleData]);
+    }, [scheduleData, dateColumns, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
     const calculateDayTotal = useCallback((date: string): number => {
-        const total = scheduleData
-            .filter(item => {
-                const itemDate = item.startDate.includes("T")
-                    ? formatDateFromISO(item.startDate)
-                    : item.startDate;
-                return itemDate === date;
-            })
-            .reduce((total, item) => total + item.shifts
-                .filter(s => !(s as any).isDelete)
-                .reduce((st, s) => st + s.hours, 0), 0);
+        let total = 0;
+        const prevDate = getAdjustedDate(date, -1);
+
+        scheduleData.forEach(item => {
+            const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
+
+            if (itemDate === date) {
+                item.shifts.forEach(s => {
+                    if (!(s as any).isDelete) {
+                        total += calculateEffectiveHours({ ...s, startDate: date }, date);
+                    }
+                });
+            } else if (itemDate === prevDate) {
+                item.shifts.forEach(s => {
+                    if (!(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime)) {
+                        total += calculateEffectiveHours({ ...s, startDate: prevDate }, date);
+                    }
+                });
+            }
+        });
 
         return parseFloat(total.toFixed(2));
-    }, [scheduleData, formatDateFromISO]);
+    }, [scheduleData, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
     const calculateGrandTotal = useCallback((currentScheduleData: ScheduleItem[]): number => {
-        const total = currentScheduleData.reduce((total, item) => total + item.shifts
-            .filter(s => !(s as any).isDelete)
-            .reduce((st, s) => st + s.hours, 0), 0);
+        // Iterate visible columns to get the grand total of what is displayed
+        let total = 0;
+        if (dateColumns.length === 0) return 0;
+
+        dateColumns.forEach(col => {
+            // For this day, find total hours
+            // Note: currentScheduleData might be different from 'scheduleData' in state if passed generic
+            // But getVisualShifts relies on 'scheduleData' from state/hook scope.
+            // Warning: calculateGrandTotal takes an ARGUMENT currentScheduleData.
+            // If we use getVisualShifts, we are using the generic state, not the argument.
+            // If the argument is just 'scheduleData' then it is fine.
+
+            // Safer to implement logic using currentScheduleData explicitly
+
+            const uniqueUserIds = Array.from(new Set(currentScheduleData.map(i => i.userId)));
+            uniqueUserIds.forEach(userId => {
+                // Re-implement getVisualShifts logic using 'currentScheduleData' scope effectively
+                // Or just use calculateDayTotal logic but with currentScheduleData context?
+                // Since calculateGrandTotal is likely used with the current state, we can probably use the helper methods 
+                // that rely on state IF currentScheduleData === scheduleData.
+
+                // If this is used for optimistic updates or something where data differs, this might be risky.
+                // let's stick to the visual total of the CURRENT view.
+
+                // 1. Shifts starting on this day
+                const dayItems = currentScheduleData.filter(i =>
+                    (i.startDate.includes("T") ? formatDateFromISO(i.startDate) : i.startDate) === col.date
+                );
+
+                const prevDate = getAdjustedDate(col.date, -1);
+                const prevItems = currentScheduleData.filter(i =>
+                    (i.startDate.includes("T") ? formatDateFromISO(i.startDate) : i.startDate) === prevDate
+                );
+
+                dayItems.forEach(item => {
+                    item.shifts.forEach(s => {
+                        if (!(s as any).isDelete) {
+                            total += calculateEffectiveHours({ ...s, startDate: col.date }, col.date);
+                        }
+                    });
+                });
+
+                prevItems.forEach(item => {
+                    item.shifts.forEach(s => {
+                        if (!(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime)) {
+                            total += calculateEffectiveHours({ ...s, startDate: prevDate }, col.date);
+                        }
+                    });
+                });
+            });
+        });
+
         return parseFloat(total.toFixed(2));
-    }, []);
+    }, [dateColumns, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
+
+    const calculateUserDayTotal = useCallback((row: RowGroup, date: string, groupByClient: boolean): number => {
+        let total = 0;
+        const currentDay = date;
+        const prevDay = getAdjustedDate(currentDay, -1);
+
+        scheduleData.forEach(item => {
+            if (item.userId !== row.userId) return;
+            if (groupByClient && (item.clientId !== row.clientId || item.addressId !== row.addressId)) return;
+
+            const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
+
+            if (itemDate === currentDay) {
+                item.shifts.forEach(s => {
+                    if (!(s as any).isDelete) {
+                        total += calculateEffectiveHours({ ...s, startDate: currentDay }, currentDay);
+                    }
+                });
+            } else if (itemDate === prevDay) {
+                item.shifts.forEach(s => {
+                    if (!(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime)) {
+                        total += calculateEffectiveHours({ ...s, startDate: prevDay }, currentDay);
+                    }
+                });
+            }
+        });
+        return parseFloat(total.toFixed(2));
+    }, [scheduleData, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
     return {
         dateColumns,
@@ -955,6 +1126,7 @@ export const useScheduleTable = ({
         calculateRowTotal,
         calculateDayTotal,
         calculateGrandTotal,
+        calculateUserDayTotal, // Export new function
         hasTimeMismatch,
         findSessionForShift,
         isDraftShift,

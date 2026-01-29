@@ -8,7 +8,7 @@ import { graphQLClient } from "../GraphqlClient";
 import {
   GET_UNIQUE_CLIENT_ADDRESS_SESSIONS,
   SCHEDULE_SESSIONS_WITH_DRAFT_DATA,
-  GET_SESSIONS_BY_SCHEDULE_SESSION,
+  SESSIONS_BY_SCHEDULE_SESSION,
 } from "../graphql/queries";
 import {
   BULK_UPSERT_SCHEDULE_SESSION,
@@ -344,31 +344,32 @@ export const ClientSessionProvider = ({
 
   // ----- fetchSessionData -----
 
+  // ----- fetchSessionData -----
+
   const fetchSessionData = async (scheduleSessionIds: number[]) => {
     setSessionLoading(true);
     setSessionError(null);
     try {
       const token = sessionStorage.getItem("token");
-      const uniqueScheduleSessionIds = [...new Set(scheduleSessionIds)];
+      // Filter out any invalid IDs and deduplicate
+      const uniqueScheduleSessionIds = [...new Set(scheduleSessionIds.filter(id => id > 0))];
 
-      const sessionPromises = uniqueScheduleSessionIds.map(
-        (scheduleSessionId) =>
-          graphQLClient.request<{
-            sessionsByScheduleSession: SessionItem[];
-          }>(
-            GET_SESSIONS_BY_SCHEDULE_SESSION,
-            { scheduleSessionId },
-            { Authorization: `Bearer ${token}` }
-          )
+      if (uniqueScheduleSessionIds.length === 0) {
+        setSessionData([]);
+        setSessionLoading(false);
+        return;
+      }
+
+      // Make a single batch request
+      const response = await graphQLClient.request<{
+        sessionsByScheduleSession: SessionItem[];
+      }>(
+        SESSIONS_BY_SCHEDULE_SESSION, // Use the correct constant with [Int!]! type
+        { scheduleSessionId: uniqueScheduleSessionIds },
+        { Authorization: `Bearer ${token}` }
       );
 
-      const responses = await Promise.all(sessionPromises);
-
-      const allSessions: SessionItem[] = responses.flatMap(
-        (response) => response.sessionsByScheduleSession
-      );
-
-      setSessionData(allSessions);
+      setSessionData(response.sessionsByScheduleSession);
     } catch (err) {
       console.error("fetchSessionData:", err);
       setSessionError(genericError("fetchSessions", err));

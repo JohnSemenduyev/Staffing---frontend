@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useClientSessions } from "../../context/ViewSchedule";
+import { BULK_UPSERT_SCHEDULE_SESSION, CREATE_DRAFT_SCHEDULE_SESSIONS, UPDATE_SHIFT_END_TIME } from "../../graphql/mutation";
 import { GenericTable, TableAction, TableColumn } from "../../components/GenericTable";
 import { ScheduleTable } from "../../components/ScheduleTable";
 import { ActualTimeTable } from "../../components/ActualTimeTable";
@@ -34,7 +35,8 @@ import {
   minutesDiffWithWrap,
   checkApiOverlap,
   shiftSpansNextDay,
-  getAdjustedDate
+  getAdjustedDate,
+  isOverflowShift
 } from "./ViewSchedule/utils";
 import {
   FormData,
@@ -43,6 +45,7 @@ import {
 } from "./ViewSchedule/types";
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
+import { graphQLClient } from "../../GraphqlClient";
 
 
 
@@ -1653,6 +1656,74 @@ export const ViewSchedule = () => {
       const weekRange = getWeekRangeFromDateLocal(selectedDateObj);
       const startDate = toLocalYMD(weekRange.startOfWeek);
       const endDate = toLocalYMD(weekRange.endOfWeek);
+      const startOfWeekStr = toLocalYMD(weekRange.startOfWeek);
+
+      // -------------------------------------------------------------
+      // 1) Handle "Overflow" shifts (shifts starting before current week)
+      //    These only support EndTime updates via UPDATE_SHIFT_END_TIME
+      // -------------------------------------------------------------
+      const overflowShiftsToUpdate: any[] = [];
+
+      scheduleData.forEach((item) => {
+        item.shifts.forEach((shift: any) => {
+          const shiftDateRaw = shift.date.includes("T") ? shift.date.split("T")[0] : shift.date;
+          // Check if strict previous week (overflow)
+          if (shiftDateRaw < startOfWeekStr && shift.id && shift.id > 0) {
+            // Compare with original to see if changed
+            const origItem = originalScheduleData.find(x => x.userId === item.userId && x.startDate === item.startDate); // Approximate match by day? 
+            // Actually origItem might be tricky to find if we changed days, but overflow shifts generally stay on their "display day" 
+            // or we can find by ID globally if we built a map. 
+            // Let's us specific logic: check if this shift ID exists in originalShiftsRef (or originalScheduleData) and differs.
+
+            // Helper to find original shift by ID
+            let origShift: any = null;
+            originalScheduleData.some(oItem => {
+              const found = oItem.shifts.find((s: any) => s.id === shift.id);
+              if (found) { origShift = found; return true; }
+              return false;
+            });
+
+            let isChanged = false;
+            if (!origShift) {
+              // If not found in original, it might be new? But overflow shifts shouldn't be "created" new in this view typically
+              // unless dropped from previous week? 
+              // If it's new and in the past, maybe we technically should treat it as draft?
+              // For now, assume it's an update if it has a valid ID.
+              isChanged = true;
+            } else {
+              if (
+                shift.endTime !== origShift.endTime ||
+                !!shift.isDelete !== !!origShift.isDelete
+              ) {
+                isChanged = true;
+              }
+            }
+
+            if (isChanged) {
+              overflowShiftsToUpdate.push({
+                shiftId: shift.id,
+                endTime: shift.endTime,
+                draft: false, // CONFIRM/PUBLISH
+                isDelete: !!shift.isDelete
+              });
+            }
+          }
+        });
+      });
+
+      if (overflowShiftsToUpdate.length > 0) {
+        try {
+          await graphQLClient.request(
+            UPDATE_SHIFT_END_TIME,
+            { input: { items: overflowShiftsToUpdate } },
+            { Authorization: `Bearer ${freshToken}` }
+          );
+          console.log("Updated overflow shifts:", overflowShiftsToUpdate.length);
+        } catch (err) {
+          console.error("Failed to update overflow shifts", err);
+          // potentially throw or notify?
+        }
+      }
 
       const userScheduleMap = new Map();
       scheduleData.forEach(item => {
@@ -1692,6 +1763,11 @@ export const ViewSchedule = () => {
           const isClientGeneratedId = shift.id > 1000000000000;
           const isDraftShift = !!(shift as any)?.draftShiftId;
           const shiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
+
+          // Skip shifts that are not within the current week range
+          const shiftDateRaw = new Date(shift.date);
+          const shiftDateYMD = toLocalYMD(shiftDateRaw);
+          if (shiftDateYMD < startDate || shiftDateYMD > endDate) return;
 
           const formattedDate = convertDateFormat(shift.date);
           const shiftKey = `${formattedDate}-${shift.startTime}-${shift.endTime}`;

@@ -29,6 +29,12 @@ export const minutesDiffWithWrap = sharedMinutesDiffWithWrap;
 
 export const doTimesOverlap = sharedDoTimesOverlap;
 
+export const isOverflowShift = (shiftDate: string, weekStartDate: string): boolean => {
+  const shiftYMD = shiftDate.includes('T') ? shiftDate.split('T')[0] : shiftDate;
+  const startYMD = weekStartDate.includes('T') ? weekStartDate.split('T')[0] : weekStartDate;
+  return shiftYMD < startYMD;
+};
+
 export const sortShiftsByTime = (shifts: SharedShift[]): SharedShift[] => {
   return [...shifts].sort((a, b) => {
     return sharedTimeToMinutes(a.startTime) - sharedTimeToMinutes(b.startTime);

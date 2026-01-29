@@ -3,7 +3,7 @@ import { FaRegTrashAlt, FaRegEdit } from "react-icons/fa";
 import { GripVertical } from "lucide-react";
 import ToggleSwitch from "../ui/toggle";
 import { Shift, SessionItem } from "../../types/schedule";
-import { formatTimeDisplay } from "../../lib/utils";
+import { formatTimeDisplay, shiftSpansNextDay } from "../../lib/utils";
 
 interface ScheduleTableCellProps {
     shift: Shift | undefined;
@@ -24,6 +24,7 @@ interface ScheduleTableCellProps {
     handleShiftAutoToggleLocal: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
     hasMismatch: boolean;
     isDraft: boolean;
+    currentWeekRange: any;
 }
 
 export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
@@ -44,16 +45,32 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
     onShiftAutoToggle,
     handleShiftAutoToggleLocal,
     hasMismatch,
-    isDraft
+    isDraft,
+    currentWeekRange
 }) => {
+    // Check if shift is overflow
+    const isOverflow = React.useMemo(() => {
+        if (!shift || !shift.date || !currentWeekRange?.startOfWeek) return false;
+        const shiftDate = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
+        let weekStart = "";
+        if (currentWeekRange.startOfWeek instanceof Date) {
+            weekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
+        } else if (typeof currentWeekRange.startOfWeek === 'string') {
+            weekStart = currentWeekRange.startOfWeek.includes('T') ? currentWeekRange.startOfWeek.split('T')[0] : currentWeekRange.startOfWeek;
+        }
+        return shiftDate < weekStart;
+    }, [shift, currentWeekRange]);
+
     return (
         <td
             className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${!readOnly &&
-                    dragOverCell?.userId === rowUserId &&
-                    dragOverCell?.date === dateCol.date
-                    ? "bg-blue-50 border-blue-300"
-                    : hasMismatch
-                        ? "bg-red-100 border-red-300"
+                dragOverCell?.userId === rowUserId &&
+                dragOverCell?.date === dateCol.date
+                ? "bg-blue-50 border-blue-300"
+                : hasMismatch
+                    ? "bg-red-100 border-red-300"
+                    : isOverflow
+                        ? "bg-orange-50 border-orange-200"
                         : isDraft
                             ? "bg-amber-50 border-amber-200"
                             : ""
@@ -82,7 +99,7 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                                         e,
                                         shift,
                                         rowUserId,
-                                        dateCol.date,
+                                        (shift as any).originalDate || dateCol.date,
                                         rowIdx
                                     )
                                 }
@@ -92,7 +109,7 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                             </div>
                             <button
                                 onClick={() =>
-                                    handleEditShift(rowUserId, dateCol.date, shift)
+                                    handleEditShift((shift as any).userId || rowUserId, (shift as any).originalDate || dateCol.date, shift)
                                 }
                                 className="text-blue-600 hover:text-blue-800 p-0.5 hover:bg-blue-50 rounded"
                                 title="Edit shift"
@@ -102,8 +119,8 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                             <button
                                 onClick={() =>
                                     handleDeleteShift(
-                                        rowUserId,
-                                        dateCol.date,
+                                        (shift as any).userId || rowUserId,
+                                        (shift as any).originalDate || dateCol.date,
                                         shift.id
                                     )
                                 }
@@ -116,9 +133,18 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                     )}
                     <div className="flex items-center gap-2 justify-center flex-col">
                         <span className="text-sm">
-                            {`${shift.startTime} - ${formatTimeDisplay(
-                                shift.endTime
-                            )}`}
+                            {(() => {
+                                // If it's a continuation from previous day (second part of split)
+                                if ((shift as any).isContinuation) {
+                                    return `00:00 - ${formatTimeDisplay((shift as any).endTime)}`;
+                                }
+                                // If it starts today but spans next day (first part of split)
+                                if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+                                    return `${shift.startTime} - 24:00`;
+                                }
+                                // Regular shift
+                                return `${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`;
+                            })()}
                         </span>
 
                         {/* AUTO TOGGLE */}
@@ -129,17 +155,20 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                                 disabled={!isEditMode || readOnly}
                                 onToggle={(enabled) => {
                                     if (readOnly || !isEditMode) return;
+                                    // Use original date if it's a continuation shift, so we update the correct record
+                                    const targetDate = (shift as any).originalDate || dateCol.date;
+
                                     if (onShiftAutoToggle) {
                                         onShiftAutoToggle(
                                             rowUserId,
-                                            dateCol.date,
+                                            targetDate,
                                             shift.id,
                                             enabled
                                         );
                                     } else {
                                         handleShiftAutoToggleLocal(
                                             rowUserId,
-                                            dateCol.date,
+                                            targetDate,
                                             shift.id,
                                             enabled
                                         );
@@ -147,9 +176,14 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                                 }}
                             />
                         </div>
-                        {isDraft && (
+                        {isDraft && !isOverflow && (
                             <span className="text-[10px] uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
                                 Draft
+                            </span>
+                        )}
+                        {isOverflow && (
+                            <span className="text-[10px] uppercase tracking-wide text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded-full">
+                                Overflow
                             </span>
                         )}
                         {/* Confirm/Reject indicator (only in view mode) */}

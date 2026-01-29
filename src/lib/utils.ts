@@ -201,3 +201,8 @@ export const addressTwoLines = (address?: string) => {
   // Fallback: no split or only one comma
   return { line1: address, line2: "" };
 };
+
+export const formatDateFromISO = (dateStr: string) => {
+  if (!dateStr) return dateStr;
+  return dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+};

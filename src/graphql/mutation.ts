@@ -638,3 +638,64 @@ export const APPROVE_ADMIN_BY_TOKEN = gql`
     approveAdminByToken(token: $token)
   }
 `;
+
+export const UPDATE_SHIFT = gql`
+  mutation UpdateShift(
+  $id: Int!
+    $confirm: Boolean
+    $reject: Boolean
+    $startTime: String
+    $endTime: String
+    $date: String
+    $isDelete: Boolean
+) {
+  updateShift(
+    id: $id
+      confirm: $confirm
+      reject: $reject
+      startTime: $startTime
+      endTime: $endTime
+      date: $date
+      isDelete: $isDelete
+  ) {
+    id
+    clientId
+    addressId
+    userId
+    startDate
+    endDate
+    weeklyHours
+    isDraft
+      shifts {
+      id
+      scheduleSessionId
+      date
+      startTime
+      endTime
+      hours
+      actualHours
+      confirm
+      reject
+      auto
+      isActive
+      isDelete
+    }
+      draftShifts {
+      id
+    }
+  }
+}
+`;
+
+export const UPDATE_SHIFT_END_TIME = gql`
+  mutation UpdateShiftEndTime($input: UpdateShiftEndTimeBulkInput!) {
+    updateShiftEndTime(input: $input) {
+      success
+      code
+      message
+      total
+      updated
+      failed
+    }
+  }
+`;

@@ -28,7 +28,7 @@ export const GET_CLIENTS = gql`
 
 
 export const SESSIONS_BY_SCHEDULE_SESSION = gql`
-  query SessionsByScheduleSession($scheduleSessionId: Int!) {
+  query SessionsByScheduleSession($scheduleSessionId: [Int!]!) {
     sessionsByScheduleSession(scheduleSessionId: $scheduleSessionId) {
       id
       shiftId

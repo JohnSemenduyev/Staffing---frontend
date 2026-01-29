@@ -3,7 +3,7 @@ import { FaRegTrashAlt } from "react-icons/fa";
 import ToggleSwitch from "../ui/toggle";
 import { ScheduleItem, SessionItem, RowGroup } from "../../types/schedule";
 import { ScheduleTableCell } from "./ScheduleTableCell";
-import { addressTwoLines, formatUSPhone } from "../../lib/utils";
+import { addressTwoLines, formatUSPhone, shiftSpansNextDay } from "../../lib/utils";
 
 interface ScheduleTableRowProps {
     row: RowGroup;
@@ -30,11 +30,13 @@ interface ScheduleTableRowProps {
     handleUserAutoToggle: (userId: number, enabled: boolean) => void;
     handleDeleteUser: (userId: number) => void;
     calculateDayTotal: (date: string) => number;
+    calculateUserDayTotal: (row: RowGroup, date: string, groupByClient: boolean) => number;
     findSessionForShift: (shiftId: number) => SessionItem | null;
     hasTimeMismatch: (shift: any, session?: any, tolerance?: number) => boolean;
     isDraftShift: (shift: any) => boolean;
     formatDateFromISO: (date: string) => string;
     sortShiftsByTime: (shifts: any[]) => any[];
+    currentWeekRange: any;
 }
 
 export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
@@ -62,11 +64,13 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
     handleUserAutoToggle,
     handleDeleteUser,
     calculateDayTotal,
+    calculateUserDayTotal,
     findSessionForShift,
     hasTimeMismatch,
     isDraftShift,
     formatDateFromISO,
     sortShiftsByTime,
+    currentWeekRange
 }) => {
     const rowCount = getMaxShiftsPerDay(row, groupByClient);
 
@@ -117,16 +121,67 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                                 item.addressId === row.addressId;
                             return sameUser && sameClientGroup && itemDate === dateCol.date;
                         });
-                        const sortedShifts = sortShiftsByTime(
-                            daySchedules.flatMap((s) => s.shifts).filter((s) => !(s as any).isDelete)
-                        );
+
+                        // 1. Current day shifts
+                        const currentDayShifts = daySchedules
+                            .flatMap((s) => s.shifts)
+                            .filter((s) => !(s as any).isDelete);
+
+                        // 2. Previous day shifts that span to today
+                        const prevDate = (() => {
+                            // Simple logic to get previous date YYYY-MM-DD
+                            const d = new Date(dateCol.date + 'T00:00:00');
+                            d.setDate(d.getDate() - 1);
+                            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        })();
+
+                        // We need to find the user's schedule for the previous day
+                        const prevDaySchedules = scheduleData.filter((item) => {
+                            const itemDate = item.startDate.includes("T")
+                                ? formatDateFromISO(item.startDate)
+                                : item.startDate;
+
+                            const sameUser = item.userId === row.userId;
+                            const sameClientGroup = !groupByClient
+                                ? true
+                                : item.clientId === row.clientId &&
+                                item.addressId === row.addressId;
+
+                            return sameUser && sameClientGroup && itemDate === prevDate;
+                        });
+
+                        const prevDaySpanningShifts = prevDaySchedules
+                            .flatMap(s => s.shifts)
+                            .filter(s => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+                            .map(s => ({
+                                ...s,
+                                isContinuation: true, // Mark as continuation
+                                originalDate: prevDate, // Keep track of original date
+                                displayStartTime: "00:00" // For sorting, treat as start of day
+                            }));
+
+                        // 3. Merge and sort
+                        const allShifts = [
+                            ...currentDayShifts.map(s => ({ ...s, displayStartTime: s.startTime })),
+                            ...prevDaySpanningShifts
+                        ];
+
+                        const sortedShifts = allShifts.sort((a, b) => {
+                            const timeA = (a as any).displayStartTime;
+                            const timeB = (b as any).displayStartTime;
+                            // Simple time comparison HH:MM
+                            return timeA.localeCompare(timeB);
+                        });
+
                         const shift = sortedShifts[rowIdx];
-                        const session = shift
+                        const session = shift && !(shift as any).isContinuation
                             ? findSessionForShift(shift.id)
                             : null;
 
                         // Get tolerance from the schedule item (row data)
-                        const tolerance = daySchedules[0]?.timeSetup?.actualScheduledTime ?? 0;
+                        // Use the correct day schedule based on where the shift "lives" visually
+                        const targetSchedule = (shift as any)?.isContinuation ? prevDaySchedules[0] : daySchedules[0];
+                        const tolerance = targetSchedule?.timeSetup?.actualScheduledTime ?? 0;
 
                         const mismatch = shift && session
                             ? hasTimeMismatch(shift, session, tolerance)
@@ -154,6 +209,7 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                                 handleShiftAutoToggleLocal={handleShiftAutoToggleLocal}
                                 hasMismatch={mismatch}
                                 isDraft={draft}
+                                currentWeekRange={currentWeekRange}
                             />
                         );
                     })}
@@ -206,29 +262,7 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                     Total
                 </td>
                 {dateColumns.map((dateCol) => {
-                    const daySchedules = scheduleData.filter((item) => {
-                        const itemDate = item.startDate.includes("T")
-                            ? formatDateFromISO(item.startDate)
-                            : item.startDate;
-                        const sameUser = item.userId === row.userId;
-                        const sameClientGroup = !groupByClient
-                            ? true
-                            : item.clientId === row.clientId &&
-                            item.addressId === row.addressId;
-                        return (
-                            sameUser &&
-                            sameClientGroup &&
-                            itemDate === dateCol.date
-                        );
-                    });
-                    const dayTotal = daySchedules.reduce(
-                        (t, s) =>
-                            t +
-                            s.shifts
-                                .filter((sh: any) => !(sh as any).isDelete)
-                                .reduce((st, sh: any) => st + (sh.hours || 0), 0),
-                        0
-                    );
+                    const dayTotal = calculateUserDayTotal(row, dateCol.date, groupByClient);
 
                     const rounded = parseFloat(dayTotal.toFixed(2));
                     return (

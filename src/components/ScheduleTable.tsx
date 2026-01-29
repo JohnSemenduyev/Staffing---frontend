@@ -107,6 +107,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     calculateRowTotal,
     calculateDayTotal,
     calculateGrandTotal,
+    calculateUserDayTotal,
     hasTimeMismatch,
     findSessionForShift,
     isDraftShift,
@@ -174,11 +175,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 handleUserAutoToggle={handleUserAutoToggle}
                 handleDeleteUser={handleDeleteUser}
                 calculateDayTotal={calculateDayTotal}
+                calculateUserDayTotal={calculateUserDayTotal}
                 findSessionForShift={findSessionForShift}
                 hasTimeMismatch={hasTimeMismatch}
                 isDraftShift={isDraftShift}
                 formatDateFromISO={formatDateFromISO}
                 sortShiftsByTime={sortShiftsByTime}
+                currentWeekRange={currentWeekRange}
               />
             ))}
             <tr className="bg-gray-50 font-medium">
@@ -238,6 +241,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         editModeConfirmModal={editModeConfirmModal}
         confirmEditModeToggle={confirmEditModeToggle}
         cancelEditModeToggle={cancelEditModeToggle}
+        currentWeekRange={currentWeekRange}
       />
     </div>
   );

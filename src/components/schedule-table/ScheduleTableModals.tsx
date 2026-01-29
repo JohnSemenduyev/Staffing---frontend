@@ -3,11 +3,11 @@ import { FaRegTrashAlt, FaRegEdit } from "react-icons/fa";
 import { Shift } from "../../types/schedule";
 
 interface ScheduleTableModalsProps {
-    deleteModal: { isOpen: boolean; shiftId: number | null; userId: number | null; date: string | null };
+    deleteModal: { isOpen: boolean; shiftId?: number | null; userId?: number | null; date?: string | null };
     confirmDeleteShift: () => void;
     cancelDeleteShift: () => void;
 
-    editModal: { isOpen: boolean; shift: Shift | null };
+    editModal: { isOpen: boolean; shift?: Shift | null };
     editForm: { starttime: string; endtime: string };
     setEditForm: React.Dispatch<React.SetStateAction<{ starttime: string; endtime: string }>>;
     confirmEditShift: () => void;
@@ -26,6 +26,7 @@ interface ScheduleTableModalsProps {
     editModeConfirmModal: { isOpen: boolean };
     confirmEditModeToggle: () => void;
     cancelEditModeToggle: () => void;
+    currentWeekRange: any;
 }
 
 export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
@@ -48,7 +49,21 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
     editModeConfirmModal,
     confirmEditModeToggle,
     cancelEditModeToggle,
+    currentWeekRange
 }) => {
+    // Helper to check if shift is overflow
+    const isOverflow = React.useMemo(() => {
+        if (!editModal.shift?.date || !currentWeekRange?.startOfWeek) return false;
+        const shiftDate = editModal.shift.date.includes('T') ? editModal.shift.date.split('T')[0] : editModal.shift.date;
+        let weekStart = "";
+        if (currentWeekRange.startOfWeek instanceof Date) {
+            weekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
+        } else if (typeof currentWeekRange.startOfWeek === 'string') {
+            weekStart = currentWeekRange.startOfWeek.includes('T') ? currentWeekRange.startOfWeek.split('T')[0] : currentWeekRange.startOfWeek;
+        }
+        return shiftDate < weekStart;
+    }, [editModal.shift, currentWeekRange]);
+
     return (
         <>
             {/* Delete Shift Modal */}
@@ -87,6 +102,11 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                         <div className="mb-4">
                             <h3 className="text-lg font-medium text-gray-900">Edit Shift</h3>
+                            {isOverflow && (
+                                <p className="text-xs text-amber-600 mt-1">
+                                    Note: This is an overflow shift from a previous week. Only the end time can be modified.
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -97,10 +117,11 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                                 <input
                                     type="time"
                                     value={editForm.starttime}
+                                    disabled={isOverflow}
                                     onChange={(e) =>
                                         setEditForm((prev) => ({ ...prev, starttime: e.target.value }))
                                     }
-                                    className="w-full px-3 py-1 border border-[#d0d4d9] rounded-md placeholder:text-gray-500 font-normal focus:outline-none focus:ring-2 focus:ring-[#004175] transition appearance-none"
+                                    className={`w-full px-3 py-1 border border-[#d0d4d9] rounded-md placeholder:text-gray-500 font-normal focus:outline-none focus:ring-2 focus:ring-[#004175] transition appearance-none ${isOverflow ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                                 />
                             </div>
                             <div>
