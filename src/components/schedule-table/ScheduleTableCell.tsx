@@ -4,6 +4,7 @@ import { GripVertical } from "lucide-react";
 import ToggleSwitch from "../ui/toggle";
 import { Shift, SessionItem } from "../../types/schedule";
 import { formatTimeDisplay, shiftSpansNextDay } from "../../lib/utils";
+import { isOverflowShift } from "../../pages/Manager/ViewSchedule/utils";
 
 interface ScheduleTableCellProps {
     shift: Shift | undefined;
@@ -51,14 +52,7 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
     // Check if shift is overflow
     const isOverflow = React.useMemo(() => {
         if (!shift || !shift.date || !currentWeekRange?.startOfWeek) return false;
-        const shiftDate = shift.date.includes('T') ? shift.date.split('T')[0] : shift.date;
-        let weekStart = "";
-        if (currentWeekRange.startOfWeek instanceof Date) {
-            weekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
-        } else if (typeof currentWeekRange.startOfWeek === 'string') {
-            weekStart = currentWeekRange.startOfWeek.includes('T') ? currentWeekRange.startOfWeek.split('T')[0] : currentWeekRange.startOfWeek;
-        }
-        return shiftDate < weekStart;
+        return isOverflowShift(shift.date, currentWeekRange.startOfWeek);
     }, [shift, currentWeekRange]);
 
     return (

@@ -1,6 +1,7 @@
 import React from "react";
 import { FaRegTrashAlt, FaRegEdit } from "react-icons/fa";
 import { Shift } from "../../types/schedule";
+import { isOverflowShift } from "../../pages/Manager/ViewSchedule/utils";
 
 interface ScheduleTableModalsProps {
     deleteModal: { isOpen: boolean; shiftId?: number | null; userId?: number | null; date?: string | null };
@@ -54,14 +55,7 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
     // Helper to check if shift is overflow
     const isOverflow = React.useMemo(() => {
         if (!editModal.shift?.date || !currentWeekRange?.startOfWeek) return false;
-        const shiftDate = editModal.shift.date.includes('T') ? editModal.shift.date.split('T')[0] : editModal.shift.date;
-        let weekStart = "";
-        if (currentWeekRange.startOfWeek instanceof Date) {
-            weekStart = currentWeekRange.startOfWeek.toISOString().split('T')[0];
-        } else if (typeof currentWeekRange.startOfWeek === 'string') {
-            weekStart = currentWeekRange.startOfWeek.includes('T') ? currentWeekRange.startOfWeek.split('T')[0] : currentWeekRange.startOfWeek;
-        }
-        return shiftDate < weekStart;
+        return isOverflowShift(editModal.shift.date, currentWeekRange.startOfWeek);
     }, [editModal.shift, currentWeekRange]);
 
     return (

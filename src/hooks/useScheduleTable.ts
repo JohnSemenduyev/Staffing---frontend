@@ -163,7 +163,7 @@ export const useScheduleTable = ({
         // Check same day overlap
         let overlappingShift = userShifts.find((shift: any) => {
             if (normalizeShiftDate(shift) !== date) return false;
-            if (excludeShiftId && shift.id === excludeShiftId) return false;
+            if (excludeShiftId != null && shift.id == excludeShiftId) return false; // Loose equality
             return checkShiftOverlap({ startTime, endTime }, shift);
         });
 
@@ -172,7 +172,7 @@ export const useScheduleTable = ({
             const prevDate = getAdjustedDate(date, -1);
             overlappingShift = userShifts.find((shift: any) => {
                 if (normalizeShiftDate(shift) !== prevDate) return false;
-                if (excludeShiftId && shift.id === excludeShiftId) return false;
+                if (excludeShiftId != null && shift.id == excludeShiftId) return false; // Loose equality
                 if (!shiftSpansNextDay(shift.startTime, shift.endTime)) return false;
                 return overlapsWithPrevDayShift(startTime, endTime, shift.endTime);
             });
@@ -183,6 +183,7 @@ export const useScheduleTable = ({
             const nextDate = getAdjustedDate(date, 1);
             overlappingShift = userShifts.find((shift: any) => {
                 if (normalizeShiftDate(shift) !== nextDate) return false;
+                if (excludeShiftId != null && shift.id == excludeShiftId) return false; // Loose equality
                 return checkShiftOverlap({ startTime, endTime }, shift);
             });
         }
@@ -323,7 +324,7 @@ export const useScheduleTable = ({
         const localShifts = scheduleData
             .filter(item => item.userId === userId && item.startDate === date)
             .flatMap(item => item.shifts)
-            .filter(s => !(s as any).isDelete && s.id !== excludeShiftId);
+            .filter(s => !(s as any).isDelete && (excludeShiftId == null || s.id != excludeShiftId)); // Loose equality
 
         return localShifts.some(existingShift =>
             checkShiftOverlap({ startTime, endTime }, existingShift)
@@ -342,7 +343,7 @@ export const useScheduleTable = ({
         const adjacentShifts = scheduleData
             .filter(item => item.userId === userId && item.startDate === adjacentDate)
             .flatMap(item => item.shifts)
-            .filter(s => !(s as any).isDelete && s.id !== excludeShiftId);
+            .filter(s => !(s as any).isDelete && (excludeShiftId == null || s.id != excludeShiftId)); // Loose equality
 
         if (direction === 'prev') {
             return adjacentShifts
@@ -575,7 +576,7 @@ export const useScheduleTable = ({
                 ? backendShift.date.split("T")[0]
                 : backendShift.date;
             if (shiftDateStr !== date) return false;
-            if (backendShift.id === shift.id) return false;
+            if (backendShift.id == shift.id) return false;
             return checkShiftOverlap({ startTime: starttime, endTime: endtime }, backendShift);
         });
 
