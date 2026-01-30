@@ -1806,6 +1806,9 @@ export const ViewSchedule = () => {
         // Calculate weekly hours SPECIFIC to this session group
         const groupWeeklyHours = shiftsArray.reduce((total: number, shift: any) => total + shift.hours, 0);
 
+        // Recalculate auto based on shifts in this group to ensure split rows are handled
+        const groupAuto = shiftsArray.some((s: any) => s.auto === true);
+
         // Change detection now needs to be smarter or fallback to "always true" for simplicity if complex
         // Reuse similar logic but scoped to this group's scheduleSessionId if possible
         let changed = false;
@@ -1840,6 +1843,7 @@ export const ViewSchedule = () => {
 
         return {
           ...rest,
+          auto: groupAuto,
           shifts: shiftsArray.map(({ scheduleSessionId, ...s }: any) => s), // Remove scheduleSessionId
           weeklyHours: parseFloat(groupWeeklyHours.toFixed(2)),
           change: changed,
@@ -2208,12 +2212,14 @@ export const ViewSchedule = () => {
             draftScheduleSessionId: group.draftScheduleSessionId,
             shifts: group.shiftsToSend,
             weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+            auto: group.auto,
           });
         } else if (group.scheduleSessionId) {
           // Draft shifts attached to existing schedule session
           draftInput.push({
             scheduleSessionId: group.scheduleSessionId,
             shifts: group.shiftsToSend,
+            auto: group.auto,
           });
         } else {
           // New draft schedule session
