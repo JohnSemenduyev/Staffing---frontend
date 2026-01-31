@@ -108,10 +108,8 @@ export const useActualTimeTable = ({
         });
 
         // 2. Collect shifts from sessionData (extended data)
-        // Since we don't have an array of shifts on sessionData (schema limitation),
-        // we use the single shift object on each session to determine its scheduled time.
-        // Do NOT overwrite a shift already from scheduleData when the session's shift has no startTime/endTime
-        // (e.g. after save we only have shift: { id, date }) — otherwise we lose overnight split and the second cell disappears.
+        // When session's shift has no startTime/endTime, derive from sessions' clockIn/clockOut so that
+        // after editing overnight → same-day, the shift is treated as same-day and stays on the current day column.
         sessionData.forEach(session => {
             if (session.shift) {
                 const s: Shift = {
@@ -126,7 +124,15 @@ export const useActualTimeTable = ({
                 if (!existing) {
                     shiftMap.set(s.id, s);
                 } else if (s.startTime === "00:00" && s.endTime === "00:00" && (existing.startTime !== "00:00" || existing.endTime !== "00:00")) {
-                    // Keep existing shift from schedule so overnight split (second cell) is preserved
+                    const sessionsForShift = sessionData.filter(sd => sd.shiftId === s.id && sd.clockIn);
+                    const withOut = sessionsForShift.filter(sd => sd.clockOut);
+                    if (withOut.length > 0) {
+                        const minIn = sessionsForShift.reduce((min, sd) => (sd.clockIn && (!min || sd.clockIn < min)) ? sd.clockIn : min, "" as string);
+                        const maxOut = withOut.reduce((max, sd) => (sd.clockOut && (!max || sd.clockOut > max)) ? sd.clockOut : max, "" as string);
+                        if (minIn && maxOut && timeToMinutes(maxOut) >= timeToMinutes(minIn)) {
+                            shiftMap.set(s.id, { ...existing, startTime: minIn, endTime: maxOut });
+                        }
+                    }
                 } else {
                     shiftMap.set(s.id, s);
                 }
@@ -420,6 +426,11 @@ export const useActualTimeTable = ({
 
         const remaining = sessionData.filter(s => s.shiftId !== shiftId);
         const sessionDate = shiftForDate?.date ? (shiftForDate.date.includes("T") ? shiftForDate.date.split("T")[0] : shiftForDate.date) : date;
+        // Use shift's start date (sessionDate) so the shift stays on the current day column after edit.
+        const withClockOut = editSessions.filter(r => r.clockOut);
+        const minClockIn = editSessions.length ? editSessions.reduce((min, r) => (r.clockIn && (!min || r.clockIn < min)) ? r.clockIn : min, "" as string) : "";
+        const maxClockOut = withClockOut.length ? withClockOut.reduce((max, r) => (r.clockOut && (!max || r.clockOut > max)) ? r.clockOut : max, "" as string) : "";
+        const shiftTimes = (minClockIn && maxClockOut) ? { startTime: minClockIn, endTime: maxClockOut } : {};
         const toAdd = editSessions.map(row => ({
             id: row.id ?? Date.now() + Math.floor(Math.random() * 1000),
             shiftId,
@@ -427,7 +438,7 @@ export const useActualTimeTable = ({
             clockIn: row.clockIn,
             clockOut: row.clockOut || null,
             workedTime: row.clockOut ? calculateHours(row.clockIn, row.clockOut) : 0,
-            shift: { id: shiftId, date: sessionDate }
+            shift: { id: shiftId, date: sessionDate, ...shiftTimes }
         })) as unknown as SessionItem[];
 
         onSessionDataChange([...remaining, ...toAdd]);

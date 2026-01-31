@@ -504,6 +504,28 @@ export const generateActualTimePrintableTable = (
     return 0;
   };
 
+  // Display time range for a session on a given date (matches web UI: start part "clockIn-24:00", end part "00:00-clockOut")
+  const getSessionDisplayRangeOnDate = (session: SessionData, dateStr: string): { displayStart: string; displayEnd: string } | null => {
+    if (getSessionHoursOnDate(session, dateStr) <= 0) return null;
+    const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === session.shiftId));
+    const shift = scheduleItem?.shifts.find((s: any) => s.id === session.shiftId);
+    if (!shift || !session.clockIn || !session.clockOut) {
+      return { displayStart: session.clockIn || 'N/A', displayEnd: session.clockOut || 'N/A' };
+    }
+    const sessionDate = normDate(shift.date);
+    const sIn = timeToMinutes(session.clockIn);
+    const sOut = timeToMinutes(session.clockOut);
+    if (sIn <= sOut) {
+      return { displayStart: session.clockIn, displayEnd: session.clockOut };
+    }
+    const endDate = getAdjustedDate(sessionDate, 1);
+    if (dateStr === sessionDate) return { displayStart: session.clockIn, displayEnd: '24:00' };
+    if (dateStr === endDate || (sessionDate < weekStartStr && dateStr === weekStartStr)) {
+      return { displayStart: '00:00', displayEnd: session.clockOut };
+    }
+    return { displayStart: session.clockIn, displayEnd: session.clockOut };
+  };
+
   const getMaxShiftsPerDay = (userId: number) => {
     let maxShifts = 1;
     if (!currentWeekRange) return maxShifts;
@@ -631,7 +653,7 @@ export const generateActualTimePrintableTable = (
         `);
       }
 
-      // Day columns: use visual shifts (overnight + overflow), show sessions with hours on this date
+      // Day columns: use visual shifts (overnight + overflow), show sessions with SPLIT display (start part "clockIn-24:00", end part "00:00-clockOut") like web UI
       let rowTotal = 0;
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
@@ -646,7 +668,12 @@ export const generateActualTimePrintableTable = (
             const sessionsInCell = sessionData.filter(
               s => s.shiftId === shift.id && getSessionHoursOnDate(s, dateStr) > 0
             );
-            cellContent = sessionsInCell.map(s => `${s.clockIn} - ${s.clockOut}`).join('\n');
+            cellContent = sessionsInCell
+              .map(s => {
+                const range = getSessionDisplayRangeOnDate(s, dateStr);
+                return range ? `${range.displayStart} - ${range.displayEnd}` : `${s.clockIn} - ${s.clockOut}`;
+              })
+              .join('\n');
             sessionsInCell.forEach(session => {
               rowTotal += getSessionHoursOnDate(session, dateStr);
             });
