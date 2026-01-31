@@ -18,6 +18,8 @@ export interface Shift {
     actualHours?: number; // From ActualTimeTable
     draftShiftId?: number;
     draftScheduleSessionId?: number;
+    isSplit?: boolean;
+    splitSide?: 'start' | 'end';
 }
 
 export interface ScheduleItem {
@@ -47,7 +49,9 @@ export interface SessionItem {
     workedTime: number;
     shift?: {
         id: number;
-        date: string; // OR number in some contexts? Needs verification, keeping string for now based on usage
+        date: string;
+        startTime?: string;
+        endTime?: string;
     };
 }
 

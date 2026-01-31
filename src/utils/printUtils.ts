@@ -1,13 +1,11 @@
-import { format } from "path";
-import { formatDateLocal } from "../lib/utils";
+import { formatDateLocal, getAdjustedDate, shiftSpansNextDay, calculateHours } from "../lib/utils";
 // utils.ts
 export const toLocalYMD = (date: Date) => {
   const year = date.getFullYear(); // local year
-  const month = String(date.getMonth() + 1).padStart(2, '0'); 
-  const day = String(date.getDate()).padStart(2, '0'); 
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
-
 
 interface ScheduleItem {
   id: number;
@@ -162,50 +160,114 @@ export const generateSchedulePrintableTable = (
     </tr>
   `;
 
-  // Helper functions
+  // Normalize date from item or shift (YYYY-MM-DD)
+  const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
+  const getScheduleItem = (userId: number, dateStr: string) =>
+    scheduleData.find(item => item.userId === userId && normDate(item.startDate) === dateStr);
+
+  // Visual shifts for a (user, column date): current day shifts + previous day shifts that span (overnight/overflow)
+  const getVisualShifts = (userId: number, dateStr: string): { shift: any; isContinuation: boolean; displayStart: string; displayEnd: string }[] => {
+    const current = getScheduleItem(userId, dateStr);
+    const prevDateStr = getAdjustedDate(dateStr, -1);
+    const prev = getScheduleItem(userId, prevDateStr);
+
+    const currentShifts = (current?.shifts || [])
+      .filter((s: any) => !s.isDelete)
+      .map((s: any) => ({ shift: s, isContinuation: false, displayStart: s.startTime, displayEnd: s.endTime }));
+
+    const prevSpanning = (prev?.shifts || [])
+      .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+      .map((s: any) => ({ shift: s, isContinuation: true, displayStart: '00:00', displayEnd: s.endTime }));
+
+    const merged = [...currentShifts, ...prevSpanning].sort(
+      (a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart)
+    );
+    return merged;
+  };
+
+  const calculateShiftHours = (start: string, end: string) => {
+    const h = calculateHours(start, end);
+    return typeof h === 'number' ? h : 0;
+  };
+
+  // Effective hours of a shift on targetDate (overnight split by date)
+  const calculateEffectiveHours = (shift: any, shiftStartDate: string, targetDate: string): number => {
+    if (normDate(shiftStartDate) === targetDate) {
+      if (shiftSpansNextDay(shift.startTime, shift.endTime)) {
+        return calculateShiftHours(shift.startTime, '24:00');
+      }
+      return calculateShiftHours(shift.startTime, shift.endTime);
+    }
+    const prevDateStr = getAdjustedDate(targetDate, -1);
+    if (normDate(shiftStartDate) === prevDateStr && shiftSpansNextDay(shift.startTime, shift.endTime)) {
+      return calculateShiftHours('00:00', shift.endTime);
+    }
+    return 0;
+  };
+
   const getMaxShiftsPerDay = (userId: number) => {
     let maxShifts = 1;
     if (!currentWeekRange) return maxShifts;
-
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       const dateStr = toLocalYMD(date);
-      
-      const shiftsForDay = scheduleData
-        .filter(item => item.userId === userId)
-        .flatMap(item => item.shifts)
-        .filter(shift => {
-          const shiftDate = shift.date;
-            
-          return shiftDate === dateStr;
-        });
-      
-      maxShifts = Math.max(maxShifts, shiftsForDay.length);
+      const visual = getVisualShifts(userId, dateStr);
+      maxShifts = Math.max(maxShifts, visual.length);
     }
     return maxShifts;
   };
 
   const calculateUserTotal = (userId: number) => {
-    return scheduleData
-      .filter(item => item.userId === userId)
-      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    let total = 0;
+    if (!currentWeekRange) return total;
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = toLocalYMD(date);
+      const visual = getVisualShifts(userId, dateStr);
+      visual.forEach(({ shift, isContinuation }) => {
+        const shiftStartDate = isContinuation ? getAdjustedDate(dateStr, -1) : dateStr;
+        total += calculateEffectiveHours(shift, shiftStartDate, dateStr);
+      });
+    }
+    return parseFloat(total.toFixed(2));
   };
 
   const calculateDayTotal = (dateStr: string) => {
-    return scheduleData
-      .flatMap(item => item.shifts)
-      .filter(shift => {
-        const shiftDate = shift.date;
-        return shiftDate === dateStr;
-      })
-      .reduce((total, shift) => total + shift.hours, 0);
+    let total = 0;
+    const userIds = [...new Set(scheduleData.map(item => item.userId))];
+    userIds.forEach(userId => {
+      getVisualShifts(userId, dateStr).forEach(({ shift, isContinuation }) => {
+        const shiftStartDate = isContinuation ? getAdjustedDate(dateStr, -1) : dateStr;
+        total += calculateEffectiveHours(shift, shiftStartDate, dateStr);
+      });
+    });
+    return parseFloat(total.toFixed(2));
   };
 
   const calculateGrandTotal = () => {
-    return scheduleData
-      .reduce((total, item) => total + item.shifts.reduce((shiftTotal, shift) => shiftTotal + shift.hours, 0), 0);
+    let total = 0;
+    if (!currentWeekRange) return total;
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      total += calculateDayTotal(toLocalYMD(date));
+    }
+    return parseFloat(total.toFixed(2));
+  };
+
+  // User day total (effective hours for this user on this date only)
+  const calculateUserDayTotal = (userId: number, dateStr: string) => {
+    let total = 0;
+    getVisualShifts(userId, dateStr).forEach(({ shift, isContinuation }) => {
+      const shiftStartDate = isContinuation ? getAdjustedDate(dateStr, -1) : dateStr;
+      total += calculateEffectiveHours(shift, shiftStartDate, dateStr);
+    });
+    return parseFloat(total.toFixed(2));
   };
 
   // Build table rows
@@ -215,19 +277,16 @@ export const generateSchedulePrintableTable = (
     const maxShifts = getMaxShiftsPerDay(user.id);
     const totalRows = maxShifts + 1; // +1 for Total row
     
-    // Data rows for shifts
+    // Data rows for shifts (visual shifts: overnight + overflow)
     for (let rowIdx = 0; rowIdx < maxShifts; rowIdx++) {
       const cells = [];
       
-      // Officer name (spans all rows including Total)
       if (rowIdx === 0) {
         cells.push(`
           <td style="padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: normal; border: 1px solid black !important;" rowspan="${totalRows}">
             ${user.name}
           </td>
         `);
-        
-        // Empty column (spans all rows including Total)
         cells.push(`
           <td style="border: 1px solid black; padding: 0px 2px; text-align: center; font-size: 15px;" rowspan="${totalRows-1}">
             
@@ -235,36 +294,7 @@ export const generateSchedulePrintableTable = (
         `);
       }
 
-      // Day columns
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = toLocalYMD(date);
-          
-          // Find shifts for this day and user
-          const dayShifts = scheduleData
-            .filter(item => item.userId === user.id)
-            .flatMap(item => item.shifts)
-            .filter(shift => {
-              const shiftDate =  shift.date;
-              return shiftDate === dateStr;
-            })
-            .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-
-          const shift = dayShifts[rowIdx];
-          const cellContent = shift ? `${shift.startTime} - ${shift.endTime}` : '';
-          
-          cells.push(`
-            <td style="border-right: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
-              ${cellContent}
-            </td>
-          `);
-        }
-      }
-
-      // Calculate total for this specific row (sum of all shifts in this row across all days)
+      // Day columns: use visual shifts (current day + previous day spanning)
       let rowTotal = 0;
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
@@ -272,22 +302,20 @@ export const generateSchedulePrintableTable = (
           const date = new Date(startDate);
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
-          
-          const shiftsForDay = scheduleData
-            .filter(item => item.userId === user.id)
-            .flatMap(item => item.shifts)
-            .filter(shift => {
-              const shiftDate = shift.date.includes('T') ? 
-          toLocalYMD(new Date(shift.date)) : shift.date;
-              return shiftDate === dateStr;
-            });
-          
-          if (shiftsForDay[rowIdx]) {
-            rowTotal += shiftsForDay[rowIdx].hours;
+          const visual = getVisualShifts(user.id, dateStr);
+          const entry = visual[rowIdx];
+          const cellContent = entry ? `${entry.displayStart} - ${entry.displayEnd}` : '';
+          if (entry) {
+            const shiftStartDate = entry.isContinuation ? getAdjustedDate(dateStr, -1) : dateStr;
+            rowTotal += calculateEffectiveHours(entry.shift, shiftStartDate, dateStr);
           }
+          cells.push(`
+            <td style="border-right: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
+              ${cellContent}
+            </td>
+          `);
         }
       }
-      
       
       cells.push(`
         <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
@@ -298,7 +326,7 @@ export const generateSchedulePrintableTable = (
       dataRows.push(`<tr>${cells.join('')}</tr>`);
     }
 
-    // Total row for this user
+    // Total row for this user (day totals = effective hours per day, total = user total)
     const totalCells = [`
       <td style="border: 1px solid black !important; text-align: left; font-size: 15px; font-weight: bold;">
         Total
@@ -311,16 +339,7 @@ export const generateSchedulePrintableTable = (
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
-        
-        const dayTotal = scheduleData
-          .filter(item => item.userId === user.id)
-          .flatMap(item => item.shifts)
-          .filter(shift => {
-            const shiftDate = shift.date;
-            return shiftDate === dateStr;
-          })
-          .reduce((total, shift) => total + shift.hours, 0);
-
+        const dayTotal = calculateUserDayTotal(user.id, dateStr);
         totalCells.push(`
           <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
             ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
@@ -329,7 +348,6 @@ export const generateSchedulePrintableTable = (
       }
     }
 
-    // Total column for Total row
     totalCells.push(`
       <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
         ${calculateUserTotal(user.id).toFixed(2)}
@@ -443,33 +461,59 @@ export const generateActualTimePrintableTable = (
 
   const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-  // Helper functions
+  const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
+  const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
+  const getScheduleItem = (userId: number, dateStr: string) =>
+    scheduleData.find(item => item.userId === userId && normDate(item.startDate) === dateStr);
+
+  // Visual shifts per (user, date): same as schedule table (current day + previous day spanning / overflow)
+  const getVisualShiftsActual = (userId: number, dateStr: string): any[] => {
+    const current = getScheduleItem(userId, dateStr);
+    const prevDateStr = getAdjustedDate(dateStr, -1);
+    const prev = getScheduleItem(userId, prevDateStr);
+    const currentShifts = (current?.shifts || []).filter((s: any) => !s.isDelete);
+    const prevSpanning = (prev?.shifts || [])
+      .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime));
+    const merged = [...currentShifts, ...prevSpanning].sort(
+      (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+    );
+    return merged;
+  };
+
+  // Hours of this session that fall on the given date (overnight split; overflow counts on first day)
+  const getSessionHoursOnDate = (session: SessionData, dateStr: string): number => {
+    const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === session.shiftId));
+    const shift = scheduleItem?.shifts.find((s: any) => s.id === session.shiftId);
+    if (!shift) return 0;
+    const sessionDate = normDate(shift.date);
+    if (!session.clockIn || !session.clockOut) {
+      return sessionDate === dateStr ? (session.workedTime || 0) / 60 : 0;
+    }
+    const sIn = timeToMinutes(session.clockIn);
+    const sOut = timeToMinutes(session.clockOut);
+    if (sIn <= sOut) {
+      return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
+    }
+    const startDate = sessionDate;
+    const endDate = getAdjustedDate(sessionDate, 1);
+    if (dateStr === startDate) return calculateHours(session.clockIn, '24:00');
+    if (dateStr === endDate) return calculateHours('00:00', session.clockOut);
+    if (sessionDate < weekStartStr && dateStr === weekStartStr) {
+      return calculateHours('00:00', session.clockOut);
+    }
+    return 0;
+  };
+
   const getMaxShiftsPerDay = (userId: number) => {
     let maxShifts = 1;
     if (!currentWeekRange) return maxShifts;
-
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       const dateStr = toLocalYMD(date);
-      
-      const sessionsForDay = sessionData.filter(item => {
-        const scheduleItem = scheduleData.find(si =>
-          si.shifts.some(shift => shift.id === item.shiftId)
-        );
-        if (!scheduleItem || scheduleItem.userId !== userId) return false;
-
-        const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-        if (!shift) return false;
-        
-        const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
-        return shiftDate === dateStr;
-      });
-      
-      // Get unique shifts for this day
-      const uniqueShifts = [...new Set(sessionsForDay.map(s => s.shiftId))];
-      maxShifts = Math.max(maxShifts, uniqueShifts.length);
+      const visual = getVisualShiftsActual(userId, dateStr);
+      maxShifts = Math.max(maxShifts, visual.length);
     }
     return maxShifts;
   };
@@ -477,9 +521,7 @@ export const generateActualTimePrintableTable = (
   const calculateUserTotal = (userId: number) => {
     const total = sessionData
       .filter(item => {
-        const scheduleItem = scheduleData.find(si =>
-          si.shifts.some(shift => shift.id === item.shiftId)
-        );
+        const scheduleItem = scheduleData.find(si => si.shifts.some((shift: any) => shift.id === item.shiftId));
         return scheduleItem && scheduleItem.userId === userId;
       })
       .reduce((t, item) => t + calculateWorkedTimeWith24HourLogic(item), 0);
@@ -487,25 +529,22 @@ export const generateActualTimePrintableTable = (
   };
 
   const calculateDayTotal = (dateStr: string) => {
-    const total = sessionData
-      .filter(item => {
-        const scheduleItem = scheduleData.find(si =>
-          si.shifts.some(shift => shift.id === item.shiftId)
-        );
-        if (!scheduleItem) return false;
-
-        const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-        if (!shift) return false;
-        
-        const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
-        return shiftDate === dateStr;
-      })
-      .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
+    const total = sessionData.reduce((sum, item) => sum + getSessionHoursOnDate(item, dateStr), 0);
     return parseFloat(total.toFixed(2));
   };
 
   const calculateGrandTotal = () => {
     const total = sessionData.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
+    return parseFloat(total.toFixed(2));
+  };
+
+  const calculateUserDayTotal = (userId: number, dateStr: string) => {
+    const total = sessionData
+      .filter(item => {
+        const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === item.shiftId));
+        return scheduleItem && scheduleItem.userId === userId;
+      })
+      .reduce((sum, item) => sum + getSessionHoursOnDate(item, dateStr), 0);
     return parseFloat(total.toFixed(2));
   };
 
@@ -592,47 +631,7 @@ export const generateActualTimePrintableTable = (
         `);
       }
 
-      // Day columns
-      if (currentWeekRange) {
-        const startDate = new Date(currentWeekRange.startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateStr = toLocalYMD(date);
-          
-          // Find sessions for this day and user
-          const daySessions = sessionData.filter(item => {
-            const scheduleItem = scheduleData.find(si =>
-              si.shifts.some(shift => shift.id === item.shiftId)
-            );
-            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-
-            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-            if (!shift) return false;
-            
-            const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
-            return shiftDate === dateStr;
-          });
-
-          // Group sessions by shift and get the shift for this row
-          const shiftsForDay = [...new Set(daySessions.map(s => s.shiftId))];
-          const currentShiftId = shiftsForDay[rowIdx];
-          
-          let cellContent = '';
-          if (currentShiftId) {
-            const sessionsForShift = daySessions.filter(s => s.shiftId === currentShiftId);
-            cellContent = sessionsForShift.map(s => `${s.clockIn} - ${s.clockOut}`).join('\n');
-          }
-
-          cells.push(`
-            <td style="border: 1px solid black !important; padding: 0px; text-align: center; font-size: 15px; ">
-              ${cellContent}
-            </td>
-          `);
-        }
-      }
-
-      // Calculate total for this specific row (sum of all sessions in this row across all days)
+      // Day columns: use visual shifts (overnight + overflow), show sessions with hours on this date
       let rowTotal = 0;
       if (currentWeekRange) {
         const startDate = new Date(currentWeekRange.startOfWeek);
@@ -640,31 +639,23 @@ export const generateActualTimePrintableTable = (
           const date = new Date(startDate);
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
-          
-          const sessionsForDay = sessionData.filter(item => {
-            const scheduleItem = scheduleData.find(si =>
-              si.shifts.some(shift => shift.id === item.shiftId)
+          const visual = getVisualShiftsActual(user.id, dateStr);
+          const shift = visual[rowIdx];
+          let cellContent = '';
+          if (shift) {
+            const sessionsInCell = sessionData.filter(
+              s => s.shiftId === shift.id && getSessionHoursOnDate(s, dateStr) > 0
             );
-            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-
-            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-            if (!shift) return false;
-            
-            const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
-            return shiftDate === dateStr;
-          });
-          
-          // Group sessions by shift and get the shift for this row
-          const shiftsForDay = [...new Set(sessionsForDay.map(s => s.shiftId))];
-          const currentShiftId = shiftsForDay[rowIdx];
-          
-          if (currentShiftId) {
-            const sessionsForShift = sessionsForDay.filter(s => s.shiftId === currentShiftId);
-            // Add all sessions in this shift to the row total
-            sessionsForShift.forEach(session => {
-              rowTotal += calculateWorkedTimeWith24HourLogic(session);
+            cellContent = sessionsInCell.map(s => `${s.clockIn} - ${s.clockOut}`).join('\n');
+            sessionsInCell.forEach(session => {
+              rowTotal += getSessionHoursOnDate(session, dateStr);
             });
           }
+          cells.push(`
+            <td style="border: 1px solid black !important; padding: 0px; text-align: center; font-size: 15px; ">
+              ${cellContent}
+            </td>
+          `);
         }
       }
       
@@ -690,22 +681,7 @@ export const generateActualTimePrintableTable = (
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
-        
-        const dayTotal = sessionData
-          .filter(item => {
-            const scheduleItem = scheduleData.find(si =>
-              si.shifts.some(shift => shift.id === item.shiftId)
-            );
-            if (!scheduleItem || scheduleItem.userId !== user.id) return false;
-
-            const shift = scheduleItem.shifts.find(s => s.id === item.shiftId);
-            if (!shift) return false;
-            
-            const shiftDate = shift.date.includes('T') ? toLocalYMD(new Date(shift.date)) : shift.date;
-            return shiftDate === dateStr;
-          })
-          .reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
-
+        const dayTotal = calculateUserDayTotal(user.id, dateStr);
         totalCells.push(`
           <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
             ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
@@ -714,7 +690,6 @@ export const generateActualTimePrintableTable = (
       }
     }
 
-    // Total column for Total row
     totalCells.push(`
       <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
         ${calculateUserTotal(user.id).toFixed(2)}
@@ -724,7 +699,7 @@ export const generateActualTimePrintableTable = (
     dataRows.push(`<tr>${totalCells.join('')}</tr>`);
   });
 
-  // Grand Total row
+  // Grand Total row (day totals = sum of getSessionHoursOnDate; total = sum of all session hours)
   const grandTotalCells = [`
     <td style="border: 1px solid black !important; padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: bold;">
       Grand Total
@@ -741,7 +716,6 @@ export const generateActualTimePrintableTable = (
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       const dateStr = toLocalYMD(date);
-      
       const dayTotal = calculateDayTotal(dateStr);
       grandTotalCells.push(`
         <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">

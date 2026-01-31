@@ -69,6 +69,8 @@ export type SessionItem = {
   shift?: {
     id: number;
     date: string;
+    startTime?: string;
+    endTime?: string;
   };
 };
 
@@ -189,7 +191,7 @@ type ClientSessionContextType = {
   sessionData: SessionItem[] | null;
   sessionLoading: boolean;
   sessionError: string | null;
-  fetchSessionData: (scheduleSessionIds: number[]) => Promise<void>;
+  fetchSessionData: (scheduleSessionIds: number[], shiftId?: number[]) => Promise<void>;
   clearSessionData: () => void;
   updateSessionTimes: (sessionUpdates: Array<{
     sessionId?: number | null;
@@ -346,26 +348,25 @@ export const ClientSessionProvider = ({
 
   // ----- fetchSessionData -----
 
-  const fetchSessionData = async (scheduleSessionIds: number[]) => {
+  const fetchSessionData = async (scheduleSessionIds: number[], shiftId: number[] = []) => {
     setSessionLoading(true);
     setSessionError(null);
     try {
       const token = sessionStorage.getItem("token");
-      // Filter out any invalid IDs and deduplicate
       const uniqueScheduleSessionIds = [...new Set(scheduleSessionIds.filter(id => id > 0))];
+      const uniqueShiftIds = [...new Set(shiftId.filter(id => id > 0))];
 
-      if (uniqueScheduleSessionIds.length === 0) {
+      if (uniqueScheduleSessionIds.length === 0 && uniqueShiftIds.length === 0) {
         setSessionData([]);
         setSessionLoading(false);
         return;
       }
 
-      // Make a single batch request
       const response = await graphQLClient.request<{
         sessionsByScheduleSession: SessionItem[];
       }>(
-        SESSIONS_BY_SCHEDULE_SESSION, // Use the correct constant with [Int!]! type
-        { scheduleSessionId: uniqueScheduleSessionIds },
+        SESSIONS_BY_SCHEDULE_SESSION,
+        { scheduleSessionId: uniqueScheduleSessionIds, shiftId: uniqueShiftIds },
         { Authorization: `Bearer ${token}` }
       );
 

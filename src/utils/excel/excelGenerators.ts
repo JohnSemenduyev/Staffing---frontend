@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { ExcelData, ExcelExportOptions, ExcelCellStyle } from './excelTypes';
+import { getAdjustedDate, shiftSpansNextDay, calculateHours } from '../../lib/utils';
 
 /**
  * Core Excel generation utilities
@@ -434,11 +435,51 @@ export async function generateScheduleStyledExcel(
   currentRow++;
 
   // Process schedule data
-  type Shift = { startTime: string; endTime: string; hours?: number };
+  type Shift = { id?: number; startTime: string; endTime: string; hours?: number; date?: string };
   type Item = { userId: number; userName: string; startDate: string; shifts: Shift[] };
   const items: Item[] = (scheduleData || []) as Item[];
 
-  // Group data by user
+  const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
+  const timeToMinutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+
+  // Visual shifts for (user's days map, date): current day + previous day spanning (overnight/overflow)
+  type UserEntry = { name: string; days: Map<string, Shift[]> };
+  const getVisualShifts = (entry: UserEntry, dateStr: string): { shift: Shift; isContinuation: boolean; displayStart: string; displayEnd: string; shiftStartDate: string }[] => {
+    const prevDateStr = getAdjustedDate(dateStr, -1);
+    const currentShifts = (entry.days.get(dateStr) || []).filter((s: any) => !s.isDelete).map((s: Shift) => ({
+      shift: s, isContinuation: false, displayStart: s.startTime, displayEnd: s.endTime, shiftStartDate: dateStr
+    }));
+    const prevSpanning = (entry.days.get(prevDateStr) || [])
+      .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+      .map((s: Shift) => ({
+        shift: s, isContinuation: true, displayStart: '00:00', displayEnd: s.endTime, shiftStartDate: prevDateStr
+      }));
+    const merged = [...currentShifts, ...prevSpanning].sort(
+      (a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart)
+    );
+    return merged;
+  };
+
+  const calcShiftHours = (start: string, end: string) => {
+    const h = calculateHours(start, end);
+    return typeof h === 'number' ? h : 0;
+  };
+  const calculateEffectiveHours = (shift: Shift, shiftStartDate: string, targetDate: string): number => {
+    if (normDate(shiftStartDate) === targetDate) {
+      if (shiftSpansNextDay(shift.startTime, shift.endTime)) return calcShiftHours(shift.startTime, '24:00');
+      return calcShiftHours(shift.startTime, shift.endTime);
+    }
+    const prevDateStr = getAdjustedDate(targetDate, -1);
+    if (normDate(shiftStartDate) === prevDateStr && shiftSpansNextDay(shift.startTime, shift.endTime)) {
+      return calcShiftHours('00:00', shift.endTime);
+    }
+    return 0;
+  };
+
+  // Group data by user (keep for users list and names)
   const byUser = new Map<number, { name: string; days: Map<string, Shift[]> }>();
   items.forEach((it) => {
     const u = it.userId;
@@ -446,7 +487,7 @@ export async function generateScheduleStyledExcel(
       byUser.set(u, { name: it.userName, days: new Map<string, Shift[]>() });
     }
     const entry = byUser.get(u)!;
-    const dayKey = it.startDate;
+    const dayKey = normDate(it.startDate);
     const arr = entry.days.get(dayKey) || [];
     it.shifts.forEach((s) => arr.push(s));
     entry.days.set(dayKey, arr);
@@ -463,116 +504,53 @@ export async function generateScheduleStyledExcel(
     (a[1]?.name || '').localeCompare(b[1]?.name || '')
   );
 
- 
-
-  // Note: maxShiftsPerDay is no longer used since each user gets their own row count
-  // Keeping this for potential future use if needed
-  let maxShiftsPerDay = 0;
-  users.forEach(([_, data]) => {
+  // Add data rows for each user (visual shifts: overnight + overflow; effective hours for totals)
+  users.forEach(([userId, data]) => {
     if (!data) return;
+    const userStartRow = currentRow;
+    let userMaxShiftsPerDay = 0;
     dateKeys.forEach(dateKey => {
-      const shifts = data.days.get(dateKey) || [];
-      maxShiftsPerDay = Math.max(maxShiftsPerDay, shifts.length);
+      const visual = getVisualShifts(data, dateKey);
+      userMaxShiftsPerDay = Math.max(userMaxShiftsPerDay, visual.length);
     });
-  });
 
-       // Add data rows for each user
-     users.forEach(([_, data]) => {
-       if (!data) return;
-       
-       const userStartRow = currentRow;
-       
-       // Calculate total rows needed for this specific user (their actual shifts + 1 total row)
-       let userMaxShiftsPerDay = 0;
-       dateKeys.forEach(dateKey => {
-         const shifts = data.days.get(dateKey) || [];
-         userMaxShiftsPerDay = Math.max(userMaxShiftsPerDay, shifts.length);
-       });
-       
-       const userRowsNeeded = userMaxShiftsPerDay + 1;
-       
-       // Store the start row for this user to merge later
-       const userShiftRows = userMaxShiftsPerDay;
-       const userTotalRow = 1; // 1 total row per user
-       const totalRowsForThisUser = userShiftRows + userTotalRow;
-       
-       // We'll merge the cells after creating all rows for this user
-
-    // Add shift rows (one row per shift index for this specific user)
     let lastShiftId: any = null;
     for (let shiftIndex = 0; shiftIndex < userMaxShiftsPerDay; shiftIndex++) {
       const row = worksheet.getRow(currentRow);
       const rowValues: (string | number)[] = new Array(totalColumns + 1).fill('');
-      
-      // Skip column 1 (empty) and column 2 (officer name is already merged)
       let weeklyTotalForThisShift = 0;
       let currentShiftId: any = null;
-      
-      // Collect all shift IDs for this row to detect changes
       const shiftIdsInRow: any[] = [];
-      
+
       dateKeys.forEach((dateKey, dayIndex) => {
-        const shifts = data.days.get(dateKey) || [];
-        const shift = shifts[shiftIndex]; // Get the shift at this index
-        
-        if (shift) {
-          rowValues[3 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
-          // For actual time reports, only include complete sessions in total
-          if (reportType === 'actual') {
-            weeklyTotalForThisShift += typeof shift.hours === 'number' ? shift.hours : 0;
-          } else {
-            // For schedule reports, use the original logic
-            weeklyTotalForThisShift += shift.hours || 8;
-          }
-          // Track shift ID for actual time reports
-          if (reportType === 'actual' && (shift as any).id) {
-            shiftIdsInRow.push((shift as any).id);
-          }
-        } else {
-          rowValues[3 + dayIndex] = ''; // Empty if no shift at this index
+        const visual = getVisualShifts(data, dateKey);
+        const entry = visual[shiftIndex];
+        if (entry) {
+          rowValues[3 + dayIndex] = `${entry.displayStart} - ${entry.displayEnd}`;
+          const eff = reportType === 'actual'
+            ? (typeof entry.shift.hours === 'number' ? entry.shift.hours : 0)
+            : calculateEffectiveHours(entry.shift, entry.shiftStartDate, dateKey);
+          weeklyTotalForThisShift += eff;
+          if (reportType === 'actual' && entry.shift.id) shiftIdsInRow.push(entry.shift.id);
         }
       });
-      
-      // Use the first non-null shift ID as the representative for this row
       currentShiftId = shiftIdsInRow.length > 0 ? shiftIdsInRow[0] : null;
-      
-             // Only show total in the last shift row, and only if there are shifts
-      //  if (shiftIndex === maxShiftsPerDay - 1 && weeklyTotalForThisShift > 0) {
-         rowValues[totalColumns - 1] = weeklyTotalForThisShift;
-      //  }
-      
+      rowValues[totalColumns - 1] = weeklyTotalForThisShift;
+
       row.values = rowValues;
       row.height = 18;
-      
-      // Style the shift row (skip column 1 since it's merged)
-      // Check if this is a new shift (shift ID changed)
-      const isNewShift = reportType === 'actual' && lastShiftId !== null && currentShiftId !== null && lastShiftId !== currentShiftId;
-      
-      // Debug logging
-      if (reportType === 'actual') {
-        console.log(`Row ${currentRow}: lastShiftId=${lastShiftId}, currentShiftId=${currentShiftId}, isNewShift=${isNewShift}`);
-      }
-      
+      const isNewShift = reportType === 'actual' && lastShiftId != null && currentShiftId != null && lastShiftId !== currentShiftId;
       for (let col = 1; col <= totalColumns; col++) {
         const cell = row.getCell(col);
         cell.font = { size: 11, name: 'Aptos Narrow' };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        // Base border
         cell.border = {
           left: { style: 'thin' },
           right: col === totalColumns ? { style: 'thin', color: { argb: 'FF000000' } } : { style: 'thin' }
         };
-        
-        // Add top border for new shift in actual time reports (thicker border for visibility)
-        if (isNewShift) {
-          cell.border.top = { style: 'thin', color: { argb: 'FF000000' } };
-        }
+        if (isNewShift) cell.border.top = { style: 'thin', color: { argb: 'FF000000' } };
       }
-      
-      // If there was a previous row and shift ID changed, add bottom border to previous row
-      if (reportType === 'actual' && lastShiftId !== null && currentShiftId !== null && lastShiftId !== currentShiftId && currentRow > 1) {
-        console.log(`Adding bottom border to previous row ${currentRow - 1}`);
+      if (reportType === 'actual' && lastShiftId != null && currentShiftId != null && lastShiftId !== currentShiftId && currentRow > 1) {
         const prevRow = worksheet.getRow(currentRow - 1);
         for (let col = 1; col <= totalColumns; col++) {
           const prevCell = prevRow.getCell(col);
@@ -580,41 +558,28 @@ export async function generateScheduleStyledExcel(
           prevCell.border.bottom = { style: 'thin', color: { argb: 'FF000000' } };
         }
       }
-      
-      // Update last shift ID for next iteration
-      if (reportType === 'actual' && currentShiftId !== null) {
-        lastShiftId = currentShiftId;
-      }
+      if (reportType === 'actual' && currentShiftId != null) lastShiftId = currentShiftId;
       currentRow++;
     }
 
-    // Add "Total" row for this officer showing daily totals
+    // Total row: day totals = effective hours per day for this user; total = user total
     const totalRow = worksheet.getRow(currentRow);
     const totalValues: (string | number)[] = new Array(totalColumns + 1).fill('');
-    totalValues[2] = 'Total'; // This will be in the merged cell area but won't show
-    
+    totalValues[2] = 'Total';
     let weeklyGrandTotal = 0;
     dateKeys.forEach((dateKey, dayIndex) => {
-      const shifts = data.days.get(dateKey) || [];
-      const dayTotal = shifts.reduce((sum, shift) => {
-        // For actual time reports, only include complete sessions (with valid hours)
-        if (reportType === 'actual') {
-          return sum + (typeof shift.hours === 'number' ? shift.hours : 0);
-        } else {
-          // For schedule reports, use the original logic
-          return sum + (shift.hours || 8);
-        }
-      }, 0);
-      totalValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+      let dayTotal = 0;
+      getVisualShifts(data, dateKey).forEach(({ shift, shiftStartDate }) => {
+        dayTotal += reportType === 'actual'
+          ? (typeof shift.hours === 'number' ? shift.hours : 0)
+          : calculateEffectiveHours(shift, shiftStartDate, dateKey);
+      });
+      totalValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : '';
       weeklyGrandTotal += dayTotal;
     });
-    
-         totalValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
+    totalValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
     totalRow.values = totalValues;
     totalRow.height = 18;
-    
-         // Style the total row
-    
     for (let col = 2; col <= totalColumns; col++) {
       const cell = totalRow.getCell(col);
       cell.font = { size: 11, bold: true, name: 'Aptos Narrow' };
@@ -627,12 +592,9 @@ export async function generateScheduleStyledExcel(
       };
     }
     currentRow++;
-    
-    // Now merge the officer name cell vertically across all rows for this user
+
     const userEndRow = currentRow - 1;
     worksheet.mergeCells(userStartRow, 2, userEndRow, 2);
-    
-    // Set the officer name in the merged cell
     const nameCell = worksheet.getCell(userStartRow, 2);
     nameCell.value = data.name;
     nameCell.font = { size: 11, name: 'Aptos Narrow' };
@@ -645,21 +607,23 @@ export async function generateScheduleStyledExcel(
     };
   });
 
-  // Grand Total row
+  // Grand Total row: day totals = sum effective hours per day (all users); total = grand total
   const grandRow = worksheet.getRow(currentRow);
   const grandValues: (string | number)[] = new Array(totalColumns).fill('');
-  grandValues[1] = 'Grand Total'; // Column B in image
-  
+  grandValues[1] = 'Grand Total';
   let weeklyGrandTotal = 0;
   dateKeys.forEach((dateKey, dayIndex) => {
     let dayTotal = 0;
-    users.forEach(([__, data]) => {
+    users.forEach(([uid, data]) => {
       if (!data) return;
-      const shifts = data.days.get(dateKey) || [];
-      dayTotal += shifts.reduce((sum, s) => sum + (s.hours || 8), 0);
+      getVisualShifts(data, dateKey).forEach(({ shift, shiftStartDate }) => {
+        dayTotal += reportType === 'actual'
+          ? (typeof shift.hours === 'number' ? shift.hours : 0)
+          : calculateEffectiveHours(shift, shiftStartDate, dateKey);
+      });
     });
     weeklyGrandTotal += dayTotal;
-    grandValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
+    grandValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : '';
   });
   grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
   

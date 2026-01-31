@@ -14,6 +14,7 @@ interface ActualTableModalsProps {
     removeEditSessionRow: (index: number) => void;
     saveEditShiftSessions: () => void;
     cancelEditShiftSessions: () => void;
+    isOverflowShiftForEdit?: boolean;
 
     deleteUserModal: { isOpen: boolean; userId: number | null };
     confirmDeleteUser: () => void;
@@ -35,6 +36,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
     removeEditSessionRow,
     saveEditShiftSessions,
     cancelEditShiftSessions,
+    isOverflowShiftForEdit = false,
     deleteUserModal,
     confirmDeleteUser,
     cancelDeleteUser,
@@ -68,6 +70,11 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                         <div className="mb-4 flex items-center justify-between">
                             <h3 className="text-lg font-medium text-gray-900">Edit Sessions</h3>
                         </div>
+                        {isOverflowShiftForEdit && (
+                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">
+                                Overflow shift from previous week. Only end time (Check Out) can be edited.
+                            </p>
+                        )}
                         {editSessions.length === 0 && (
                             <div className="text-sm text-gray-500 mb-3">No sessions yet. Click "Add Session" to create one.</div>
                         )}
@@ -76,7 +83,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                                 <div key={idx} className="grid grid-cols-11 gap-2 items-end">
                                     <div className="col-span-5">
                                         <label className="block text-xs text-gray-600 mb-1">Check In</label>
-                                        <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                                        <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} readOnly={isOverflowShiftForEdit} disabled={isOverflowShiftForEdit} className={`w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175] ${isOverflowShiftForEdit ? "bg-gray-100 cursor-not-allowed" : ""}`} />
                                     </div>
                                     <div className="col-span-5">
                                         <label className="block text-xs text-gray-600 mb-1">Check Out</label>

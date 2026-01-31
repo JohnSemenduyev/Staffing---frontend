@@ -28,8 +28,8 @@ export const GET_CLIENTS = gql`
 
 
 export const SESSIONS_BY_SCHEDULE_SESSION = gql`
-  query SessionsByScheduleSession($scheduleSessionId: [Int!]!) {
-    sessionsByScheduleSession(scheduleSessionId: $scheduleSessionId) {
+  query SessionsByScheduleSession($scheduleSessionId: [Int], $shiftId: [Int]) {
+    sessionsByScheduleSession(scheduleSessionId: $scheduleSessionId, shiftId: $shiftId) {
       id
       shiftId
       scheduleSessionId
@@ -39,6 +39,8 @@ export const SESSIONS_BY_SCHEDULE_SESSION = gql`
       shift {
         id
         date
+        startTime
+        endTime
       }
     }
   }

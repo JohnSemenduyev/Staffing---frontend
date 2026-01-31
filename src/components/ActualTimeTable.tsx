@@ -58,6 +58,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     editShiftModal,
     editSessions,
     setEditSessions,
+    isOverflowShiftForEdit,
   } = useActualTimeTable(props);
 
   return (
@@ -156,6 +157,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
         removeEditSessionRow={removeEditSessionRow}
         saveEditShiftSessions={saveEditShiftSessions}
         cancelEditShiftSessions={cancelEditShiftSessions}
+        isOverflowShiftForEdit={isOverflowShiftForEdit}
         deleteUserModal={deleteUserModal}
         confirmDeleteUser={confirmDeleteUser}
         cancelDeleteUser={cancelDeleteUser}

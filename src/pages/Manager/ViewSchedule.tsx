@@ -1087,23 +1087,35 @@ export const ViewSchedule = () => {
       });
       originalShiftsRef.current = baseMap;
 
-      // Fetch session data for all scheduleSessionIds (only real sessions)
+      // Fetch session data: current-week schedule session IDs + previous-week overflow shift IDs
       if (transformedData.length > 0) {
+        const weekRange = selectedDate ? getWeekRangeFromDateLocal(parseLocalYMD(selectedDate)) : null;
         const scheduleSessionIds = Array.from(
           new Set(
             transformedData.flatMap((item) =>
               item.shifts
+                .filter((s: any) => !weekRange || !isOverflowShift(s.date, weekRange.startOfWeek))
                 .map((s: any) => s.scheduleSessionId)
                 .filter((id: any): id is number => typeof id === "number")
             )
           )
         );
+        const shiftId = weekRange
+          ? Array.from(
+              new Set(
+                transformedData.flatMap((item) =>
+                  item.shifts
+                    .filter((s: any) => isOverflowShift(s.date, weekRange.startOfWeek) && typeof s.id === "number" && s.id > 0)
+                    .map((s: any) => s.id)
+                )
+              )
+            )
+          : [];
 
-        if (scheduleSessionIds.length > 0) {
-          // Prevent redundant calls if IDs haven't changed
-          const idsKey = scheduleSessionIds.sort().join(',');
+        if (scheduleSessionIds.length > 0 || shiftId.length > 0) {
+          const idsKey = [...scheduleSessionIds].sort((a, b) => a - b).join(",") + "|" + [...shiftId].sort((a, b) => a - b).join(",");
           if (lastFetchedSessionIdsRef.current !== idsKey) {
-            fetchSessionData(scheduleSessionIds);
+            fetchSessionData(scheduleSessionIds, shiftId);
             lastFetchedSessionIdsRef.current = idsKey;
           }
         }
@@ -1845,7 +1857,7 @@ export const ViewSchedule = () => {
           ...rest,
           auto: groupAuto,
           shifts: shiftsArray.map(({ scheduleSessionId, ...s }: any) => s), // Remove scheduleSessionId
-          weeklyHours: parseFloat(groupWeeklyHours.toFixed(2)),
+          weeklyHours: parseFloat(groupWeeklyHours.toString()).toFixed(2),
           change: changed,
           checkScheduleSessionId: mappedCheckScheduleSessionId
         };
@@ -2614,48 +2626,76 @@ export const ViewSchedule = () => {
           });
         }
       });
+      const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
+      const getAdjustedDateStr = (dateStr: string, offset: number) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() + offset);
+        return toLocalYMD(d);
+      };
       uniqueUsers.forEach((user) => {
-        const sessionsByDate = new Map();
-
         sessionData.forEach(session => {
           const scheduleItem = scheduleData.find(si =>
             si.shifts.some(shift => shift.id === session.shiftId)
           );
-
-          if (scheduleItem && scheduleItem.userId === user.id) {
-            const shift = scheduleItem.shifts.find(s => s.id === session.shiftId);
-            if (shift) {
-              let shiftDate: string;
-              if (shift.date.includes('T') && shift.date.includes('Z')) {
-                shiftDate = shift.date.split('T')[0];
-              } else if (shift.date.includes('T')) {
-                shiftDate = toLocalYMD(new Date(shift.date));
-              } else {
-                shiftDate = shift.date;
-              }
-
-              if (!sessionsByDate.has(shiftDate)) {
-                sessionsByDate.set(shiftDate, []);
-              }
-              sessionsByDate.get(shiftDate).push(session);
-            }
+          if (!scheduleItem || scheduleItem.userId !== user.id) return;
+          const shift = scheduleItem.shifts.find(s => s.id === session.shiftId);
+          if (!shift) return;
+          let shiftDate: string;
+          if (shift.date.includes('T') && shift.date.includes('Z')) {
+            shiftDate = shift.date.split('T')[0];
+          } else if (shift.date.includes('T')) {
+            shiftDate = toLocalYMD(new Date(shift.date));
+          } else {
+            shiftDate = shift.date;
           }
-        });
-        sessionsByDate.forEach((sessions, date) => {
-          sessions.forEach(session => {
-            const hasCompleteTime = session.clockIn && session.clockOut;
+          const hasCompleteTime = session.clockIn && session.clockOut;
+          if (!hasCompleteTime) {
             transformedData.push({
               userId: user.id,
               userName: user.name,
-              startDate: date,
+              startDate: shiftDate,
               shifts: [{
                 id: session.shiftId,
                 startTime: session.clockIn || 'N/A',
                 endTime: session.clockOut || 'N/A',
-                hours: hasCompleteTime ? calculateWorkedTimeForExcel(session) : 'N/A'
+                hours: 'N/A'
               }]
             });
-          });
+            return;
+          }
+          const totalHours = calculateWorkedTimeForExcel(session);
+          const cin = session.clockIn!;
+          const cout = session.clockOut!;
+          const crossesMidnight = cout < cin || (cin === cout && totalHours >= 24);
+          if (crossesMidnight) {
+            const hoursStart = calculateHours(cin, '24:00');
+            const hoursEnd = calculateHours('00:00', cout);
+            const nextDate = getAdjustedDateStr(shiftDate, 1);
+            transformedData.push({
+              userId: user.id,
+              userName: user.name,
+              startDate: shiftDate,
+              shifts: [{ id: session.shiftId, startTime: cin, endTime: '24:00', hours: hoursStart }]
+            });
+            transformedData.push({
+              userId: user.id,
+              userName: user.name,
+              startDate: nextDate,
+              shifts: [{ id: session.shiftId, startTime: '00:00', endTime: cout, hours: hoursEnd }]
+            });
+          } else {
+            transformedData.push({
+              userId: user.id,
+              userName: user.name,
+              startDate: shiftDate,
+              shifts: [{
+                id: session.shiftId,
+                startTime: cin,
+                endTime: cout,
+                hours: totalHours
+              }]
+            });
+          }
         });
       });
       await generateScheduleStyledExcel(transformedData, selectedClient, currentWeekRange, 'actual');

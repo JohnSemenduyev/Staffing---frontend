@@ -1,6 +1,6 @@
 import React from "react";
 import { ActualTableCell } from "./ActualTableCell";
-import { formatUSPhone, timeToMinutes, formatDateStringLocal, addressTwoLines } from "../../lib/utils";
+import { formatUSPhone, timeToMinutes, formatDateStringLocal, addressTwoLines, shiftSpansNextDay, formatDateFromISO } from "../../lib/utils";
 import { ScheduleItem, SessionItem, Shift, RowGroup, User, Address } from "../../types/schedule";
 
 interface ActualTableRowProps {
@@ -128,11 +128,42 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
 
                         if (mode === "group") {
                             const group = data as RowGroup;
-                            const dayShifts = filteredScheduleData
-                                .filter(item => item.startDate === dateCol.date)
+                            const daySchedules = filteredScheduleData.filter(item => {
+                                const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
+                                return itemDate === dateCol.date;
+                            });
+                            const currentDayShifts = daySchedules
                                 .flatMap(item => item.shifts || [])
-                                .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-                            shift = dayShifts[rowIdx] || null;
+                                .filter(s => !(s as any).isDelete)
+                                .map(s => ({ ...s, displayStartTime: s.startTime }));
+                            const prevDate = (() => {
+                                const d = new Date(dateCol.date + "T00:00:00");
+                                d.setDate(d.getDate() - 1);
+                                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                            })();
+                            const prevDaySchedules = filteredScheduleData.filter(item => {
+                                const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
+                                return itemDate === prevDate;
+                            });
+                            const prevDaySpanningShifts = prevDaySchedules
+                                .flatMap(s => s.shifts || [])
+                                .filter(s => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+                                .map(s => ({
+                                    ...s,
+                                    startTime: "00:00",
+                                    isSplit: true,
+                                    splitSide: "end" as const,
+                                    isContinuation: true,
+                                    originalDate: prevDate,
+                                    displayStartTime: "00:00",
+                                }));
+                            const allShifts = [...currentDayShifts, ...prevDaySpanningShifts];
+                            const sortedShifts = allShifts.sort((a, b) => {
+                                const timeA = (a as any).displayStartTime;
+                                const timeB = (b as any).displayStartTime;
+                                return timeA.localeCompare(timeB);
+                            });
+                            shift = sortedShifts[rowIdx] || null;
                         } else {
                             shift = buildUserDateShifts?.get(userId)?.get(dateCol.date)?.[rowIdx] || null;
                         }
