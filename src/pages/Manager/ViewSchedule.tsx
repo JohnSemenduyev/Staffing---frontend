@@ -1857,7 +1857,7 @@ export const ViewSchedule = () => {
           ...rest,
           auto: groupAuto,
           shifts: shiftsArray.map(({ scheduleSessionId, ...s }: any) => s), // Remove scheduleSessionId
-          weeklyHours: parseFloat(groupWeeklyHours.toString()).toFixed(2),
+          weeklyHours: parseFloat(parseFloat(groupWeeklyHours.toString()).toFixed(2)),
           change: changed,
           checkScheduleSessionId: mappedCheckScheduleSessionId
         };
