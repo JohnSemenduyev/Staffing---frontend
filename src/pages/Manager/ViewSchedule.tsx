@@ -738,10 +738,37 @@ export const ViewSchedule = () => {
         (scheduleSessions && scheduleSessions.length > 0) ||
         (draftScheduleSessions && draftScheduleSessions.length > 0);
 
+      let hasCurrentOrPreviousWeekData = false;
+      if (hasAnyData && (selectedDate || targetDate)) {
+        const baseDate = parseLocalYMD(selectedDate || targetDate || toLocalYMD(new Date()));
+        const weekRange = getWeekRangeFromDateLocal(baseDate);
+        const startOfNextWeek = new Date(weekRange.startOfWeek);
+        startOfNextWeek.setDate(startOfNextWeek.getDate() + 7);
+        const startOfNextWeekStr = formatDateLocal(startOfNextWeek);
+        const normDate = (raw: string) => {
+          if (!raw) return "";
+          if (String(raw).includes("T")) return String(raw).split("T")[0];
+          return formatDateLocal(new Date(raw));
+        };
+        const checkShifts = (groups: any[]) => {
+          groups.forEach((group: any) => {
+            group.shifts?.forEach((shift: any) => {
+              if (shift?.date && normDate(shift.date) < startOfNextWeekStr) hasCurrentOrPreviousWeekData = true;
+            });
+            group.draftShifts?.forEach((shift: any) => {
+              if (shift?.date && normDate(shift.date) < startOfNextWeekStr) hasCurrentOrPreviousWeekData = true;
+            });
+          });
+        };
+        checkShifts(scheduleSessions);
+        checkShifts(draftScheduleSessions);
+      }
+
+      // Show "No Schedule Found" only when there is no current-week and no previous-week data (ignore next-week shifts)
       // -------------------------
-      // 1. No schedule / draft data
+      // 1. No schedule / draft data (current or previous week)
       // -------------------------
-      if (!hasAnyData) {
+      if (!hasCurrentOrPreviousWeekData) {
         const clientName =
           [selectedClient?.name, selectedClient?.lastName]
             .filter(Boolean)
