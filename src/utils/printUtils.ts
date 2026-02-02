@@ -556,7 +556,16 @@ export const generateActualTimePrintableTable = (
   };
 
   const calculateGrandTotal = () => {
-    const total = sessionData.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
+    // Final total = sum of day totals in the grand total row (so it matches the displayed day columns)
+    let total = 0;
+    if (currentWeekRange) {
+      const startDate = new Date(currentWeekRange.startOfWeek);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        total += calculateDayTotal(toLocalYMD(date));
+      }
+    }
     return parseFloat(total.toFixed(2));
   };
 

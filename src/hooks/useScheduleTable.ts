@@ -1164,60 +1164,14 @@ export const useScheduleTable = ({
     }, [scheduleData, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
     const calculateGrandTotal = useCallback((currentScheduleData: ScheduleItem[]): number => {
-        // Iterate visible columns to get the grand total of what is displayed
-        let total = 0;
+        // Final total = sum of day totals in the grand total row (so it matches the displayed day columns)
         if (dateColumns.length === 0) return 0;
-
+        let total = 0;
         dateColumns.forEach(col => {
-            // For this day, find total hours
-            // Note: currentScheduleData might be different from 'scheduleData' in state if passed generic
-            // But getVisualShifts relies on 'scheduleData' from state/hook scope.
-            // Warning: calculateGrandTotal takes an ARGUMENT currentScheduleData.
-            // If we use getVisualShifts, we are using the generic state, not the argument.
-            // If the argument is just 'scheduleData' then it is fine.
-
-            // Safer to implement logic using currentScheduleData explicitly
-
-            const uniqueUserIds = Array.from(new Set(currentScheduleData.map(i => i.userId)));
-            uniqueUserIds.forEach(userId => {
-                // Re-implement getVisualShifts logic using 'currentScheduleData' scope effectively
-                // Or just use calculateDayTotal logic but with currentScheduleData context?
-                // Since calculateGrandTotal is likely used with the current state, we can probably use the helper methods 
-                // that rely on state IF currentScheduleData === scheduleData.
-
-                // If this is used for optimistic updates or something where data differs, this might be risky.
-                // let's stick to the visual total of the CURRENT view.
-
-                // 1. Shifts starting on this day
-                const dayItems = currentScheduleData.filter(i =>
-                    (i.startDate.includes("T") ? formatDateFromISO(i.startDate) : i.startDate) === col.date
-                );
-
-                const prevDate = getAdjustedDate(col.date, -1);
-                const prevItems = currentScheduleData.filter(i =>
-                    (i.startDate.includes("T") ? formatDateFromISO(i.startDate) : i.startDate) === prevDate
-                );
-
-                dayItems.forEach(item => {
-                    item.shifts.forEach(s => {
-                        if (!(s as any).isDelete) {
-                            total += calculateEffectiveHours({ ...s, startDate: col.date }, col.date);
-                        }
-                    });
-                });
-
-                prevItems.forEach(item => {
-                    item.shifts.forEach(s => {
-                        if (!(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime)) {
-                            total += calculateEffectiveHours({ ...s, startDate: prevDate }, col.date);
-                        }
-                    });
-                });
-            });
+            total += calculateDayTotal(col.date);
         });
-
         return parseFloat(total.toFixed(2));
-    }, [dateColumns, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
+    }, [dateColumns, calculateDayTotal]);
 
     const calculateUserDayTotal = useCallback((row: RowGroup, date: string, groupByClient: boolean): number => {
         let total = 0;

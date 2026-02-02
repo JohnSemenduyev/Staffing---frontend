@@ -567,7 +567,11 @@ export const useActualTimeTable = ({
     };
 
     const calculateGrandTotal = (sessions: SessionItem[]) => {
-        const total = sessions.reduce((total, item) => total + calculateWorkedTimeWith24HourLogic(item), 0);
+        // Final total = sum of day totals in the grand total row (so it matches the displayed day columns)
+        let total = 0;
+        dateColumns.forEach(dateCol => {
+            total += calculateDayTotal(dateCol.date, sessions);
+        });
         return parseFloat(total.toFixed(2));
     };
 
