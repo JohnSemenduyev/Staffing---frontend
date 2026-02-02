@@ -1787,12 +1787,22 @@ export const ViewSchedule = () => {
           hasDraftShifts: item.shifts.some((s: any) => !!s?.draftShiftId),
         };
 
+        const normShiftDate = (raw: string) => {
+          if (!raw) return "";
+          if (String(raw).includes("T")) return String(raw).split("T")[0];
+          return formatDateLocal(new Date(raw));
+        };
+
         item.shifts.forEach((shift: any) => {
           // Skip shifts marked for delete (handled elsewhere or implicit)
           if (shift.isDelete) return;
 
           // Skip overflow shifts (captured in first loop)
           if (isOverflowShift(shift.date, weekRange.startOfWeek)) return;
+
+          // Bulk upsert: current week only — skip next week (and any outside range)
+          const shiftDateStr = normShiftDate(shift.date);
+          if (!shiftDateStr || shiftDateStr < startDate || shiftDateStr > endDate) return;
 
           // Determine session ID for this shift
           let targetSessionId = shift.scheduleSessionId;
@@ -2157,6 +2167,12 @@ export const ViewSchedule = () => {
             }
             return; // Skip adding to draft payload
           }
+
+          // Draft bulk upsert: current week only — skip next week
+          const shiftDateStr = shift.date
+            ? (String(shift.date).includes("T") ? String(shift.date).split("T")[0] : formatDateLocal(new Date(shift.date)))
+            : "";
+          if (!shiftDateStr || shiftDateStr < startDate || shiftDateStr > endDate) return;
 
           const draftShiftId = shift?.draftShiftId ?? null;
           const draftScheduleSessionId = shift?.draftScheduleSessionId ?? null;
