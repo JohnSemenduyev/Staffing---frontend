@@ -109,7 +109,7 @@ export const useActualTimeTable = ({
 
         // 2. Collect shifts from sessionData (extended data)
         // When session's shift has no startTime/endTime, derive from sessions' clockIn/clockOut so that
-        // after editing overnight → same-day, the shift is treated as same-day and stays on the current day column.
+        // overnight sessions get split (after-midnight part shows) and same-day edits stay on current day.
         sessionData.forEach(session => {
             if (session.shift) {
                 const s: Shift = {
@@ -121,17 +121,25 @@ export const useActualTimeTable = ({
                     scheduleSessionId: session.scheduleSessionId
                 };
                 const existing = shiftMap.get(s.id);
+                const sessionsForShift = sessionData.filter(sd => sd.shiftId === s.id && sd.clockIn);
+                const withOut = sessionsForShift.filter(sd => sd.clockOut);
+                const hasSessionTimes = withOut.length > 0;
+                const minIn = hasSessionTimes ? sessionsForShift.reduce((min, sd) => (sd.clockIn && (!min || sd.clockIn < min)) ? sd.clockIn : min, "" as string) : "";
+                const maxOut = hasSessionTimes ? withOut.reduce((max, sd) => (sd.clockOut && (!max || sd.clockOut > max)) ? sd.clockOut : max, "" as string) : "";
+                const sessionOvernight = minIn && maxOut && timeToMinutes(maxOut) < timeToMinutes(minIn);
+                const sessionSameDay = minIn && maxOut && timeToMinutes(maxOut) >= timeToMinutes(minIn);
+
                 if (!existing) {
-                    shiftMap.set(s.id, s);
+                    if (s.startTime === "00:00" && s.endTime === "00:00" && hasSessionTimes) {
+                        shiftMap.set(s.id, { ...s, startTime: minIn, endTime: maxOut });
+                    } else {
+                        shiftMap.set(s.id, s);
+                    }
                 } else if (s.startTime === "00:00" && s.endTime === "00:00" && (existing.startTime !== "00:00" || existing.endTime !== "00:00")) {
-                    const sessionsForShift = sessionData.filter(sd => sd.shiftId === s.id && sd.clockIn);
-                    const withOut = sessionsForShift.filter(sd => sd.clockOut);
-                    if (withOut.length > 0) {
-                        const minIn = sessionsForShift.reduce((min, sd) => (sd.clockIn && (!min || sd.clockIn < min)) ? sd.clockIn : min, "" as string);
-                        const maxOut = withOut.reduce((max, sd) => (sd.clockOut && (!max || sd.clockOut > max)) ? sd.clockOut : max, "" as string);
-                        if (minIn && maxOut && timeToMinutes(maxOut) >= timeToMinutes(minIn)) {
-                            shiftMap.set(s.id, { ...existing, startTime: minIn, endTime: maxOut });
-                        }
+                    if (sessionSameDay) {
+                        shiftMap.set(s.id, { ...existing, startTime: minIn, endTime: maxOut });
+                    } else if (sessionOvernight) {
+                        shiftMap.set(s.id, { ...existing, startTime: minIn, endTime: maxOut });
                     }
                 } else {
                     shiftMap.set(s.id, s);
@@ -157,34 +165,34 @@ export const useActualTimeTable = ({
         };
 
         // 3. Distribute shifts
+        const firstDayOfWeek = dateColumns.length > 0 ? dateColumns[0].date : null;
+        const getUserId = (shift: Shift) =>
+            scheduleSessionUserMap.get(shift.scheduleSessionId!) ??
+            scheduleData.find(item => item.shifts?.some(sh => sh.id === shift.id))?.userId;
         for (const shift of shiftMap.values()) {
-            const userId = scheduleSessionUserMap.get(shift.scheduleSessionId!);
-            if (!userId) continue;
+            const userId = getUserId(shift);
+            if (userId == null) continue;
 
             const targetDate = normalizeDate(shift.date);
 
-            // Default: Shift is normal
-            let isOvernight = false;
+            const isOvernight = !!(shift.startTime && shift.endTime && shiftSpansNextDay(shift.startTime, shift.endTime));
 
-            if (shift.startTime && shift.endTime) {
-                const startM = timeToMinutes(shift.startTime);
-                const endM = timeToMinutes(shift.endTime);
-                if (startM > endM) {
-                    isOvernight = true;
+            const isOverflow = currentWeekRange && firstDayOfWeek && isOverflowShift(targetDate, currentWeekRange.startOfWeek);
+            if (isOverflow) {
+                // Shift started in previous week and spans into current week: show it on the first day of the current week
+                if (isOvernight) {
+                    const split2: Shift = { ...shift, startTime: "00:00", hours: calculateHours("00:00", shift.endTime), isSplit: true, splitSide: 'end' };
+                    addShiftToMap(userId, firstDayOfWeek, split2);
+                } else {
+                    addShiftToMap(userId, firstDayOfWeek, shift);
                 }
-            }
-
-            if (isOvernight) {
-                // Part 1: Current Day -> extends to 24:00
+            } else if (isOvernight) {
                 const split1: Shift = { ...shift, endTime: "24:00", hours: calculateHours(shift.startTime, "24:00"), isSplit: true, splitSide: 'start' };
                 addShiftToMap(userId, targetDate, split1);
-
-                // Part 2: Next Day -> starts at 00:00
                 const [y, m, d] = targetDate.split('-').map(Number);
                 const dateObj = new Date(y, m - 1, d);
                 dateObj.setDate(dateObj.getDate() + 1);
                 const nextDate = formatDateLocal(dateObj);
-
                 const split2: Shift = { ...shift, startTime: "00:00", hours: calculateHours("00:00", shift.endTime), isSplit: true, splitSide: 'end' };
                 addShiftToMap(userId, nextDate, split2);
             } else {
@@ -200,7 +208,7 @@ export const useActualTimeTable = ({
         }
 
         return map;
-    }, [scheduleData, sessionData]);
+    }, [scheduleData, sessionData, currentWeekRange, dateColumns]);
 
     // Helper functions
     const getSessionsForShift = (
