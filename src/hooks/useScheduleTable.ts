@@ -12,7 +12,9 @@ import { graphQLClient } from "../GraphqlClient";
 import {
     CREATE_DRAFT_SCHEDULE_SESSIONS,
     DELETE_SCHEDULE_SESSION,
+    UPDATE_SHIFT_END_TIME,
 } from "../graphql/mutation";
+import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
 
 interface UseScheduleTableProps {
     scheduleData: ScheduleItem[];
@@ -446,6 +448,15 @@ export const useScheduleTable = ({
 
     // Handlers
     const handleDeleteShift = useCallback((userId: number, date: string, shiftId: number) => {
+        const itemWithShift = scheduleData.find((i) => i.userId === userId && i.shifts.some((s: any) => s.id === shiftId));
+        const shift = itemWithShift?.shifts.find((s: any) => s.id === shiftId);
+        const isOverflow = shift && currentWeekRange?.startOfWeek && isOverflowShift(shift.date, currentWeekRange.startOfWeek);
+
+        if (isOverflow) {
+            setDeleteModal({ isOpen: true, shiftId, userId, date });
+            return;
+        }
+
         const userShifts = scheduleData
             .filter((item) => item.userId === userId)
             .flatMap((item) => item.shifts)
@@ -458,14 +469,15 @@ export const useScheduleTable = ({
         } else {
             setDeleteModal({ isOpen: true, shiftId, userId, date });
         }
-    }, [scheduleData]);
+    }, [scheduleData, currentWeekRange]);
 
-    const confirmDeleteShift = useCallback(() => {
+    const confirmDeleteShift = useCallback(async () => {
         const { userId, date, shiftId } = deleteModal;
         if (userId == null || shiftId == null || !date) return;
 
-        const shiftToDelete = getScheduleItem(userId, date)?.shifts
-            .find(shift => shift.id === shiftId);
+        const itemWithShift = scheduleData.find((i) => i.userId === userId && i.shifts.some((s: any) => s.id === shiftId));
+        const shiftToDelete = itemWithShift?.shifts.find((s: any) => s.id === shiftId);
+        const itemDate = itemWithShift?.startDate ?? date;
 
         if (!shiftToDelete) return;
 
@@ -475,10 +487,50 @@ export const useScheduleTable = ({
             onDraftShiftDeletion(shiftToDelete);
         }
 
-        const updatedData = markShiftAsDeleted(userId, date, shiftId);
+        const isOverflow = currentWeekRange?.startOfWeek && isOverflowShift(shiftToDelete.date, currentWeekRange.startOfWeek);
+
+        if (isOverflow) {
+            const overflowCount = scheduleData
+                .filter((i) => i.userId === userId)
+                .flatMap((i) => i.shifts)
+                .filter((s: any) => !s.isDelete && isOverflowShift(s.date, currentWeekRange!.startOfWeek)).length;
+
+            if (overflowCount === 1) {
+                try {
+                    const token = sessionStorage.getItem("token");
+                    await graphQLClient.request(
+                        UPDATE_SHIFT_END_TIME,
+                        {
+                            input: {
+                                items: [{
+                                    shiftId,
+                                    endTime: shiftToDelete.endTime ?? null,
+                                    draft: false,
+                                    isDelete: true,
+                                }],
+                            },
+                        },
+                        { Authorization: `Bearer ${token}` }
+                    );
+                    hookToast({ title: "Success", description: "Shift deleted successfully!" });
+                    if (onDeleteSuccess) await onDeleteSuccess();
+                } catch (err) {
+                    console.error(err);
+                    hookToast({ title: "Error", description: "Failed to delete shift.", variant: "destructive" });
+                    return;
+                }
+            }
+
+            const updatedData = markShiftAsDeleted(userId, itemDate, shiftId);
+            onScheduleDataChange(updatedData);
+            setDeleteModal({ isOpen: false });
+            return;
+        }
+
+        const updatedData = markShiftAsDeleted(userId, itemDate, shiftId);
         onScheduleDataChange(updatedData);
         setDeleteModal({ isOpen: false });
-    }, [deleteModal, getScheduleItem, isDraftShift, markShiftAsDeleted, onDraftShiftDeletion, onScheduleDataChange]);
+    }, [deleteModal, scheduleData, currentWeekRange, isDraftShift, markShiftAsDeleted, onDraftShiftDeletion, onScheduleDataChange, onDeleteSuccess, hookToast]);
 
     const confirmDeleteLastShift = useCallback(async () => {
         setDeletingLastShift(true);
