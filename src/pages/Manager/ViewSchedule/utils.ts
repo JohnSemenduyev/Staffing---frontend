@@ -174,6 +174,44 @@ export const validateForm = (
     }
   }
 
+  // Calendar-aware overlap helper for shifts (handles overnight without crossing into other calendar days)
+  const shiftsOverlapInCalendar = (
+    date1: string,
+    start1: string,
+    end1: string,
+    date2: string,
+    start2: string,
+    end2: string
+  ): boolean => {
+    const norm = (d: string) => (d.includes("T") ? d.split("T")[0] : d);
+    const d1 = norm(date1);
+    const d2 = norm(date2);
+
+    const segs = (d: string, s: string, e: string): Array<{ date: string; startM: number; endM: number }> => {
+      const startM = sharedTimeToMinutes(s);
+      const endM = sharedTimeToMinutes(e);
+      if (startM > endM) {
+        // Overnight: split into [d, start-24:00] and [d+1, 00:00-end]
+        return [
+          { date: d, startM, endM: 24 * 60 },
+          { date: getAdjustedDate(d, 1), startM: 0, endM },
+        ];
+      }
+      return [{ date: d, startM, endM }];
+    };
+
+    const segs1 = segs(d1, start1, end1);
+    const segs2 = segs(d2, start2, end2);
+
+    for (const a of segs1) {
+      for (const b of segs2) {
+        if (a.date !== b.date) continue;
+        if (a.startM < b.endM && b.startM < a.endM) return true;
+      }
+    }
+    return false;
+  };
+
   // Check for overlapping shifts (both local and API data)
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
     console.log("[Overlap] validateForm – checking overlaps", {
@@ -197,7 +235,7 @@ export const validateForm = (
         continue; // Skip current shift when editing
       }
 
-      if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+      if (shiftsOverlapInCalendar(formData.date, formData.starttime, formData.endtime, formData.date, shift.startTime, shift.endTime)) {
         console.log("[Overlap] validateForm – overlap detected (same day)", {
           date: formData.date,
           newShift: `${formData.starttime}-${formData.endtime}`,
@@ -268,7 +306,7 @@ export const validateForm = (
           // Check if the API shift is for the same date
           const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
           if (apiShiftDate === formData.date) {
-            if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+            if (shiftsOverlapInCalendar(formData.date, formData.starttime, formData.endtime, apiShiftDate, apiShift.startTime, apiShift.endTime)) {
               console.log("[Overlap] validateForm – overlap detected (API same day)", {
                 date: formData.date,
                 newShift: `${formData.starttime}-${formData.endtime}`,
@@ -346,7 +384,7 @@ export const checkApiOverlap = (
   for (const apiShift of apiShifts) {
     const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
     if (apiShiftDate === date) {
-      if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
+      if (shiftsOverlapInCalendar(date, startTime, endTime, apiShiftDate, apiShift.startTime, apiShift.endTime)) {
         return true;
       }
     }
