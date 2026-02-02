@@ -29,6 +29,43 @@ export const minutesDiffWithWrap = sharedMinutesDiffWithWrap;
 
 export const doTimesOverlap = sharedDoTimesOverlap;
 
+/** Calendar-aware overlap for shifts (overnight split by date so 04:00-06:00 does not overlap 23:00-14:00 on same calendar day). */
+export const shiftsOverlapInCalendar = (
+  date1: string,
+  start1: string,
+  end1: string,
+  date2: string,
+  start2: string,
+  end2: string
+): boolean => {
+  const norm = (d: string) => (d.includes("T") ? d.split("T")[0] : d);
+  const d1 = norm(date1);
+  const d2 = norm(date2);
+
+  const segs = (d: string, s: string, e: string): Array<{ date: string; startM: number; endM: number }> => {
+    const startM = sharedTimeToMinutes(s);
+    const endM = sharedTimeToMinutes(e);
+    if (startM > endM) {
+      return [
+        { date: d, startM, endM: 24 * 60 },
+        { date: getAdjustedDate(d, 1), startM: 0, endM },
+      ];
+    }
+    return [{ date: d, startM, endM }];
+  };
+
+  const segs1 = segs(d1, start1, end1);
+  const segs2 = segs(d2, start2, end2);
+
+  for (const a of segs1) {
+    for (const b of segs2) {
+      if (a.date !== b.date) continue;
+      if (a.startM < b.endM && b.startM < a.endM) return true;
+    }
+  }
+  return false;
+};
+
 export const isOverflowShift = (shiftDate: string, weekStartDate: string | Date): boolean => {
   if (!shiftDate || !weekStartDate) return false;
   const sDate = new Date(shiftDate);
@@ -173,44 +210,6 @@ export const validateForm = (
       e.endtime = "End time must be at least 1 minute after start time";
     }
   }
-
-  // Calendar-aware overlap helper for shifts (handles overnight without crossing into other calendar days)
-  const shiftsOverlapInCalendar = (
-    date1: string,
-    start1: string,
-    end1: string,
-    date2: string,
-    start2: string,
-    end2: string
-  ): boolean => {
-    const norm = (d: string) => (d.includes("T") ? d.split("T")[0] : d);
-    const d1 = norm(date1);
-    const d2 = norm(date2);
-
-    const segs = (d: string, s: string, e: string): Array<{ date: string; startM: number; endM: number }> => {
-      const startM = sharedTimeToMinutes(s);
-      const endM = sharedTimeToMinutes(e);
-      if (startM > endM) {
-        // Overnight: split into [d, start-24:00] and [d+1, 00:00-end]
-        return [
-          { date: d, startM, endM: 24 * 60 },
-          { date: getAdjustedDate(d, 1), startM: 0, endM },
-        ];
-      }
-      return [{ date: d, startM, endM }];
-    };
-
-    const segs1 = segs(d1, start1, end1);
-    const segs2 = segs(d2, start2, end2);
-
-    for (const a of segs1) {
-      for (const b of segs2) {
-        if (a.date !== b.date) continue;
-        if (a.startM < b.endM && b.startM < a.endM) return true;
-      }
-    }
-    return false;
-  };
 
   // Check for overlapping shifts (both local and API data)
   if (formData.userId && formData.date && formData.starttime && formData.endtime) {
