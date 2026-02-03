@@ -1188,6 +1188,8 @@ export const useScheduleTable = ({
         return max;
     }, [scheduleData, dateColumns, formatDateFromISO]);
 
+    // Hours for a shift on targetDate only (used with targetDate from dateColumns = current week only).
+    // Overnight: first day = start to 24:00, next day = 00:00 to end. Next-week overflow is never counted because we only sum over dateColumns.
     const calculateEffectiveHours = useCallback((shift: any, targetDate: string): number => {
         // If shift starts on targetDate
         if (shift.startDate === targetDate || (shift.date && shift.date === targetDate)) {
@@ -1273,7 +1275,7 @@ export const useScheduleTable = ({
     }, [scheduleData, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
     const calculateGrandTotal = useCallback((currentScheduleData: ScheduleItem[]): number => {
-        // Final total = sum of day totals in the grand total row (so it matches the displayed day columns)
+        // Totals are current-week only: we sum only over dateColumns (no next-week overflow, previous-week overflow into first day is included)
         if (dateColumns.length === 0) return 0;
         let total = 0;
         dateColumns.forEach(col => {

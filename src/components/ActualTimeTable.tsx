@@ -46,6 +46,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     confirmEditModeToggle,
     cancelEditModeToggle,
     calculateDayTotal,
+    calculateUserDayTotalFromGrid,
     calculateUserTotal,
     calculateRowTotal,
     calculateGrandTotal,
@@ -90,6 +91,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                   hasTimeMismatch={hasTimeMismatch}
                   calculateRowTotal={calculateRowTotal}
                   calculateDayTotal={calculateDayTotal}
+                  calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
                   calculateUserTotal={calculateUserTotal}
                   openEditShift={openEditShift}
                   setDeleteAllModal={setDeleteAllModal}
@@ -109,6 +111,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                   hasTimeMismatch={hasTimeMismatch}
                   calculateRowTotal={calculateRowTotal}
                   calculateDayTotal={calculateDayTotal}
+                  calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
                   calculateUserTotal={calculateUserTotal}
                   openEditShift={openEditShift}
                   setDeleteAllModal={setDeleteAllModal}
@@ -117,17 +120,36 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                 />
               ))}
 
-            {/* Grand Total Row */}
+            {/* Grand Total Row: column totals = sum of displayed hours per day (grid-only); grand total = sum of column totals */}
             <tr className="bg-gray-50 font-medium">
               <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
-              {dateColumns.map((dateCol) => (
-                <td key={dateCol.date} className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                  {calculateDayTotal(dateCol.date, props.sessionData) || "-"}
-                </td>
-              ))}
-              <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                {calculateGrandTotal(props.sessionData)}
-              </td>
+              {(() => {
+                const users = props.selectedUserId ? rowGroups : uniqueUsers;
+                const dayTotals = dateColumns.map((dateCol) =>
+                  users.reduce(
+                    (sum, u) => sum + calculateUserDayTotalFromGrid((u as any).userId ?? (u as any).id, dateCol.date),
+                    0
+                  )
+                );
+                const grandTotalFromColumns = parseFloat(
+                  dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
+                );
+                return (
+                  <>
+                    {dayTotals.map((dayTotal, i) => (
+                      <td
+                        key={dateColumns[i].date}
+                        className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
+                      >
+                        {dayTotal > 0 ? dayTotal : "-"}
+                      </td>
+                    ))}
+                    <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                      {grandTotalFromColumns > 0 ? grandTotalFromColumns : "-"}
+                    </td>
+                  </>
+                );
+              })()}
               <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>
             </tr>
           </tbody>

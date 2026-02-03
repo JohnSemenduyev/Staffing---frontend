@@ -16,6 +16,7 @@ interface ActualTableRowProps {
     hasTimeMismatch: (shift: Shift, sessions: SessionItem[]) => boolean;
     calculateRowTotal: (userId: number, rowIdx: number, sessions: SessionItem[], schedule: ScheduleItem[], dateCols: { date: string }[]) => number;
     calculateDayTotal: (date: string, sessions: SessionItem[]) => number;
+    calculateUserDayTotalFromGrid: (userId: number, date: string) => number;
     calculateUserTotal: (userId: number, sessions: SessionItem[], schedule: ScheduleItem[]) => number;
 
     // Row Count helpers
@@ -38,6 +39,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
     hasTimeMismatch,
     calculateRowTotal,
     calculateDayTotal,
+    calculateUserDayTotalFromGrid,
     calculateUserTotal,
     rowCount,
     buildUserDateShifts,
@@ -212,34 +214,36 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                 </tr>
             ))}
 
-            {/* Summary Row */}
+            {/* Summary Row: day values = only hours displayed in grid (so total matches sum of shift row totals) */}
             <tr
                 className={`transition-colors bg-gray-100`} // Simplification
             >
                 <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                     Total
                 </td>
-                {dateColumns.map(dateCol => {
-                    const dayTotal = calculateDayTotal(
-                        dateCol.date,
-                        filteredSessionData
+                {(() => {
+                    const dayTotals = dateColumns.map(dateCol =>
+                        calculateUserDayTotalFromGrid(userId, dateCol.date)
+                    );
+                    const rowTotalFromColumns = parseFloat(
+                        dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
                     );
                     return (
-                        <td
-                            key={dateCol.date}
-                            className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
-                        >
-                            {dayTotal > 0 ? dayTotal : "-"}
-                        </td>
+                        <>
+                            {dayTotals.map((dayTotal, i) => (
+                                <td
+                                    key={dateColumns[i].date}
+                                    className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                                >
+                                    {dayTotal > 0 ? dayTotal : "-"}
+                                </td>
+                            ))}
+                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                                {rowTotalFromColumns > 0 ? rowTotalFromColumns : "-"}
+                            </td>
+                        </>
                     );
-                })}
-                <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                    {calculateUserTotal(
-                        userId,
-                        filteredSessionData,
-                        scheduleData
-                    )}
-                </td>
+                })()}
                 <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
                 </td>
             </tr>

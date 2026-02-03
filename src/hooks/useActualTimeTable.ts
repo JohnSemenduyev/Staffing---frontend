@@ -334,8 +334,8 @@ export const useActualTimeTable = ({
     const saveEditShiftSessions = () => {
         if (!editShiftModal.isOpen || editShiftModal.shiftId == null) return;
 
-        for (let i = 0; i < editSessions.length; i++) {
-            const row = editSessions[i];
+        // 1) Basic validation
+        for (const row of editSessions) {
             if (!row.clockIn) {
                 toast({ title: "Validation Error", description: "Clock-in is required for every session.", variant: "destructive" });
                 return;
@@ -349,22 +349,6 @@ export const useActualTimeTable = ({
             }
         }
 
-        // 1. Same-shift overlap: use doTimesOverlap so overnight sessions (e.g. 23:00-01:00) are checked correctly. Open-ended (no clockOut) is treated as empty end time — skip overlap check for pairs where either has no end.
-        const sorted = [...editSessions].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
-        for (let i = 0; i < sorted.length; i++) {
-            for (let j = i + 1; j < sorted.length; j++) {
-                if (!sorted[i].clockOut || !sorted[j].clockOut) continue; // open-ended: empty end time, not 24:00
-                if (doTimesOverlap(sorted[i].clockIn, sorted[i].clockOut, sorted[j].clockIn, sorted[j].clockOut)) {
-                    console.warn("[Session overlap] Same-shift overlap:", {
-                        sessionA: { id: sorted[i].id, clockIn: sorted[i].clockIn, clockOut: sorted[i].clockOut },
-                        sessionB: { id: sorted[j].id, clockIn: sorted[j].clockIn, clockOut: sorted[j].clockOut },
-                    });
-                    toast({ title: "Overlap", description: "Sessions overlap within the same shift.", variant: "destructive" });
-                    return;
-                }
-            }
-        }
-
         const shiftId = editShiftModal.shiftId;
         const date = editShiftModal.date!;
         const userId = editShiftModal.userId!;
@@ -373,19 +357,8 @@ export const useActualTimeTable = ({
         const shiftForDate = scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === shiftId);
         const editedSessionStartDate = shiftForDate?.date ? (shiftForDate.date.includes("T") ? shiftForDate.date.split("T")[0] : shiftForDate.date) : date;
         const editedSessionIds = new Set(editSessions.map(r => r.id).filter((id): id is number => id != null));
-        // 2. Same-column + adjacent-day overlap: include sessions on current date, previous day, and next day for this user (overnight sessions span days). Exclude the session(s) being edited so we don't compare with ourselves.
-        const otherSessionsSameUserAndAdjacentDays = sessionData.filter(s => {
-            if (s.shiftId === shiftId) return false;
-            if (editedSessionIds.has(s.id)) return false;
-            const scheduleItem = scheduleData.find(si => si.shifts.some(sh => sh.id === s.shiftId));
-            if (!scheduleItem) return false;
-            if (scheduleItem.userId !== userId) return false;
-            const sDateRaw = s.shift?.date || s.scheduleSessionId;
-            const sDate = sDateRaw ? formatDateStringLocal(String(sDateRaw)) : '';
-            return sDate === date || sDate === prevDate || sDate === nextDate;
-        });
 
-        // Helper: two sessions overlap only if they overlap on the same calendar date (consider overnight segments per day)
+        // Helper: two sessions overlap only if they overlap on the same calendar date (handles overnight / 24h)
         const sessionsOverlapInCalendar = (
             date1: string, clockIn1: string, clockOut1: string,
             date2: string, clockIn2: string, clockOut2: string
@@ -396,7 +369,8 @@ export const useActualTimeTable = ({
             const segs = (d: string, inT: string, outT: string): Array<{ date: string; startM: number; endM: number }> => {
                 const startM = timeToMinutes(inT);
                 const endM = timeToMinutes(outT);
-                if (startM > endM) {
+                // Treat start >= end as overnight/24h (split across days)
+                if (startM >= endM) {
                     return [
                         { date: d, startM, endM: 24 * 60 },
                         { date: getAdjustedDate(d, 1), startM: 0, endM },
@@ -415,17 +389,37 @@ export const useActualTimeTable = ({
             return false;
         };
 
+        // 2) Same‑shift overlap: no overlaps among sessions of the same shift (including 24h / overnight)
+        const sorted = [...editSessions].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
+        for (let i = 0; i < sorted.length; i++) {
+            for (let j = i + 1; j < sorted.length; j++) {
+                if (!sorted[i].clockOut || !sorted[j].clockOut) continue; // open‑ended: empty end time, not 24:00
+                if (sessionsOverlapInCalendar(editedSessionStartDate, sorted[i].clockIn, sorted[i].clockOut, editedSessionStartDate, sorted[j].clockIn, sorted[j].clockOut)) {
+                    toast({ title: "Overlap", description: "Sessions overlap within the same shift.", variant: "destructive" });
+                    return;
+                }
+            }
+        }
+
+        // 3) Same‑day / previous‑day / next‑day overlap with other sessions for this user
+        const otherSessionsSameUserAndAdjacentDays = sessionData.filter(s => {
+            if (s.shiftId === shiftId) return false;
+            if (editedSessionIds.has(s.id)) return false;
+            const scheduleItem = scheduleData.find(si => si.shifts.some(sh => sh.id === s.shiftId));
+            if (!scheduleItem) return false;
+            if (scheduleItem.userId !== userId) return false;
+            const sDateRaw = s.shift?.date || s.scheduleSessionId;
+            const sDate = sDateRaw ? formatDateStringLocal(String(sDateRaw)) : '';
+            return sDate === date || sDate === prevDate || sDate === nextDate;
+        });
+
         for (const row of editSessions) {
             for (const s of otherSessionsSameUserAndAdjacentDays) {
                 if (!s.clockIn) continue;
-                if (!row.clockOut || !s.clockOut) continue; // open-ended: empty end time — skip overlap check
+                if (!row.clockOut || !s.clockOut) continue; // open‑ended: empty end time — skip overlap check
                 const otherDateRaw = s.shift?.date || s.scheduleSessionId;
                 const otherDate = otherDateRaw ? formatDateStringLocal(String(otherDateRaw)) : "";
                 if (sessionsOverlapInCalendar(editedSessionStartDate, row.clockIn, row.clockOut, otherDate, s.clockIn, s.clockOut)) {
-                    console.warn("[Session overlap] Same-column/adjacent-day overlap (calendar):", {
-                        editedRow: { id: row.id, date: editedSessionStartDate, clockIn: row.clockIn, clockOut: row.clockOut },
-                        otherSession: { id: s.id, shiftId: s.shiftId, date: otherDate, clockIn: s.clockIn, clockOut: s.clockOut },
-                    });
                     toast({ title: "Overlap", description: "Edited sessions overlap with another session on this date or an adjacent day (same user).", variant: "destructive" });
                     return;
                 }
@@ -529,19 +523,41 @@ export const useActualTimeTable = ({
         return parseFloat(total.toFixed(2));
     };
 
+    /** Hours for this user on this date that are actually displayed in the grid. Uses each session's displayed clockIn/clockOut (already clipped by getSessionsForShift) so totals match cell content and no column shows "-" when cells have data. */
+    const calculateUserDayTotalFromGrid = (userId: number, date: string): number => {
+        let total = 0;
+        const shiftsOnDate = buildUserDateShifts.get(userId)?.get(date) ?? [];
+        shiftsOnDate.forEach(shift => {
+            const cellSessions = getSessionsForShift(shift, shift.scheduleSessionId, date, userId);
+            cellSessions.forEach(session => {
+                if (session.clockIn && session.clockOut) {
+                    total += calculateHours(session.clockIn, session.clockOut);
+                } else {
+                    total += getSessionHoursOnDate(session, date);
+                }
+            });
+        });
+        return parseFloat(total.toFixed(2));
+    };
+
     const calculateUserTotal = (
         userId: number,
         sessions: SessionItem[],
         schedule: ScheduleItem[]
     ) => {
-        const total = sessions
-            .filter(item => {
-                const scheduleItem = schedule.find(si =>
-                    si.shifts.some(shift => shift.id === item.shiftId)
-                );
-                return scheduleItem?.userId === userId;
-            })
-            .reduce((t, item) => t + calculateWorkedTimeWith24HourLogic(item), 0);
+        const userSessions = sessions.filter(item => {
+            const scheduleItem = schedule.find(si =>
+                si.shifts.some(shift => shift.id === item.shiftId)
+            );
+            return scheduleItem?.userId === userId;
+        });
+        // Sum only hours that fall within current week dates (excludes next-week overflow, includes previous-week overflow)
+        let total = 0;
+        dateColumns.forEach(dateCol => {
+            userSessions.forEach(session => {
+                total += getSessionHoursOnDate(session, dateCol.date);
+            });
+        });
         return parseFloat(total.toFixed(2));
     };
 
@@ -559,7 +575,11 @@ export const useActualTimeTable = ({
             if (shift) {
                 const cellSessions = getSessionsForShift(shift, shift.scheduleSessionId, dateCol.date, userId);
                 cellSessions.forEach(session => {
-                    rowTotal += calculateWorkedTimeWith24HourLogic(session);
+                    if (session.clockIn && session.clockOut) {
+                        rowTotal += calculateHours(session.clockIn, session.clockOut);
+                    } else {
+                        rowTotal += getSessionHoursOnDate(session, dateCol.date);
+                    }
                 });
             }
         });
@@ -658,6 +678,7 @@ export const useActualTimeTable = ({
         confirmEditModeToggle,
         cancelEditModeToggle: () => setEditModeConfirmModal({ isOpen: false }),
         calculateDayTotal,
+        calculateUserDayTotalFromGrid,
         calculateUserTotal,
         calculateRowTotal,
         calculateGrandTotal,

@@ -500,9 +500,8 @@ export async function generateScheduleStyledExcel(
     return `${year}-${m}-${day}`;
   });
 
-  const users = Array.from(byUser.entries()).sort((a, b) =>
-    (a[1]?.name || '').localeCompare(b[1]?.name || '')
-  );
+  // User order: first-occurrence in scheduleData (match Web UI row order)
+  const users = Array.from(byUser.entries());
 
   // Add data rows for each user (visual shifts: overnight + overflow; effective hours for totals)
   users.forEach(([userId, data]) => {
@@ -902,9 +901,8 @@ export async function generateScheduledFormatExcel(
     return `${year}-${m}-${day}`;
   });
 
-  const users = Array.from(byUser.entries()).sort((a, b) =>
-    (a[1]?.name || '').localeCompare(b[1]?.name || '')
-  );
+  // User order: first-occurrence in scheduleData (match Web UI row order)
+  const users = Array.from(byUser.entries());
 
   // Add data rows for each user
   users.forEach(([_, data]) => {

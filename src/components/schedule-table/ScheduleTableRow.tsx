@@ -261,22 +261,32 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                 <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                     Total
                 </td>
-                {dateColumns.map((dateCol) => {
-                    const dayTotal = calculateUserDayTotal(row, dateCol.date, groupByClient);
-
-                    const rounded = parseFloat(dayTotal.toFixed(2));
-                    return (
-                        <td
-                            key={dateCol.date}
-                            className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
-                        >
-                            {rounded > 0 ? rounded : "-"}
-                        </td>
+                {(() => {
+                    const dayTotals = dateColumns.map((dateCol) =>
+                        calculateUserDayTotal(row, dateCol.date, groupByClient)
                     );
-                })}
-                <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
-                    {calculateRowTotal(row, groupByClient)}
-                </td>
+                    const rowTotalFromColumns = parseFloat(
+                        dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
+                    );
+                    return (
+                        <>
+                            {dayTotals.map((dayTotal, i) => {
+                                const rounded = parseFloat(dayTotal.toFixed(2));
+                                return (
+                                    <td
+                                        key={dateColumns[i].date}
+                                        className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                                    >
+                                        {rounded > 0 ? rounded : "-"}
+                                    </td>
+                                );
+                            })}
+                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                                {rowTotalFromColumns > 0 ? rowTotalFromColumns : "-"}
+                            </td>
+                        </>
+                    );
+                })()}
                 <td className="border border-gray-300 px-4 py-3 text-center w-16" />
                 {isEditMode && (
                     <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">

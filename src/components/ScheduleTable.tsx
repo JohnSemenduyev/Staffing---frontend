@@ -192,17 +192,27 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
               <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
                 Grand Total
               </td>
-              {dateColumns.map((dateCol) => (
-                <td
-                  key={dateCol.date}
-                  className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
-                >
-                  {calculateDayTotal(dateCol.date) || "-"}
-                </td>
-              ))}
-              <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                {calculateGrandTotal(scheduleData)}
-              </td>
+              {(() => {
+                const dayTotals = dateColumns.map((dateCol) => calculateDayTotal(dateCol.date));
+                const grandTotalFromColumns = parseFloat(
+                  dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
+                );
+                return (
+                  <>
+                    {dayTotals.map((dayTotal, i) => (
+                      <td
+                        key={dateColumns[i].date}
+                        className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
+                      >
+                        {dayTotal > 0 ? dayTotal : "-"}
+                      </td>
+                    ))}
+                    <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                      {grandTotalFromColumns > 0 ? grandTotalFromColumns : "-"}
+                    </td>
+                  </>
+                );
+              })()}
               <td className="border border-gray-300 px-4 py-3 text-center w-16"></td>
               {isEditMode && <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16"></td>}
             </tr>

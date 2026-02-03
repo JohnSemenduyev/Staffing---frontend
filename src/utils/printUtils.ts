@@ -88,7 +88,7 @@ export const generateSchedulePrintableTable = (
     `;
   }
 
-  // Get unique users
+  // Get unique users in first-occurrence order (match Web UI row order)
   const uniqueUsers = new Map();
   scheduleData.forEach(item => {
     if (!uniqueUsers.has(item.userId)) {
@@ -99,9 +99,7 @@ export const generateSchedulePrintableTable = (
       });
     }
   });
-
-  // Sort users by name
-  const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+  const usersInDisplayOrder = Array.from(uniqueUsers.values());
 
   // Table headers
   const headers = ['Officer Name']; // Add empty column after Officer Name
@@ -273,7 +271,7 @@ export const generateSchedulePrintableTable = (
   // Build table rows
   const dataRows = [];
 
-  sortedUsers.forEach(user => {
+  usersInDisplayOrder.forEach(user => {
     const maxShifts = getMaxShiftsPerDay(user.id);
     const totalRows = maxShifts + 1; // +1 for Total row
     
@@ -326,13 +324,14 @@ export const generateSchedulePrintableTable = (
       dataRows.push(`<tr>${cells.join('')}</tr>`);
     }
 
-    // Total row for this user (day totals = effective hours per day, total = user total)
+    // Total row: day values from columns, row total = sum of day values
     const totalCells = [`
       <td style="border: 1px solid black !important; text-align: left; font-size: 15px; font-weight: bold;">
         Total
       </td>
     `];
 
+    const dayTotalsForUser: number[] = [];
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
@@ -340,6 +339,7 @@ export const generateSchedulePrintableTable = (
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
         const dayTotal = calculateUserDayTotal(user.id, dateStr);
+        dayTotalsForUser.push(dayTotal);
         totalCells.push(`
           <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
             ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
@@ -347,17 +347,17 @@ export const generateSchedulePrintableTable = (
         `);
       }
     }
-
+    const rowTotalFromColumns = parseFloat(dayTotalsForUser.reduce((s, v) => s + v, 0).toFixed(2));
     totalCells.push(`
       <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
-        ${calculateUserTotal(user.id).toFixed(2)}
+        ${rowTotalFromColumns > 0 ? rowTotalFromColumns.toFixed(2) : ''}
       </td>
     `);
 
     dataRows.push(`<tr>${totalCells.join('')}</tr>`);
   });
 
-  // Grand Total row
+  // Grand Total row: column totals from day columns, grand total = sum of column totals
   const grandTotalCells = [`
     <td style="border: 1px solid black !important; padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: bold;">
       Grand Total
@@ -368,14 +368,15 @@ export const generateSchedulePrintableTable = (
     </td>
   `];
 
+  const dayTotalsForGrand: number[] = [];
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       const dateStr = toLocalYMD(date);
-      
       const dayTotal = calculateDayTotal(dateStr);
+      dayTotalsForGrand.push(dayTotal);
       grandTotalCells.push(`
         <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
           ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
@@ -383,10 +384,10 @@ export const generateSchedulePrintableTable = (
       `);
     }
   }
-
+  const grandTotalFromColumns = parseFloat(dayTotalsForGrand.reduce((s, v) => s + v, 0).toFixed(2));
   grandTotalCells.push(`
     <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
-      ${calculateGrandTotal().toFixed(2)}
+      ${grandTotalFromColumns > 0 ? grandTotalFromColumns.toFixed(2) : ''}
     </td>
   `);
 
@@ -444,22 +445,18 @@ export const generateActualTimePrintableTable = (
     return calculateHours(session.clockIn, session.clockOut);
   };
 
-  // Get unique users from session data
+  // Get unique users in scheduleData first-occurrence order (match Web UI row order)
   const uniqueUsers = new Map();
-  sessionData.forEach(item => {
-    const scheduleItem = scheduleData.find(si =>
-      si.shifts.some(shift => shift.id === item.shiftId)
-    );
-    if (scheduleItem && !uniqueUsers.has(scheduleItem.userId)) {
-      uniqueUsers.set(scheduleItem.userId, {
-        id: scheduleItem.userId,
-        name: scheduleItem.userName,
-        phone: scheduleItem.userPhone
+  scheduleData.forEach(item => {
+    if (!uniqueUsers.has(item.userId)) {
+      uniqueUsers.set(item.userId, {
+        id: item.userId,
+        name: item.userName,
+        phone: item.userPhone
       });
     }
   });
-
-  const sortedUsers = Array.from(uniqueUsers.values()).sort((a, b) => a.name.localeCompare(b.name));
+  const usersInDisplayOrder = Array.from(uniqueUsers.values());
 
   const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
   const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
@@ -638,7 +635,7 @@ export const generateActualTimePrintableTable = (
   // Build table rows
   const dataRows = [];
 
-  sortedUsers.forEach(user => {
+  usersInDisplayOrder.forEach(user => {
     const maxShifts = getMaxShiftsPerDay(user.id);
     const totalRows = maxShifts + 1; // +1 for Total row
 
@@ -704,13 +701,14 @@ export const generateActualTimePrintableTable = (
       dataRows.push(`<tr>${cells.join('')}</tr>`);
     }
 
-    // Total row for this user
+    // Total row: day values from columns, row total = sum of day values
     const totalCells = [`
       <td style="border: 1px solid black !important; text-align: left; font-size: 15px; font-weight: bold;">
         Total
       </td>
     `];
 
+    const dayTotalsForUserActual: number[] = [];
     if (currentWeekRange) {
       const startDate = new Date(currentWeekRange.startOfWeek);
       for (let i = 0; i < 7; i++) {
@@ -718,6 +716,7 @@ export const generateActualTimePrintableTable = (
         date.setDate(startDate.getDate() + i);
         const dateStr = toLocalYMD(date);
         const dayTotal = calculateUserDayTotal(user.id, dateStr);
+        dayTotalsForUserActual.push(dayTotal);
         totalCells.push(`
           <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
             ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
@@ -725,17 +724,17 @@ export const generateActualTimePrintableTable = (
         `);
       }
     }
-
+    const rowTotalFromColumnsActual = parseFloat(dayTotalsForUserActual.reduce((s, v) => s + v, 0).toFixed(2));
     totalCells.push(`
       <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
-        ${calculateUserTotal(user.id).toFixed(2)}
+        ${rowTotalFromColumnsActual > 0 ? rowTotalFromColumnsActual.toFixed(2) : ''}
       </td>
     `);
 
     dataRows.push(`<tr>${totalCells.join('')}</tr>`);
   });
 
-  // Grand Total row (day totals = sum of getSessionHoursOnDate; total = sum of all session hours)
+  // Grand Total row: column totals from day columns, grand total = sum of column totals
   const grandTotalCells = [`
     <td style="border: 1px solid black !important; padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: bold;">
       Grand Total
@@ -746,6 +745,7 @@ export const generateActualTimePrintableTable = (
     </td>
   `];
 
+  const dayTotalsForGrandActual: number[] = [];
   if (currentWeekRange) {
     const startDate = new Date(currentWeekRange.startOfWeek);
     for (let i = 0; i < 7; i++) {
@@ -753,6 +753,7 @@ export const generateActualTimePrintableTable = (
       date.setDate(startDate.getDate() + i);
       const dateStr = toLocalYMD(date);
       const dayTotal = calculateDayTotal(dateStr);
+      dayTotalsForGrandActual.push(dayTotal);
       grandTotalCells.push(`
         <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
           ${dayTotal > 0 ? dayTotal.toFixed(2) : ''}
@@ -760,10 +761,10 @@ export const generateActualTimePrintableTable = (
       `);
     }
   }
-
+  const grandTotalFromColumnsActual = parseFloat(dayTotalsForGrandActual.reduce((s, v) => s + v, 0).toFixed(2));
   grandTotalCells.push(`
     <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px; font-weight: bold;">
-      ${calculateGrandTotal().toFixed(2)}
+      ${grandTotalFromColumnsActual > 0 ? grandTotalFromColumnsActual.toFixed(2) : ''}
     </td>
   `);
 
