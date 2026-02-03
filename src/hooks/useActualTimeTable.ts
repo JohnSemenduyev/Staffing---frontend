@@ -1,8 +1,15 @@
 import { useState, useMemo } from "react";
 import { ScheduleItem, SessionItem, Shift, RowGroup, User } from "../types/schedule";
-import { formatDateLocal, formatDateStringLocal, formatTimeDisplay, calculateHours, minutesDiffWithWrap, doTimesOverlap, timeToMinutes, shiftSpansNextDay, getAdjustedDate, formatDateFromISO } from "../lib/utils";
-import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
+import { formatDateLocal, formatDateStringLocal, formatTimeDisplay, calculateHours, minutesDiffWithWrap, doTimesOverlap, timeToMinutes, shiftSpansNextDay, getAdjustedDate } from "../lib/utils";
 import { useToast } from "./use-toast";
+import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
+
+/**
+ * Actual table grid = schedule visual shifts (no overflow on first day).
+ * Sessions are attached to shifts by shiftId; display and hours use getSessionHoursOnDate so overnight/24h split correctly.
+ */
+
+const normDate = (d: string): string => (d && d.includes("T") ? d.split("T")[0] : d || "");
 
 interface UseActualTimeTableProps {
     scheduleData: ScheduleItem[];
@@ -89,128 +96,82 @@ export const useActualTimeTable = ({
         return Array.from(map.values());
     }, [scheduleData, selectedUserId]);
 
-    // Build user date shifts map
+    const firstDayOfWeek = dateColumns.length > 0 ? dateColumns[0].date : null;
+
+    /** Visual shifts for one date from a subset of schedule items (e.g. one user or one group). No overflow on first day of week. */
+    const getVisualShiftsFromScheduleItems = (
+        scheduleItems: ScheduleItem[],
+        date: string,
+        firstDay: string | null
+    ): (Shift & { isContinuation?: boolean })[] => {
+        const getItem = (d: string) => scheduleItems.find(item => normDate(item.startDate) === d);
+        const daySchedule = getItem(date);
+        const currentDayShifts = daySchedule
+            ? (daySchedule.shifts || []).filter((s: any) => !s.isDelete).map((s: Shift) => ({ ...s, isContinuation: false }))
+            : [];
+        const isFirstDayOfWeek = firstDay !== null && date === firstDay;
+        const prevDaySpanningShifts: (Shift & { isContinuation?: boolean })[] = isFirstDayOfWeek
+            ? []
+            : (() => {
+                const prevDate = getAdjustedDate(date, -1);
+                const prevSchedule = getItem(prevDate);
+                if (!prevSchedule) return [];
+                return (prevSchedule.shifts || [])
+                    .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+                    .map((s: Shift) => ({ ...s, isContinuation: true }));
+            })();
+        const withDisplayStart = (s: Shift & { isContinuation?: boolean }) =>
+            s.isContinuation ? { ...s, displayStartTime: "00:00" as const } : { ...s, displayStartTime: s.startTime };
+        const all = [...currentDayShifts.map(withDisplayStart), ...prevDaySpanningShifts.map(withDisplayStart)];
+        return all.sort((a, b) => timeToMinutes((a as any).displayStartTime) - timeToMinutes((b as any).displayStartTime));
+    };
+
+    const enrichShiftForCell = (s: Shift & { isContinuation?: boolean }): Shift => {
+        if ((s as any).isContinuation) {
+            return { ...s, startTime: "00:00", hours: calculateHours("00:00", s.endTime), isSplit: true, splitSide: "end" };
+        }
+        if (shiftSpansNextDay(s.startTime, s.endTime)) {
+            return { ...s, endTime: "24:00", hours: calculateHours(s.startTime, "24:00"), isSplit: true, splitSide: "start" };
+        }
+        return s;
+    };
+
+    /** User mode: grid keyed by userId. Schedule-only, no sessionData. */
     const buildUserDateShifts = useMemo(() => {
         const map = new Map<number, Map<string, Shift[]>>();
-        const shiftMap = new Map<number, Shift>();
-        const scheduleSessionUserMap = new Map<number, number>();
-
-        // 1. Collect shifts from scheduleData
-        scheduleData.forEach(item => {
-            if (item.shifts) {
-                item.shifts.forEach(s => {
-                    if (s.scheduleSessionId) {
-                        scheduleSessionUserMap.set(s.scheduleSessionId, item.userId);
-                    }
-                    shiftMap.set(s.id, s);
-                });
-            }
-        });
-
-        // 2. Collect shifts from sessionData (extended data)
-        // When session's shift has no startTime/endTime, derive from sessions' clockIn/clockOut so that
-        // overnight sessions get split (after-midnight part shows) and same-day edits stay on current day.
-        sessionData.forEach(session => {
-            if (session.shift) {
-                const s: Shift = {
-                    id: session.shift.id,
-                    date: session.shift.date,
-                    startTime: session.shift.startTime || "00:00",
-                    endTime: session.shift.endTime || "00:00",
-                    hours: 0,
-                    scheduleSessionId: session.scheduleSessionId
-                };
-                const existing = shiftMap.get(s.id);
-                const sessionsForShift = sessionData.filter(sd => sd.shiftId === s.id && sd.clockIn);
-                const withOut = sessionsForShift.filter(sd => sd.clockOut);
-                const hasSessionTimes = withOut.length > 0;
-                const minIn = hasSessionTimes ? sessionsForShift.reduce((min, sd) => (sd.clockIn && (!min || sd.clockIn < min)) ? sd.clockIn : min, "" as string) : "";
-                const maxOut = hasSessionTimes ? withOut.reduce((max, sd) => (sd.clockOut && (!max || sd.clockOut > max)) ? sd.clockOut : max, "" as string) : "";
-                const sessionOvernight = minIn && maxOut && timeToMinutes(maxOut) < timeToMinutes(minIn);
-                const sessionSameDay = minIn && maxOut && timeToMinutes(maxOut) >= timeToMinutes(minIn);
-
-                if (!existing) {
-                    if (s.startTime === "00:00" && s.endTime === "00:00" && hasSessionTimes) {
-                        shiftMap.set(s.id, { ...s, startTime: minIn, endTime: maxOut });
-                    } else {
-                        shiftMap.set(s.id, s);
-                    }
-                } else if (s.startTime === "00:00" && s.endTime === "00:00" && (existing.startTime !== "00:00" || existing.endTime !== "00:00")) {
-                    if (sessionSameDay) {
-                        shiftMap.set(s.id, { ...existing, startTime: minIn, endTime: maxOut });
-                    } else if (sessionOvernight) {
-                        shiftMap.set(s.id, { ...existing, startTime: minIn, endTime: maxOut });
-                    }
-                } else {
-                    shiftMap.set(s.id, s);
-                }
-            }
-        });
-
-        // Helper to normalize date
-        const normalizeDate = (d: string) => {
-            if (d.includes('T')) return d.split('T')[0];
-            return d;
-        };
-
-        const addShiftToMap = (userId: number, date: string, shift: Shift) => {
+        const userIds = Array.from(new Map(scheduleData.map(item => [item.userId, item.userId])).values());
+        userIds.forEach(userId => {
+            const userItems = scheduleData.filter(item => item.userId === userId);
             if (!map.has(userId)) map.set(userId, new Map());
             const dateMap = map.get(userId)!;
-            if (!dateMap.has(date)) dateMap.set(date, []);
-
-            const list = dateMap.get(date)!;
-            if (!list.find(existing => existing.id === shift.id)) {
-                list.push(shift);
-            }
-        };
-
-        // 3. Distribute shifts
-        const firstDayOfWeek = dateColumns.length > 0 ? dateColumns[0].date : null;
-        const getUserId = (shift: Shift) =>
-            scheduleSessionUserMap.get(shift.scheduleSessionId!) ??
-            scheduleData.find(item => item.shifts?.some(sh => sh.id === shift.id))?.userId;
-        for (const shift of shiftMap.values()) {
-            const userId = getUserId(shift);
-            if (userId == null) continue;
-
-            const targetDate = normalizeDate(shift.date);
-
-            const isOvernight = !!(shift.startTime && shift.endTime && shiftSpansNextDay(shift.startTime, shift.endTime));
-
-            const isOverflow = currentWeekRange && firstDayOfWeek && isOverflowShift(targetDate, currentWeekRange.startOfWeek);
-            if (isOverflow) {
-                // Shift started in previous week and spans into current week: show it on the first day of the current week
-                if (isOvernight) {
-                    const split2: Shift = { ...shift, startTime: "00:00", hours: calculateHours("00:00", shift.endTime), isSplit: true, splitSide: 'end' };
-                    addShiftToMap(userId, firstDayOfWeek, split2);
-                } else {
-                    addShiftToMap(userId, firstDayOfWeek, shift);
-                }
-            } else if (isOvernight) {
-                const split1: Shift = { ...shift, endTime: "24:00", hours: calculateHours(shift.startTime, "24:00"), isSplit: true, splitSide: 'start' };
-                addShiftToMap(userId, targetDate, split1);
-                const [y, m, d] = targetDate.split('-').map(Number);
-                const dateObj = new Date(y, m - 1, d);
-                dateObj.setDate(dateObj.getDate() + 1);
-                const nextDate = formatDateLocal(dateObj);
-                const split2: Shift = { ...shift, startTime: "00:00", hours: calculateHours("00:00", shift.endTime), isSplit: true, splitSide: 'end' };
-                addShiftToMap(userId, nextDate, split2);
-            } else {
-                addShiftToMap(userId, targetDate, shift);
-            }
-        }
-
-        // Sort shifts by start time for consistent row mapping
-        for (const userMap of map.values()) {
-            for (const shifts of userMap.values()) {
-                shifts.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-            }
-        }
-
+            dateColumns.forEach(dc => {
+                const visual = getVisualShiftsFromScheduleItems(userItems, dc.date, firstDayOfWeek);
+                dateMap.set(dc.date, visual.map(enrichShiftForCell));
+            });
+        });
         return map;
-    }, [scheduleData, sessionData, currentWeekRange, dateColumns]);
+    }, [scheduleData, dateColumns, firstDayOfWeek]);
+
+    /** Group mode: grid keyed by group id (userId-clientId-addressId). Same visual-shift logic. */
+    const buildGroupDateShifts = useMemo(() => {
+        const map = new Map<string, Map<string, Shift[]>>();
+        rowGroups.forEach(group => {
+            const groupItems = scheduleData.filter(
+                item => item.userId === group.userId && item.clientId === group.clientId && item.addressId === group.addressId
+            );
+            const groupKey = String(group.id);
+            if (!map.has(groupKey)) map.set(groupKey, new Map());
+            const dateMap = map.get(groupKey)!;
+            dateColumns.forEach(dc => {
+                const visual = getVisualShiftsFromScheduleItems(groupItems, dc.date, firstDayOfWeek);
+                dateMap.set(dc.date, visual.map(enrichShiftForCell));
+            });
+        });
+        return map;
+    }, [scheduleData, dateColumns, firstDayOfWeek, rowGroups]);
 
     // Helper functions
+    /** Sessions for a shift. When date is provided, only sessions with hours on that date (getSessionHoursOnDate > 0). Display clipping is done in the cell. */
     const getSessionsForShift = (
         shiftId?: number | Shift,
         scheduleSessionId?: number,
@@ -218,11 +179,8 @@ export const useActualTimeTable = ({
         userId?: number
     ): SessionItem[] => {
         let actualShiftId: number | undefined;
-        let shiftObj: Shift | undefined;
-
         if (typeof shiftId === 'object') {
-            shiftObj = shiftId;
-            actualShiftId = shiftObj.id;
+            actualShiftId = shiftId.id;
         } else {
             actualShiftId = shiftId;
         }
@@ -230,14 +188,14 @@ export const useActualTimeTable = ({
         if (!actualShiftId && !scheduleSessionId) return [];
         let sessions = sessionData.filter(s => s.shiftId === actualShiftId);
 
-        // Fallback for "Whole Column" issue prevention
+        // Fallback when shiftId is missing but we have scheduleSessionId + date + userId (e.g. Whole Column edge case)
         if (!actualShiftId && sessions.length === 0 && scheduleSessionId && date && typeof userId === 'number') {
             const shiftsOnDate = buildUserDateShifts.get(userId)?.get(date) || [];
             if (shiftsOnDate.length > 0) {
                 const bySessionIdAndDate = sessionData.filter(s => {
                     const d = s.shift?.date || s.scheduleSessionId;
                     const sDate = d ? formatDateStringLocal(String(d)) : '';
-                    return s.scheduleSessionId === scheduleSessionId && sDate === date;
+                    return s.scheduleSessionId === scheduleSessionId && normDate(sDate) === normDate(date);
                 });
                 if (bySessionIdAndDate.length > 0) sessions = bySessionIdAndDate;
             }
@@ -245,66 +203,9 @@ export const useActualTimeTable = ({
 
         if (sessions.length === 0) return [];
 
-        // Lookup Shift Context
-        if (!shiftObj && date && typeof userId === 'number' && actualShiftId) {
-            const userShifts = buildUserDateShifts.get(userId)?.get(date);
-            shiftObj = userShifts?.find(s => s.id === actualShiftId);
-        }
-
-        // Post-Process
         if (date) {
-            return sessions.filter(s => {
-                if (!s.clockIn) return true;
-                const sIn = timeToMinutes(s.clockIn);
-
-                if (shiftObj?.isSplit) {
-                    if (shiftObj.splitSide === 'start') {
-                        if (sIn >= 12 * 60) return true;
-                        if (s.clockOut && timeToMinutes(s.clockOut) < sIn) return true;
-                        return false;
-                    } else if (shiftObj.splitSide === 'end') {
-                        if (sIn < 12 * 60) return true;
-                        if (s.clockOut && timeToMinutes(s.clockOut) < sIn) return true;
-                        return false;
-                    }
-                }
-
-                const sDateRaw = s.shift?.date || s.scheduleSessionId;
-                const sDate = sDateRaw ? formatDateStringLocal(String(sDateRaw)) : '';
-
-                if (sDate === date) {
-                    return true;
-                } else if (sDate !== date) {
-                    if (sIn < 12 * 60) return true;
-                    return false;
-                }
-                return true;
-            }).map(s => {
-                if (!s.clockIn || !s.clockOut) return s;
-                const sIn = timeToMinutes(s.clockIn);
-                const sOut = timeToMinutes(s.clockOut);
-
-                if (sIn > sOut) {
-                    if (shiftObj?.isSplit) {
-                        if (shiftObj.splitSide === 'start') {
-                            return { ...s, clockOut: "24:00", workedTime: calculateHours(s.clockIn, "24:00") };
-                        } else if (shiftObj.splitSide === 'end') {
-                            return { ...s, clockIn: "00:00", workedTime: calculateHours("00:00", s.clockOut) };
-                        }
-                    } else {
-                        const sDateRaw = s.shift?.date || s.scheduleSessionId;
-                        const sDate = sDateRaw ? formatDateStringLocal(String(sDateRaw)) : '';
-                        if (sDate === date) {
-                            return { ...s, clockOut: "24:00", workedTime: calculateHours(s.clockIn, "24:00") };
-                        } else {
-                            return { ...s, clockIn: "00:00", workedTime: calculateHours("00:00", s.clockOut) };
-                        }
-                    }
-                }
-                return s;
-            }).sort((a, b) => (a.clockIn || '').localeCompare(b.clockIn || ''));
+            sessions = sessions.filter(s => getSessionHoursOnDate(s, date) > 0);
         }
-
         return sessions.sort((a, b) => (a.clockIn || '').localeCompare(b.clockIn || ''));
     };
 
@@ -499,22 +400,24 @@ export const useActualTimeTable = ({
     /** Hours of this session that fall on the given calendar date (splits overnight by date). */
     const getSessionHoursOnDate = (session: SessionItem, date: string): number => {
         const sessionDateRaw = session.shift?.date ?? session.scheduleSessionId;
-        const sessionDate = sessionDateRaw ? formatDateStringLocal(String(sessionDateRaw)) : "";
+        const sessionDate = sessionDateRaw ? normDate(String(sessionDateRaw)) : "";
+        const d = normDate(date);
         if (!session.clockIn) {
-            return sessionDate === date ? (session.workedTime || 0) / 60 : 0;
+            return sessionDate === d ? (session.workedTime || 0) / 60 : 0;
         }
         if (!session.clockOut) {
-            return sessionDate === date ? (session.workedTime || 0) / 60 : 0;
+            return sessionDate === d ? (session.workedTime || 0) / 60 : 0;
         }
         const sIn = timeToMinutes(session.clockIn);
         const sOut = timeToMinutes(session.clockOut);
-        if (sIn <= sOut) {
-            return sessionDate === date ? calculateHours(session.clockIn, session.clockOut) : 0;
+        // Same-day: sIn < sOut. When sIn >= sOut (including 24h clockIn === clockOut) treat as spanning midnight.
+        if (sIn < sOut) {
+            return sessionDate === d ? calculateHours(session.clockIn, session.clockOut) : 0;
         }
         const startDate = sessionDate;
         const endDate = sessionDate ? getAdjustedDate(sessionDate, 1) : "";
-        if (date === startDate) return calculateHours(session.clockIn, "24:00");
-        if (date === endDate) return calculateHours("00:00", session.clockOut);
+        if (d === startDate) return calculateHours(session.clockIn, "24:00");
+        if (d === endDate) return calculateHours("00:00", session.clockOut);
         return 0;
     };
 
@@ -523,18 +426,14 @@ export const useActualTimeTable = ({
         return parseFloat(total.toFixed(2));
     };
 
-    /** Hours for this user on this date that are actually displayed in the grid. Uses each session's displayed clockIn/clockOut (already clipped by getSessionsForShift) so totals match cell content and no column shows "-" when cells have data. */
+    /** Hours for this user on this date displayed in the grid. Uses getSessionHoursOnDate only so overnight sessions are not double-counted. */
     const calculateUserDayTotalFromGrid = (userId: number, date: string): number => {
         let total = 0;
         const shiftsOnDate = buildUserDateShifts.get(userId)?.get(date) ?? [];
         shiftsOnDate.forEach(shift => {
             const cellSessions = getSessionsForShift(shift, shift.scheduleSessionId, date, userId);
             cellSessions.forEach(session => {
-                if (session.clockIn && session.clockOut) {
-                    total += calculateHours(session.clockIn, session.clockOut);
-                } else {
-                    total += getSessionHoursOnDate(session, date);
-                }
+                total += getSessionHoursOnDate(session, date);
             });
         });
         return parseFloat(total.toFixed(2));
@@ -561,25 +460,26 @@ export const useActualTimeTable = ({
         return parseFloat(total.toFixed(2));
     };
 
+    /** Row total: sum of getSessionHoursOnDate(session, date) for each cell in the row. groupId optional for group mode. */
     const calculateRowTotal = (
         userId: number,
         rowIdx: number,
         _sessions: SessionItem[],
         _schedule: ScheduleItem[],
-        dateCols: { date: string }[]
+        dateCols: { date: string }[],
+        groupId?: string
     ) => {
         let rowTotal = 0;
+        const shiftMap = groupId != null
+            ? buildGroupDateShifts.get(groupId)
+            : buildUserDateShifts.get(userId);
         dateCols.forEach(dateCol => {
-            const shiftsOnDate = buildUserDateShifts.get(userId)?.get(dateCol.date) ?? [];
+            const shiftsOnDate = shiftMap?.get(dateCol.date) ?? [];
             const shift = shiftsOnDate[rowIdx];
             if (shift) {
                 const cellSessions = getSessionsForShift(shift, shift.scheduleSessionId, dateCol.date, userId);
                 cellSessions.forEach(session => {
-                    if (session.clockIn && session.clockOut) {
-                        rowTotal += calculateHours(session.clockIn, session.clockOut);
-                    } else {
-                        rowTotal += getSessionHoursOnDate(session, dateCol.date);
-                    }
+                    rowTotal += getSessionHoursOnDate(session, dateCol.date);
                 });
             }
         });
@@ -623,32 +523,12 @@ export const useActualTimeTable = ({
     }, [editShiftModal.isOpen, editShiftModal.shiftId, scheduleData, currentWeekRange]);
 
     const getRowRowCount = (row: RowGroup) => {
-        const userDays = scheduleData.filter(
-            item =>
-                item.userId === row.userId &&
-                item.clientId === row.clientId &&
-                item.addressId === row.addressId
-        );
+        const dateMap = buildGroupDateShifts.get(String(row.id));
+        if (!dateMap) return 1;
         let max = 1;
         for (const dc of dateColumns) {
-            const date = dc.date;
-            const startingShifts = userDays
-                .filter(item => {
-                    const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
-                    return itemDate === date;
-                })
-                .flatMap(item => item.shifts || [])
-                .filter(s => !(s as any).isDelete);
-            const prevDate = getAdjustedDate(date, -1);
-            const prevDayShifts = userDays
-                .filter(item => {
-                    const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
-                    return itemDate === prevDate;
-                })
-                .flatMap(item => item.shifts || [])
-                .filter(s => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime));
-            const totalShiftsForDay = startingShifts.length + prevDayShifts.length;
-            max = Math.max(max, totalShiftsForDay);
+            const len = dateMap.get(dc.date)?.length ?? 0;
+            if (len > max) max = len;
         }
         return max;
     };
@@ -659,6 +539,7 @@ export const useActualTimeTable = ({
         uniqueUsers,
         rowGroups,
         buildUserDateShifts,
+        buildGroupDateShifts,
         getSessionsForShift,
         openEditShift,
         addEditSessionRow,

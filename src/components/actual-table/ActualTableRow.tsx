@@ -1,7 +1,7 @@
 import React from "react";
 import { ActualTableCell } from "./ActualTableCell";
-import { formatUSPhone, timeToMinutes, formatDateStringLocal, addressTwoLines, shiftSpansNextDay, formatDateFromISO } from "../../lib/utils";
-import { ScheduleItem, SessionItem, Shift, RowGroup, User, Address } from "../../types/schedule";
+import { formatUSPhone, addressTwoLines } from "../../lib/utils";
+import { ScheduleItem, SessionItem, Shift, RowGroup, User } from "../../types/schedule";
 
 interface ActualTableRowProps {
     mode: "user" | "group";
@@ -12,9 +12,9 @@ interface ActualTableRowProps {
     isEditMode: boolean;
 
     // Logic helpers
-    getSessionsForShift: (shiftId?: number, scheduleSessionId?: number, date?: string, userId?: number) => SessionItem[];
+    getSessionsForShift: (shiftId?: number | Shift, scheduleSessionId?: number, date?: string, userId?: number) => SessionItem[];
     hasTimeMismatch: (shift: Shift, sessions: SessionItem[]) => boolean;
-    calculateRowTotal: (userId: number, rowIdx: number, sessions: SessionItem[], schedule: ScheduleItem[], dateCols: { date: string }[]) => number;
+    calculateRowTotal: (userId: number, rowIdx: number, sessions: SessionItem[], schedule: ScheduleItem[], dateCols: { date: string }[], groupId?: string) => number;
     calculateDayTotal: (date: string, sessions: SessionItem[]) => number;
     calculateUserDayTotalFromGrid: (userId: number, date: string) => number;
     calculateUserTotal: (userId: number, sessions: SessionItem[], schedule: ScheduleItem[]) => number;
@@ -22,6 +22,7 @@ interface ActualTableRowProps {
     // Row Count helpers
     rowCount: number;
     buildUserDateShifts?: Map<number, Map<string, Shift[]>>; // For user mode
+    buildGroupDateShifts?: Map<string, Map<string, Shift[]>>; // For group mode
 
     // Actions
     openEditShift: (userId: number, date: string, shiftId: number) => void;
@@ -43,6 +44,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
     calculateUserTotal,
     rowCount,
     buildUserDateShifts,
+    buildGroupDateShifts,
     openEditShift,
     setDeleteAllModal,
 }) => {
@@ -127,56 +129,15 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
 
                     {dateColumns.map((dateCol, colIdx) => {
                         let shift: Shift | null = null;
-
                         if (mode === "group") {
                             const group = data as RowGroup;
-                            const daySchedules = filteredScheduleData.filter(item => {
-                                const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
-                                return itemDate === dateCol.date;
-                            });
-                            const currentDayShifts = daySchedules
-                                .flatMap(item => item.shifts || [])
-                                .filter(s => !(s as any).isDelete)
-                                .map(s => ({ ...s, displayStartTime: s.startTime }));
-                            const prevDate = (() => {
-                                const d = new Date(dateCol.date + "T00:00:00");
-                                d.setDate(d.getDate() - 1);
-                                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-                            })();
-                            const prevDaySchedules = filteredScheduleData.filter(item => {
-                                const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
-                                return itemDate === prevDate;
-                            });
-                            const prevDaySpanningShifts = prevDaySchedules
-                                .flatMap(s => s.shifts || [])
-                                .filter(s => !(s as any).isDelete && shiftSpansNextDay(s.startTime, s.endTime))
-                                .map(s => ({
-                                    ...s,
-                                    startTime: "00:00",
-                                    isSplit: true,
-                                    splitSide: "end" as const,
-                                    isContinuation: true,
-                                    originalDate: prevDate,
-                                    displayStartTime: "00:00",
-                                }));
-                            const allShifts = [...currentDayShifts, ...prevDaySpanningShifts];
-                            const sortedShifts = allShifts.sort((a, b) => {
-                                const timeA = (a as any).displayStartTime;
-                                const timeB = (b as any).displayStartTime;
-                                return timeA.localeCompare(timeB);
-                            });
-                            shift = sortedShifts[rowIdx] || null;
+                            shift = buildGroupDateShifts?.get(String(group.id))?.get(dateCol.date)?.[rowIdx] ?? null;
                         } else {
-                            shift = buildUserDateShifts?.get(userId)?.get(dateCol.date)?.[rowIdx] || null;
+                            shift = buildUserDateShifts?.get(userId)?.get(dateCol.date)?.[rowIdx] ?? null;
                         }
 
                         const sessions = shift
-                            ? getSessionsForShift(
-                                shift.id,
-                                shift.scheduleSessionId,
-                                dateCol.date,
-                                userId
-                            )
+                            ? getSessionsForShift(shift, shift.scheduleSessionId, dateCol.date, userId)
                             : [];
 
                         const hasMismatch = shift ? hasTimeMismatch(shift, sessions) : false;
@@ -200,7 +161,8 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                             rowIdx,
                             filteredSessionData,
                             scheduleData,
-                            dateColumns
+                            dateColumns,
+                            mode === "group" ? String((data as RowGroup).id) : undefined
                         )}
                     </td>
                     {rowIdx === 0 && (

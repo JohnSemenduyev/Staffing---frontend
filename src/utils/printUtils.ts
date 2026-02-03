@@ -1,4 +1,4 @@
-import { formatDateLocal, getAdjustedDate, shiftSpansNextDay, calculateHours } from "../lib/utils";
+import { getAdjustedDate, shiftSpansNextDay, calculateHours } from "../lib/utils";
 // utils.ts
 export const toLocalYMD = (date: Date) => {
   const year = date.getFullYear(); // local year
@@ -76,10 +76,6 @@ export const generateSchedulePrintableTable = (
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
   selectedClient?: { name: string; lastName?: string; address: string; city?: string; state?: string; pincode?: string }
 ) => {
-  console.log('PDF Debug - Incoming scheduleData:', scheduleData.slice(0, 2));
-  console.log('PDF Debug - Current week range:', currentWeekRange);
-  console.log('PDF Debug - Selected client:', selectedClient);
-  
   if (!scheduleData || scheduleData.length === 0) {
     return `
       <div style="text-align: center; padding: 40px; color: #666; font-size: 20px; margin:20px">
@@ -158,22 +154,28 @@ export const generateSchedulePrintableTable = (
     </tr>
   `;
 
-  // Normalize date from item or shift (YYYY-MM-DD)
   const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
-  const getScheduleItem = (userId: number, dateStr: string) =>
-    scheduleData.find(item => item.userId === userId && normDate(item.startDate) === dateStr);
+  const getShiftsForUserDate = (userId: number, dateStr: string): any[] => {
+    const shifts: any[] = [];
+    scheduleData.forEach((item) => {
+      if (item.userId === userId && normDate(item.startDate) === dateStr) {
+        (item.shifts || []).forEach((s: any) => shifts.push(s));
+      }
+    });
+    return shifts;
+  };
 
   // Visual shifts for a (user, column date): current day shifts + previous day shifts that span (overnight/overflow)
   const getVisualShifts = (userId: number, dateStr: string): { shift: any; isContinuation: boolean; displayStart: string; displayEnd: string }[] => {
-    const current = getScheduleItem(userId, dateStr);
+    const currentShiftsList = getShiftsForUserDate(userId, dateStr);
     const prevDateStr = getAdjustedDate(dateStr, -1);
-    const prev = getScheduleItem(userId, prevDateStr);
+    const prevShiftsList = getShiftsForUserDate(userId, prevDateStr);
 
-    const currentShifts = (current?.shifts || [])
+    const currentShifts = currentShiftsList
       .filter((s: any) => !s.isDelete)
       .map((s: any) => ({ shift: s, isContinuation: false, displayStart: s.startTime, displayEnd: s.endTime }));
 
-    const prevSpanning = (prev?.shifts || [])
+    const prevSpanning = prevShiftsList
       .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
       .map((s: any) => ({ shift: s, isContinuation: true, displayStart: '00:00', displayEnd: s.endTime }));
 
@@ -412,10 +414,6 @@ export const generateActualTimePrintableTable = (
   currentWeekRange?: { startOfWeek: Date; endOfWeek: Date },
   selectedClient?: { name: string; lastName?: string; address: string; city?: string; state?: string; pincode?: string }
 ) => {
-  console.log('PDF Debug - Session data:', sessionData);
-  console.log('PDF Debug - Schedule data:', scheduleData);
-  console.log('PDF Debug - Current week range:', currentWeekRange);
-  
   if (!sessionData || sessionData.length === 0) {
     return `
       <div style="text-align: center; padding: 40px; color: #666; font-size: 20px;">
@@ -460,24 +458,36 @@ export const generateActualTimePrintableTable = (
 
   const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
   const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
-  const getScheduleItem = (userId: number, dateStr: string) =>
-    scheduleData.find(item => item.userId === userId && normDate(item.startDate) === dateStr);
 
-  // Visual shifts per (user, date): same as schedule table (current day + previous day spanning / overflow)
-  const getVisualShiftsActual = (userId: number, dateStr: string): any[] => {
-    const current = getScheduleItem(userId, dateStr);
+  const getShiftsForUserDateActual = (userId: number, dateStr: string): any[] => {
+    const shifts: any[] = [];
+    scheduleData.forEach((item) => {
+      if (item.userId === userId && normDate(item.startDate) === dateStr) {
+        (item.shifts || []).forEach((s: any) => shifts.push(s));
+      }
+    });
+    return shifts;
+  };
+
+  // Visual shifts per (user, date): same as schedule table (current day + previous day spanning / overflow).
+  // Sort by display start so overnight continuation (00:00) appears first on next day, matching web column order.
+  const getVisualShiftsActual = (userId: number, dateStr: string): { shift: any; isContinuation: boolean; displayStart: string; displayEnd: string }[] => {
+    const currentShiftsList = getShiftsForUserDateActual(userId, dateStr);
     const prevDateStr = getAdjustedDate(dateStr, -1);
-    const prev = getScheduleItem(userId, prevDateStr);
-    const currentShifts = (current?.shifts || []).filter((s: any) => !s.isDelete);
-    const prevSpanning = (prev?.shifts || [])
-      .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime));
+    const prevShiftsList = getShiftsForUserDateActual(userId, prevDateStr);
+    const currentShifts = currentShiftsList.filter((s: any) => !s.isDelete).map((s: any) => ({
+      shift: s, isContinuation: false, displayStart: s.startTime, displayEnd: s.endTime
+    }));
+    const prevSpanning = prevShiftsList
+      .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+      .map((s: any) => ({ shift: s, isContinuation: true, displayStart: '00:00', displayEnd: s.endTime }));
     const merged = [...currentShifts, ...prevSpanning].sort(
-      (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+      (a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart)
     );
     return merged;
   };
 
-  // Hours of this session that fall on the given date (overnight split; overflow counts on first day)
+  // Hours of this session that fall on the given date (overnight/24h split). When start time = end time treat as 24-hour and split across two days.
   const getSessionHoursOnDate = (session: SessionData, dateStr: string): number => {
     const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === session.shiftId));
     const shift = scheduleItem?.shifts.find((s: any) => s.id === session.shiftId);
@@ -488,9 +498,11 @@ export const generateActualTimePrintableTable = (
     }
     const sIn = timeToMinutes(session.clockIn);
     const sOut = timeToMinutes(session.clockOut);
-    if (sIn <= sOut) {
+    // Same-day only when strictly start < end (not 24-hour)
+    if (sIn < sOut) {
       return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
     }
+    // Overnight or 24-hour (start >= end or start === end): split into day1 = start..24:00, day2 = 00:00..end
     const startDate = sessionDate;
     const endDate = getAdjustedDate(sessionDate, 1);
     if (dateStr === startDate) return calculateHours(session.clockIn, '24:00');
@@ -501,7 +513,7 @@ export const generateActualTimePrintableTable = (
     return 0;
   };
 
-  // Display time range for a session on a given date (matches web UI: start part "clockIn-24:00", end part "00:00-clockOut")
+  // Display time range for a session on a given date. When start = end (24h) split: day1 "clockIn-24:00", day2 "00:00-clockOut".
   const getSessionDisplayRangeOnDate = (session: SessionData, dateStr: string): { displayStart: string; displayEnd: string } | null => {
     if (getSessionHoursOnDate(session, dateStr) <= 0) return null;
     const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === session.shiftId));
@@ -512,9 +524,11 @@ export const generateActualTimePrintableTable = (
     const sessionDate = normDate(shift.date);
     const sIn = timeToMinutes(session.clockIn);
     const sOut = timeToMinutes(session.clockOut);
-    if (sIn <= sOut) {
+    // Same-day only when strictly start < end (not 24-hour)
+    if (sIn < sOut) {
       return { displayStart: session.clockIn, displayEnd: session.clockOut };
     }
+    // Overnight or 24-hour: first day clockIn-24:00, next day 00:00-clockOut
     const endDate = getAdjustedDate(sessionDate, 1);
     if (dateStr === sessionDate) return { displayStart: session.clockIn, displayEnd: '24:00' };
     if (dateStr === endDate || (sessionDate < weekStartStr && dateStr === weekStartStr)) {
@@ -668,12 +682,20 @@ export const generateActualTimePrintableTable = (
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
           const visual = getVisualShiftsActual(user.id, dateStr);
-          const shift = visual[rowIdx];
+          const visualEntry = visual[rowIdx];
           let cellContent = '';
-          if (shift) {
+          if (visualEntry) {
             const sessionsInCell = sessionData.filter(
-              s => s.shiftId === shift.id && getSessionHoursOnDate(s, dateStr) > 0
+              s => s.shiftId === visualEntry.shift.id && getSessionHoursOnDate(s, dateStr) > 0
             );
+            // Sort by display start so order matches web column sequence
+            sessionsInCell.sort((a, b) => {
+              const ra = getSessionDisplayRangeOnDate(a, dateStr);
+              const rb = getSessionDisplayRangeOnDate(b, dateStr);
+              const ta = ra ? timeToMinutes(ra.displayStart) : 0;
+              const tb = rb ? timeToMinutes(rb.displayStart) : 0;
+              return ta - tb;
+            });
             cellContent = sessionsInCell
               .map(s => {
                 const range = getSessionDisplayRangeOnDate(s, dateStr);

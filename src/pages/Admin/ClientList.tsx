@@ -31,6 +31,7 @@ function ClientList() {
   const {
     state,
     fetchScheduleSessions,
+    fetchAllScheduleSessionsForExport,
     setCurrentPage,
     createClient,
     refreshScheduleSessions
@@ -313,21 +314,31 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
 
   };
 
-    const handleExportToPDF = async (data: any) =>{
-   await downloadClientAddressesPdf(data, {
-  title: "Clients List",
-  fileName: "clients.pdf",
-});
-
-  }
-
-  const handleExportToExcel = async (data: any) => {
+  const handleExportToPDF = async () => {
     try {
-      console.log('Exporting Excel - Data received:', data);
-      console.log('Data type:', Array.isArray(data) ? 'Array' : typeof data);
-      console.log('Data length/keys:', Array.isArray(data) ? data.length : Object.keys(data || {}));
-      
-      const result = await exportClientListToExcel(data, 'clients');
+      const allData = await fetchAllScheduleSessionsForExport();
+      if (!allData?.length) {
+        toast({ title: "No data", description: "No clients to export.", variant: "destructive" });
+        return;
+      }
+      await downloadClientAddressesPdf(allData, {
+        title: "Clients List",
+        fileName: "clients.pdf",
+      });
+      toast({ title: "Success", description: "PDF exported successfully.", variant: "default" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Failed to export PDF", variant: "destructive" });
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    try {
+      const allData = await fetchAllScheduleSessionsForExport();
+      if (!allData?.length) {
+        toast({ title: "No data", description: "No clients to export.", variant: "destructive" });
+        return;
+      }
+      const result = await exportClientListToExcel(allData, 'clients');
       if (result.success) {
         toast({
           title: "Success",
@@ -1520,16 +1531,16 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
         {scheduleSessions && scheduleSessions.length > 0 && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExportToPDF(scheduleSessions)}
+              onClick={() => handleExportToPDF()}
               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              title="Export to PDF"
+              title="Export to PDF (all pages)"
             >
               <FaFilePdf className="w-5 h-5" />
             </button>
             <button
-              onClick={() => handleExportToExcel(scheduleSessions)}
+              onClick={() => handleExportToExcel()}
               className="inline-flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              title="Export to Excel"
+              title="Export to Excel (all pages)"
             >
               <FaFileExport className="w-5 h-5" />
             </button>

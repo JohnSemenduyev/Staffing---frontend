@@ -30,6 +30,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     uniqueUsers,
     rowGroups,
     buildUserDateShifts,
+    buildGroupDateShifts,
     getSessionsForShift,
     openEditShift,
     addEditSessionRow,
@@ -96,6 +97,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                   openEditShift={openEditShift}
                   setDeleteAllModal={setDeleteAllModal}
                   rowCount={getRowRowCount(row)}
+                  buildGroupDateShifts={buildGroupDateShifts}
                 />
               ))
               : uniqueUsers.map((user) => (

@@ -1,8 +1,18 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
-import { formatTimeDisplay } from "../../lib/utils"; // Adjust import path
+import { formatTimeDisplay, shiftSpansNextDay } from "../../lib/utils";
 import { Shift, SessionItem } from "../../types/schedule";
+
+/** Display range for a session in a cell: uses shift.splitSide and session span so overnight shows x–24:00 / 00:00–y. */
+function sessionDisplayRange(session: SessionItem, shift: Shift | null): { start: string; end: string } {
+    const ci = session.clockIn || "";
+    const co = session.clockOut || "";
+    if (!shift?.isSplit || !ci || !co) return { start: formatTimeDisplay(ci) || "N/A", end: formatTimeDisplay(co) || "N/A" };
+    if (shift.splitSide === "end") return { start: "00:00", end: formatTimeDisplay(co) };
+    if (shift.splitSide === "start" && shiftSpansNextDay(ci, co)) return { start: formatTimeDisplay(ci), end: "24:00" };
+    return { start: formatTimeDisplay(ci), end: formatTimeDisplay(co) };
+}
 
 interface ActualTableCellProps {
     shift: Shift | null;
@@ -59,17 +69,14 @@ export const ActualTableCell: React.FC<ActualTableCellProps> = ({
             )}
             {hasSessions ? (
                 <div className="flex flex-col items-center gap-1">
-                    {sessions.map(s => (
-                        <span
-                            key={s.id}
-                            className="text-xs px-2 py-0.5 rounded-md"
-                        >
-                            {(s.clockIn || "N/A")} -{" "}
-                            {formatTimeDisplay(
-                                s.clockOut || "N/A"
-                            )}
-                        </span>
-                    ))}
+                    {sessions.map(s => {
+                        const range = sessionDisplayRange(s, shift);
+                        return (
+                            <span key={s.id} className="text-xs px-2 py-0.5 rounded-md">
+                                {range.start} – {range.end}
+                            </span>
+                        );
+                    })}
                 </div>
             ) : (
                 <span className="text-gray-400">-</span>

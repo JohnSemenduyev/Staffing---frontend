@@ -92,6 +92,7 @@ const scheduleSessionReducer = (
 interface ScheduleSessionContextType {
   state: ScheduleSessionState;
   fetchScheduleSessions: (page?: number, append?: boolean) => Promise<void>;
+  fetchAllScheduleSessionsForExport: () => Promise<ScheduleSession[]>;
   setCurrentPage: (page: number) => void;
   loadNextPage: () => Promise<void>;
   refreshScheduleSessions: () => Promise<void>;
@@ -138,6 +139,22 @@ export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProp
 
   const setCurrentPage = (page: number) => {
     dispatch({ type: 'SET_CURRENT_PAGE', payload: page });
+  };
+
+  /** Fetch all schedule sessions (all pages) for PDF/Excel export so all records are visible. */
+  const fetchAllScheduleSessionsForExport = async (): Promise<ScheduleSession[]> => {
+    const all: ScheduleSession[] = [];
+    let page = 1;
+    let lastPage = 1;
+    do {
+      const response = await graphQLClient.request<{
+        allAddresses: { data: ScheduleSession[]; lastPage: number };
+      }>(GET_SCHEDULE_SESSIONS, { page });
+      all.push(...response.allAddresses.data);
+      lastPage = response.allAddresses.lastPage;
+      page++;
+    } while (page <= lastPage);
+    return all;
   };
 
   const loadNextPage = async (): Promise<void> => {
@@ -193,6 +210,7 @@ export const ScheduleSessionProviderClient: React.FC<ScheduleSessionProviderProp
   const contextValue: ScheduleSessionContextType = {
     state,
     fetchScheduleSessions,
+    fetchAllScheduleSessionsForExport,
     setCurrentPage,
     loadNextPage,
     refreshScheduleSessions,
