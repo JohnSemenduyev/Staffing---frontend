@@ -7,7 +7,7 @@ import { isOverflowShift } from "../../pages/Manager/ViewSchedule/utils";
 const MODAL_Z_INDEX = 9999;
 
 interface ScheduleTableModalsProps {
-    deleteModal: { isOpen: boolean; shiftId?: number | null; userId?: number | null; date?: string | null };
+    deleteModal: { isOpen: boolean; shiftId?: number | null; userId?: number | null; date?: string | null; isSingleDraftSession?: boolean };
     confirmDeleteShift: () => void;
     cancelDeleteShift: () => void;
 
@@ -69,7 +69,9 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                         <div className="mb-6">
                             <p className="text-sm text-gray-500">
-                                Are you sure you want to delete this shift?
+                                {deleteModal.isSingleDraftSession
+                                    ? "This is the only shift in this draft. Deleting it will remove the entire draft schedule. Continue?"
+                                    : "Are you sure you want to delete this shift?"}
                             </p>
                         </div>
                         <div className="flex space-x-3 justify-end">

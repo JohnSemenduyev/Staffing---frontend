@@ -15,6 +15,7 @@ import {
   UPDATE_MANY_SESSION_TIMES,
   CHECK_SCHEDULE_SESSION,
   CREATE_DRAFT_SCHEDULE_SESSIONS,
+  DELETE_DRAFT_SCHEDULE,
 } from "../graphql/mutation";
 
 // ---------- Types ----------
@@ -186,6 +187,7 @@ type ClientSessionContextType = {
     input: ScheduleSessionInputExtended[]
   ) => Promise<any>;
   createDraftScheduleSessions: (input: any[]) => Promise<any>;
+  deleteDraftSchedule: (draftScheduleSessionId: number) => Promise<any>;
   mutationLoading: boolean;
 
   sessionData: SessionItem[] | null;
@@ -515,6 +517,31 @@ export const ClientSessionProvider = ({
     }
   };
 
+  // ----- deleteDraftSchedule -----
+  // Use when a draft session has only one shift and that shift is being deleted.
+
+  const deleteDraftSchedule = async (draftScheduleSessionId: number) => {
+    setMutationLoading(true);
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await graphQLClient.request(
+        DELETE_DRAFT_SCHEDULE,
+        { draftScheduleSessionId },
+        { Authorization: `Bearer ${token}` }
+      );
+      return response;
+    } catch (err) {
+      console.error("deleteDraftSchedule:", err);
+      throw err;
+    } finally {
+      setMutationLoading(false);
+    }
+  };
+
   return (
     <ClientSessionContext.Provider
       value={{
@@ -529,6 +556,7 @@ export const ClientSessionProvider = ({
         clearScheduleData,
         bulkUpsertScheduleSessions,
         createDraftScheduleSessions,
+        deleteDraftSchedule,
         mutationLoading,
         sessionData,
         sessionLoading,

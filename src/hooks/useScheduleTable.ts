@@ -11,6 +11,7 @@ import {
 import { graphQLClient } from "../GraphqlClient";
 import {
     CREATE_DRAFT_SCHEDULE_SESSIONS,
+    DELETE_DRAFT_SCHEDULE,
     DELETE_SCHEDULE_SESSION,
     UPDATE_SHIFT_END_TIME,
 } from "../graphql/mutation";
@@ -26,6 +27,8 @@ interface UseScheduleTableProps {
     onToggleEditMode: () => void;
     onDeleteSuccess?: () => void | Promise<void>;
     onDraftShiftDeletion?: (shift: any) => void;
+    /** When the only shift in a draft session is deleted, call this to delete the whole draft session via API (no Save needed). */
+    onDeleteSingleDraftSession?: (draftScheduleSessionId: number) => Promise<void>;
     selectedUserId?: number;
     apiExistingShiftsData?: Map<string, any[]>;
     existingShifts?: Shift[];
@@ -66,6 +69,7 @@ export const useScheduleTable = ({
     onToggleEditMode,
     onDeleteSuccess,
     onDraftShiftDeletion,
+    onDeleteSingleDraftSession,
     selectedUserId,
     apiExistingShiftsData = new Map(),
     existingShifts = [],
@@ -469,10 +473,44 @@ export const useScheduleTable = ({
 
         const isLast = userShifts.length === 1 && userShifts[0].id === shiftId;
 
+        // Resolve draftSessionId (from shift, item, or only draft shift for user)
+        let draftSessionId: number | null = (shift as any)?.draftScheduleSessionId ?? null;
+        if (draftSessionId == null && (itemWithShift as any)?.draftScheduleSession === true) {
+            draftSessionId = (itemWithShift as any)?.draftScheduleSessionId ?? null;
+        }
+        if (draftSessionId == null && shift && (isDraftShift(shift) || (shift as any).id > 2000000000000)) {
+            const userDraftShifts = scheduleData
+                .filter((i) => i.userId === userId)
+                .flatMap((i) => i.shifts)
+                .filter((s: any) => !(s as any).isDelete && ((s as any).draftScheduleSessionId != null || (s as any).draftShiftId != null || (s as any).id > 2000000000000));
+            if (userDraftShifts.length === 1) {
+                draftSessionId = (userDraftShifts[0] as any)?.draftScheduleSessionId ?? null;
+                if (draftSessionId == null) {
+                    const itemOfOnly = scheduleData.find((i) => i.userId === userId && i.shifts.some((s: any) => s.id === userDraftShifts[0].id));
+                    draftSessionId = (itemOfOnly as any)?.draftScheduleSessionId ?? null;
+                }
+            }
+        }
+        draftSessionId = draftSessionId != null ? Number(draftSessionId) : null;
+        if (draftSessionId !== null && Number.isNaN(draftSessionId)) draftSessionId = null;
+
+        const isSingleDraftSession =
+            draftSessionId != null &&
+            scheduleData.flatMap((i) => i.shifts).filter((s: any) => {
+                if ((s as any).isDelete) return false;
+                const sid = (s as any).draftScheduleSessionId;
+                return sid != null && Number(sid) === draftSessionId;
+            }).length === 1;
+
+        // Single draft shift: show draft-delete dialog and call DeleteDraftSchedule (not "Delete Entire Schedule")
+        if (isLast && isSingleDraftSession) {
+            setDeleteModal({ isOpen: true, shiftId, userId, date, isSingleDraftSession: true });
+            return;
+        }
         if (isLast) {
             setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
         } else {
-            setDeleteModal({ isOpen: true, shiftId, userId, date });
+            setDeleteModal({ isOpen: true, shiftId, userId, date, isSingleDraftSession });
         }
     }, [scheduleData, currentWeekRange]);
 
@@ -487,6 +525,64 @@ export const useScheduleTable = ({
         if (!shiftToDelete) return;
 
         const isDraftShiftFlag = isDraftShift(shiftToDelete) || shiftToDelete.id > 2000000000000;
+        // Resolve draftSessionId: shift, then item, then from the only draft shift for this user
+        let draftSessionId: number | null = (shiftToDelete as any)?.draftScheduleSessionId ?? null;
+        if (draftSessionId == null && (itemWithShift as any)?.draftScheduleSession === true) {
+            draftSessionId = (itemWithShift as any)?.draftScheduleSessionId ?? null;
+        }
+        if (draftSessionId == null && isDraftShiftFlag) {
+            const userDraftShifts = scheduleData
+                .filter((i) => i.userId === userId)
+                .flatMap((i) => i.shifts)
+                .filter((s: any) => !(s as any).isDelete && ((s as any).draftScheduleSessionId != null || (s as any).draftShiftId != null || (s as any).id > 2000000000000));
+            if (userDraftShifts.length === 1) {
+                draftSessionId = (userDraftShifts[0] as any)?.draftScheduleSessionId ?? null;
+                if (draftSessionId == null) {
+                    const itemOfOnly = scheduleData.find((i) => i.userId === userId && i.shifts.some((s: any) => s.id === userDraftShifts[0].id));
+                    draftSessionId = (itemOfOnly as any)?.draftScheduleSessionId ?? null;
+                }
+            }
+        }
+        draftSessionId = draftSessionId != null ? Number(draftSessionId) : null;
+        if (draftSessionId !== null && Number.isNaN(draftSessionId)) draftSessionId = null;
+
+        // Single draft shift in its session: delete whole draft session via API immediately (no Save needed)
+        if (isDraftShiftFlag && draftSessionId != null) {
+            const countWithSameDraftSession = scheduleData
+                .flatMap((i) => i.shifts)
+                .filter((s: any) => {
+                    if ((s as any).isDelete) return false;
+                    const sid = (s as any).draftScheduleSessionId;
+                    return sid != null && Number(sid) === draftSessionId;
+                }).length;
+            if (countWithSameDraftSession === 1) {
+                try {
+                    const token = sessionStorage.getItem("token");
+                    await graphQLClient.request(
+                        DELETE_DRAFT_SCHEDULE,
+                        { draftScheduleSessionId: draftSessionId },
+                        { Authorization: `Bearer ${token}` }
+                    );
+                    const updatedData = scheduleData
+                        .map((item) => ({
+                            ...item,
+                            shifts: item.shifts.filter((s: any) => {
+                                const sid = (s as any).draftScheduleSessionId;
+                                return sid == null || Number(sid) !== draftSessionId;
+                            }),
+                        }))
+                        .filter((item) => item.shifts.length > 0);
+                    onScheduleDataChange(updatedData);
+                    setDeleteModal({ isOpen: false });
+                    hookToast({ title: "Success", description: "Draft schedule deleted." });
+                    if (onDeleteSuccess) await onDeleteSuccess();
+                } catch (err) {
+                    console.error(err);
+                    hookToast({ title: "Error", description: "Failed to delete draft schedule.", variant: "destructive" });
+                }
+                return;
+            }
+        }
 
         if (isDraftShiftFlag && onDraftShiftDeletion) {
             onDraftShiftDeletion(shiftToDelete);

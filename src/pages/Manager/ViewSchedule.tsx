@@ -160,6 +160,7 @@ export const ViewSchedule = () => {
     clearScheduleData,
     bulkUpsertScheduleSessions,
     createDraftScheduleSessions,
+    deleteDraftSchedule,
     sessionData: apiSessionData,
     sessionLoading: apiSessionLoading,
     sessionError: apiSessionError,
@@ -764,11 +765,14 @@ export const ViewSchedule = () => {
         checkShifts(draftScheduleSessions);
       }
 
-      // Show "No Schedule Found" only when there is no current-week and no previous-week data (ignore next-week shifts)
+      // Show "No Schedule Found" when: (1) no data at all, or (2) shifts exist but only from next week (no current or previous week)
+      const noDataAtAll = !hasAnyData;
+      const onlyNextWeekShifts = hasAnyData && !!(selectedDate || targetDate) && !hasCurrentOrPreviousWeekData;
+
       // -------------------------
       // 1. No schedule / draft data (current or previous week)
       // -------------------------
-      if (!hasCurrentOrPreviousWeekData) {
+      if (noDataAtAll || onlyNextWeekShifts) {
         const clientName =
           [selectedClient?.name, selectedClient?.lastName]
             .filter(Boolean)
@@ -808,6 +812,15 @@ export const ViewSchedule = () => {
           toast({
             title: "No Schedule Found",
             description: `No schedule found for this week. Please prepare a schedule first.`,
+            variant: "destructive",
+          });
+        }
+
+        // When shifts exist only in next week (no current or previous week), show error popup if no other toast was shown
+        if (onlyNextWeekShifts && !isNavigationAttempt) {
+          toast({
+            title: "No Schedule Found",
+            description: `No schedule found for this week. Shifts are only in the next week. Please prepare a schedule for the selected week.`,
             variant: "destructive",
           });
         }
@@ -965,7 +978,12 @@ export const ViewSchedule = () => {
           shiftData.draftScheduleSessionId =
             (shift as any)?.draftScheduleSessionId ??
             (group as any)?.draftScheduleSessionId ??
+            (group as any)?.id ??
             null;
+          // Store on item so hook can resolve it when deleting the only draft shift
+          if (shiftData.draftScheduleSessionId != null && item) {
+            (item as any).draftScheduleSessionId = shiftData.draftScheduleSessionId;
+          }
         }
 
         item.shifts.push(shiftData);
@@ -2014,6 +2032,11 @@ export const ViewSchedule = () => {
     // No separate tracking needed
   };
 
+  // When user deletes the only shift in a draft session, delete the whole draft session via API (no Save needed)
+  const handleDeleteSingleDraftSession = async (draftScheduleSessionId: number) => {
+    await deleteDraftSchedule(draftScheduleSessionId);
+  };
+
   const handleSaveDraft = async () => {
     if (!scheduleData || scheduleData.length === 0) {
       toast({
@@ -2238,6 +2261,33 @@ export const ViewSchedule = () => {
         });
       });
 
+      // When a draft session has only 1 shift and that shift is deleted, delete the whole draft session via API
+      const draftSessionIdsToDelete = new Set<number>();
+      draftSessionMap.forEach((group, sessionKey) => {
+        if (
+          group.draftScheduleSessionId != null &&
+          group.shiftsToSend.length === 1 &&
+          group.shiftsToSend[0]?.isDelete === true
+        ) {
+          draftSessionIdsToDelete.add(group.draftScheduleSessionId);
+        }
+      });
+
+      for (const id of draftSessionIdsToDelete) {
+        try {
+          await deleteDraftSchedule(id);
+        } catch (err) {
+          console.error("deleteDraftSchedule failed for", id, err);
+          toast({
+            title: "Error",
+            description: "Failed to delete draft session.",
+            variant: "destructive",
+          });
+          setIsSavingDraft(false);
+          return;
+        }
+      }
+
       // ---- final payload ----
       const draftInput: any[] = [];
 
@@ -2256,6 +2306,13 @@ export const ViewSchedule = () => {
 
       draftSessionMap.forEach((group) => {
         if (group.shiftsToSend.length === 0) return;
+        // Skip draft-only sessions we already deleted via deleteDraftSchedule (single shift deleted)
+        if (
+          group.draftScheduleSessionId != null &&
+          draftSessionIdsToDelete.has(group.draftScheduleSessionId)
+        ) {
+          return;
+        }
 
         const weeklyHours = group.shiftsForHours
           .filter((s) => !s.isDelete)
@@ -2293,7 +2350,7 @@ export const ViewSchedule = () => {
         }
       });
 
-      if (draftInput.length === 0) {
+      if (draftInput.length === 0 && draftSessionIdsToDelete.size === 0) {
         toast({
           title: "Info",
           description: "No new or changed draft data to save.",
@@ -2301,8 +2358,10 @@ export const ViewSchedule = () => {
         return;
       }
 
-      console.log("DRAFT INPUT (changed only):", JSON.stringify(draftInput, null, 2));
-      await createDraftScheduleSessions(draftInput);
+      if (draftInput.length > 0) {
+        console.log("DRAFT INPUT (changed only):", JSON.stringify(draftInput, null, 2));
+        await createDraftScheduleSessions(draftInput);
+      }
 
       toast({
         title: "Success",
@@ -3134,6 +3193,7 @@ export const ViewSchedule = () => {
                 onToggleEditMode={toggleScheduleEditMode}
                 onDeleteSuccess={handleDeleteSuccess}
                 onDraftShiftDeletion={handleDraftShiftDeletion}
+                onDeleteSingleDraftSession={handleDeleteSingleDraftSession}
                 isPublishing={isPublishing}
                 isPrinting={isPrinting}
                 loading={scheduleLoading || tableLoading}

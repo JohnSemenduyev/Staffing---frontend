@@ -20,6 +20,7 @@ interface ScheduleTableProps {
   onToggleEditMode: () => void;
   onDeleteSuccess?: () => void | Promise<void>;
   onDraftShiftDeletion?: (shift: any) => void;
+  onDeleteSingleDraftSession?: (draftScheduleSessionId: number) => Promise<void>;
   isPublishing: boolean;
   isPrinting: boolean;
   isSaving?: boolean;
@@ -48,6 +49,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onToggleEditMode,
   onDeleteSuccess,
   onDraftShiftDeletion,
+  onDeleteSingleDraftSession,
   isPublishing,
   isPrinting,
   readOnly = false,
@@ -123,6 +125,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     onToggleEditMode,
     onDeleteSuccess,
     onDraftShiftDeletion,
+    onDeleteSingleDraftSession,
     selectedUserId,
     apiExistingShiftsData,
     existingShifts,

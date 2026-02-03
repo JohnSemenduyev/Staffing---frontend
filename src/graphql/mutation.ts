@@ -491,7 +491,13 @@ export const CREATE_DRAFT_SCHEDULE_SESSIONS = gql`
   }
 `;
 
-
+export const DELETE_DRAFT_SCHEDULE = gql`
+  mutation DeleteDraftSchedule($draftScheduleSessionId: Int!) {
+    deleteDraftSchedule(draftScheduleSessionId: $draftScheduleSessionId) {
+      draftScheduleSessionId
+    }
+  }
+`;
 
 export const UPDATE_MANY_SESSION_TIMES = gql`
   mutation UpdateManySessionTimes($items: [UpdateOneSessionTimesInput!]!) {
