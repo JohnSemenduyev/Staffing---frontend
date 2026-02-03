@@ -44,6 +44,7 @@ type ModalState = {
     userId?: number | null;
     date?: string | null;
     shift?: Shift | null;
+    isSingleDraftSession?: boolean;
 };
 
 type DragState = {
