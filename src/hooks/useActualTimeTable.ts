@@ -5,7 +5,7 @@ import { useToast } from "./use-toast";
 import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
 
 /**
- * Actual table grid = schedule visual shifts (no overflow on first day).
+ * Actual table grid = schedule visual shifts (current-day + previous-day spanning, including overflow from previous week on first day).
  * Sessions are attached to shifts by shiftId; display and hours use getSessionHoursOnDate so overnight/24h split correctly.
  */
 
@@ -98,28 +98,24 @@ export const useActualTimeTable = ({
 
     const firstDayOfWeek = dateColumns.length > 0 ? dateColumns[0].date : null;
 
-    /** Visual shifts for one date from a subset of schedule items (e.g. one user or one group). No overflow on first day of week. */
+    /** Visual shifts for one date from a subset of schedule items (e.g. one user or one group). Includes previous-day spanning on all days (including first day = overflow from previous week). */
     const getVisualShiftsFromScheduleItems = (
         scheduleItems: ScheduleItem[],
         date: string,
-        firstDay: string | null
+        _firstDay: string | null
     ): (Shift & { isContinuation?: boolean })[] => {
         const getItem = (d: string) => scheduleItems.find(item => normDate(item.startDate) === d);
         const daySchedule = getItem(date);
         const currentDayShifts = daySchedule
             ? (daySchedule.shifts || []).filter((s: any) => !s.isDelete).map((s: Shift) => ({ ...s, isContinuation: false }))
             : [];
-        const isFirstDayOfWeek = firstDay !== null && date === firstDay;
-        const prevDaySpanningShifts: (Shift & { isContinuation?: boolean })[] = isFirstDayOfWeek
+        const prevDate = getAdjustedDate(date, -1);
+        const prevSchedule = getItem(prevDate);
+        const prevDaySpanningShifts: (Shift & { isContinuation?: boolean })[] = !prevSchedule
             ? []
-            : (() => {
-                const prevDate = getAdjustedDate(date, -1);
-                const prevSchedule = getItem(prevDate);
-                if (!prevSchedule) return [];
-                return (prevSchedule.shifts || [])
-                    .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
-                    .map((s: Shift) => ({ ...s, isContinuation: true }));
-            })();
+            : (prevSchedule.shifts || [])
+                .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+                .map((s: Shift) => ({ ...s, isContinuation: true }));
         const withDisplayStart = (s: Shift & { isContinuation?: boolean }) =>
             s.isContinuation ? { ...s, displayStartTime: "00:00" as const } : { ...s, displayStartTime: s.startTime };
         const all = [...currentDayShifts.map(withDisplayStart), ...prevDaySpanningShifts.map(withDisplayStart)];
