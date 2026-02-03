@@ -2238,6 +2238,15 @@ export const ViewSchedule = () => {
           // only send if changed/new/deleted
           if (!isShiftChanged(shift, item)) return;
 
+          // Published shift that is only edited: keep in published session; do not send to draft (only Publish will update it)
+          const isEditedPublishedShift =
+            scheduleSessionId != null &&
+            !draftScheduleSessionId &&
+            !draftShiftId &&
+            shift.id != null &&
+            Number(shift.id) < 2000000000000;
+          if (isEditedPublishedShift) return;
+
           const shiftDate = convertDateFormat(shift.date || item.startDate);
 
           const payloadShift: any = {
