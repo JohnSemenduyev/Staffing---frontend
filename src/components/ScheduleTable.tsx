@@ -146,6 +146,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
           <ScheduleTableHeader
             selectedUserId={selectedUserId}
             dateColumns={dateColumns}
+            isEditMode={isEditMode}
           />
           <tbody className="relative">
             {rowGroups.map((row, rowIndex) => (
@@ -199,7 +200,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
               <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
                 {calculateGrandTotal(scheduleData)}
               </td>
-              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>
+              <td className="border border-gray-300 px-4 py-3 text-center w-16"></td>
+              {isEditMode && <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16"></td>}
             </tr>
           </tbody>
         </table>

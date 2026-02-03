@@ -68,14 +68,14 @@ export const shiftsOverlapInCalendar = (
 
 export const isOverflowShift = (shiftDate: string, weekStartDate: string | Date): boolean => {
   if (!shiftDate || !weekStartDate) return false;
-  const sDate = new Date(shiftDate);
-  const wDate = new Date(weekStartDate);
-
-  // Reset times to ensure pure date comparison
-  sDate.setHours(0, 0, 0, 0);
-  wDate.setHours(0, 0, 0, 0);
-
-  return sDate.getTime() < wDate.getTime();
+  // Compare as YYYY-MM-DD strings to avoid timezone bugs: new Date("YYYY-MM-DD") is UTC midnight,
+  // which can become the previous local day in western timezones and wrongly mark first-column shifts as overflow.
+  const normShiftDate = shiftDate.includes("T") ? shiftDate.split("T")[0] : shiftDate;
+  const normWeekStart =
+    typeof weekStartDate === "string"
+      ? (weekStartDate.includes("T") ? weekStartDate.split("T")[0] : weekStartDate)
+      : formatDateLocal(weekStartDate);
+  return normShiftDate < normWeekStart;
 };
 
 export const sortShiftsByTime = (shifts: SharedShift[]): SharedShift[] => {

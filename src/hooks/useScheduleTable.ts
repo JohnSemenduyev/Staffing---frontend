@@ -260,6 +260,11 @@ export const useScheduleTable = ({
         return dates;
     }, [currentWeekRange]);
 
+    const currentWeekDateSet = useMemo(
+        () => new Set(dateColumns.map((c) => c.date)),
+        [dateColumns]
+    );
+
     const rowGroups = useMemo((): RowGroup[] => {
         const groupByClient = Boolean(selectedUserId);
         const rowMap = new Map<string | number, RowGroup>();
@@ -540,11 +545,12 @@ export const useScheduleTable = ({
         try {
             const sessionIds = new Set<number>();
             scheduleData.forEach((item) => {
-                if (item.userId === userId) {
-                    item.shifts.forEach((s) => {
-                        if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
-                    });
-                }
+                if (item.userId !== userId) return;
+                const itemDate = item.startDate?.includes("T") ? item.startDate.split("T")[0] : item.startDate;
+                if (!itemDate || !currentWeekDateSet.has(itemDate)) return;
+                item.shifts.forEach((s) => {
+                    if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
+                });
             });
 
             const token = sessionStorage.getItem("token");
@@ -576,7 +582,7 @@ export const useScheduleTable = ({
             setDeletingLastShift(false);
             setDeleteLastShiftModal({ isOpen: false });
         }
-    }, [deleteLastShiftModal, scheduleData, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
+    }, [deleteLastShiftModal, scheduleData, currentWeekDateSet, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
 
     const handleDeleteUser = useCallback((userId: number) => {
         setDeleteUserModal({ isOpen: true, userId });
@@ -593,6 +599,8 @@ export const useScheduleTable = ({
 
             scheduleData.forEach((item) => {
                 if (item.userId !== userId) return;
+                const itemDate = item.startDate?.includes("T") ? item.startDate.split("T")[0] : item.startDate;
+                if (!itemDate || !currentWeekDateSet.has(itemDate)) return;
                 if (item.draftScheduleSession) {
                     item.shifts.forEach((s: any) => {
                         if (s?.draftScheduleSessionId) draftScheduleSessionIds.add(s.draftScheduleSessionId);
@@ -651,7 +659,7 @@ export const useScheduleTable = ({
             setDeletingUser(false);
             setDeleteUserModal({ isOpen: false });
         }
-    }, [deleteUserModal, scheduleData, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
+    }, [deleteUserModal, scheduleData, currentWeekDateSet, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
 
     const handleEditModeToggle = useCallback(() => {
         if (hasChanges) setEditModeConfirmModal({ isOpen: true });
@@ -947,6 +955,12 @@ export const useScheduleTable = ({
         const copiedShift: any = createCopiedShift();
         copiedShift.draftShiftId = null;
         copiedShift.draftScheduleSessionId = null;
+        // Always use date from the cell column (targetDate), never from column items (existing shift or schedule item)
+        copiedShift.date = targetDate;
+        // Ensure new shift does not become previous-week overflow: if it would be, force column date
+        if (currentWeekRange?.startOfWeek && isOverflowShift(copiedShift.date, currentWeekRange.startOfWeek)) {
+            copiedShift.date = targetDate;
+        }
         // Ensure new ID to prevent conflicts with source shift if it's a copy operation (though React DnD usually implies move/copy intent)
         // If we are moving within same grid, we might technically be "moving" so we should probably keep ID?
         // BUT logic says "Always Add", effectively "Copy".
@@ -997,9 +1011,8 @@ export const useScheduleTable = ({
 
         hookToast({ title: "Success", description: "Shift copied successfully!" });
 
-    }, [draggedShift, getScheduleItem, existingShifts, checkShiftOverlap, overlapsWithPrevDayShift,
+    }, [draggedShift, getScheduleItem, existingShifts, currentWeekRange, checkShiftOverlap, overlapsWithPrevDayShift,
         checkOverlapWithApiShifts, checkAdjacentDayOverlaps, scheduleData, selectedUserId,
-
         rowGroups, sortShiftsByTime, onScheduleDataChange, hookToast]);
 
     const handleUserAutoToggle = useCallback((userId: number, enabled: boolean) => {

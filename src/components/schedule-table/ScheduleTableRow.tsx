@@ -277,6 +277,7 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                 <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
                     {calculateRowTotal(row, groupByClient)}
                 </td>
+                <td className="border border-gray-300 px-4 py-3 text-center w-16" />
                 {isEditMode && (
                     <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
                         <button

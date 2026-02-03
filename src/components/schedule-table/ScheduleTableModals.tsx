@@ -1,7 +1,10 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { FaRegTrashAlt, FaRegEdit } from "react-icons/fa";
 import { Shift } from "../../types/schedule";
 import { isOverflowShift } from "../../pages/Manager/ViewSchedule/utils";
+
+const MODAL_Z_INDEX = 9999;
 
 interface ScheduleTableModalsProps {
     deleteModal: { isOpen: boolean; shiftId?: number | null; userId?: number | null; date?: string | null };
@@ -154,13 +157,14 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                 </div>
             )}
 
-            {/* Delete User Modal */}
-            {deleteUserModal.isOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            {/* Delete User Modal (schedule-level) - portaled so confirm dialog is always visible */}
+            {deleteUserModal.isOpen && createPortal(
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: MODAL_Z_INDEX }}>
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
                         <div className="mb-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Delete schedule for this user?</h3>
                             <p className="text-sm text-gray-500">
-                                Are you sure you want to delete all data for this user?
+                                Are you sure you want to delete all schedule data for this user?
                             </p>
                         </div>
 
@@ -175,7 +179,7 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                             <button
                                 type="button"
                                 onClick={confirmDeleteUser}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center"
                             >
                                 {deletingUser ? (
                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -186,20 +190,21 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {/* Delete Last Shift -> Entire Schedule Modal */}
-            {deleteLastShiftModal.isOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            {/* Delete Last Shift -> Entire Schedule Modal - portaled so confirm dialog is always visible */}
+            {deleteLastShiftModal.isOpen && createPortal(
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: MODAL_Z_INDEX }}>
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
                         <div className="mb-6">
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
                                 Delete Entire Schedule
                             </h3>
                             <p className="text-sm text-gray-500">
                                 Deleting this shift will delete the entire schedule for this user
-                                as it's their only remaining shift. Are you sure you want to
+                                as it&apos;s their only remaining shift. Are you sure you want to
                                 proceed?
                             </p>
                         </div>
@@ -216,7 +221,7 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                                 type="button"
                                 onClick={confirmDeleteLastShift}
                                 disabled={deletingLastShift}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center"
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center"
                             >
                                 {deletingLastShift ? (
                                     <>
@@ -232,7 +237,8 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Edit mode unsaved changes modal */}
