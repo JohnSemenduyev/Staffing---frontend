@@ -943,14 +943,14 @@ export const useScheduleTable = ({
             return;
         }
 
-        // Helper to create a copied shift
+        // Helper to create a copied shift (scheduleSessionId set later based on target so we don't copy previous week's session when current week has no schedule)
         const createCopiedShift = (): any => ({
             ...shift,
             id: Date.now(),
             date: targetDate,
             confirm: false,
             reject: false,
-            scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId,
+            scheduleSessionId: null,
             draftShiftId: null,
             draftScheduleSessionId: null,
             isDraft: true,
@@ -1066,6 +1066,8 @@ export const useScheduleTable = ({
         // So we keep the ID generation from createCopiedShift (Date.now()).
 
         const existingSchedule = getScheduleItem(targetUserId, targetDate);
+        // When current week has no schedule for this user/date, keep scheduleSessionId null so we don't attach to previous week's schedule (which would delete/overwrite it)
+        copiedShift.scheduleSessionId = existingSchedule ? (existingSchedule.shifts[0]?.scheduleSessionId ?? null) : null;
 
         let updatedScheduleData;
 
