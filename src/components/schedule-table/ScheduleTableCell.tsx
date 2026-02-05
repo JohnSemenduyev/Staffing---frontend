@@ -11,6 +11,8 @@ interface ScheduleTableCellProps {
     dateCol: { date: string };
     rowUserId: number;
     rowIdx: number;
+    rowClientId?: number;
+    rowAddressId?: number;
     isEditMode: boolean;
     readOnly?: boolean;
     dragOverCell: any;
@@ -18,7 +20,7 @@ interface ScheduleTableCellProps {
     handleDragEnd: () => void;
     handleDragOver: (e: React.DragEvent, userId: number, date: string, rowIdx: number) => void;
     handleDragLeave: (e: React.DragEvent) => void;
-    handleDrop: (e: React.DragEvent, userId: number, date: string, rowIdx: number) => void;
+    handleDrop: (e: React.DragEvent, userId: number, date: string, rowIdx: number, targetClientId?: number, targetAddressId?: number) => void;
     handleEditShift: (userId: number, date: string, shift: Shift) => void;
     handleDeleteShift: (userId: number, date: string, shiftId: number) => void;
     onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
@@ -33,6 +35,8 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
     dateCol,
     rowUserId,
     rowIdx,
+    rowClientId,
+    rowAddressId,
     isEditMode,
     readOnly,
     dragOverCell,
@@ -77,7 +81,7 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
             onDragLeave={!readOnly ? handleDragLeave : undefined}
             onDrop={
                 !readOnly
-                    ? (e) => handleDrop(e, rowUserId, dateCol.date, rowIdx)
+                    ? (e) => handleDrop(e, rowUserId, dateCol.date, rowIdx, rowClientId, rowAddressId)
                     : undefined
             }
         >

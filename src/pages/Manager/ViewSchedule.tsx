@@ -1914,7 +1914,8 @@ export const ViewSchedule = () => {
           shifts: shiftsArray.map(({ scheduleSessionId, ...s }: any) => s), // Remove scheduleSessionId
           weeklyHours: parseFloat(parseFloat(groupWeeklyHours.toString()).toFixed(2)),
           change: changed,
-          checkScheduleSessionId: mappedCheckScheduleSessionId
+          // Only include checkScheduleSessionId when schedule exists for current week and user; else omit (do not send in API)
+          ...(mappedCheckScheduleSessionId != null ? { checkScheduleSessionId: mappedCheckScheduleSessionId } : {}),
         };
       });
 
@@ -2343,7 +2344,7 @@ export const ViewSchedule = () => {
             auto: group.auto,
           });
         } else {
-          // New draft schedule session
+          // New draft schedule session. Only include checkScheduleSessionId when schedule exists for current week and user; else omit (do not send in API)
           draftInput.push({
             shifts: group.shiftsToSend,
             weeklyHours: parseFloat(weeklyHours.toFixed(2)),
@@ -2352,7 +2353,7 @@ export const ViewSchedule = () => {
             userId: group.userId,
             startDate: convertDateFormat(startDate),
             endDate: convertDateFormat(endDate),
-            checkScheduleSessionId: group.checkScheduleSessionId,
+            ...(group.checkScheduleSessionId != null ? { checkScheduleSessionId: group.checkScheduleSessionId } : {}),
             scheduleSessionId: null,
             auto: group.auto,
           });

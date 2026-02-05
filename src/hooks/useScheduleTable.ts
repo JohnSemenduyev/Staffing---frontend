@@ -818,7 +818,9 @@ export const useScheduleTable = ({
         e: React.DragEvent,
         targetUserId: number,
         targetDate: string,
-        targetRowIdx: number
+        targetRowIdx: number,
+        targetClientId?: number,
+        targetAddressId?: number
     ) => {
         e.preventDefault();
         if (!draggedShift) return;
@@ -852,14 +854,18 @@ export const useScheduleTable = ({
             return;
         }
 
-        // Helper to create a copied shift
+        // Helper to create a copied shift.
+        // When source is an overflow shift (previous week), do not copy scheduleSessionId so the new
+        // shift is treated as current-week and will get checkScheduleSessionId from the target user's
+        // schedule (or null if none) at save time.
+        const sourceIsOverflow = currentWeekRange?.startOfWeek && isOverflowShift(shift.date, currentWeekRange.startOfWeek);
         const createCopiedShift = (): any => ({
             ...shift,
             id: Date.now(),
             date: targetDate,
             confirm: false,
             reject: false,
-            scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId,
+            scheduleSessionId: sourceIsOverflow ? undefined : sourceSchedule.shifts[0]?.scheduleSessionId,
             draftShiftId: null,
             draftScheduleSessionId: null,
             isDraft: true,
@@ -981,28 +987,19 @@ export const useScheduleTable = ({
                 return item;
             });
         } else {
-            // Create new ScheduleItem
-            // We need to clone structure from sourceSchedule but reset shifts
+            // Create new ScheduleItem. Use target row's clientId/addressId when provided so
+            // checkScheduleSessionId is looked up correctly for (targetClientId, targetAddressId, targetUserId)
+            // at save time. If no schedule exists for current week for that user, it will be null/omitted in API.
             const newItem: ScheduleItem = {
                 ...sourceSchedule,
                 startDate: targetDate,
                 shifts: [copiedShift],
                 draftScheduleSession: undefined,
+                userId: targetUserId,
+                ...(targetClientId != null && targetAddressId != null
+                    ? { clientId: targetClientId, addressId: targetAddressId }
+                    : {}),
             };
-            // We might need to fetch Client/Address ID if they differ?
-            // Usually rows are grouped by User/Client/Address.
-            // If we drop on a row, we assume same Client/Address context.
-            // But sourceSchedule might be different if dragging between users?
-            // If dragging between users, we use targetUserId.
-            // If target row exists (rowGroups), we should probably use row data?
-            // But existingSchedule check failed, so maybe we are adding to a sparse array.
-            // Safest is to use sourceSchedule logic but update userId/date.
-
-            // Wait, if I drag from User A to User B, and User B has NO schedule for that day,
-            // I need User B's details (Client/Address). 
-            // Logic: RowGroups are pre-calculated. If the user accepts drop, it must be valid.
-            // Let's assume extending sourceSchedule is "okay" structurally, but we must update userId.
-            newItem.userId = targetUserId;
             updatedScheduleData = [...scheduleData, newItem];
         }
 
@@ -1013,8 +1010,7 @@ export const useScheduleTable = ({
 
     }, [draggedShift, getScheduleItem, existingShifts, checkShiftOverlap, overlapsWithPrevDayShift,
         checkOverlapWithApiShifts, checkAdjacentDayOverlaps, scheduleData, selectedUserId,
-
-        rowGroups, sortShiftsByTime, onScheduleDataChange, hookToast]);
+        currentWeekRange, rowGroups, sortShiftsByTime, onScheduleDataChange, hookToast]);
 
     const handleUserAutoToggle = useCallback((userId: number, enabled: boolean) => {
         if (onUserAutoToggle) {
