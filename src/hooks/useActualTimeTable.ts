@@ -491,13 +491,18 @@ export const useActualTimeTable = ({
         return parseFloat(total.toFixed(2));
     };
 
-    const hasTimeMismatch = (shift: Shift, sessions: SessionItem[]): boolean => {
+    const hasTimeMismatch = (shift: Shift, sessions: SessionItem[], cellDate?: string): boolean => {
         if (!shift || sessions.length === 0) return false;
         const scheduledDuration = calculateHours(shift.startTime, shift.endTime);
-        const totalActualTime = sessions.reduce((total, session) => {
-            return total + calculateWorkedTimeWith24HourLogic(session);
-        }, 0);
-        return Math.abs(totalActualTime - scheduledDuration) > 0.01;
+        const totalActualTime = cellDate
+            ? sessions.reduce((total, session) => total + getSessionHoursOnDate(session, cellDate), 0)
+            : sessions.reduce((total, session) => total + calculateWorkedTimeWith24HourLogic(session), 0);
+        const scheduleItem = scheduleData.find((item) =>
+            item.shifts?.some((s) => s.id === shift.id)
+        );
+        const toleranceMinutes = scheduleItem?.timeSetup?.actualScheduledTime ?? 0;
+        const toleranceHours = Math.max(toleranceMinutes / 60, 0.01);
+        return Math.abs(totalActualTime - scheduledDuration) > toleranceHours;
     };
 
     const getUserRowCount = (userId: number) => {

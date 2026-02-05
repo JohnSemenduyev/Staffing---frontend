@@ -13,7 +13,7 @@ interface ActualTableRowProps {
 
     // Logic helpers
     getSessionsForShift: (shiftId?: number | Shift, scheduleSessionId?: number, date?: string, userId?: number) => SessionItem[];
-    hasTimeMismatch: (shift: Shift, sessions: SessionItem[]) => boolean;
+    hasTimeMismatch: (shift: Shift, sessions: SessionItem[], cellDate?: string) => boolean;
     calculateRowTotal: (userId: number, rowIdx: number, sessions: SessionItem[], schedule: ScheduleItem[], dateCols: { date: string }[], groupId?: string) => number;
     calculateDayTotal: (date: string, sessions: SessionItem[]) => number;
     calculateUserDayTotalFromGrid: (userId: number, date: string) => number;
@@ -140,7 +140,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                             ? getSessionsForShift(shift, shift.scheduleSessionId, dateCol.date, userId)
                             : [];
 
-                        const hasMismatch = shift ? hasTimeMismatch(shift, sessions) : false;
+                        const hasMismatch = shift ? hasTimeMismatch(shift, sessions, dateCol.date) : false;
 
                         return (
                             <ActualTableCell
