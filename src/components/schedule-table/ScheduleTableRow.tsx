@@ -231,6 +231,11 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                                         size="medium"
                                         enabled={scheduleData.some((item) => {
                                             if (item.userId !== row.userId) return false;
+                                            const itemDate = item.startDate.includes("T")
+                                                ? formatDateFromISO(item.startDate)
+                                                : item.startDate;
+                                            const currentWeekDates = dateColumns.map((col) => col.date);
+                                            if (!currentWeekDates.includes(itemDate)) return false;
                                             if (!groupByClient)
                                                 return item.shifts.some((s) => s.auto);
                                             return (

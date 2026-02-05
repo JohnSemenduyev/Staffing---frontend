@@ -11,7 +11,6 @@ import {
 import { graphQLClient } from "../GraphqlClient";
 import {
     CREATE_DRAFT_SCHEDULE_SESSIONS,
-    DELETE_DRAFT_SCHEDULE,
     DELETE_SCHEDULE_SESSION,
     UPDATE_SHIFT_END_TIME,
 } from "../graphql/mutation";
@@ -27,8 +26,6 @@ interface UseScheduleTableProps {
     onToggleEditMode: () => void;
     onDeleteSuccess?: () => void | Promise<void>;
     onDraftShiftDeletion?: (shift: any) => void;
-    /** When the only shift in a draft session is deleted, call this to delete the whole draft session via API (no Save needed). */
-    onDeleteSingleDraftSession?: (draftScheduleSessionId: number) => Promise<void>;
     selectedUserId?: number;
     apiExistingShiftsData?: Map<string, any[]>;
     existingShifts?: Shift[];
@@ -44,7 +41,6 @@ type ModalState = {
     userId?: number | null;
     date?: string | null;
     shift?: Shift | null;
-    isSingleDraftSession?: boolean;
 };
 
 type DragState = {
@@ -70,7 +66,6 @@ export const useScheduleTable = ({
     onToggleEditMode,
     onDeleteSuccess,
     onDraftShiftDeletion,
-    onDeleteSingleDraftSession,
     selectedUserId,
     apiExistingShiftsData = new Map(),
     existingShifts = [],
@@ -264,11 +259,6 @@ export const useScheduleTable = ({
         }
         return dates;
     }, [currentWeekRange]);
-
-    const currentWeekDateSet = useMemo(
-        () => new Set(dateColumns.map((c) => c.date)),
-        [dateColumns]
-    );
 
     const rowGroups = useMemo((): RowGroup[] => {
         const groupByClient = Boolean(selectedUserId);
@@ -474,44 +464,10 @@ export const useScheduleTable = ({
 
         const isLast = userShifts.length === 1 && userShifts[0].id === shiftId;
 
-        // Resolve draftSessionId (from shift, item, or only draft shift for user)
-        let draftSessionId: number | null = (shift as any)?.draftScheduleSessionId ?? null;
-        if (draftSessionId == null && (itemWithShift as any)?.draftScheduleSession === true) {
-            draftSessionId = (itemWithShift as any)?.draftScheduleSessionId ?? null;
-        }
-        if (draftSessionId == null && shift && (isDraftShift(shift) || (shift as any).id > 2000000000000)) {
-            const userDraftShifts = scheduleData
-                .filter((i) => i.userId === userId)
-                .flatMap((i) => i.shifts)
-                .filter((s: any) => !(s as any).isDelete && ((s as any).draftScheduleSessionId != null || (s as any).draftShiftId != null || (s as any).id > 2000000000000));
-            if (userDraftShifts.length === 1) {
-                draftSessionId = (userDraftShifts[0] as any)?.draftScheduleSessionId ?? null;
-                if (draftSessionId == null) {
-                    const itemOfOnly = scheduleData.find((i) => i.userId === userId && i.shifts.some((s: any) => s.id === userDraftShifts[0].id));
-                    draftSessionId = (itemOfOnly as any)?.draftScheduleSessionId ?? null;
-                }
-            }
-        }
-        draftSessionId = draftSessionId != null ? Number(draftSessionId) : null;
-        if (draftSessionId !== null && Number.isNaN(draftSessionId)) draftSessionId = null;
-
-        const isSingleDraftSession =
-            draftSessionId != null &&
-            scheduleData.flatMap((i) => i.shifts).filter((s: any) => {
-                if ((s as any).isDelete) return false;
-                const sid = (s as any).draftScheduleSessionId;
-                return sid != null && Number(sid) === draftSessionId;
-            }).length === 1;
-
-        // Single draft shift: show draft-delete dialog and call DeleteDraftSchedule (not "Delete Entire Schedule")
-        if (isLast && isSingleDraftSession) {
-            setDeleteModal({ isOpen: true, shiftId, userId, date, isSingleDraftSession: true });
-            return;
-        }
         if (isLast) {
             setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
         } else {
-            setDeleteModal({ isOpen: true, shiftId, userId, date, isSingleDraftSession });
+            setDeleteModal({ isOpen: true, shiftId, userId, date });
         }
     }, [scheduleData, currentWeekRange]);
 
@@ -526,64 +482,6 @@ export const useScheduleTable = ({
         if (!shiftToDelete) return;
 
         const isDraftShiftFlag = isDraftShift(shiftToDelete) || shiftToDelete.id > 2000000000000;
-        // Resolve draftSessionId: shift, then item, then from the only draft shift for this user
-        let draftSessionId: number | null = (shiftToDelete as any)?.draftScheduleSessionId ?? null;
-        if (draftSessionId == null && (itemWithShift as any)?.draftScheduleSession === true) {
-            draftSessionId = (itemWithShift as any)?.draftScheduleSessionId ?? null;
-        }
-        if (draftSessionId == null && isDraftShiftFlag) {
-            const userDraftShifts = scheduleData
-                .filter((i) => i.userId === userId)
-                .flatMap((i) => i.shifts)
-                .filter((s: any) => !(s as any).isDelete && ((s as any).draftScheduleSessionId != null || (s as any).draftShiftId != null || (s as any).id > 2000000000000));
-            if (userDraftShifts.length === 1) {
-                draftSessionId = (userDraftShifts[0] as any)?.draftScheduleSessionId ?? null;
-                if (draftSessionId == null) {
-                    const itemOfOnly = scheduleData.find((i) => i.userId === userId && i.shifts.some((s: any) => s.id === userDraftShifts[0].id));
-                    draftSessionId = (itemOfOnly as any)?.draftScheduleSessionId ?? null;
-                }
-            }
-        }
-        draftSessionId = draftSessionId != null ? Number(draftSessionId) : null;
-        if (draftSessionId !== null && Number.isNaN(draftSessionId)) draftSessionId = null;
-
-        // Single draft shift in its session: delete whole draft session via API immediately (no Save needed)
-        if (isDraftShiftFlag && draftSessionId != null) {
-            const countWithSameDraftSession = scheduleData
-                .flatMap((i) => i.shifts)
-                .filter((s: any) => {
-                    if ((s as any).isDelete) return false;
-                    const sid = (s as any).draftScheduleSessionId;
-                    return sid != null && Number(sid) === draftSessionId;
-                }).length;
-            if (countWithSameDraftSession === 1) {
-                try {
-                    const token = sessionStorage.getItem("token");
-                    await graphQLClient.request(
-                        DELETE_DRAFT_SCHEDULE,
-                        { draftScheduleSessionId: draftSessionId },
-                        { Authorization: `Bearer ${token}` }
-                    );
-                    const updatedData = scheduleData
-                        .map((item) => ({
-                            ...item,
-                            shifts: item.shifts.filter((s: any) => {
-                                const sid = (s as any).draftScheduleSessionId;
-                                return sid == null || Number(sid) !== draftSessionId;
-                            }),
-                        }))
-                        .filter((item) => item.shifts.length > 0);
-                    onScheduleDataChange(updatedData);
-                    setDeleteModal({ isOpen: false });
-                    hookToast({ title: "Success", description: "Draft schedule deleted." });
-                    if (onDeleteSuccess) await onDeleteSuccess();
-                } catch (err) {
-                    console.error(err);
-                    hookToast({ title: "Error", description: "Failed to delete draft schedule.", variant: "destructive" });
-                }
-                return;
-            }
-        }
 
         if (isDraftShiftFlag && onDraftShiftDeletion) {
             onDraftShiftDeletion(shiftToDelete);
@@ -642,12 +540,11 @@ export const useScheduleTable = ({
         try {
             const sessionIds = new Set<number>();
             scheduleData.forEach((item) => {
-                if (item.userId !== userId) return;
-                const itemDate = item.startDate?.includes("T") ? item.startDate.split("T")[0] : item.startDate;
-                if (!itemDate || !currentWeekDateSet.has(itemDate)) return;
-                item.shifts.forEach((s) => {
-                    if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
-                });
+                if (item.userId === userId) {
+                    item.shifts.forEach((s) => {
+                        if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
+                    });
+                }
             });
 
             const token = sessionStorage.getItem("token");
@@ -679,7 +576,7 @@ export const useScheduleTable = ({
             setDeletingLastShift(false);
             setDeleteLastShiftModal({ isOpen: false });
         }
-    }, [deleteLastShiftModal, scheduleData, currentWeekDateSet, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
+    }, [deleteLastShiftModal, scheduleData, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
 
     const handleDeleteUser = useCallback((userId: number) => {
         setDeleteUserModal({ isOpen: true, userId });
@@ -691,13 +588,22 @@ export const useScheduleTable = ({
         if (userId == null) return;
 
         try {
+            // Only delete schedule for the current week; leave previous/next week intact
+            const currentWeekDates = new Set(dateColumns.map((c) => c.date));
+
+            const isItemInCurrentWeek = (item: ScheduleItem): boolean => {
+                const itemDate = item.startDate.includes("T")
+                    ? formatDateFromISO(item.startDate)
+                    : item.startDate;
+                return currentWeekDates.has(itemDate);
+            };
+
             const scheduleSessionIds = new Set<number>();
             const draftScheduleSessionIds = new Set<number>();
 
             scheduleData.forEach((item) => {
                 if (item.userId !== userId) return;
-                const itemDate = item.startDate?.includes("T") ? item.startDate.split("T")[0] : item.startDate;
-                if (!itemDate || !currentWeekDateSet.has(itemDate)) return;
+                if (!isItemInCurrentWeek(item)) return;
                 if (item.draftScheduleSession) {
                     item.shifts.forEach((s: any) => {
                         if (s?.draftScheduleSessionId) draftScheduleSessionIds.add(s.draftScheduleSessionId);
@@ -711,7 +617,7 @@ export const useScheduleTable = ({
 
             const token = sessionStorage.getItem("token");
 
-            // Delete regular schedule sessions
+            // Delete regular schedule sessions (current week only)
             const deleteResults = await Promise.allSettled(
                 Array.from(scheduleSessionIds).map((id) =>
                     graphQLClient.request(
@@ -732,7 +638,7 @@ export const useScheduleTable = ({
                 return;
             }
 
-            // Mark draft sessions for deletion
+            // Mark draft sessions for deletion (current week only)
             if (draftScheduleSessionIds.size > 0) {
                 const draftInput = Array.from(draftScheduleSessionIds)
                     .map((id) => ({ draftScheduleSessionId: id, isDelete: true }));
@@ -743,10 +649,13 @@ export const useScheduleTable = ({
                 );
             }
 
-            const updatedData = scheduleData.filter((item) => item.userId !== userId);
+            // Remove only current-week schedule items for this user; keep other weeks
+            const updatedData = scheduleData.filter(
+                (item) => item.userId !== userId || !isItemInCurrentWeek(item)
+            );
             onScheduleDataChange(updatedData);
             onToggleEditMode();
-            hookToast({ title: "Success", description: "Schedule deleted successfully!" });
+            hookToast({ title: "Success", description: "Schedule deleted for current week." });
             if (onDeleteSuccess) await onDeleteSuccess();
 
         } catch (error) {
@@ -756,7 +665,7 @@ export const useScheduleTable = ({
             setDeletingUser(false);
             setDeleteUserModal({ isOpen: false });
         }
-    }, [deleteUserModal, scheduleData, currentWeekDateSet, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
+    }, [deleteUserModal, scheduleData, dateColumns, formatDateFromISO, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
 
     const handleEditModeToggle = useCallback(() => {
         if (hasChanges) setEditModeConfirmModal({ isOpen: true });
@@ -943,14 +852,14 @@ export const useScheduleTable = ({
             return;
         }
 
-        // Helper to create a copied shift (scheduleSessionId set later based on target so we don't copy previous week's session when current week has no schedule)
+        // Helper to create a copied shift
         const createCopiedShift = (): any => ({
             ...shift,
             id: Date.now(),
             date: targetDate,
             confirm: false,
             reject: false,
-            scheduleSessionId: null,
+            scheduleSessionId: sourceSchedule.shifts[0]?.scheduleSessionId,
             draftShiftId: null,
             draftScheduleSessionId: null,
             isDraft: true,
@@ -1052,12 +961,6 @@ export const useScheduleTable = ({
         const copiedShift: any = createCopiedShift();
         copiedShift.draftShiftId = null;
         copiedShift.draftScheduleSessionId = null;
-        // Always use date from the cell column (targetDate), never from column items (existing shift or schedule item)
-        copiedShift.date = targetDate;
-        // Ensure new shift does not become previous-week overflow: if it would be, force column date
-        if (currentWeekRange?.startOfWeek && isOverflowShift(copiedShift.date, currentWeekRange.startOfWeek)) {
-            copiedShift.date = targetDate;
-        }
         // Ensure new ID to prevent conflicts with source shift if it's a copy operation (though React DnD usually implies move/copy intent)
         // If we are moving within same grid, we might technically be "moving" so we should probably keep ID?
         // BUT logic says "Always Add", effectively "Copy".
@@ -1066,8 +969,6 @@ export const useScheduleTable = ({
         // So we keep the ID generation from createCopiedShift (Date.now()).
 
         const existingSchedule = getScheduleItem(targetUserId, targetDate);
-        // When current week has no schedule for this user/date, keep scheduleSessionId null so we don't attach to previous week's schedule (which would delete/overwrite it)
-        copiedShift.scheduleSessionId = existingSchedule ? (existingSchedule.shifts[0]?.scheduleSessionId ?? null) : null;
 
         let updatedScheduleData;
 
@@ -1110,8 +1011,9 @@ export const useScheduleTable = ({
 
         hookToast({ title: "Success", description: "Shift copied successfully!" });
 
-    }, [draggedShift, getScheduleItem, existingShifts, currentWeekRange, checkShiftOverlap, overlapsWithPrevDayShift,
+    }, [draggedShift, getScheduleItem, existingShifts, checkShiftOverlap, overlapsWithPrevDayShift,
         checkOverlapWithApiShifts, checkAdjacentDayOverlaps, scheduleData, selectedUserId,
+
         rowGroups, sortShiftsByTime, onScheduleDataChange, hookToast]);
 
     const handleUserAutoToggle = useCallback((userId: number, enabled: boolean) => {
@@ -1191,8 +1093,6 @@ export const useScheduleTable = ({
         return max;
     }, [scheduleData, dateColumns, formatDateFromISO]);
 
-    // Hours for a shift on targetDate only (used with targetDate from dateColumns = current week only).
-    // Overnight: first day = start to 24:00, next day = 00:00 to end. Next-week overflow is never counted because we only sum over dateColumns.
     const calculateEffectiveHours = useCallback((shift: any, targetDate: string): number => {
         // If shift starts on targetDate
         if (shift.startDate === targetDate || (shift.date && shift.date === targetDate)) {
@@ -1278,7 +1178,7 @@ export const useScheduleTable = ({
     }, [scheduleData, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
     const calculateGrandTotal = useCallback((currentScheduleData: ScheduleItem[]): number => {
-        // Totals are current-week only: we sum only over dateColumns (no next-week overflow, previous-week overflow into first day is included)
+        // Final total = sum of day totals in the grand total row (so it matches the displayed day columns)
         if (dateColumns.length === 0) return 0;
         let total = 0;
         dateColumns.forEach(col => {
