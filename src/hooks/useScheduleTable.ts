@@ -459,19 +459,27 @@ export const useScheduleTable = ({
             return;
         }
 
-        const userShifts = scheduleData
-            .filter((item) => item.userId === userId)
+        // Only consider shifts in the current week (ignore previous/next week schedule)
+        const currentWeekDates = new Set(dateColumns.map((c) => c.date));
+        const isItemInCurrentWeek = (item: ScheduleItem): boolean => {
+            const itemDate = item.startDate.includes("T")
+                ? formatDateFromISO(item.startDate)
+                : item.startDate;
+            return currentWeekDates.has(itemDate);
+        };
+        const userShiftsInCurrentWeek = scheduleData
+            .filter((item) => item.userId === userId && isItemInCurrentWeek(item))
             .flatMap((item) => item.shifts)
             .filter((s) => !(s as any).isDelete);
 
-        const isLast = userShifts.length === 1 && userShifts[0].id === shiftId;
+        const isLastInCurrentWeek = userShiftsInCurrentWeek.length === 1 && userShiftsInCurrentWeek[0].id === shiftId;
 
-        if (isLast) {
+        if (isLastInCurrentWeek) {
             setDeleteLastShiftModal({ isOpen: true, shiftId, userId, date });
         } else {
             setDeleteModal({ isOpen: true, shiftId, userId, date });
         }
-    }, [scheduleData, currentWeekRange]);
+    }, [scheduleData, currentWeekRange, dateColumns, formatDateFromISO]);
 
     const confirmDeleteShift = useCallback(async () => {
         const { userId, date, shiftId } = deleteModal;
@@ -540,18 +548,37 @@ export const useScheduleTable = ({
         if (userId == null) return;
 
         try {
-            const sessionIds = new Set<number>();
+            // Only delete schedule for the current week; ignore previous/next week
+            const currentWeekDates = new Set(dateColumns.map((c) => c.date));
+            const isItemInCurrentWeek = (item: ScheduleItem): boolean => {
+                const itemDate = item.startDate.includes("T")
+                    ? formatDateFromISO(item.startDate)
+                    : item.startDate;
+                return currentWeekDates.has(itemDate);
+            };
+
+            const scheduleSessionIds = new Set<number>();
+            const draftScheduleSessionIds = new Set<number>();
+
             scheduleData.forEach((item) => {
-                if (item.userId === userId) {
+                if (item.userId !== userId) return;
+                if (!isItemInCurrentWeek(item)) return;
+                if (item.draftScheduleSession) {
+                    item.shifts.forEach((s: any) => {
+                        if (s?.draftScheduleSessionId) draftScheduleSessionIds.add(s.draftScheduleSessionId);
+                    });
+                } else {
                     item.shifts.forEach((s) => {
-                        if (s.scheduleSessionId) sessionIds.add(s.scheduleSessionId);
+                        if (s.scheduleSessionId) scheduleSessionIds.add(s.scheduleSessionId);
                     });
                 }
             });
 
             const token = sessionStorage.getItem("token");
+
+            // Delete regular schedule sessions (current week only)
             const deleteResults = await Promise.allSettled(
-                Array.from(sessionIds).map((id) =>
+                Array.from(scheduleSessionIds).map((id) =>
                     graphQLClient.request(
                         DELETE_SCHEDULE_SESSION,
                         { deleteScheduleSessionId: id },
@@ -566,10 +593,24 @@ export const useScheduleTable = ({
                 return;
             }
 
-            const updatedData = scheduleData.filter((item) => item.userId !== userId);
+            // Mark draft sessions for deletion (current week only)
+            if (draftScheduleSessionIds.size > 0) {
+                const draftInput = Array.from(draftScheduleSessionIds)
+                    .map((id) => ({ draftScheduleSessionId: id, isDelete: true }));
+                await graphQLClient.request(
+                    CREATE_DRAFT_SCHEDULE_SESSIONS,
+                    { input: draftInput },
+                    { Authorization: `Bearer ${token}` }
+                );
+            }
+
+            // Remove only current-week schedule items for this user; keep previous/next week intact
+            const updatedData = scheduleData.filter(
+                (item) => item.userId !== userId || !isItemInCurrentWeek(item)
+            );
             onScheduleDataChange(updatedData);
             onToggleEditMode();
-            hookToast({ title: "Success", description: "Schedule deleted successfully!" });
+            hookToast({ title: "Success", description: "Schedule deleted for current week." });
             if (onDeleteSuccess) await onDeleteSuccess();
         } catch (error) {
             console.error(error);
@@ -578,7 +619,7 @@ export const useScheduleTable = ({
             setDeletingLastShift(false);
             setDeleteLastShiftModal({ isOpen: false });
         }
-    }, [deleteLastShiftModal, scheduleData, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
+    }, [deleteLastShiftModal, scheduleData, dateColumns, formatDateFromISO, onScheduleDataChange, onToggleEditMode, onDeleteSuccess, hookToast]);
 
     const handleDeleteUser = useCallback((userId: number) => {
         setDeleteUserModal({ isOpen: true, userId });

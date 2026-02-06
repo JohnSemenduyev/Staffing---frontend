@@ -202,12 +202,12 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
                         <div className="mb-6">
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                Delete Entire Schedule
+                                Delete Schedule for This Week
                             </h3>
                             <p className="text-sm text-gray-500">
-                                Deleting this shift will delete the entire schedule for this user
-                                as it&apos;s their only remaining shift. Are you sure you want to
-                                proceed?
+                                This is the only shift in the current week. Deleting it will
+                                delete the schedule for this week only (previous and next weeks
+                                are not affected). Are you sure you want to proceed?
                             </p>
                         </div>
 
@@ -233,7 +233,7 @@ export const ScheduleTableModals: React.FC<ScheduleTableModalsProps> = ({
                                 ) : (
                                     <>
                                         <FaRegTrashAlt className="w-4 h-4 mr-2" />
-                                        Delete Schedule
+                                        Delete Schedule for This Week
                                     </>
                                 )}
                             </button>
