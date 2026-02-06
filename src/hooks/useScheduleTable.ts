@@ -26,6 +26,7 @@ interface UseScheduleTableProps {
     onToggleEditMode: () => void;
     onDeleteSuccess?: () => void | Promise<void>;
     onDraftShiftDeletion?: (shift: any) => void;
+    onDeleteSingleDraftSession?: (draftScheduleSessionId: number) => Promise<void>;
     selectedUserId?: number;
     apiExistingShiftsData?: Map<string, any[]>;
     existingShifts?: Shift[];
@@ -66,6 +67,7 @@ export const useScheduleTable = ({
     onToggleEditMode,
     onDeleteSuccess,
     onDraftShiftDeletion,
+    onDeleteSingleDraftSession,
     selectedUserId,
     apiExistingShiftsData = new Map(),
     existingShifts = [],
