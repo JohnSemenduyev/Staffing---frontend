@@ -1825,12 +1825,24 @@ export const ViewSchedule = () => {
           // Determine session ID for this shift
           let targetSessionId = shift.scheduleSessionId;
           if (!targetSessionId) {
-            // For new shifts, assign to the "primary" session for this row if possible,
+            // For new shifts, assign to the "primary" session for this user/client/address if possible,
             // or group them under a "new" key.
-            // We prefer to group with other shifts in this row that share the current week.
-            const siblingSessionId = item.shifts.find((s: any) =>
-              s.scheduleSessionId && !isOverflowShift(s.date, weekRange.startOfWeek)
-            )?.scheduleSessionId;
+            // We prefer to group with other shifts for the SAME user/client/address that are also in the current week,
+            // even if they are on different days/rows.
+            const siblingSessionId = scheduleData
+              .filter(other =>
+                other.userId === item.userId &&
+                other.clientId === item.clientId &&
+                other.addressId === item.addressId
+              )
+              .flatMap(other => other.shifts as any[])
+              .find((s: any) => {
+                if (!s.scheduleSessionId) return false;
+                const sDateStr = normShiftDate(s.date);
+                if (!sDateStr) return false;
+                // Only reuse session IDs from shifts that belong to the current week window
+                return sDateStr >= startDate && sDateStr <= endDate;
+              })?.scheduleSessionId;
             targetSessionId = siblingSessionId || null;
           }
 
