@@ -129,8 +129,6 @@ export const calculateHours = (start: string, end: string): number => {
 
 export const shiftSpansNextDay = (startTime: string, endTime: string): boolean => {
   if (!startTime || !endTime) return false;
-  console.log("startTime", startTime);
-  console.log("endTime", endTime);
   if((startTime === '24:00' && endTime === '24:00')||(startTime === '00:00' && endTime === '00:00') || (startTime === '24:00' && endTime === '00:00') || (startTime === '00:00' && endTime === '24:00')) return false;
   if (startTime === endTime) return true; // Full day
   return timeToMinutes(endTime) <= timeToMinutes(startTime);

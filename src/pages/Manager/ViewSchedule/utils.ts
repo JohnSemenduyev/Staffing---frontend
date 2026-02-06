@@ -223,10 +223,11 @@ export const validateForm = (
       ).flatMap((item) => item.shifts).length,
     });
 
-    // Check local schedule data overlaps - current day
+    // Check local schedule data overlaps - current day (exclude visually deleted shifts)
     const existingShifts = scheduleData
       .filter(item => item.userId === Number(formData.userId) && item.startDate === formData.date)
-      .flatMap(item => item.shifts);
+      .flatMap(item => item.shifts)
+      .filter(shift => !(shift as any).isDelete);
 
     for (const shift of existingShifts) {
       if (shift.id === editingShiftId) {
@@ -253,7 +254,9 @@ export const validateForm = (
       const prevDayShifts = scheduleData
         .filter(item => item.userId === Number(formData.userId) && item.startDate === prevDate)
         .flatMap(item => item.shifts)
-        .filter(shift => shiftSpansNextDay(shift.startTime, shift.endTime)); // Only check shifts that span into current day
+        .filter(shift =>
+          shiftSpansNextDay(shift.startTime, shift.endTime) && !(shift as any).isDelete
+        ); // Only check non-deleted shifts that span into current day
 
       for (const shift of prevDayShifts) {
         if (doTimesOverlap(formData.starttime, formData.endtime, "00:00", shift.endTime)) {
@@ -275,7 +278,8 @@ export const validateForm = (
       const nextDate = getAdjustedDate(formData.date, 1);
       const nextDayShifts = scheduleData
         .filter(item => item.userId === Number(formData.userId) && item.startDate === nextDate)
-        .flatMap(item => item.shifts);
+        .flatMap(item => item.shifts)
+        .filter(shift => !(shift as any).isDelete);
 
       for (const shift of nextDayShifts) {
         if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
