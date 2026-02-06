@@ -360,6 +360,29 @@ export const ViewClientSummary = () => {
     [data]
   );
 
+  // Export-only rows with numeric hour fields for Excel (same keys as rows)
+  const excelExportRows = useMemo(
+    () =>
+      (data || []).map((item) => ({
+        clientId: item.clientId,
+        addressId: item.addressId,
+        clientName: item.clientName || "-",
+        location: item.address || "-",
+        contractHours: item.contractHours ?? null,
+        totalWeeklyHours: item.totalWeeklyHours ?? null,
+        diffContractMinusScheduled: item.diffContractMinusScheduled ?? null,
+        unconfirmedHours: item.unconfirmedHours ?? null,
+        rejectedHours: item.rejectedHours ?? null,
+        scheduledHoursActual: item.totalWeeklyHours ?? null,
+        totalActualHours: item.totalActualHours ?? null,
+        diffScheduledMinusActual: item.diffScheduledMinusActual ?? null,
+        contractHoursActual: item.contractHours ?? null,
+        totalActualHoursContract: item.totalActualHours ?? null,
+        diffContractMinusActual: item.diffContractMinusActual ?? null,
+      })),
+    [data]
+  );
+
   // Export column definitions matching the table structure
   const exportColumns: ExportColumn[] = useMemo(() => {
     const baseColumns: ExportColumn[] = [
@@ -431,14 +454,14 @@ export const ViewClientSummary = () => {
 
   // Handle Excel export
   const handleExportToExcel = async () => {
-    if (!rows || rows.length === 0) {
+    if (!excelExportRows || excelExportRows.length === 0) {
       toast({title : "ERROR", description : "No data to export."});
       return;
     }
 
     const weekStart = selectedDate || toLocalYMD(new Date());
     const timestamp = weekStart.replace(/-/g, "");
-    const result = await exportToExcel(rows, exportColumns, {
+    const result = await exportToExcel(excelExportRows, exportColumns, {
       fileName: `client_summary_${timestamp}`,
       includeTimestamp: false,
       worksheetName: "Client Summary",

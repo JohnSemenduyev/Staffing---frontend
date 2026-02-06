@@ -157,14 +157,16 @@ export async function exportToExcel(
       width: col.width || 15,
     }));
 
-    // Add data rows
+    // Add data rows (preserve number type for Excel when no formatter)
     const rows = data.map((row) => {
       const rowData: any = {};
       columns.forEach((col) => {
         const value = getNestedValue(row, col.key);
         rowData[col.key] = col.formatter
           ? col.formatter(value, row)
-          : formatValue(value);
+          : typeof value === "number"
+            ? value
+            : formatValue(value);
       });
       return rowData;
     });
