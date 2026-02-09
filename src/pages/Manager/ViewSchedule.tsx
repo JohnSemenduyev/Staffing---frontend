@@ -247,9 +247,23 @@ export const ViewSchedule = () => {
       });
 
       const qs = params.toString();
+      const nextSearch = qs ? `?${qs}` : "";
+
+      // When we're first adding schedule params (showSchedule + client/address or userid),
+      // push a new history entry so browser back goes to /view-schedule instead of prepare-schedule.
+      const currentParams = new URLSearchParams(location.search);
+      const hadScheduleParams =
+        currentParams.get("showSchedule") === "true" &&
+        (currentParams.get("clientId") || currentParams.get("userid"));
+      const nextParams = new URLSearchParams(nextSearch);
+      const willHaveScheduleParams =
+        nextParams.get("showSchedule") === "true" &&
+        (nextParams.get("clientId") || nextParams.get("userid"));
+      const pushEntry = !hadScheduleParams && willHaveScheduleParams;
+
       navigate(
-        { pathname: location.pathname, search: qs ? `?${qs}` : "" },
-        { replace: true }
+        { pathname: location.pathname, search: nextSearch },
+        { replace: !pushEntry }
       );
     },
     [navigate, location.pathname, location.search]
