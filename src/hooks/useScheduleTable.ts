@@ -265,8 +265,19 @@ export const useScheduleTable = ({
     const rowGroups = useMemo((): RowGroup[] => {
         const groupByClient = Boolean(selectedUserId);
         const rowMap = new Map<string | number, RowGroup>();
+        const currentWeekDates = new Set(dateColumns.map((c) => c.date));
+        const weekStart = currentWeekRange?.startOfWeek;
+
+        const hasSomethingInCurrentWeek = (item: ScheduleItem): boolean => {
+            if (currentWeekDates.has(item.startDate)) return true;
+            if (!weekStart || !isOverflowShift(item.startDate, weekStart)) return false;
+            return item.shifts.some(
+                (s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime)
+            );
+        };
 
         scheduleData.forEach((item) => {
+            if (!hasSomethingInCurrentWeek(item)) return;
             const key = groupByClient ? `${item.userId}-${item.clientId}-${item.addressId}` : item.userId;
             if (!rowMap.has(key)) {
                 rowMap.set(key, {
@@ -283,7 +294,7 @@ export const useScheduleTable = ({
         });
 
         return Array.from(rowMap.values());
-    }, [scheduleData, selectedUserId]);
+    }, [scheduleData, selectedUserId, dateColumns, currentWeekRange]);
 
     // Common utility functions
     const calculateShiftHours = useCallback((start: string, end: string): number => {
