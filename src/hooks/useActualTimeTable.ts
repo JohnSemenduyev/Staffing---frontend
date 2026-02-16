@@ -55,26 +55,43 @@ export const useActualTimeTable = ({
         return dates;
     }, [currentWeekRange]);
 
-    // Unique users logic
+    // Same as schedule table: only users with current-week shift or previous-week overflow into current week
+    const visibleUserIds = useMemo(() => {
+        const currentWeekDates = new Set(dateColumns.map((c) => c.date));
+        const weekStart = currentWeekRange?.startOfWeek;
+        const hasSomethingInCurrentWeek = (item: ScheduleItem): boolean => {
+            if (currentWeekDates.has(normDate(item.startDate))) return true;
+            if (!weekStart || !isOverflowShift(item.startDate, weekStart)) return false;
+            return (item.shifts || []).some(
+                (s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime)
+            );
+        };
+        const ids = new Set<number>();
+        scheduleData.forEach((item) => {
+            if (hasSomethingInCurrentWeek(item)) ids.add(item.userId);
+        });
+        return ids;
+    }, [scheduleData, dateColumns, currentWeekRange]);
+
+    // Unique users logic (only guards that appear in schedule table)
     const uniqueUsers = useMemo(() => {
         const userMap = new Map();
         scheduleData.forEach(item => {
-            if (!userMap.has(item.userId)) {
-                userMap.set(item.userId, {
-                    id: item.userId,
-                    name: item.userName,
-                    phone: item.userPhone,
-                    clientName: item.clientName,
-                    address: item.address
-                });
-            }
+            if (!visibleUserIds.has(item.userId) || userMap.has(item.userId)) return;
+            userMap.set(item.userId, {
+                id: item.userId,
+                name: item.userName,
+                phone: item.userPhone,
+                clientName: item.clientName,
+                address: item.address
+            });
         });
         return Array.from(userMap.values());
-    }, [scheduleData]);
+    }, [scheduleData, visibleUserIds]);
 
-    // Row groups for employee view
+    // Row groups for employee view (only if selected user is visible in schedule table)
     const rowGroups: RowGroup[] = useMemo(() => {
-        if (!selectedUserId) return [];
+        if (!selectedUserId || !visibleUserIds.has(selectedUserId)) return [];
         const map = new Map<string, RowGroup>();
         scheduleData
             .filter(item => item.userId === selectedUserId)
@@ -94,7 +111,7 @@ export const useActualTimeTable = ({
                 }
             });
         return Array.from(map.values());
-    }, [scheduleData, selectedUserId]);
+    }, [scheduleData, selectedUserId, visibleUserIds]);
 
     const firstDayOfWeek = dateColumns.length > 0 ? dateColumns[0].date : null;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useClientSessions } from "../../context/ViewSchedule";
 import { BULK_UPSERT_SCHEDULE_SESSION, CREATE_DRAFT_SCHEDULE_SESSIONS, UPDATE_SHIFT_END_TIME } from "../../graphql/mutation";
@@ -2670,12 +2670,37 @@ export const ViewSchedule = () => {
     }));
   };
 
+  // Same as schedule table: only guards with current-week shift or previous-week overflow into current week (for PDF/Excel export)
+  const scheduleDataForExport = useMemo(() => {
+    if (!scheduleData.length || !currentWeekRange) return scheduleData;
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    const currentWeekDates = new Set<string>();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      currentWeekDates.add(formatDateLocal(d));
+    }
+    const weekStart = currentWeekRange.startOfWeek;
+    const normDate = (d: string) => (d && d.includes("T") ? d.split("T")[0] : d || "");
+    const hasSomethingInCurrentWeek = (item: ScheduleItem): boolean => {
+      if (currentWeekDates.has(normDate(item.startDate))) return true;
+      if (!weekStart || !isOverflowShift(item.startDate, weekStart)) return false;
+      return (item.shifts || []).some(
+        (s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime)
+      );
+    };
+    const visibleUserIds = new Set<number>();
+    scheduleData.forEach((item) => {
+      if (hasSomethingInCurrentWeek(item)) visibleUserIds.add(item.userId);
+    });
+    return scheduleData.filter((item) => visibleUserIds.has(item.userId));
+  }, [scheduleData, currentWeekRange]);
 
   const handleSchedulePrint = async () => {
     try {
       setIsPrinting(true);
       await new Promise(resolve => setTimeout(resolve, 300));
-      const cleanScheduleData = scheduleData.map(item => ({
+      const cleanScheduleData = scheduleDataForExport.map(item => ({
         ...item,
         shifts: item.shifts.map(shift => ({
           ...shift,
@@ -2683,8 +2708,8 @@ export const ViewSchedule = () => {
         })),
       }));
       const tableContent = generateSchedulePrintableTable(cleanScheduleData, currentWeekRange, selectedClient);
-      const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
-      const totalHours = scheduleData.reduce((sum, item) =>
+      const totalEmployees = new Set(scheduleDataForExport.map(i => i.userId)).size;
+      const totalHours = scheduleDataForExport.reduce((sum, item) =>
         sum + item.shifts.reduce((s, sh) => s + (sh.hours || 0), 0), 0
       );
 
@@ -2723,7 +2748,7 @@ export const ViewSchedule = () => {
   const handleScheduleDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
-      await generateScheduleStyledExcel(scheduleData, selectedClient, currentWeekRange, 'schedule');
+      await generateScheduleStyledExcel(scheduleDataForExport, selectedClient, currentWeekRange, 'schedule');
 
       toast({
         title: "Success",
@@ -2751,13 +2776,14 @@ export const ViewSchedule = () => {
   const handleActualTimeDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
+      const visibleUserIds = new Set(scheduleDataForExport.map((i) => i.userId));
       const transformedData = [];
       const uniqueUsers = new Map();
       sessionData.forEach(item => {
         const scheduleItem = scheduleData.find(si =>
           si.shifts.some(shift => shift.id === item.shiftId)
         );
-        if (scheduleItem && !uniqueUsers.has(scheduleItem.userId)) {
+        if (scheduleItem && visibleUserIds.has(scheduleItem.userId) && !uniqueUsers.has(scheduleItem.userId)) {
           uniqueUsers.set(scheduleItem.userId, {
             id: scheduleItem.userId,
             name: scheduleItem.userName
@@ -2857,9 +2883,14 @@ export const ViewSchedule = () => {
       setIsPrinting(true);
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const tableContent = generateActualTimePrintableTable(sessionData, scheduleData, currentWeekRange, selectedClient);
-      const totalEmployees = new Set(scheduleData.map(i => i.userId)).size;
-      const totalHours = sessionData.reduce((sum, item) => sum + calculateWorkedTimeForExcel(item), 0);
+      const tableContent = generateActualTimePrintableTable(sessionData, scheduleDataForExport, currentWeekRange, selectedClient);
+      const totalEmployees = new Set(scheduleDataForExport.map(i => i.userId)).size;
+      const visibleUserIdsForPrint = new Set(scheduleDataForExport.map((i) => i.userId));
+      const totalHours = sessionData.reduce((sum, item) => {
+        const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === item.shiftId));
+        if (!scheduleItem || !visibleUserIdsForPrint.has(scheduleItem.userId)) return sum;
+        return sum + calculateWorkedTimeForExcel(item);
+      }, 0);
 
       await handlePrint(
         tableContent,
