@@ -380,8 +380,7 @@ export const useScheduleTable = ({
         const localShifts = scheduleData
             .filter(item => item.userId === userId && item.startDate === date)
             .flatMap(item => item.shifts)
-            // .filter(s => !(s as any).isDelete && !isExcludedShiftById(s, excludeShiftId));
-            .filter(s => !(s as any).isDelete);
+            .filter(s => !(s as any).isDelete && !isExcludedShiftById(s, excludeShiftId));
 
         console.log("[Overlap] checkLocalOverlaps", {
             userId,
@@ -1001,19 +1000,16 @@ export const useScheduleTable = ({
         }
 
         // Local overlap checks
-        // Check against ALL existing shifts in the target date (excluding itself if moving within same day)
-        // Note: when "adding", we generally don't exclude anything unless it's the exact same shift being moved.
-        const excludeId = (sourceUserId === targetUserId && sourceDate === targetDate) ? draggedShiftRef.id : undefined;
-
-        if (checkLocalOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, excludeId)) {
+        // Check against ALL existing shifts in the target date (no exclusions for drag-drop)
+        if (checkLocalOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime)) {
             handleOverlapError("Cannot drop shift here - it overlaps with existing shifts for this user and date.");
             return;
         }
 
         // Check adjacent day overlaps
-        if (checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'prev', excludeId) ||
+        if (checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'prev') ||
             (shiftSpansNextDay(shift.startTime, shift.endTime) &&
-                checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'next', excludeId))) {
+                checkAdjacentDayOverlaps(targetUserId, targetDate, shift.startTime, shift.endTime, 'next'))) {
             handleOverlapError("Cannot drop shift here - it overlaps with adjacent day shifts.");
             return;
         }
