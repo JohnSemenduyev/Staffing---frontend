@@ -380,7 +380,8 @@ export const useScheduleTable = ({
         const localShifts = scheduleData
             .filter(item => item.userId === userId && item.startDate === date)
             .flatMap(item => item.shifts)
-            .filter(s => !(s as any).isDelete && !isExcludedShiftById(s, excludeShiftId));
+            // .filter(s => !(s as any).isDelete && !isExcludedShiftById(s, excludeShiftId));
+            .filter(s => !(s as any).isDelete);
 
         console.log("[Overlap] checkLocalOverlaps", {
             userId,
