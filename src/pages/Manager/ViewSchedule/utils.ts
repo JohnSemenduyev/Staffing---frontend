@@ -251,6 +251,7 @@ export const validateForm = (
     // Shifts are treated as starting on current day, so previous day shifts might overlap
     if (!e.overlap) {
       const prevDate = getAdjustedDate(formData.date, -1);
+      const newEndCurrentDay = shiftSpansNextDay(formData.starttime, formData.endtime) ? "24:00" : formData.endtime;
       const prevDayShifts = scheduleData
         .filter(item => item.userId === Number(formData.userId) && item.startDate === prevDate)
         .flatMap(item => item.shifts)
@@ -259,7 +260,7 @@ export const validateForm = (
         ); // Only check non-deleted shifts that span into current day
 
       for (const shift of prevDayShifts) {
-        if (doTimesOverlap(formData.starttime, formData.endtime, "00:00", shift.endTime)) {
+        if (doTimesOverlap(formData.starttime, newEndCurrentDay, "00:00", shift.endTime)) {
           console.log("[Overlap] validateForm – overlap detected (previous day)", {
             currentDate: formData.date,
             previousDate: prevDate,
@@ -282,7 +283,7 @@ export const validateForm = (
         .filter(shift => !(shift as any).isDelete);
 
       for (const shift of nextDayShifts) {
-        if (doTimesOverlap(formData.starttime, formData.endtime, shift.startTime, shift.endTime)) {
+        if (doTimesOverlap("00:00", formData.endtime, shift.startTime, shift.endTime)) {
           console.log("[Overlap] validateForm – overlap detected (next day)", {
             currentDate: formData.date,
             nextDate: nextDate,
@@ -326,10 +327,11 @@ export const validateForm = (
         // Shifts are treated as starting on current day, so previous day shifts might overlap
         if (!e.overlap) {
           const prevDate = getAdjustedDate(formData.date, -1);
+          const newEndCurrentDayApi = shiftSpansNextDay(formData.starttime, formData.endtime) ? "24:00" : formData.endtime;
           for (const apiShift of apiShifts) {
             const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
             if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
-              if (doTimesOverlap(formData.starttime, formData.endtime, "00:00", apiShift.endTime)) {
+              if (doTimesOverlap(formData.starttime, newEndCurrentDayApi, "00:00", apiShift.endTime)) {
                 console.log("[Overlap] validateForm – overlap detected (API previous day)", {
                   currentDate: formData.date,
                   previousDate: prevDate,
@@ -350,7 +352,7 @@ export const validateForm = (
           for (const apiShift of apiShifts) {
             const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
             if (apiShiftDate === nextDate) {
-              if (doTimesOverlap(formData.starttime, formData.endtime, apiShift.startTime, apiShift.endTime)) {
+              if (doTimesOverlap("00:00", formData.endtime, apiShift.startTime, apiShift.endTime)) {
                 console.log("[Overlap] validateForm – overlap detected (API next day)", {
                   currentDate: formData.date,
                   nextDate: nextDate,
@@ -396,10 +398,11 @@ export const checkApiOverlap = (
   // Always check previous day shifts (they may span into current day)
   // Shifts are treated as starting on current day, so previous day shifts might overlap
   const prevDate = getAdjustedDate(date, -1);
+  const newEndCurrentDay = shiftSpansNextDay(startTime, endTime) ? "24:00" : endTime;
   for (const apiShift of apiShifts) {
     const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
     if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
-      if (doTimesOverlap(startTime, endTime, "00:00", apiShift.endTime)) {
+      if (doTimesOverlap(startTime, newEndCurrentDay, "00:00", apiShift.endTime)) {
         return true;
       }
     }
@@ -411,7 +414,7 @@ export const checkApiOverlap = (
     for (const apiShift of apiShifts) {
       const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
       if (apiShiftDate === nextDate) {
-        if (doTimesOverlap(startTime, endTime, apiShift.startTime, apiShift.endTime)) {
+        if (doTimesOverlap("00:00", endTime, apiShift.startTime, apiShift.endTime)) {
           return true;
         }
       }
