@@ -1902,30 +1902,57 @@ export const ViewSchedule = () => {
         // Recalculate auto based on shifts in this group to ensure split rows are handled
         const groupAuto = shiftsArray.some((s: any) => s.auto === true);
 
-        // Change detection now needs to be smarter or fallback to "always true" for simplicity if complex
-        // Reuse similar logic but scoped to this group's scheduleSessionId if possible
+        // Change detection: compare shifts for this specific group (clientId + addressId + userId)
         let changed = false;
 
-        // Simplified change detection: compare with original data
-        // We can check if ANY shift in this group is new or different from original
-        // For now, let's assume if it's in the map it might need upsert, but we should respect 'changed' flag
-        // The previous logic compared sets of shift keys.
+        // Get original shifts for this specific group (filtered by clientId, addressId, and userId)
+        const originalGroupShifts = originalScheduleData
+          .filter(item => 
+            item.userId === group.userId && 
+            item.clientId === group.clientId && 
+            item.addressId === group.addressId
+          )
+          .flatMap(item => item.shifts)
+          .filter((s: any) => !s.isDelete);
 
-        // Fix: Use originalShiftsRef but filter by session ID? 
-        // originalShiftsRef is by userId. 
-        // It's safer to flag 'change: true' if we aren't sure, to ensure consistency. 
-        // But let's try to preserve the optimization.
-        const originalSet = originalShiftsRef.current.get(group.userId) || new Set<string>();
+        // Create sets of shift keys for comparison
+        const originalSet = new Set<string>();
+        originalGroupShifts.forEach((s: any) => {
+          originalSet.add(makeShiftKey(s));
+        });
+
         const currentSet = new Set<string>();
-        shiftsArray.forEach((s: any) => currentSet.add(makeShiftKey(s)));
+        shiftsArray.forEach((s: any) => {
+          // Convert MM-DD-YYYY back to YYYY-MM-DD format for makeShiftKey
+          // makeShiftKey expects YYYY-MM-DD format or a parseable date string
+          let normalizedDate = s.date;
+          if (s.date && s.date.match(/^\d{2}-\d{2}-\d{4}$/)) {
+            // MM-DD-YYYY format - convert to YYYY-MM-DD
+            const [month, day, year] = s.date.split('-');
+            normalizedDate = `${year}-${month}-${day}`;
+          }
+          const shiftForKey = {
+            date: normalizedDate,
+            startTime: s.startTime,
+            endTime: s.endTime
+          };
+          currentSet.add(makeShiftKey(shiftForKey));
+        });
 
-        // This comparison checks if the User's schedule AS A WHOLE matches what we see in this partial group?
-        // No, that's dangerous. If we split the user into 2 groups, 'currentSet' is partial.
-        // It won't match 'originalSet' (which is full).
-        // So 'changed' will ALWAYS be true for split sessions. 
-        // This is acceptable/safe. Over-updating is better than under-updating.
-        changed = true;
+        // Check if sets are different (different number of shifts or different shift keys)
+        if (originalSet.size !== currentSet.size) {
+          changed = true;
+        } else {
+          // Check if all current shifts exist in original set
+          for (const key of currentSet) {
+            if (!originalSet.has(key)) {
+              changed = true;
+              break;
+            }
+          }
+        }
 
+        // Also check for draft shifts and auto changes
         if (group.hasDraftShifts) changed = true;
         if (autoChangedForUser(group.userId, scheduleData, originalScheduleData)) changed = true;
 
