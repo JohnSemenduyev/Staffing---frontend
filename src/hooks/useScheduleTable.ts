@@ -1036,7 +1036,7 @@ export const useScheduleTable = ({
                     return { ...item, shifts: sortShiftsByTime(updatedShifts) };
                 }
                 return item;
-            });
+            }); 
         } else {
             // Create new ScheduleItem. Use target row's clientId/addressId when provided so
             // checkScheduleSessionId is looked up correctly for (targetClientId, targetAddressId, targetUserId)
