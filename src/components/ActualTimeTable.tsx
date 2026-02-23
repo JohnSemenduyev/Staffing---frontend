@@ -143,11 +143,11 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                         key={dateColumns[i].date}
                         className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
                       >
-                        {dayTotal > 0 ? dayTotal : "-"}
+                        {dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-"}
                       </td>
                     ))}
                     <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                      {grandTotalFromColumns > 0 ? grandTotalFromColumns : "-"}
+                      {grandTotalFromColumns > 0 ? grandTotalFromColumns.toFixed(2) : "-"}
                     </td>
                   </>
                 );

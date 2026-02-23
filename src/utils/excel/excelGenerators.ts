@@ -41,7 +41,7 @@ export class ExcelGenerator {
       worksheet.columns.forEach(column => {
         if (column.values) {
           const maxLength = Math.max(
-            ...column.values.map(value => 
+            ...column.values.map(value =>
               value ? value.toString().length : 0
             )
           );
@@ -154,7 +154,7 @@ export class ExcelGenerator {
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     });
-    
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -310,7 +310,7 @@ export async function generateScheduleStyledExcel(
 
   // Column setup: Empty A + Officer Name + Empty Column + 7 days + Total = 11 columns
   const totalColumns = 11;
-  
+
   // Set column widths
   worksheet.columns = [
     { header: '', key: 'emptyA', width: 5 },       // Empty column A - 2px width
@@ -319,11 +319,11 @@ export async function generateScheduleStyledExcel(
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
     { header: '', key: 'total', width: 6 }         // Total - narrow width for word only
   ];
-  
+
   // Increase width for merged columns in row 3 only
   // Note: These widths only affect the merged cells in row 3, not the header row
   worksheet.getColumn(2).width = 30;  // Column B (Client Name) - increased width for row 3
-  
+
   // Set equal width for columns E, F, G, H, I, J
   const equalWidth = 15;  // Same width for all these columns
   worksheet.getColumn(5).width = equalWidth;  // Column E
@@ -340,14 +340,14 @@ export async function generateScheduleStyledExcel(
 
   // Title row - dynamic based on report type (starting from column B)
   worksheet.mergeCells(currentRow, 2, currentRow, totalColumns);
-  
+
   // Merge column A across all rows (will be set after all rows are created)
   const startRowForColumnA = currentRow;
   const titleCell = worksheet.getCell(currentRow, 2);
   titleCell.value = reportType === 'actual' ? 'Actual Time' : 'Scheduled';
   titleCell.font = { bold: true, italic: true, size: 14, name: 'Aptos Narrow' };
   titleCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-  
+
   // No border around title - it's outside the table
   // Remove any default borders by not setting border property
   currentRow++;
@@ -393,7 +393,7 @@ export async function generateScheduleStyledExcel(
     ]
   };
   weekEndingCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-  
+
   // Add borders to meta row
   for (let col = 1; col <= totalColumns; col++) {
     const cell = worksheet.getCell(currentRow, col);
@@ -411,11 +411,11 @@ export async function generateScheduleStyledExcel(
   const headerRow = worksheet.getRow(currentRow);
   headerRow.values = headerValues;
   headerRow.height = 20;
-  
+
   headerRow.eachCell((cell, colNumber) => {
     cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
-    cell.alignment = { 
-      horizontal: colNumber === 2 ? 'left' : 'center', 
+    cell.alignment = {
+      horizontal: colNumber === 2 ? 'left' : 'center',
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
@@ -622,18 +622,18 @@ export async function generateScheduleStyledExcel(
       });
     });
     weeklyGrandTotal += dayTotal;
-    grandValues[3 + dayIndex] = dayTotal > 0 ? dayTotal : '';
+    grandValues[3 + dayIndex] = dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : '';
   });
-  grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
-  
+  grandValues[totalColumns - 1] = weeklyGrandTotal > 0 ? parseFloat(weeklyGrandTotal.toFixed(2)) : '';
+
   grandRow.values = grandValues;
   grandRow.height = 20;
-  
+
   // Style the grand total row
   grandRow.eachCell((cell, colNumber) => {
     cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
-    cell.alignment = { 
-      horizontal: colNumber === 2 ? 'left' : 'center', 
+    cell.alignment = {
+      horizontal: colNumber === 2 ? 'left' : 'center',
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
@@ -648,7 +648,7 @@ export async function generateScheduleStyledExcel(
   // Merge column A across all rows
   const endRowForColumnA = currentRow;
   worksheet.mergeCells(startRowForColumnA, 1, endRowForColumnA, 1);
-  
+
   // Set empty value for merged column A
   const columnACell = worksheet.getCell(startRowForColumnA, 1);
   columnACell.value = '';
@@ -665,7 +665,7 @@ export async function generateScheduleStyledExcel(
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
-  
+
   const reportTypeText = reportType === 'actual' ? 'Actual_Time' : 'Schedule';
   const fileName = `${reportTypeText}_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
   const url = URL.createObjectURL(blob);
@@ -704,7 +704,7 @@ export async function generateScheduledFormatExcel(
 
   // Column setup: Empty A + Officer Name + Empty Column + 7 days + Total = 11 columns
   const totalColumns = 11;
-  
+
   // Set column widths
   worksheet.columns = [
     { header: '', key: 'emptyA', width: 2 },       // Empty column A - 2px width
@@ -713,11 +713,11 @@ export async function generateScheduledFormatExcel(
     ...weekDates.map(() => ({ header: '', key: 'd', width: 12 })), // 7 days
     { header: '', key: 'total', width: 6 }         // Total - narrow width for word only
   ];
-  
+
   // Increase width for merged columns in row 3 only
   // Note: These widths only affect the merged cells in row 3, not the header row
   worksheet.getColumn(2).width = 30;  // Column B (Client Name) - increased width for row 3
-  
+
   // Set equal width for columns E, F, G, H, I, J
   const equalWidth = 15;  // Same width for all these columns
   worksheet.getColumn(5).width = equalWidth;  // Column E
@@ -734,14 +734,14 @@ export async function generateScheduledFormatExcel(
 
   // Title row - "Scheduled" (Row 2)
   worksheet.mergeCells(currentRow, 2, currentRow, totalColumns);
-  
+
   // Merge column A across all rows (will be set after all rows are created)
   const startRowForColumnA = currentRow;
   const titleCell = worksheet.getCell(currentRow, 2);
   titleCell.value = 'Scheduled';
   titleCell.font = { bold: true, italic: true, size: 14, name: 'Aptos Narrow' };
   titleCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-  
+
   // No border around title - it's outside the table
   // Remove any default borders by not setting border property  
 
@@ -761,7 +761,7 @@ export async function generateScheduledFormatExcel(
     .filter(Boolean)
     .join(', ');
   const weekEnding = formatMMDDYY(new Date(currentWeekRange.endOfWeek));
-  
+
   // Fill meta info - starting from column B with mixed formatting
   const clientNameCell = worksheet.getCell(currentRow, 2);
   clientNameCell.value = {
@@ -789,7 +789,7 @@ export async function generateScheduledFormatExcel(
     ]
   };
   weekEndingCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-  
+
   // Add borders to meta row
   for (let col = 1; col <= totalColumns; col++) {
     const cell = worksheet.getCell(currentRow, col);
@@ -807,11 +807,11 @@ export async function generateScheduledFormatExcel(
   const headerRow = worksheet.getRow(currentRow);
   headerRow.values = headerValues;
   headerRow.height = 20;
-  
+
   headerRow.eachCell((cell, colNumber) => {
     cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
-    cell.alignment = { 
-      horizontal: colNumber === 2 ? 'left' : 'center', 
+    cell.alignment = {
+      horizontal: colNumber === 2 ? 'left' : 'center',
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
@@ -836,11 +836,11 @@ export async function generateScheduledFormatExcel(
   const shiftHeaderValues1 = ['', '', '', '', ...weekDates.map(() => '00:00-08:00'), ''];
   shiftHeaderRow1.values = shiftHeaderValues1;
   shiftHeaderRow1.height = 18;
-  
+
   shiftHeaderRow1.eachCell((cell, colNumber) => {
     cell.font = { size: 11, name: 'Aptos Narrow' };
-    cell.alignment = { 
-      horizontal: colNumber === 2 ? 'left' : 'center', 
+    cell.alignment = {
+      horizontal: colNumber === 2 ? 'left' : 'center',
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
@@ -858,11 +858,11 @@ export async function generateScheduledFormatExcel(
   const shiftHeaderValues2 = ['', '', '', '', ...weekDates.map(() => '16:00-24:00'), ''];
   shiftHeaderRow2.values = shiftHeaderValues2;
   shiftHeaderRow2.height = 18;
-  
+
   shiftHeaderRow2.eachCell((cell, colNumber) => {
     cell.font = { size: 11, name: 'Aptos Narrow' };
-    cell.alignment = { 
-      horizontal: colNumber === 2 ? 'left' : 'center', 
+    cell.alignment = {
+      horizontal: colNumber === 2 ? 'left' : 'center',
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
@@ -907,29 +907,29 @@ export async function generateScheduledFormatExcel(
   // Add data rows for each user
   users.forEach(([_, data]) => {
     if (!data) return;
-    
+
     const userStartRow = currentRow;
-    
+
     // Calculate total rows needed for this specific user (their actual shifts + 1 total row)
     let userMaxShiftsPerDay = 0;
     dateKeys.forEach(dateKey => {
       const shifts = data.days.get(dateKey) || [];
       userMaxShiftsPerDay = Math.max(userMaxShiftsPerDay, shifts.length);
     });
-    
+
     const userRowsNeeded = userMaxShiftsPerDay + 1;
-    
+
     // Add shift rows (one row per shift index for this specific user)
     for (let shiftIndex = 0; shiftIndex < userMaxShiftsPerDay; shiftIndex++) {
       const row = worksheet.getRow(currentRow);
       const rowValues: (string | number)[] = new Array(totalColumns + 1).fill('');
-      
+
       let weeklyTotalForThisShift = 0;
-      
+
       dateKeys.forEach((dateKey, dayIndex) => {
         const shifts = data.days.get(dateKey) || [];
         const shift = shifts[shiftIndex]; // Get the shift at this index
-        
+
         if (shift) {
           rowValues[4 + dayIndex] = `${shift.startTime} - ${shift.endTime}`; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
           weeklyTotalForThisShift += shift.hours || 8;
@@ -937,12 +937,12 @@ export async function generateScheduledFormatExcel(
           rowValues[4 + dayIndex] = ''; // Empty if no shift at this index
         }
       });
-      
+
       rowValues[totalColumns - 1] = weeklyTotalForThisShift;
-      
+
       row.values = rowValues;
       row.height = 18;
-      
+
       // Style the shift row (skip column 1 since it's merged)
       for (let col = 2; col <= totalColumns; col++) {
         const cell = row.getCell(col);
@@ -962,7 +962,7 @@ export async function generateScheduledFormatExcel(
     const totalRow = worksheet.getRow(currentRow);
     const totalValues: (string | number)[] = new Array(totalColumns + 1).fill('');
     totalValues[1] = 'Total'; // This will be in the merged cell area but won't show
-    
+
     let weeklyGrandTotal = 0;
     dateKeys.forEach((dateKey, dayIndex) => {
       const shifts = data.days.get(dateKey) || [];
@@ -970,11 +970,11 @@ export async function generateScheduledFormatExcel(
       totalValues[4 + dayIndex] = dayTotal > 0 ? dayTotal : ''; // +4 because we have Empty A (col 1) + Officer Name (col 2) + Empty (col 3) + Date columns starting at col 4
       weeklyGrandTotal += dayTotal;
     });
-    
+
     totalValues[totalColumns - 1] = weeklyGrandTotal > 0 ? weeklyGrandTotal : '';
     totalRow.values = totalValues;
     totalRow.height = 18;
-    
+
     // Style the total row
     for (let col = 2; col <= totalColumns; col++) {
       const cell = totalRow.getCell(col);
@@ -988,11 +988,11 @@ export async function generateScheduledFormatExcel(
       };
     }
     currentRow++;
-    
+
     // Now merge the officer name cell vertically across all rows for this user
     const userEndRow = currentRow - 1;
     worksheet.mergeCells(userStartRow, 2, userEndRow, 2);
-    
+
     // Set the officer name in the merged cell
     const nameCell = worksheet.getCell(userStartRow, 2);
     nameCell.value = data.name;
@@ -1026,12 +1026,12 @@ export async function generateScheduledFormatExcel(
 
   grandRow.values = grandValues;
   grandRow.height = 20;
-  
+
   // Style the grand total row
   grandRow.eachCell((cell, colNumber) => {
     cell.font = { bold: true, italic: false, size: 11, name: 'Aptos Narrow' };
-    cell.alignment = { 
-      horizontal: colNumber === 2 ? 'left' : 'center', 
+    cell.alignment = {
+      horizontal: colNumber === 2 ? 'left' : 'center',
       vertical: 'middle',
       indent: colNumber === 2 ? 1 : 0
     };
@@ -1046,7 +1046,7 @@ export async function generateScheduledFormatExcel(
   // Merge column A across all rows
   const endRowForColumnA = currentRow;
   worksheet.mergeCells(startRowForColumnA, 1, endRowForColumnA, 1);
-  
+
   // Set empty value for merged column A
   const columnACell = worksheet.getCell(startRowForColumnA, 1);
   columnACell.value = '';
@@ -1063,7 +1063,7 @@ export async function generateScheduledFormatExcel(
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
-  
+
   const fileName = `Scheduled_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1083,10 +1083,10 @@ export function generateExcelFileLegacy(data: any[]): Promise<Blob> {
   // Implementation would depend on the specific data structure
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Sheet1');
-  
+
   // Add data to worksheet
   worksheet.addRows(data);
-  
+
   // Return a promise that resolves to a blob
   return workbook.xlsx.writeBuffer().then(buffer => {
     return new Blob([buffer], {
