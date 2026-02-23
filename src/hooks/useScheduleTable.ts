@@ -604,10 +604,50 @@ export const useScheduleTable = ({
                 return;
             }
 
-            // Mark draft sessions for deletion (current week only)
-            if (draftScheduleSessionIds.size > 0) {
-                const draftInput = Array.from(draftScheduleSessionIds)
-                    .map((id) => ({ draftScheduleSessionId: id, isDelete: true }));
+            // Collect other users' pending deleted draft shifts and group them by session so
+            // they are sent as { scheduleSessionId/draftScheduleSessionId, shifts: [...], auto }
+            // entries in the same createDraftScheduleSessions call.
+            const otherUsersSessionMap = new Map<string, { sessionKey: any; shifts: any[]; auto: boolean }>();
+            scheduleData.forEach((item) => {
+                if (item.userId === userId) return; // skip the user being deleted
+                item.shifts.forEach((s: any) => {
+                    if (!s?.isDelete || !s?.draftShiftId) return;
+
+                    const mapKey = s.draftScheduleSessionId
+                        ? `draft-${s.draftScheduleSessionId}`
+                        : `existing-${s.scheduleSessionId}`;
+
+                    if (!otherUsersSessionMap.has(mapKey)) {
+                        otherUsersSessionMap.set(mapKey, {
+                            sessionKey: s.draftScheduleSessionId
+                                ? { draftScheduleSessionId: s.draftScheduleSessionId }
+                                : { scheduleSessionId: s.scheduleSessionId },
+                            shifts: [],
+                            auto: item.auto || false,
+                        });
+                    }
+
+                    otherUsersSessionMap.get(mapKey)!.shifts.push({
+                        isDelete: true,
+                        startTime: s.startTime,
+                        endTime: s.endTime,
+                        hours: s.hours,
+                        auto: s.auto || false,
+                        date: s.date?.includes("T") ? formatDateFromISO(s.date) : s.date,
+                        draftShiftId: s.draftShiftId,
+                    });
+                });
+            });
+
+            const otherUsersSessionEntries = Array.from(otherUsersSessionMap.values())
+                .map(({ sessionKey, shifts, auto }) => ({ ...sessionKey, shifts, auto }));
+
+            const hasDraftChanges = draftScheduleSessionIds.size > 0 || otherUsersSessionEntries.length > 0;
+            if (hasDraftChanges) {
+                const draftInput: any[] = [
+                    ...Array.from(draftScheduleSessionIds).map((id) => ({ draftScheduleSessionId: id, isDelete: true })),
+                    ...otherUsersSessionEntries,
+                ];
                 await graphQLClient.request(
                     CREATE_DRAFT_SCHEDULE_SESSIONS,
                     { input: draftInput },
@@ -692,10 +732,50 @@ export const useScheduleTable = ({
                 return;
             }
 
-            // Mark draft sessions for deletion (current week only)
-            if (draftScheduleSessionIds.size > 0) {
-                const draftInput = Array.from(draftScheduleSessionIds)
-                    .map((id) => ({ draftScheduleSessionId: id, isDelete: true }));
+            // Collect other users' pending deleted draft shifts and group them by session so
+            // they are sent as { scheduleSessionId/draftScheduleSessionId, shifts: [...], auto }
+            // entries in the same createDraftScheduleSessions call.
+            const otherUsersSessionMap = new Map<string, { sessionKey: any; shifts: any[]; auto: boolean }>();
+            scheduleData.forEach((item) => {
+                if (item.userId === userId) return; // skip the user being deleted
+                item.shifts.forEach((s: any) => {
+                    if (!s?.isDelete || !s?.draftShiftId) return;
+
+                    const mapKey = s.draftScheduleSessionId
+                        ? `draft-${s.draftScheduleSessionId}`
+                        : `existing-${s.scheduleSessionId}`;
+
+                    if (!otherUsersSessionMap.has(mapKey)) {
+                        otherUsersSessionMap.set(mapKey, {
+                            sessionKey: s.draftScheduleSessionId
+                                ? { draftScheduleSessionId: s.draftScheduleSessionId }
+                                : { scheduleSessionId: s.scheduleSessionId },
+                            shifts: [],
+                            auto: item.auto || false,
+                        });
+                    }
+
+                    otherUsersSessionMap.get(mapKey)!.shifts.push({
+                        isDelete: true,
+                        startTime: s.startTime,
+                        endTime: s.endTime,
+                        hours: s.hours,
+                        auto: s.auto || false,
+                        date: s.date?.includes("T") ? formatDateFromISO(s.date) : s.date,
+                        draftShiftId: s.draftShiftId,
+                    });
+                });
+            });
+
+            const otherUsersSessionEntries = Array.from(otherUsersSessionMap.values())
+                .map(({ sessionKey, shifts, auto }) => ({ ...sessionKey, shifts, auto }));
+
+            const hasDraftChanges = draftScheduleSessionIds.size > 0 || otherUsersSessionEntries.length > 0;
+            if (hasDraftChanges) {
+                const draftInput: any[] = [
+                    ...Array.from(draftScheduleSessionIds).map((id) => ({ draftScheduleSessionId: id, isDelete: true })),
+                    ...otherUsersSessionEntries,
+                ];
                 await graphQLClient.request(
                     CREATE_DRAFT_SCHEDULE_SESSIONS,
                     { input: draftInput },
