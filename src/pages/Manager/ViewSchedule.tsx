@@ -2325,13 +2325,21 @@ export const ViewSchedule = () => {
           // only send if changed/new/deleted
           if (!isShiftChanged(shift, item)) return;
 
-          // Published shift that is only edited: keep in published session; do not send to draft (only Publish will update it)
+          // Rule: a shift with a real server-assigned DB id (shiftId != null, not client-generated)
+          // is already a published shift — it cannot be saved as a draft (only Publish updates it).
+          // A shift with shiftId == null (new/drag-drop) CAN become a draft via Save.
+          //
+          // "Client-generated" synthetic ids: Date.now() ≈ 1.74T (drag-drop) — both > 1_000_000_000_000.
+          // Real DB ids are always small integers well below 1T.
+          // We also check !shift.isDraft as an explicit guard for drag-drop copies.
+          const isRealDbId = shift.id != null &&
+            !shift.isDraft &&
+            Number(shift.id) < 1_000_000_000_000; // matches publish path's isClientGeneratedId threshold
           const isEditedPublishedShift =
             scheduleSessionId != null &&
             !draftScheduleSessionId &&
             !draftShiftId &&
-            shift.id != null &&
-            Number(shift.id) < 2000000000000;
+            isRealDbId;
           if (isEditedPublishedShift) return;
 
           const shiftDate = convertDateFormat(shift.date || item.startDate);
@@ -2357,14 +2365,16 @@ export const ViewSchedule = () => {
         });
       });
 
-      // When a draft session has only 1 shift and that shift is deleted, delete the whole draft session via API
+      // Delete the entire draft session only when ALL its shifts are deleted (no active shifts remain).
+      // Previously this checked shiftsToSend.length === 1, which incorrectly fired when just 1 of
+      // many shifts was deleted (only the changed/deleted shifts are in shiftsToSend).
       const draftSessionIdsToDelete = new Set<number>();
-      draftSessionMap.forEach((group, sessionKey) => {
-        if (
-          group.draftScheduleSessionId != null &&
-          group.shiftsToSend.length === 1 &&
-          group.shiftsToSend[0]?.isDelete === true
-        ) {
+      draftSessionMap.forEach((group) => {
+        if (group.draftScheduleSessionId == null) return;
+        const totalShifts = group.shiftsForHours.length;
+        const deletedShifts = group.shiftsForHours.filter((s) => s.isDelete).length;
+        // Only call deleteDraftSchedule when every shift in the session is deleted
+        if (totalShifts > 0 && deletedShifts === totalShifts) {
           draftSessionIdsToDelete.add(group.draftScheduleSessionId);
         }
       });
@@ -2402,7 +2412,7 @@ export const ViewSchedule = () => {
 
       draftSessionMap.forEach((group) => {
         if (group.shiftsToSend.length === 0) return;
-        // Skip draft-only sessions we already deleted via deleteDraftSchedule (single shift deleted)
+        // Skip sessions where all shifts were deleted — already handled by deleteDraftSchedule above
         if (
           group.draftScheduleSessionId != null &&
           draftSessionIdsToDelete.has(group.draftScheduleSessionId)
