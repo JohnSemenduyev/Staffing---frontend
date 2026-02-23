@@ -913,13 +913,25 @@ export const useScheduleTable = ({
         // shift is treated as current-week and will get checkScheduleSessionId from the target user's
         // schedule (or null if none) at save time.
         const sourceIsOverflow = currentWeekRange?.startOfWeek && isOverflowShift(shift.date, currentWeekRange.startOfWeek);
+
+        // For cross-user drops, use the TARGET user's existing session (not the source guard's).
+        // Copying the source session ID to a different user causes the backend to upsert under
+        // the wrong session, effectively deleting the source guard's schedule.
+        const isCrossUserDrop = targetUserId !== sourceUserId;
+        const targetUserSchedule = getScheduleItem(targetUserId, targetDate);
+        const resolvedScheduleSessionId = sourceIsOverflow
+            ? undefined
+            : isCrossUserDrop
+                ? (targetUserSchedule?.shifts?.find((s: any) => s.scheduleSessionId)?.scheduleSessionId ?? null)
+                : sourceSchedule.shifts[0]?.scheduleSessionId;
+
         const createCopiedShift = (): any => ({
             ...shift,
             id: Date.now(),
             date: targetDate,
             confirm: false,
             reject: false,
-            scheduleSessionId: sourceIsOverflow ? undefined : sourceSchedule.shifts[0]?.scheduleSessionId,
+            scheduleSessionId: resolvedScheduleSessionId,
             draftShiftId: null,
             draftScheduleSessionId: null,
             isDraft: true,
@@ -1036,7 +1048,7 @@ export const useScheduleTable = ({
                     return { ...item, shifts: sortShiftsByTime(updatedShifts) };
                 }
                 return item;
-            }); 
+            });
         } else {
             // Create new ScheduleItem. Use target row's clientId/addressId when provided so
             // checkScheduleSessionId is looked up correctly for (targetClientId, targetAddressId, targetUserId)

@@ -753,13 +753,14 @@ export const ViewSchedule = () => {
         (scheduleSessions && scheduleSessions.length > 0) ||
         (draftScheduleSessions && draftScheduleSessions.length > 0);
 
-      let hasCurrentOrPreviousWeekData = false;
+      let hasCurrentWeekData = false;
       if (hasAnyData && (selectedDate || targetDate)) {
         const baseDate = parseLocalYMD(selectedDate || targetDate || toLocalYMD(new Date()));
         const weekRange = getWeekRangeFromDateLocal(baseDate);
-        const startOfNextWeek = new Date(weekRange.startOfWeek);
-        startOfNextWeek.setDate(startOfNextWeek.getDate() + 7);
-        const startOfNextWeekStr = formatDateLocal(startOfNextWeek);
+        const startOfWeekStr = formatDateLocal(weekRange.startOfWeek);
+        const endOfWeek = new Date(weekRange.startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
+        const endOfWeekStr = formatDateLocal(endOfWeek);
         const normDate = (raw: string) => {
           if (!raw) return "";
           if (String(raw).includes("T")) return String(raw).split("T")[0];
@@ -768,10 +769,12 @@ export const ViewSchedule = () => {
         const checkShifts = (groups: any[]) => {
           groups.forEach((group: any) => {
             group.shifts?.forEach((shift: any) => {
-              if (shift?.date && normDate(shift.date) < startOfNextWeekStr) hasCurrentOrPreviousWeekData = true;
+              const d = shift?.date ? normDate(shift.date) : "";
+              if (d && d >= startOfWeekStr && d <= endOfWeekStr) hasCurrentWeekData = true;
             });
             group.draftShifts?.forEach((shift: any) => {
-              if (shift?.date && normDate(shift.date) < startOfNextWeekStr) hasCurrentOrPreviousWeekData = true;
+              const d = shift?.date ? normDate(shift.date) : "";
+              if (d && d >= startOfWeekStr && d <= endOfWeekStr) hasCurrentWeekData = true;
             });
           });
         };
@@ -779,9 +782,9 @@ export const ViewSchedule = () => {
         checkShifts(draftScheduleSessions);
       }
 
-      // Show "No Schedule Found" when: (1) no data at all, or (2) shifts exist but only from next week (no current or previous week)
+      // Show "No Schedule Found" when: (1) no data at all, or (2) data exists but none falls within the current week
       const noDataAtAll = !hasAnyData;
-      const onlyNextWeekShifts = hasAnyData && !!(selectedDate || targetDate) && !hasCurrentOrPreviousWeekData;
+      const onlyNextWeekShifts = hasAnyData && !!(selectedDate || targetDate) && !hasCurrentWeekData;
 
       // -------------------------
       // 1. No schedule / draft data (current or previous week)
@@ -1905,7 +1908,21 @@ export const ViewSchedule = () => {
         // Change detection: compare shifts for this specific group (clientId + addressId + userId)
         let changed = false;
 
-        // Get original shifts for this specific group (filtered by clientId, addressId, and userId)
+        // Get original shifts for this specific group - ONLY within the current week window.
+        // The outer loop already filters currentSet to [startDate, endDate]; we must apply the
+        // SAME date filter to originalGroupShifts so the set-size comparison is apples-to-apples.
+        // Without this filter, a user with shifts from ANY other week would always appear changed.
+        const normShiftDateForCompare = (raw: string): string => {
+          if (!raw) return "";
+          if (raw.includes("T")) return raw.split("T")[0];
+          // YYYY-MM-DD already
+          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+          // MM-DD-YYYY → YYYY-MM-DD
+          const parts = raw.split("-");
+          if (parts.length === 3 && parts[2].length === 4) return `${parts[2]}-${parts[0]}-${parts[1]}`;
+          return formatDateLocal(new Date(raw));
+        };
+
         const originalGroupShifts = originalScheduleData
           .filter(item =>
             item.userId === group.userId &&
@@ -1913,7 +1930,12 @@ export const ViewSchedule = () => {
             item.addressId === group.addressId
           )
           .flatMap(item => item.shifts)
-          .filter((s: any) => !s.isDelete);
+          .filter((s: any) => {
+            if (s.isDelete) return false;
+            // Only include shifts that fall inside the current week range
+            const d = normShiftDateForCompare(s.date);
+            return d >= startDate && d <= endDate;
+          });
 
         // Create sets of shift keys for comparison
         const originalSet = new Set<string>();
@@ -1952,9 +1974,20 @@ export const ViewSchedule = () => {
           }
         }
 
-        // Also check for draft shifts and auto changes
+        // Also check for draft shifts and auto changes.
+        // autoChangedForUser is scoped to ONLY the current-week items for this specific group
+        // (userId + clientId + addressId) so that an auto-toggle on one guard does not mark
+        // every other guard's group as changed.
         if (group.hasDraftShifts) changed = true;
-        if (autoChangedForUser(group.userId, scheduleData, originalScheduleData)) changed = true;
+        if (!changed) {
+          const groupCurrentItems = scheduleData.filter(
+            i => i.userId === group.userId && i.clientId === group.clientId && i.addressId === group.addressId
+          );
+          const groupOriginalItems = originalScheduleData.filter(
+            i => i.userId === group.userId && i.clientId === group.clientId && i.addressId === group.addressId
+          );
+          if (autoChangedForUser(group.userId, groupCurrentItems, groupOriginalItems)) changed = true;
+        }
 
         const mapKey = `${group.clientId}-${group.addressId}-${group.userId}`;
         const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;

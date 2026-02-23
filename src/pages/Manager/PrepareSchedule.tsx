@@ -40,7 +40,6 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { useToast } from "../../hooks/use-toast";
 import ResetButton from "../../components/ui/ResetButton";
-import { GET_TIME_SETUP } from "../../graphql/queries";
 
 // Local utility functions
 // Time utils moved to src/lib/utils.ts
@@ -236,7 +235,6 @@ export const PrepareSchedule = () => {
     starttime: "",
     endtime: "",
   });
-  const [timeSetupId, setTimeSetupId] = useState<number | undefined>(undefined);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [clientSearch, setClientSearch] = useState("");
@@ -433,35 +431,6 @@ export const PrepareSchedule = () => {
       addressId: String(addressId),
     }));
 
-    // Explicitly fetch TimeSetup for the selected client and address
-    (async () => {
-      try {
-        const token = sessionStorage.getItem('token');
-        if (client.id && addressId && token) {
-          const response = await graphQLClient.request<any>(
-            GET_TIME_SETUP,
-            {
-              filter: {
-                clientId: Number(client.id),
-                addressId: Number(addressId)
-              }
-            },
-            { Authorization: `Bearer ${token}` }
-          );
-          if (response?.timeSetup?.data?.length > 0) {
-            const setup = response.timeSetup.data[0];
-            console.log("Fetched TimeSetup:", setup);
-            setTimeSetupId(setup.id);
-          } else {
-            console.warn("No TimeSetup found for this client/address");
-            setTimeSetupId(undefined);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching TimeSetup:", err);
-        setTimeSetupId(undefined);
-      }
-    })();
 
     const fullClientName = [client.name, client.lastName].filter(Boolean).join(" ");
     setClientSearch(fullClientName);
@@ -824,7 +793,6 @@ export const PrepareSchedule = () => {
           weeklyHours: weeklyHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false,
-          timeSetupId: timeSetupId // Pass the captured timeSetupId
         });
       }
 
