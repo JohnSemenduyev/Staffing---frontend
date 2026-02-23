@@ -423,10 +423,16 @@ export const useActualTimeTable = ({
         }
         const sIn = timeToMinutes(session.clockIn);
         const sOut = timeToMinutes(session.clockOut);
-        // Same-day: sIn < sOut. When sIn >= sOut (including 24h clockIn === clockOut) treat as spanning midnight.
+        // Same-day: strictly start < end.
         if (sIn < sOut) {
             return sessionDate === d ? calculateHours(session.clockIn, session.clockOut) : 0;
         }
+        // clockOut "00:00" = end of day (midnight). All hours on the session's start date; nothing on next day.
+        // Without this, calculateHours("00:00","00:00") on the next day wrongly returns 24.
+        if (sOut === 0) {
+            return sessionDate === d ? calculateHours(session.clockIn, "24:00") : 0;
+        }
+        // True overnight (clockOut > "00:00"): split across two days.
         const startDate = sessionDate;
         const endDate = sessionDate ? getAdjustedDate(sessionDate, 1) : "";
         if (d === startDate) return calculateHours(session.clockIn, "24:00");

@@ -127,7 +127,7 @@ export const generateSchedulePrintableTable = (
     '10%',   // Day 7
     '7%'    // Total
   ];
-  
+
   const headerRow = headers.map((header, index) => {
     const isOfficerName = header === 'Officer Name';
     const textAlign = isOfficerName ? 'left' : 'center';
@@ -146,10 +146,10 @@ export const generateSchedulePrintableTable = (
       </td>
       <td colspan="2" style="padding: 0px 10px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: '2-digit'
-        }) : ''}
+    month: '2-digit',
+    day: '2-digit',
+    year: '2-digit'
+  }) : ''}
       </td>
     </tr>
   `;
@@ -276,11 +276,11 @@ export const generateSchedulePrintableTable = (
   usersInDisplayOrder.forEach(user => {
     const maxShifts = getMaxShiftsPerDay(user.id);
     const totalRows = maxShifts + 1; // +1 for Total row
-    
+
     // Data rows for shifts (visual shifts: overnight + overflow)
     for (let rowIdx = 0; rowIdx < maxShifts; rowIdx++) {
       const cells = [];
-      
+
       if (rowIdx === 0) {
         cells.push(`
           <td style="padding: 0px 6px 0px 12px; text-align: left; font-size: 15px; font-weight: normal; border: 1px solid black !important;" rowspan="${totalRows}">
@@ -288,7 +288,7 @@ export const generateSchedulePrintableTable = (
           </td>
         `);
         cells.push(`
-          <td style="border: 1px solid black; padding: 0px 2px; text-align: center; font-size: 15px;" rowspan="${totalRows-1}">
+          <td style="border: 1px solid black; padding: 0px 2px; text-align: center; font-size: 15px;" rowspan="${totalRows - 1}">
             
           </td>
         `);
@@ -316,7 +316,7 @@ export const generateSchedulePrintableTable = (
           `);
         }
       }
-      
+
       cells.push(`
         <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
           ${rowTotal > 0 ? rowTotal.toFixed(2) : ''}
@@ -427,11 +427,11 @@ export const generateActualTimePrintableTable = (
     if (!session.clockIn || !session.clockOut) {
       return (session.workedTime || 0) / 60;
     }
-    
+
     if (session.clockIn === session.clockOut) {
       return 24.0;
     }
-    
+
     const calculateHours = (start: string, end: string) => {
       const [startH, startM] = start.split(":").map(Number);
       const [endH, endM] = end.split(":").map(Number);
@@ -439,7 +439,7 @@ export const generateActualTimePrintableTable = (
       if (hours <= 0) hours += 24;
       return parseFloat(hours.toFixed(2));
     };
-    
+
     return calculateHours(session.clockIn, session.clockOut);
   };
 
@@ -498,11 +498,16 @@ export const generateActualTimePrintableTable = (
     }
     const sIn = timeToMinutes(session.clockIn);
     const sOut = timeToMinutes(session.clockOut);
-    // Same-day only when strictly start < end (not 24-hour)
+    // Same-day: strictly start < end
     if (sIn < sOut) {
       return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
     }
-    // Overnight or 24-hour (start >= end or start === end): split into day1 = start..24:00, day2 = 00:00..end
+    // clockOut "00:00" = end of day (midnight). All hours fall on the session's start date; nothing spills to next day.
+    // Without this check, calculateHours("00:00", "00:00") on the next day would return 24 (wrong).
+    if (sOut === 0) {
+      return sessionDate === dateStr ? calculateHours(session.clockIn, '24:00') : 0;
+    }
+    // True overnight (sIn > sOut and clockOut > "00:00"): split across two days
     const startDate = sessionDate;
     const endDate = getAdjustedDate(sessionDate, 1);
     if (dateStr === startDate) return calculateHours(session.clockIn, '24:00');
@@ -524,11 +529,15 @@ export const generateActualTimePrintableTable = (
     const sessionDate = normDate(shift.date);
     const sIn = timeToMinutes(session.clockIn);
     const sOut = timeToMinutes(session.clockOut);
-    // Same-day only when strictly start < end (not 24-hour)
+    // Same-day: strictly start < end
     if (sIn < sOut) {
       return { displayStart: session.clockIn, displayEnd: session.clockOut };
     }
-    // Overnight or 24-hour: first day clockIn-24:00, next day 00:00-clockOut
+    // clockOut "00:00" = end of day (midnight): show original times, no next-day split
+    if (sOut === 0) {
+      return dateStr === sessionDate ? { displayStart: session.clockIn, displayEnd: session.clockOut } : null;
+    }
+    // True overnight: first day clockIn-24:00, next day 00:00-clockOut
     const endDate = getAdjustedDate(sessionDate, 1);
     if (dateStr === sessionDate) return { displayStart: session.clockIn, displayEnd: '24:00' };
     if (dateStr === endDate || (sessionDate < weekStartStr && dateStr === weekStartStr)) {
@@ -552,12 +561,21 @@ export const generateActualTimePrintableTable = (
   };
 
   const calculateUserTotal = (userId: number) => {
-    const total = sessionData
-      .filter(item => {
-        const scheduleItem = scheduleData.find(si => si.shifts.some((shift: any) => shift.id === item.shiftId));
-        return scheduleItem && scheduleItem.userId === userId;
-      })
-      .reduce((t, item) => t + calculateWorkedTimeWith24HourLogic(item), 0);
+    if (!currentWeekRange) return 0;
+    const userSessions = sessionData.filter(item => {
+      const scheduleItem = scheduleData.find(si => si.shifts.some((shift: any) => shift.id === item.shiftId));
+      return scheduleItem && scheduleItem.userId === userId;
+    });
+    const startDate = new Date(currentWeekRange.startOfWeek);
+    let total = 0;
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateStr = toLocalYMD(date);
+      userSessions.forEach(item => {
+        total += getSessionHoursOnDate(item, dateStr);
+      });
+    }
     return parseFloat(total.toFixed(2));
   };
 
@@ -638,10 +656,10 @@ export const generateActualTimePrintableTable = (
       </td>
       <td colspan="2" style="padding: 0px 10px; text-align: left; font-size: 15px; background-color: #FFFEFEFF; line-height: 1.4; height: 22px; vertical-align: middle; border: 1px solid black !important;">
         <strong>Week Ending:</strong> ${currentWeekRange ? new Date(currentWeekRange.endOfWeek).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: '2-digit'
-        }) : ''}
+    month: '2-digit',
+    day: '2-digit',
+    year: '2-digit'
+  }) : ''}
       </td>
     </tr>
   `;
@@ -656,7 +674,7 @@ export const generateActualTimePrintableTable = (
     // Data rows for shifts
     for (let rowIdx = 0; rowIdx < maxShifts; rowIdx++) {
       const cells = [];
-      
+
       // Officer name (spans all rows including Total)
       if (rowIdx === 0) {
         cells.push(`
@@ -664,10 +682,10 @@ export const generateActualTimePrintableTable = (
             ${user.name}
           </td>
         `);
-        
+
         // Empty column (spans all rows including Total)
         cells.push(`
-          <td style="border-left: 1px solid black !important; border-right: 1px solid black !important; border-top: 1px solid black !important; border-bottom: none !important; padding: 0px 6px; text-align: center; font-size: 15px;" rowspan="${totalRows -1 }">
+          <td style="border-left: 1px solid black !important; border-right: 1px solid black !important; border-top: 1px solid black !important; border-bottom: none !important; padding: 0px 6px; text-align: center; font-size: 15px;" rowspan="${totalRows - 1}">
             
           </td>
         `);
@@ -713,7 +731,7 @@ export const generateActualTimePrintableTable = (
           `);
         }
       }
-      
+
       cells.push(`
         <td style="border: 1px solid black !important; padding: 0px 6px; text-align: center; font-size: 15px;">
           ${rowTotal > 0 ? rowTotal.toFixed(2) : ''}
@@ -816,7 +834,7 @@ export const generatePrintContent = (
     year: 'numeric'
   });
   const generatedTimeStr = new Date().toLocaleTimeString();
-  
+
   return `
     <!DOCTYPE html>
     <html>
@@ -913,7 +931,7 @@ export const handlePrint = async (
 ) => {
   try {
     const printContent = generatePrintContent(tableContent, options);
-    
+
     const printWindow = window.open("", "_blank", "width=900,height=700,scrollbars=yes,resizable=yes");
 
     if (!printWindow) {
@@ -923,7 +941,7 @@ export const handlePrint = async (
 
     printWindow.document.write(printContent);
     printWindow.document.close();
-    
+
     setTimeout(() => {
       try {
         printWindow.print();
@@ -935,7 +953,7 @@ export const handlePrint = async (
         printWindow.close();
       }
     }, 500);
-    
+
   } catch (error) {
     console.error("Error in print operation:", error);
     onError?.("Failed to generate print content");
@@ -943,7 +961,7 @@ export const handlePrint = async (
 };
 // US state name -> abbreviation map
 const STATE_ABBR: Record<string, string> = {
-  'Alabama': 'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY','American Samoa':'AS','District of Columbia':'DC','Guam':'GU','Northern Mariana Islands':'MP','Puerto Rico':'PR','Trust Territories':'TT','Virgin Islands':'VI'
+  'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC', 'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY', 'American Samoa': 'AS', 'District of Columbia': 'DC', 'Guam': 'GU', 'Northern Mariana Islands': 'MP', 'Puerto Rico': 'PR', 'Trust Territories': 'TT', 'Virgin Islands': 'VI'
 };
 
 const formatStateWithAbbr = (state?: string) => {

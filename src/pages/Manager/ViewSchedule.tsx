@@ -1161,14 +1161,14 @@ export const ViewSchedule = () => {
         );
         const shiftId = weekRange
           ? Array.from(
-              new Set(
-                transformedData.flatMap((item) =>
-                  item.shifts
-                    .filter((s: any) => isOverflowShift(s.date, weekRange.startOfWeek) && typeof s.id === "number" && s.id > 0)
-                    .map((s: any) => s.id)
-                )
+            new Set(
+              transformedData.flatMap((item) =>
+                item.shifts
+                  .filter((s: any) => isOverflowShift(s.date, weekRange.startOfWeek) && typeof s.id === "number" && s.id > 0)
+                  .map((s: any) => s.id)
               )
             )
+          )
           : [];
 
         if (scheduleSessionIds.length > 0 || shiftId.length > 0) {
@@ -1907,9 +1907,9 @@ export const ViewSchedule = () => {
 
         // Get original shifts for this specific group (filtered by clientId, addressId, and userId)
         const originalGroupShifts = originalScheduleData
-          .filter(item => 
-            item.userId === group.userId && 
-            item.clientId === group.clientId && 
+          .filter(item =>
+            item.userId === group.userId &&
+            item.clientId === group.clientId &&
             item.addressId === group.addressId
           )
           .flatMap(item => item.shifts)
@@ -2857,7 +2857,9 @@ export const ViewSchedule = () => {
           const totalHours = calculateWorkedTimeForExcel(session);
           const cin = session.clockIn!;
           const cout = session.clockOut!;
-          const crossesMidnight = cout < cin || (cin === cout && totalHours >= 24);
+          // clockOut "00:00" = end of day (midnight), NOT an overnight shift.
+          // Exclude it from midnight detection to avoid a spurious next-day entry with 24 extra hours.
+          const crossesMidnight = cout !== '00:00' && (cout < cin || (cin === cout && totalHours >= 24));
           if (crossesMidnight) {
             const hoursStart = calculateHours(cin, '24:00');
             const hoursEnd = calculateHours('00:00', cout);
