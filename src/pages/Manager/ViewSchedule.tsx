@@ -754,6 +754,8 @@ export const ViewSchedule = () => {
         (draftScheduleSessions && draftScheduleSessions.length > 0);
 
       let hasCurrentWeekData = false;
+      let hasPreviousWeekOverflowShifts = false;
+      
       if (hasAnyData && (selectedDate || targetDate)) {
         const baseDate = parseLocalYMD(selectedDate || targetDate || toLocalYMD(new Date()));
         const weekRange = getWeekRangeFromDateLocal(baseDate);
@@ -771,10 +773,12 @@ export const ViewSchedule = () => {
             group.shifts?.forEach((shift: any) => {
               const d = shift?.date ? normDate(shift.date) : "";
               if (d && d >= startOfWeekStr && d <= endOfWeekStr) hasCurrentWeekData = true;
+              if (d && d < startOfWeekStr) hasPreviousWeekOverflowShifts = true;
             });
             group.draftShifts?.forEach((shift: any) => {
               const d = shift?.date ? normDate(shift.date) : "";
               if (d && d >= startOfWeekStr && d <= endOfWeekStr) hasCurrentWeekData = true;
+              if (d && d < startOfWeekStr) hasPreviousWeekOverflowShifts = true;
             });
           });
         };
@@ -782,12 +786,13 @@ export const ViewSchedule = () => {
         checkShifts(draftScheduleSessions);
       }
 
-      // Show "No Schedule Found" when: (1) no data at all, or (2) data exists but none falls within the current week
+      // Show "No Schedule Found" when: (1) no data at all, or (2) data exists but none falls within the current week or previous week overflow
       const noDataAtAll = !hasAnyData;
-      const onlyNextWeekShifts = hasAnyData && !!(selectedDate || targetDate) && !hasCurrentWeekData;
+      const hasDataInOrAroundCurrentWeek = hasCurrentWeekData || hasPreviousWeekOverflowShifts;
+      const onlyNextWeekShifts = hasAnyData && !!(selectedDate || targetDate) && !hasDataInOrAroundCurrentWeek;
 
       // -------------------------
-      // 1. No schedule / draft data (current or previous week)
+      // 1. No schedule / draft data (current week, previous week overflow, or future week only)
       // -------------------------
       if (noDataAtAll || onlyNextWeekShifts) {
         const clientName =
