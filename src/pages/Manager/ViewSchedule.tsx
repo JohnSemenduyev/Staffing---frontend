@@ -1967,7 +1967,7 @@ export const ViewSchedule = () => {
         } else {
           // Check if all current shifts exist in original set
           for (const key of currentSet) {
-            if (!originalSet.has(key)) {
+            if (!originalSet.has(key) ) {
               changed = true;
               break;
             }
@@ -1979,6 +1979,11 @@ export const ViewSchedule = () => {
         // (userId + clientId + addressId) so that an auto-toggle on one guard does not mark
         // every other guard's group as changed.
         if (group.hasDraftShifts) changed = true;
+        // If any shift in this session group is newly-created (shiftId === null),
+        // treat the group as changed so that new shifts are sent to the server.
+        if (!changed && shiftsArray.some((s: any) => s.shiftId == null)) {
+          changed = true;
+        }
         if (!changed) {
           const groupCurrentItems = scheduleData.filter(
             i => i.userId === group.userId && i.clientId === group.clientId && i.addressId === group.addressId
