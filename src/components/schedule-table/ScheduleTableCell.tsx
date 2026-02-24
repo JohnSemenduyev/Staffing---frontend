@@ -141,7 +141,9 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                                     return `${shift.startTime} - 24:00`;
                                 }
                                 // Regular shift
-                                return `${shift.startTime} - ${formatTimeDisplay(shift.endTime)}`;
+                                const startDisplay = shift.startTime === "00:00" ? "00:00" : shift.startTime;
+                                const endDisplay = shift.endTime === "00:00" ? "24:00" : formatTimeDisplay(shift.endTime);
+                                return `${startDisplay} - ${endDisplay}`;
                             })()}
                         </span>
 

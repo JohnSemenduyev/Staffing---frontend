@@ -71,9 +71,11 @@ export const ActualTableCell: React.FC<ActualTableCellProps> = ({
                 <div className="flex flex-col items-center gap-1">
                     {sessions.map(s => {
                         const range = sessionDisplayRange(s, shift);
+                        const displayStart = range.start === "24:00" ? "00:00" : range.start;
+                        const displayEnd = range.end === "24:00" ? "24:00" : range.end;
                         return (
                             <span key={s.id} className="text-xs px-2 py-0.5 rounded-md">
-                                {range.start} – {range.end}
+                                {displayStart} – {displayEnd}
                             </span>
                         );
                     })}
