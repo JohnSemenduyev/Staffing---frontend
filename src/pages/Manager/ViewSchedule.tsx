@@ -2762,7 +2762,7 @@ const scheduleDataForExport = useMemo(() => {
     d.setDate(startDate.getDate() + i);
     currentWeekDates.add(formatDateLocal(d));
   }
-
+  
   const weekStart = currentWeekRange.startOfWeek;
 
   const normDate = (d: string) =>
