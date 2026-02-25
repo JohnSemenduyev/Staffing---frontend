@@ -386,8 +386,8 @@ export const ViewClientSummary = () => {
   // Export column definitions matching the table structure
   const exportColumns: ExportColumn[] = useMemo(() => {
     const baseColumns: ExportColumn[] = [
-      { key: "clientName", header: "Client Name" },
-      { key: "location", header: "Location" },
+      { key: "clientName", header: "Client Name", borderLeft: true, borderRight: true },
+      { key: "location", header: "Location", borderLeft: true, borderRight: true },
     ];
 
     // Add columns based on selected filters (or all if none selected)
@@ -401,35 +401,35 @@ export const ViewClientSummary = () => {
     // Contract vs Scheduled
     if (activeFilterSet.has("contractVsScheduled")) {
       baseColumns.push(
-        { key: "contractHours", header: "Contract Hours" },
-        { key: "totalWeeklyHours", header: "Scheduled Hours" },
-        { key: "diffContractMinusScheduled", header: "Difference" }
+        { key: "contractHours", header: "Contract Hours", borderLeft: true, align: "center" },
+        { key: "totalWeeklyHours", header: "Scheduled Hours", align: "center" },
+        { key: "diffContractMinusScheduled", header: "Difference", borderRight: true, align: "center" }
       );
     }
 
     // Unconfirmed and Rejected
     if (activeFilterSet.has("unconfirmed")) {
-      baseColumns.push({ key: "unconfirmedHours", header: "Unconfirmed Hours" });
+      baseColumns.push({ key: "unconfirmedHours", header: "Unconfirmed Hours", borderLeft: true, borderRight: true, align: "center" });
     }
     if (activeFilterSet.has("rejected")) {
-      baseColumns.push({ key: "rejectedHours", header: "Rejected Hours" });
+      baseColumns.push({ key: "rejectedHours", header: "Rejected Hours", borderLeft: true, borderRight: true, align: "center" });
     }
 
     // Scheduled vs Actual
     if (activeFilterSet.has("scheduledVsActual")) {
       baseColumns.push(
-        { key: "scheduledHoursActual", header: "Scheduled Hours" },
-        { key: "totalActualHours", header: "Actual Hours" },
-        { key: "diffScheduledMinusActual", header: "Difference" }
+        { key: "scheduledHoursActual", header: "Scheduled Hours", borderLeft: true, align: "center" },
+        { key: "totalActualHours", header: "Actual Hours", align: "center" },
+        { key: "diffScheduledMinusActual", header: "Difference", borderRight: true, align: "center" }
       );
     }
 
     // Contract vs Actual
     if (activeFilterSet.has("contractVsActual")) {
       baseColumns.push(
-        { key: "contractHoursActual", header: "Contract Hours" },
-        { key: "totalActualHoursContract", header: "Actual Hours" },
-        { key: "diffContractMinusActual", header: "Difference" }
+        { key: "contractHoursActual", header: "Contract Hours", borderLeft: true, align: "center" },
+        { key: "totalActualHoursContract", header: "Actual Hours", align: "center" },
+        { key: "diffContractMinusActual", header: "Difference", borderRight: true, align: "center" }
       );
     }
 

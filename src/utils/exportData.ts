@@ -14,6 +14,9 @@ export interface ExportColumn {
   header: string;
   width?: number;
   formatter?: (value: any, row: any) => string | number;
+  borderLeft?: boolean;  // Include left border for this column
+  borderRight?: boolean; // Include right border for this column
+  align?: "left" | "center" | "right"; // Text alignment
 }
 
 export interface ExportOptions {
@@ -173,42 +176,98 @@ export async function exportToExcel(
 
     worksheet.addRows(rows);
 
-    // Style header row
-    if (options.includeHeaderStyle !== false) {
-      const headerRow = worksheet.getRow(1);
-      headerRow.font = {
-        bold: true,
-        size: 11,
-        name: "Aptos Narrow",
-        color: { argb: "FF000000" },
-      };
-      headerRow.height = 20;
-      headerRow.alignment = { vertical: "middle" };
-      headerRow.eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFE6EEF5" },
-        };
-        cell.border = {
-          bottom: { style: "thin", color: { argb: "FFB7B7B7" } },
-        };
-      });
-    }
+    // Get the actual number of rows and columns
+    const columnCount = columns.length;
+    const rowCount = worksheet.rowCount;
 
-    // Style data rows
-    const lastRowNum = worksheet.lastRow?.number ?? 1;
-    for (let r = 2; r <= lastRowNum; r++) {
-      const row = worksheet.getRow(r);
-      row.font = {
-        size: 11,
-        name: "Aptos Narrow",
-        color: { argb: "FF000000" },
-      };
-      row.alignment = { vertical: "middle" };
-      row.eachCell((c) => {
-        c.border = { bottom: { style: "thin", color: { argb: "FFF2F2F2" } } };
+    // Create a map of column index to border left/right and alignment properties
+    const columnPropertyMap = new Map<number, { left: boolean; right: boolean; align?: string }>();
+    
+    columns.forEach((col, index) => {
+      const colNum = index + 1;
+      // Default: first column gets left border, last gets right border
+      columnPropertyMap.set(colNum, {
+        left: col.borderLeft !== undefined ? col.borderLeft : colNum === 1,
+        right: col.borderRight !== undefined ? col.borderRight : colNum === columnCount,
+        align: col.align || "left",
       });
+    });
+
+    // Apply borders and alignment to all cells in the worksheet
+    for (let rowNum = 1; rowNum <= rowCount; rowNum++) {
+      const row = worksheet.getRow(rowNum);
+      
+      if (rowNum === 1 && options.includeHeaderStyle !== false) {
+        // Header row
+        row.font = {
+          bold: true,
+          size: 11,
+          name: "Aptos Narrow",
+          color: { argb: "FF000000" },
+        };
+        row.height = 20;
+        row.alignment = { vertical: "middle" };
+        
+        for (let colNum = 1; colNum <= columnCount; colNum++) {
+          const cell = row.getCell(colNum);
+          const colConfig = columnPropertyMap.get(colNum);
+          
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE6EEF5" },
+          };
+          
+          const border: any = {
+            top: { style: "medium", color: { argb: "00000000" } },
+            bottom: { style: "medium", color: { argb: "00000000" } },
+          };
+          
+          if (colConfig?.left) {
+            border.left = { style: "medium", color: { argb: "00000000" } };
+          }
+          if (colConfig?.right) {
+            border.right = { style: "medium", color: { argb: "00000000" } };
+          }
+          
+          cell.border = border;
+          cell.alignment = { 
+            horizontal: (colConfig?.align as any) || "left", 
+            vertical: "middle" 
+          };
+        }
+      } else if (rowNum > 1) {
+        // Data rows
+        row.font = {
+          size: 11,
+          name: "Aptos Narrow",
+          color: { argb: "FF000000" },
+        };
+        row.alignment = { vertical: "middle" };
+        
+        for (let colNum = 1; colNum <= columnCount; colNum++) {
+          const cell = row.getCell(colNum);
+          const colConfig = columnPropertyMap.get(colNum);
+          
+          const border: any = {
+            top: { style: "medium", color: { argb: "00000000" } },
+            bottom: { style: "medium", color: { argb: "00000000" } },
+          };
+          
+          if (colConfig?.left) {
+            border.left = { style: "medium", color: { argb: "00000000" } };
+          }
+          if (colConfig?.right) {
+            border.right = { style: "medium", color: { argb: "00000000" } };
+          }
+          
+          cell.border = border;
+          cell.alignment = { 
+            horizontal: (colConfig?.align as any) || "left", 
+            vertical: "middle" 
+          };
+        }
+      }
     }
 
     // Auto-fit columns
