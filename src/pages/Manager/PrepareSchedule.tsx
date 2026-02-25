@@ -618,6 +618,10 @@ export const PrepareSchedule = () => {
 
         userSchedules.forEach(schedule => {
           schedule.shifts.forEach(shift => {
+            // Skip draft shifts - cannot create sessions for draft shifts
+            if ((shift as any).draftShiftId || (shift as any).draftScheduleSessionId) {
+              return;
+            }
             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
             if (!shiftMap.has(shiftKey)) {
               shiftMap.set(shiftKey, {
@@ -728,6 +732,10 @@ export const PrepareSchedule = () => {
 
         userSchedules.forEach(schedule => {
           schedule.shifts.forEach(shift => {
+            // Skip draft shifts - cannot create sessions for draft shifts
+            if ((shift as any).draftShiftId || (shift as any).draftScheduleSessionId) {
+              return;
+            }
             const shiftKey = `${shift.date}-${shift.startTime}-${shift.endTime}`;
             if (!shiftMap.has(shiftKey)) {
               shiftMap.set(shiftKey, {

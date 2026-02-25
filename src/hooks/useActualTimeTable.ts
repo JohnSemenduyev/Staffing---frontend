@@ -60,10 +60,13 @@ export const useActualTimeTable = ({
         const currentWeekDates = new Set(dateColumns.map((c) => c.date));
         const weekStart = currentWeekRange?.startOfWeek;
         const hasSomethingInCurrentWeek = (item: ScheduleItem): boolean => {
+            // Exclude draft schedule sessions from actual time table
+            if (item.draftScheduleSession) return false;
+            
             if (currentWeekDates.has(normDate(item.startDate))) return true;
             if (!weekStart || !isOverflowShift(item.startDate, weekStart)) return false;
             return (item.shifts || []).some(
-                (s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime)
+                (s: any) => !s.isDelete && !s.draftShiftId && !s.draftScheduleSessionId && shiftSpansNextDay(s.startTime, s.endTime)
             );
         };
         const ids = new Set<number>();
@@ -124,14 +127,14 @@ export const useActualTimeTable = ({
         const getItem = (d: string) => scheduleItems.find(item => normDate(item.startDate) === d);
         const daySchedule = getItem(date);
         const currentDayShifts = daySchedule
-            ? (daySchedule.shifts || []).filter((s: any) => !s.isDelete).map((s: Shift) => ({ ...s, isContinuation: false }))
+            ? (daySchedule.shifts || []).filter((s: any) => !s.isDelete && !s.draftShiftId && !s.draftScheduleSessionId).map((s: Shift) => ({ ...s, isContinuation: false }))
             : [];
         const prevDate = getAdjustedDate(date, -1);
         const prevSchedule = getItem(prevDate);
         const prevDaySpanningShifts: (Shift & { isContinuation?: boolean })[] = !prevSchedule
             ? []
             : (prevSchedule.shifts || [])
-                .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
+                .filter((s: any) => !s.isDelete && !s.draftShiftId && !s.draftScheduleSessionId && shiftSpansNextDay(s.startTime, s.endTime))
                 .map((s: Shift) => ({ ...s, isContinuation: true }));
         const withDisplayStart = (s: Shift & { isContinuation?: boolean }) =>
             s.isContinuation ? { ...s, displayStartTime: "00:00" as const } : { ...s, displayStartTime: s.startTime };
@@ -226,6 +229,17 @@ export const useActualTimeTable = ({
     // Edit Shift Logic: for overnight shifts load full sessions (no date filter) so both cells edit the same session with full start/end; display stays split visually only
     const openEditShift = (userId: number, date: string, shiftId: number) => {
         const shift = scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === shiftId);
+        
+        // Prevent opening edit dialog for draft shifts
+        if (shift && ((shift as any).draftShiftId || (shift as any).draftScheduleSessionId)) {
+            toast({ 
+                title: "Cannot Edit", 
+                description: "Cannot edit sessions for draft shifts. Please publish the draft schedule first.", 
+                variant: "destructive" 
+            });
+            return;
+        }
+        
         const scheduleSessionId = shift?.scheduleSessionId;
         const isOvernight = shift && shiftSpansNextDay(shift.startTime, shift.endTime);
         const sessions = getSessionsForShift(shiftId, scheduleSessionId, isOvernight ? undefined : date, userId);
@@ -248,6 +262,18 @@ export const useActualTimeTable = ({
     const saveEditShiftSessions = () => {
         if (!editShiftModal.isOpen || editShiftModal.shiftId == null) return;
 
+        // Check if this is a draft shift - prevent session creation for draft shifts
+        const shiftId = editShiftModal.shiftId;
+        const shiftToEdit = scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === shiftId);
+        if (shiftToEdit && ((shiftToEdit as any).draftShiftId || (shiftToEdit as any).draftScheduleSessionId)) {
+            toast({ 
+                title: "Cannot Edit", 
+                description: "Cannot create sessions for draft shifts. Please publish the draft schedule first.", 
+                variant: "destructive" 
+            });
+            return;
+        }
+
         // 1) Basic validation
         for (const row of editSessions) {
             if (!row.clockIn) {
@@ -263,7 +289,6 @@ export const useActualTimeTable = ({
             }
         }
 
-        const shiftId = editShiftModal.shiftId;
         const date = editShiftModal.date!;
         const userId = editShiftModal.userId!;
         const prevDate = getAdjustedDate(date, -1);

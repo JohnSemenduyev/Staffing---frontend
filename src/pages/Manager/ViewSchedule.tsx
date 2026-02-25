@@ -2751,36 +2751,88 @@ export const ViewSchedule = () => {
   };
 
   // Same as schedule table: only guards with current-week shift or previous-week overflow into current week (for PDF/Excel export)
-  const scheduleDataForExport = useMemo(() => {
-    if (!scheduleData.length || !currentWeekRange) return scheduleData;
-    const startDate = new Date(currentWeekRange.startOfWeek);
-    const currentWeekDates = new Set<string>();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
-      currentWeekDates.add(formatDateLocal(d));
+const scheduleDataForExport = useMemo(() => {
+  if (!scheduleData.length || !currentWeekRange) return scheduleData;
+
+  const startDate = new Date(currentWeekRange.startOfWeek);
+  const currentWeekDates = new Set<string>();
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    currentWeekDates.add(formatDateLocal(d));
+  }
+
+  const weekStart = currentWeekRange.startOfWeek;
+
+  const normDate = (d: string) =>
+    d && d.includes("T") ? d.split("T")[0] : d || "";
+
+  const hasSomethingInCurrentWeek = (item: ScheduleItem): boolean => {
+    if (currentWeekDates.has(normDate(item.startDate))) return true;
+
+    if (!weekStart || !isOverflowShift(item.startDate, weekStart)) return false;
+
+    return (item.shifts || []).some(
+      (s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime)
+    );
+  };
+
+  const isNonDraftShift = (shift: any): boolean =>
+    !shift.draftShiftId &&
+    !shift.draftScheduleSessionId &&
+    !shift.isDelete;
+
+  /**
+   * STEP 1:
+   * Identify users who have at least ONE non-draft shift
+   * in current week.
+   */
+  const usersWithRealShifts = new Set<number>();
+
+  scheduleData.forEach((item) => {
+    if (!hasSomethingInCurrentWeek(item)) return;
+
+    if (item.shifts?.some(isNonDraftShift)) {
+      usersWithRealShifts.add(item.userId);
     }
-    const weekStart = currentWeekRange.startOfWeek;
-    const normDate = (d: string) => (d && d.includes("T") ? d.split("T")[0] : d || "");
-    const hasSomethingInCurrentWeek = (item: ScheduleItem): boolean => {
-      if (currentWeekDates.has(normDate(item.startDate))) return true;
-      if (!weekStart || !isOverflowShift(item.startDate, weekStart)) return false;
-      return (item.shifts || []).some(
-        (s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime)
-      );
-    };
-    const visibleUserIds = new Set<number>();
-    scheduleData.forEach((item) => {
-      if (hasSomethingInCurrentWeek(item)) visibleUserIds.add(item.userId);
-    });
-    return scheduleData.filter((item) => visibleUserIds.has(item.userId));
-  }, [scheduleData, currentWeekRange]);
+  });
+
+  /**
+   * STEP 2:
+   * Return only:
+   * - users with real shifts
+   * - only non-draft shifts
+   */
+  return scheduleData
+    .filter(
+      (item) =>
+        usersWithRealShifts.has(item.userId) &&
+        hasSomethingInCurrentWeek(item)
+    )
+    .map((item) => {
+      const filteredShifts = item.shifts.filter(isNonDraftShift);
+
+      if (!filteredShifts.length) return null;
+
+      return {
+        ...item,
+        shifts: filteredShifts,
+      };
+    })
+    .filter(Boolean);
+
+}, [scheduleData, currentWeekRange]);
 
   const handleSchedulePrint = async () => {
     try {
       setIsPrinting(true);
       await new Promise(resolve => setTimeout(resolve, 300));
-      const cleanScheduleData = scheduleDataForExport.map(item => ({
+      
+      // Additional safeguard: ensure no empty items in export data
+      const safeExportData = scheduleDataForExport.filter(item => item.shifts && item.shifts.length > 0);
+      
+      const cleanScheduleData = safeExportData.map(item => ({
         ...item,
         shifts: item.shifts.map(shift => ({
           ...shift,
@@ -2788,8 +2840,8 @@ export const ViewSchedule = () => {
         })),
       }));
       const tableContent = generateSchedulePrintableTable(cleanScheduleData, currentWeekRange, selectedClient);
-      const totalEmployees = new Set(scheduleDataForExport.map(i => i.userId)).size;
-      const totalHours = scheduleDataForExport.reduce((sum, item) =>
+      const totalEmployees = new Set(safeExportData.map(i => i.userId)).size;
+      const totalHours = safeExportData.reduce((sum, item) =>
         sum + item.shifts.reduce((s, sh) => s + (sh.hours || 0), 0), 0
       );
 
@@ -2828,7 +2880,11 @@ export const ViewSchedule = () => {
   const handleScheduleDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
-      await generateScheduleStyledExcel(scheduleDataForExport, selectedClient, currentWeekRange, 'schedule');
+      
+      // Additional safeguard: ensure no empty items in export data
+      const safeExportData = scheduleDataForExport.filter(item => item.shifts && item.shifts.length > 0);
+      
+      await generateScheduleStyledExcel(safeExportData, selectedClient, currentWeekRange, 'schedule');
 
       toast({
         title: "Success",
@@ -2856,7 +2912,10 @@ export const ViewSchedule = () => {
   const handleActualTimeDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
-      const visibleUserIds = new Set(scheduleDataForExport.map((i) => i.userId));
+      
+      // Additional safeguard: ensure only users with non-empty schedule data from export
+      const safeExportData = scheduleDataForExport.filter(item => item.shifts && item.shifts.length > 0);
+      const visibleUserIds = new Set(safeExportData.map((i) => i.userId));
       const transformedData = [];
       const uniqueUsers = new Map();
       sessionData.forEach(item => {
@@ -2965,9 +3024,11 @@ export const ViewSchedule = () => {
       setIsPrinting(true);
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const tableContent = generateActualTimePrintableTable(sessionData, scheduleDataForExport, currentWeekRange, selectedClient);
-      const totalEmployees = new Set(scheduleDataForExport.map(i => i.userId)).size;
-      const visibleUserIdsForPrint = new Set(scheduleDataForExport.map((i) => i.userId));
+      // Additional safeguard: ensure only users with non-empty schedule data from export
+      const safeExportData = scheduleDataForExport.filter(item => item.shifts && item.shifts.length > 0);
+      const tableContent = generateActualTimePrintableTable(sessionData, safeExportData, currentWeekRange, selectedClient);
+      const totalEmployees = new Set(safeExportData.map(i => i.userId)).size;
+      const visibleUserIdsForPrint = new Set(safeExportData.map((i) => i.userId));
       const totalHours = sessionData.reduce((sum, item) => {
         const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === item.shiftId));
         if (!scheduleItem || !visibleUserIdsForPrint.has(scheduleItem.userId)) return sum;
