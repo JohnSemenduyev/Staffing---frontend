@@ -583,6 +583,7 @@ export const CHECK_SCHEDULE_SESSION = gql`
         startTime
         endTime
         date
+        
       }
     }
   }

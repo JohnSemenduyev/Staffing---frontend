@@ -160,6 +160,7 @@ export type ScheduleSessionInputExtended = {
   endDate: string | null;
   auto: boolean | null;
   weeklyHours: number | null;
+  NextWeekHours?: number | null;
   shifts: ShiftInput[];
   change?: boolean | null;
 };

@@ -1750,8 +1750,10 @@ export const ViewSchedule = () => {
       // -------------------------------------------------------------
       // 1) Handle "Overflow" shifts (shifts starting before current week)
       //    These only support EndTime updates via UPDATE_SHIFT_END_TIME
+      //    and contribute partial hours into the current week's weeklyHours.
       // -------------------------------------------------------------
       const overflowShiftsToUpdate: any[] = [];
+      const overflowContributionByGroup = new Map<string, number>();
 
       scheduleData.forEach((item) => {
         item.shifts.forEach((shift: any) => {
@@ -1794,6 +1796,22 @@ export const ViewSchedule = () => {
                 draft: false, // CONFIRM/PUBLISH
                 isDelete: !!shift.isDelete
               });
+            }
+
+            // Also accumulate the portion of this previous-week overnight shift
+            // that spills into the current week, so it can be added to this
+            // week's weeklyHours for the matching client/address/user.
+            const mapKey = `${item.clientId}-${item.addressId}-${item.userId}`;
+            const shiftDateRaw = String(shift.date || "");
+            const normShiftDate =
+              shiftDateRaw.includes("T") ? shiftDateRaw.split("T")[0] : shiftDateRaw;
+            const prevDate = getAdjustedDate(startDate, -1);
+
+            if (!shift.isDelete && shiftSpansNextDay(shift.startTime, shift.endTime) && normShiftDate === prevDate) {
+              const currentMins = timeToMinutes(shift.endTime); // 00:00 -> endTime on first day of week
+              const currentHours = currentMins / 60;
+              const prev = overflowContributionByGroup.get(mapKey) || 0;
+              overflowContributionByGroup.set(mapKey, prev + currentHours);
             }
           }
         });
@@ -1904,8 +1922,49 @@ export const ViewSchedule = () => {
 
       const scheduleInput = Array.from(sessionGroupMap.values()).map(group => {
         const shiftsArray = Array.from(group.shifts.values());
-        // Calculate weekly hours SPECIFIC to this session group
-        const groupWeeklyHours = shiftsArray.reduce((total: number, shift: any) => total + shift.hours, 0);
+
+        // Calculate weekly hours and next-week hours SPECIFIC to this session group
+        const mapKey = `${group.clientId}-${group.addressId}-${group.userId}`;
+        let groupWeeklyHours = overflowContributionByGroup.get(mapKey) || 0;
+        let groupNextWeekHours = 0;
+
+        const endDateYMD = endDate;
+
+        shiftsArray.forEach((shift: any) => {
+          let dateYMD = shift.date;
+
+          // shift.date here is MM-DD-YYYY for payload; convert back if needed
+          if (shift.date && shift.date.match(/^\d{2}-\d{2}-\d{4}$/)) {
+            const [month, day, year] = shift.date.split("-");
+            dateYMD = `${year}-${month}-${day}`;
+          } else if (shift.date && !/^\d{4}-\d{2}-\d{2}$/.test(shift.date)) {
+            dateYMD = formatDateLocal(new Date(shift.date));
+          }
+
+          const spansNext = shiftSpansNextDay(shift.startTime, shift.endTime);
+
+          if (!spansNext) {
+            groupWeeklyHours += shift.hours || 0;
+            return;
+          }
+
+          // Overnight shift fully inside the Thu–Wed window (not on boundary):
+          if (dateYMD !== endDateYMD) {
+            groupWeeklyHours += shift.hours || 0;
+            return;
+          }
+
+          // Boundary overnight: last day of the week spilling into next week
+          const totalMins = minutesDiffWithWrap(shift.startTime, shift.endTime);
+          const currentMins = (24 * 60) - timeToMinutes(shift.startTime);
+          const currentPart = currentMins / 60;
+          const nextPart = (totalMins - currentMins) / 60;
+          groupWeeklyHours += currentPart;
+          groupNextWeekHours += nextPart;
+        });
+
+        groupWeeklyHours = parseFloat(groupWeeklyHours.toFixed(2));
+        groupNextWeekHours = parseFloat(groupNextWeekHours.toFixed(2));
 
         // Recalculate auto based on shifts in this group to ensure split rows are handled
         const groupAuto = shiftsArray.some((s: any) => s.auto === true);
@@ -1999,7 +2058,6 @@ export const ViewSchedule = () => {
           if (autoChangedForUser(group.userId, groupCurrentItems, groupOriginalItems)) changed = true;
         }
 
-        const mapKey = `${group.clientId}-${group.addressId}-${group.userId}`;
         const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
 
         const { hasDraftShifts, shifts, ...rest } = group;
@@ -2008,7 +2066,8 @@ export const ViewSchedule = () => {
           ...rest,
           auto: groupAuto,
           shifts: shiftsArray.map(({ scheduleSessionId, ...s }: any) => s), // Remove scheduleSessionId
-          weeklyHours: parseFloat(parseFloat(groupWeeklyHours.toString()).toFixed(2)),
+          weeklyHours: groupWeeklyHours,
+          NextWeekHours: groupNextWeekHours,
           change: changed,
           // Only include checkScheduleSessionId when schedule exists for current week and user; else omit (do not send in API)
           ...(mappedCheckScheduleSessionId != null ? { checkScheduleSessionId: mappedCheckScheduleSessionId } : {}),
@@ -2249,13 +2308,14 @@ export const ViewSchedule = () => {
         auto: boolean;
 
         // all shifts (for weeklyHours)
-        shiftsForHours: { isDelete: boolean; hours: number }[];
+        shiftsForHours: { isDelete: boolean; hours: number; date: string; startTime: string; endTime: string }[];
 
         // only changed/new/deleted shifts (payload)
         shiftsToSend: any[];
       };
 
       const draftSessionMap = new Map<DraftSessionKey, DraftSessionGroup>();
+      const overflowDraftContributionByGroup = new Map<string, number>();
       const overflowShiftsToUpdate: any[] = [];
 
       scheduleData.forEach((item) => {
@@ -2284,6 +2344,22 @@ export const ViewSchedule = () => {
                 draft: true, // SAVE DRAFT
                 isDelete: !!shift.isDelete
               });
+            }
+
+            // Also accumulate the portion of this previous-week overnight shift
+            // that spills into the current week, so it can be added to this
+            // week's weeklyHours for the matching client/address/user.
+            const mapKey = `${item.clientId}-${item.addressId}-${item.userId}`;
+            const shiftDateRaw = String(shift.date || "");
+            const normShiftDate =
+              shiftDateRaw.includes("T") ? shiftDateRaw.split("T")[0] : shiftDateRaw;
+            const prevDate = getAdjustedDate(startDate, -1);
+
+            if (!shift.isDelete && shiftSpansNextDay(shift.startTime, shift.endTime) && normShiftDate === prevDate) {
+              const currentMins = timeToMinutes(shift.endTime);
+              const currentHours = currentMins / 60;
+              const prev = overflowDraftContributionByGroup.get(mapKey) || 0;
+              overflowDraftContributionByGroup.set(mapKey, prev + currentHours);
             }
             return; // Skip adding to draft payload
           }
@@ -2330,6 +2406,9 @@ export const ViewSchedule = () => {
           group.shiftsForHours.push({
             isDelete,
             hours: shift?.hours || 0,
+            date: shift.date || item.startDate,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
           });
 
           // only send if changed/new/deleted
@@ -2430,16 +2509,52 @@ export const ViewSchedule = () => {
           return;
         }
 
-        const weeklyHours = group.shiftsForHours
+        const mapKey = `${group.clientId}-${group.addressId}-${group.userId}`;
+        let weeklyHours = overflowDraftContributionByGroup.get(mapKey) || 0;
+        let nextWeekHours = 0;
+
+        const endDateYMD = endDate;
+
+        group.shiftsForHours
           .filter((s) => !s.isDelete)
-          .reduce((t, s) => t + (s.hours || 0), 0);
+          .forEach((s) => {
+            let dateYMD = s.date;
+            if (dateYMD && dateYMD.match(/^\d{2}-\d{2}-\d{4}$/)) {
+              const [month, day, year] = dateYMD.split("-");
+              dateYMD = `${year}-${month}-${day}`;
+            } else if (dateYMD && !/^\d{4}-\d{2}-\d{2}$/.test(dateYMD)) {
+              dateYMD = formatDateLocal(new Date(dateYMD));
+            }
+
+            const spansNext = shiftSpansNextDay(s.startTime, s.endTime);
+
+            if (!spansNext) {
+              weeklyHours += s.hours || 0;
+              return;
+            }
+
+            if (dateYMD !== endDateYMD) {
+              weeklyHours += s.hours || 0;
+              return;
+            }
+
+            const totalMins = minutesDiffWithWrap(s.startTime, s.endTime);
+            const currentMins = (24 * 60) - timeToMinutes(s.startTime);
+            const currentPart = currentMins / 60;
+            const nextPart = (totalMins - currentMins) / 60;
+            weeklyHours += currentPart;
+            nextWeekHours += nextPart;
+          });
+
+        weeklyHours = parseFloat(weeklyHours.toFixed(2));
+        nextWeekHours = parseFloat(nextWeekHours.toFixed(2));
 
         if (group.draftScheduleSessionId) {
           // Existing draft schedule session
           draftInput.push({
             draftScheduleSessionId: group.draftScheduleSessionId,
             shifts: group.shiftsToSend,
-            weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+            weeklyHours: weeklyHours,
             auto: group.auto,
           });
         } else if (group.scheduleSessionId) {
@@ -2453,7 +2568,7 @@ export const ViewSchedule = () => {
           // New draft schedule session. Only include checkScheduleSessionId when schedule exists for current week and user; else omit (do not send in API)
           draftInput.push({
             shifts: group.shiftsToSend,
-            weeklyHours: parseFloat(weeklyHours.toFixed(2)),
+            weeklyHours: weeklyHours,
             clientId: group.clientId,
             addressId: group.addressId,
             userId: group.userId,

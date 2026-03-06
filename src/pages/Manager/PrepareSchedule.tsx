@@ -639,7 +639,56 @@ export const PrepareSchedule = () => {
         });
 
         const userShifts = Array.from(shiftMap.values());
-        const weeklyHours = parseFloat(userShifts.reduce((total: number, shift: any) => total + shift.hours, 0).toFixed(2));
+
+        // Calculate weekly hours and next week hours for this user within the current week
+        let weeklyHours = 0;
+        let NextWeekHours = 0;
+
+        if (currentWeekRange?.endOfWeek) {
+          const endOfWeekYMD = formatDateLocal(currentWeekRange.endOfWeek); // YYYY-MM-DD
+
+          userShifts.forEach((shift: any) => {
+            // shift.date stored as YYYY-MM-DD before convertDateFormat below, so compare on that basis
+            const shiftDateYMD = shift.date.includes("-")
+              ? (() => {
+                const parts = shift.date.split("-");
+                // If already YYYY-MM-DD keep as is, otherwise assume MM-DD-YYYY and convert
+                if (parts[0].length === 4) return shift.date;
+                if (parts[2]?.length === 4) {
+                  return `${parts[2]}-${parts[0]}-${parts[1]}`;
+                }
+                return shift.date;
+              })()
+              : shift.date;
+
+            const spansNextDay = shiftSpansNextDay(shift.startTime, shift.endTime);
+
+            if (!spansNextDay) {
+              weeklyHours += shift.hours || 0;
+              return;
+            }
+
+            // Overnight shift that starts on the last day of the week – split into current vs next week
+            if (shiftDateYMD === endOfWeekYMD) {
+              const totalMins = minutesDiffWithWrap(shift.startTime, shift.endTime);
+              const currentMins = (24 * 60) - timeToMinutes(shift.startTime);
+              const currentPart = currentMins / 60;
+              const nextPart = (totalMins - currentMins) / 60;
+              weeklyHours += currentPart;
+              NextWeekHours += nextPart;
+              return;
+            }
+
+            // Overnight but not on week boundary – entire shift stays in this week
+            weeklyHours += shift.hours || 0;
+          });
+        } else {
+          // Fallback to previous behaviour if for some reason currentWeekRange is missing
+          weeklyHours = userShifts.reduce((total: number, shift: any) => total + (shift.hours || 0), 0);
+        }
+
+        weeklyHours = parseFloat(weeklyHours.toFixed(2));
+        NextWeekHours = parseFloat(NextWeekHours.toFixed(2));
 
         draftPayload.push({
           clientId: firstSchedule?.clientId,
@@ -650,6 +699,7 @@ export const PrepareSchedule = () => {
           checkScheduleSessionId: checkScheduleSessionId || null,
           scheduleSessionId: null,
           weeklyHours: weeklyHours,
+          // Note: Do NOT send NextWeekHours for draft schedule payload
           shifts: userShifts,
           auto: firstSchedule?.auto || false
         });
@@ -762,8 +812,50 @@ export const PrepareSchedule = () => {
         // Convert map values to array
         const userShifts = Array.from(shiftMap.values());
 
-        // Calculate total weekly hours for this user
-        const weeklyHours = parseFloat(userShifts.reduce((total, shift) => total + shift.hours, 0).toFixed(2));
+        // Calculate weekly hours and next week hours for this user within the current week
+        let weeklyHours = 0;
+        let NextWeekHours = 0;
+
+        if (currentWeekRange?.endOfWeek) {
+          const endOfWeekYMD = formatDateLocal(currentWeekRange.endOfWeek); // YYYY-MM-DD
+
+          userShifts.forEach((shift: any) => {
+            const shiftDateYMD = shift.date.includes("-")
+              ? (() => {
+                const parts = shift.date.split("-");
+                if (parts[0].length === 4) return shift.date;
+                if (parts[2]?.length === 4) {
+                  return `${parts[2]}-${parts[0]}-${parts[1]}`;
+                }
+                return shift.date;
+              })()
+              : shift.date;
+
+            const spansNextDay = shiftSpansNextDay(shift.startTime, shift.endTime);
+
+            if (!spansNextDay) {
+              weeklyHours += shift.hours || 0;
+              return;
+            }
+
+            if (shiftDateYMD === endOfWeekYMD) {
+              const totalMins = minutesDiffWithWrap(shift.startTime, shift.endTime);
+              const currentMins = (24 * 60) - timeToMinutes(shift.startTime);
+              const currentPart = currentMins / 60;
+              const nextPart = (totalMins - currentMins) / 60;
+              weeklyHours += currentPart;
+              NextWeekHours += nextPart;
+              return;
+            }
+
+            weeklyHours += shift.hours || 0;
+          });
+        } else {
+          weeklyHours = userShifts.reduce((total, shift) => total + (shift.hours || 0), 0);
+        }
+
+        weeklyHours = parseFloat(weeklyHours.toFixed(2));
+        NextWeekHours = parseFloat(NextWeekHours.toFixed(2));
 
         // Get the checkScheduleSessionId from the map
         const mapKey = `${firstSchedule?.clientId}-${firstSchedule?.addressId}-${user.id}`;
@@ -799,6 +891,7 @@ export const PrepareSchedule = () => {
           endDate: convertDateFormat(formatDateLocal(currentWeekRange?.endOfWeek)), // Revert to MM-DD-YYYY
           checkScheduleSessionId: checkScheduleSessionId || null,
           weeklyHours: weeklyHours,
+          NextWeekHours: NextWeekHours,
           shifts: userShifts,
           auto: firstSchedule?.auto || false,
         });
