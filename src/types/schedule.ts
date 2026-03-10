@@ -11,6 +11,7 @@ export interface Shift {
     auto?: boolean;
     confirm?: boolean;
     reject?: boolean;
+    guardPrepared?: boolean;
     // NEW: flag if backend explicitly marks it as draft
     isDraft?: boolean;
     // Flag to mark deleted draft shifts

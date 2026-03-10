@@ -993,6 +993,7 @@ export const ViewSchedule = () => {
           auto: (shift as any)?.auto ?? false,
           confirm: (shift as any)?.confirm ?? false,
           reject: (shift as any)?.reject ?? false,
+          guardPrepared: (shift as any)?.guardPrepared ?? false,
         };
 
         if (isDraft) {

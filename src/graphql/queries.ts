@@ -41,6 +41,7 @@ export const SESSIONS_BY_SCHEDULE_SESSION = gql`
         date
         startTime
         endTime
+        guardPrepared
       }
     }
   }
@@ -448,6 +449,7 @@ export const GET_SCHEDULE_SESSIONS = gql`
           startTime
           endTime
           hours
+          guardPrepared
         }
       }
       lastPage
@@ -505,6 +507,7 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
           date
           startTime
           endTime
+          guardPrepared
         }
         scheduleSession {
           client {
@@ -553,6 +556,7 @@ export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
         id
         date
         hours
+        guardPrepared
       }
     }
   }
@@ -583,6 +587,7 @@ export const SCHEDULE_SESSIONS_WITH_DRAFT_DATA = gql`
           hours
           id
           actualHours
+          guardPrepared
         }
         TimeSetup {
           actualScheduledTime
@@ -667,6 +672,7 @@ export const SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
         auto
         confirm
         reject
+        guardPrepared
       }
       user {
         id
@@ -752,6 +758,7 @@ export const GET_NOTIFICATIONS = gql`
           id
           startTime
           date
+          guardPrepared
         }
         user {
           name
@@ -781,6 +788,7 @@ export const GET_ALL_SESSIONS = gql`
         endTime
         hours
         actualHours
+        guardPrepared
       }
       scheduleSession {
         id
@@ -822,6 +830,7 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
       shift {
         id
         date
+        guardPrepared
       }
     }
   }
