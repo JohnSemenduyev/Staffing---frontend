@@ -1914,6 +1914,7 @@ export const ViewSchedule = () => {
               hours: shift.hours,
               shiftId: (isClientGeneratedId || isDraftShift) ? null : shift.id,
               auto: shift.auto ?? null,
+              guardPrepared: (shift as any)?.guardPrepared ?? false,
               // Carry over session ID just in case
               scheduleSessionId: targetSessionId
             });

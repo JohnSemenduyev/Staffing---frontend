@@ -149,6 +149,7 @@ export type ShiftInput = {
   hours: number;
   shiftId?: number;
   auto?: boolean | null;
+  guardPrepared?: boolean | null;
 };
 
 export type ScheduleSessionInputExtended = {

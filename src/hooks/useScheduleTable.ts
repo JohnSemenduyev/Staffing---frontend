@@ -910,7 +910,8 @@ export const useScheduleTable = ({
                                 endTime: endtime,
                                 hours: calculateShiftHours(starttime, endtime),
                                 confirm: false,
-                                reject: false
+                                reject: false,
+                                guardPrepared: false,
                             }
                             : s
                     )
