@@ -118,6 +118,17 @@ export const useActualTimeTable = ({
 
     const firstDayOfWeek = dateColumns.length > 0 ? dateColumns[0].date : null;
 
+    const shiftById = useMemo(() => {
+        const map = new Map<number, Shift>();
+        scheduleData.forEach((si) => {
+            (si.shifts || []).forEach((sh: any) => {
+                if (!sh?.id) return;
+                map.set(sh.id, sh as Shift);
+            });
+        });
+        return map;
+    }, [scheduleData]);
+
     /** Visual shifts for one date from a subset of schedule items (e.g. one user or one group). Includes previous-day spanning on all days (including first day = overflow from previous week). */
     const getVisualShiftsFromScheduleItems = (
         scheduleItems: ScheduleItem[],
@@ -457,7 +468,15 @@ export const useActualTimeTable = ({
         if (sOut === 0) {
             return sessionDate === d ? calculateHours(session.clockIn, "24:00") : 0;
         }
-        // True overnight (clockOut > "00:00"): split across two days.
+        // True overnight (clockOut > "00:00").
+        // Split across two days ONLY when the scheduled shift itself spans midnight.
+        // If the scheduled shift is same-day, keep all actual time on the shift's start date (same cell).
+        const scheduledShift = typeof session.shiftId === "number" ? shiftById.get(session.shiftId) : undefined;
+        const shouldSplitByDate = scheduledShift ? shiftSpansNextDay(scheduledShift.startTime, scheduledShift.endTime) : true;
+        if (!shouldSplitByDate) {
+            return sessionDate === d ? calculateWorkedTimeWith24HourLogic(session) : 0;
+        }
+        // Shift spans midnight: split hours across two calendar dates.
         const startDate = sessionDate;
         const endDate = sessionDate ? getAdjustedDate(sessionDate, 1) : "";
         if (d === startDate) return calculateHours(session.clockIn, "24:00");
