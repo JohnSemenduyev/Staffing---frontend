@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
-import { formatTimeDisplay, shiftSpansNextDay } from "../../lib/utils";
+import { formatTimeDisplay, shiftSpansNextDay, timeToMinutes } from "../../lib/utils";
 import { Shift, SessionItem } from "../../types/schedule";
 
 /** Display range for a session in a cell: uses shift.splitSide and session span so overnight shows x–24:00 / 00:00–y. */
@@ -9,7 +9,15 @@ function sessionDisplayRange(session: SessionItem, shift: Shift | null): { start
     const ci = session.clockIn || "";
     const co = session.clockOut || "";
     if (!shift?.isSplit || !ci || !co) return { start: formatTimeDisplay(ci) || "N/A", end: formatTimeDisplay(co) || "N/A" };
-    if (shift.splitSide === "end") return { start: "00:00", end: formatTimeDisplay(co) };
+    if (shift.splitSide === "end") {
+        // For overnight shifts, the end-day cell may start at midnight (sessions that began before midnight)
+        // OR at the session's real clock-in time (sessions that began after midnight but still belong to this shift).
+        const shiftEnd = shift.endTime || "";
+        const ciM = timeToMinutes(ci);
+        const shiftEndM = shiftEnd ? timeToMinutes(shiftEnd) : 0;
+        const start = shiftEndM > 0 && ciM <= shiftEndM ? formatTimeDisplay(ci) : "00:00";
+        return { start, end: formatTimeDisplay(co) };
+    }
     if (shift.splitSide === "start" && shiftSpansNextDay(ci, co)) return { start: formatTimeDisplay(ci), end: "24:00" };
     return { start: formatTimeDisplay(ci), end: formatTimeDisplay(co) };
 }

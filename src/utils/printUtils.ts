@@ -496,26 +496,76 @@ export const generateActualTimePrintableTable = (
     if (!session.clockIn || !session.clockOut) {
       return sessionDate === dateStr ? (session.workedTime || 0) / 60 : 0;
     }
-    const sIn = timeToMinutes(session.clockIn);
-    const sOut = timeToMinutes(session.clockOut);
-    // Same-day: strictly start < end
-    if (sIn < sOut) {
-      return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
-    }
-    // clockOut "00:00" = end of day (midnight). All hours fall on the session's start date; nothing spills to next day.
-    // Without this check, calculateHours("00:00", "00:00") on the next day would return 24 (wrong).
-    if (sOut === 0) {
-      return sessionDate === dateStr ? calculateHours(session.clockIn, '24:00') : 0;
-    }
-    // True overnight (sIn > sOut and clockOut > "00:00"): split across two days
+    const shiftStart = shift.startTime || '';
+    const shiftEnd = shift.endTime || '';
+    const shiftIsOvernight = shiftSpansNextDay(shiftStart, shiftEnd);
+
     const startDate = sessionDate;
     const endDate = getAdjustedDate(sessionDate, 1);
-    if (dateStr === startDate) return calculateHours(session.clockIn, '24:00');
-    if (dateStr === endDate) return calculateHours('00:00', session.clockOut);
-    if (sessionDate < weekStartStr && dateStr === weekStartStr) {
-      return calculateHours('00:00', session.clockOut);
+
+    const sInM = timeToMinutes(session.clockIn);
+    const sOutM = timeToMinutes(session.clockOut);
+
+    // Overnight scheduled shifts: infer which calendar date clockIn/clockOut belong to.
+    // This prevents sessions from disappearing when their time doesn't overlap the scheduled
+    // window (but they are still associated to the shift).
+    if (shiftIsOvernight) {
+      const shiftEndM = timeToMinutes(shiftEnd);
+
+      // Infer which calendar date the clockIn belongs to.
+      // AM clock-ins (within [00:00, shiftEnd]) belong to next day.
+      const inferredClockInDate = sInM <= shiftEndM ? getAdjustedDate(sessionDate, 1) : sessionDate;
+
+      // Infer which calendar date the clockOut belongs to.
+      // - If clockOut is "00:00", keep it on the same calendar day (end-of-day).
+      // - If clockOut <= clockIn, it crosses midnight into the next calendar day.
+      // - If clockIn == clockOut, treat as 24h.
+      let inferredClockOutDate: string;
+      if (session.clockIn === session.clockOut) {
+        inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
+      } else if (sOutM === 0) {
+        inferredClockOutDate = inferredClockInDate;
+      } else if (sOutM <= sInM) {
+        inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
+      } else {
+        inferredClockOutDate = inferredClockInDate;
+      }
+
+      // 24h special-case: clockIn=clockOut=00:00 should show 24h only on the start day cell.
+      const isMidnight24h = session.clockIn === "00:00" && session.clockOut === "00:00";
+
+      if (dateStr === inferredClockInDate && dateStr === inferredClockOutDate) {
+        return calculateHours(session.clockIn, session.clockOut);
+      }
+
+      if (dateStr === inferredClockInDate && dateStr !== inferredClockOutDate) {
+        return calculateHours(session.clockIn, "24:00");
+      }
+
+      if (dateStr === inferredClockOutDate && dateStr !== inferredClockInDate) {
+        if (isMidnight24h) return 0;
+        if (sOutM === 0) return 0;
+        return calculateHours("00:00", session.clockOut);
+      }
+
+      return 0;
     }
-    return 0;
+
+    // Non-overnight scheduled shifts: keep the existing time-of-day logic (do not split across two dates).
+    // Same-day: strictly start < end
+    if (sInM < sOutM) {
+      return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
+    }
+    // clockOut "00:00" = end of day (midnight). All hours on the session's start date; nothing on next day.
+    if (sOutM === 0) {
+      return sessionDate === dateStr ? calculateHours(session.clockIn, '24:00') : 0;
+    }
+
+    // Wrapped/24h times on a non-overnight shift: treat everything on the shift's start date cell.
+    if (session.clockIn === session.clockOut) {
+      return sessionDate === dateStr ? 24 : 0;
+    }
+    return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
   };
 
   // Display time range for a session on a given date. When start = end (24h) split: day1 "clockIn-24:00", day2 "00:00-clockOut".

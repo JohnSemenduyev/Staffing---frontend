@@ -457,6 +457,63 @@ export const useActualTimeTable = ({
         if (!session.clockOut) {
             return sessionDate === d ? (session.workedTime || 0) / 60 : 0;
         }
+        const scheduledShift = typeof session.shiftId === "number" ? shiftById.get(session.shiftId) : undefined;
+
+        // For overnight scheduled shifts, decide which calendar date the session contributes to
+        // using only `clockIn`/`clockOut` and the shift window split at midnight.
+        //
+        // Key requirement from the UI: when a session is associated to an overnight shift, an AM
+        // clock-in (within [00:00, shiftEnd]) should appear in the NEXT day column, even if
+        // `clockIn < clockOut` time-of-day.
+        if (scheduledShift && shiftSpansNextDay(scheduledShift.startTime, scheduledShift.endTime)) {
+            const shiftStartM = timeToMinutes(scheduledShift.startTime);
+            const shiftEndM = timeToMinutes(scheduledShift.endTime);
+            const sInM = timeToMinutes(session.clockIn);
+            const sOutM = timeToMinutes(session.clockOut);
+
+            // Infer which calendar date the clockIn belongs to.
+            // If clockIn is in the overnight "end" part [00:00, shiftEnd], it belongs to next day.
+            const inferredClockInDate = sInM <= shiftEndM ? getAdjustedDate(sessionDate, 1) : sessionDate;
+
+            // Infer which calendar date the clockOut belongs to.
+            // - If clockOut is "00:00", keep it on the same calendar day (end-of-day).
+            // - If clockOut <= clockIn, it crosses midnight into the next calendar day.
+            // - If clockIn == clockOut, treat as 24h.
+            let inferredClockOutDate: string;
+            if (session.clockIn === session.clockOut) {
+                inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
+            } else if (sOutM === 0) {
+                inferredClockOutDate = inferredClockInDate;
+            } else if (sOutM <= sInM) {
+                inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
+            } else {
+                inferredClockOutDate = inferredClockInDate;
+            }
+
+            // 24h special-case: clockIn=clockOut=00:00 should show 24h only on the start day cell.
+            const isMidnight24h = session.clockIn === "00:00" && session.clockOut === "00:00";
+
+            if (d === inferredClockInDate && d === inferredClockOutDate) {
+                // Same calendar day.
+                return calculateHours(session.clockIn, session.clockOut);
+            }
+
+            if (d === inferredClockInDate && d !== inferredClockOutDate) {
+                // First day portion.
+                return calculateHours(session.clockIn, "24:00");
+            }
+
+            if (d === inferredClockOutDate && d !== inferredClockInDate) {
+                // Second day portion. If clockOut is 00:00, this portion is 0.
+                if (isMidnight24h) return 0;
+                if (sOutM === 0) return 0;
+                return calculateHours("00:00", session.clockOut);
+            }
+
+            return 0;
+        }
+
+        // Non-overnight / unknown shift: keep the existing time-of-day logic.
         const sIn = timeToMinutes(session.clockIn);
         const sOut = timeToMinutes(session.clockOut);
         // Same-day: strictly start < end.
@@ -471,7 +528,6 @@ export const useActualTimeTable = ({
         // True overnight (clockOut > "00:00").
         // Split across two days ONLY when the scheduled shift itself spans midnight.
         // If the scheduled shift is same-day, keep all actual time on the shift's start date (same cell).
-        const scheduledShift = typeof session.shiftId === "number" ? shiftById.get(session.shiftId) : undefined;
         const shouldSplitByDate = scheduledShift ? shiftSpansNextDay(scheduledShift.startTime, scheduledShift.endTime) : true;
         if (!shouldSplitByDate) {
             return sessionDate === d ? calculateWorkedTimeWith24HourLogic(session) : 0;
