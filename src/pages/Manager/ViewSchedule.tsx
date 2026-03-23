@@ -1848,8 +1848,17 @@ export const ViewSchedule = () => {
 
         const normShiftDate = (raw: string) => {
           if (!raw) return "";
-          if (String(raw).includes("T")) return String(raw).split("T")[0];
-          return formatDateLocal(new Date(raw));
+          const s = String(raw);
+          // Avoid timezone shift for "YYYY-MM-DD" by never going through `new Date("YYYY-MM-DD")`
+          if (s.includes("T")) return s.split("T")[0];
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // already YYYY-MM-DD
+          if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+            // MM-DD-YYYY -> YYYY-MM-DD
+            const [mm, dd, yyyy] = s.split("-");
+            return `${yyyy}-${mm}-${dd}`;
+          }
+          // Fallback for any other date-string shape
+          return formatDateLocal(new Date(s));
         };
 
         item.shifts.forEach((shift: any) => {
@@ -2368,7 +2377,17 @@ export const ViewSchedule = () => {
 
           // Draft bulk upsert: current week only — skip next week
           const shiftDateStr = shift.date
-            ? (String(shift.date).includes("T") ? String(shift.date).split("T")[0] : formatDateLocal(new Date(shift.date)))
+            ? (() => {
+              const s = String(shift.date);
+              // Avoid timezone shift for "YYYY-MM-DD" by never going through `new Date("YYYY-MM-DD")`
+              if (s.includes("T")) return s.split("T")[0];
+              if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // already YYYY-MM-DD
+              if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+                const [mm, dd, yyyy] = s.split("-");
+                return `${yyyy}-${mm}-${dd}`;
+              }
+              return formatDateLocal(new Date(s));
+            })()
             : "";
           if (!shiftDateStr || shiftDateStr < startDate || shiftDateStr > endDate) return;
 
