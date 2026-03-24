@@ -39,6 +39,10 @@ export interface ScheduleItem {
     timeSetup?: {
         actualScheduledTime: number;
     };
+    // API metadata for View Schedule total display logic
+    apiWeeklyHours?: number | null;
+    apiShiftHoursSum?: number | null;
+    apiSessionKey?: string;
 }
 
 export interface SessionItem {

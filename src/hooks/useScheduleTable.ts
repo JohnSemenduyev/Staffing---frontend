@@ -1355,6 +1355,43 @@ export const useScheduleTable = ({
         return parseFloat(total.toFixed(2));
     }, [scheduleData, calculateEffectiveHours, getAdjustedDate, formatDateFromISO]);
 
+    const getRowApiTotals = useCallback((row: RowGroup, groupByClient: boolean): { apiWeeklyHours: number | null; apiShiftHoursSum: number | null } => {
+        const visibleWeekDates = new Set(dateColumns.map((c) => c.date));
+        const relevantItems = scheduleData.filter((item) => {
+            if (item.userId !== row.userId) return false;
+            if (!groupByClient) return true;
+            return item.clientId === row.clientId && item.addressId === row.addressId;
+        });
+
+        const seenSessions = new Set<string>();
+        let weeklyHoursTotal = 0;
+        let shiftHoursSumTotal = 0;
+        let hasWeeklyHours = false;
+        let hasShiftHours = false;
+
+        relevantItems.forEach((item) => {
+            const itemDate = item.startDate.includes("T") ? formatDateFromISO(item.startDate) : item.startDate;
+            if (!visibleWeekDates.has(itemDate)) return;
+            const sessionKey = item.apiSessionKey || `${item.clientId}-${item.addressId}-${item.userId}-${item.startDate}`;
+            if (seenSessions.has(sessionKey)) return;
+            seenSessions.add(sessionKey);
+
+            if (typeof item.apiWeeklyHours === "number") {
+                weeklyHoursTotal += item.apiWeeklyHours;
+                hasWeeklyHours = true;
+            }
+
+            if (typeof item.apiShiftHoursSum === "number") {
+                shiftHoursSumTotal += item.apiShiftHoursSum;
+                hasShiftHours = true;
+            }
+        });
+        return {
+            apiWeeklyHours: hasWeeklyHours ? parseFloat(weeklyHoursTotal.toFixed(2)) : null,
+            apiShiftHoursSum: hasShiftHours ? parseFloat(shiftHoursSumTotal.toFixed(2)) : null,
+        };
+    }, [scheduleData, dateColumns, formatDateFromISO]);
+
     return {
         dateColumns,
         rowGroups,
@@ -1400,6 +1437,7 @@ export const useScheduleTable = ({
         calculateDayTotal,
         calculateGrandTotal,
         calculateUserDayTotal, // Export new function
+        getRowApiTotals,
         hasTimeMismatch,
         findSessionForShift,
         isDraftShift,

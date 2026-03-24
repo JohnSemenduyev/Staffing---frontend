@@ -940,6 +940,7 @@ export const ViewSchedule = () => {
           (shift as any)?.draftScheduleSessionId ??
           (group as any)?.draftScheduleSessionId ??
           "no-session";
+        const apiSessionKey = `${group.clientId}-${group.addressId}-${userId}-${bucketSessionId}`;
 
         // ✅ OLD (buggy): const key = `${userId}-${date}`;
         const key = `${group.clientId}-${group.addressId}-${userId}-${date}-${bucketSessionId}`;
@@ -972,6 +973,11 @@ export const ViewSchedule = () => {
             draftScheduleSession: isDraftScheduleSession,
             timeSetup: timeSetup,
             uniqueKey: key,
+            apiWeeklyHours: typeof group.weeklyHours === "number" ? group.weeklyHours : null,
+            apiShiftHoursSum: Array.isArray(group.shifts)
+              ? group.shifts.reduce((sum: number, s: any) => sum + (Number(s?.hours) || 0), 0)
+              : null,
+            apiSessionKey,
           };
           keyedByUserDate.set(key, item);
         }

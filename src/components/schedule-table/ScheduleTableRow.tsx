@@ -31,6 +31,8 @@ interface ScheduleTableRowProps {
     handleDeleteUser: (userId: number) => void;
     calculateDayTotal: (date: string) => number;
     calculateUserDayTotal: (row: RowGroup, date: string, groupByClient: boolean) => number;
+    getRowApiTotals: (row: RowGroup, groupByClient: boolean) => { apiWeeklyHours: number | null; apiShiftHoursSum: number | null };
+    hasChanges?: boolean;
     findSessionForShift: (shiftId: number) => SessionItem | null;
     hasTimeMismatch: (shift: any, session?: any, tolerance?: number) => boolean;
     isDraftShift: (shift: any) => boolean;
@@ -65,6 +67,8 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
     handleDeleteUser,
     calculateDayTotal,
     calculateUserDayTotal,
+    getRowApiTotals,
+    hasChanges,
     findSessionForShift,
     hasTimeMismatch,
     isDraftShift,
@@ -73,6 +77,16 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
     currentWeekRange
 }) => {
     const rowCount = getMaxShiftsPerDay(row, groupByClient);
+    const localRowTotal = calculateRowTotal(row, groupByClient);
+    const { apiWeeklyHours, apiShiftHoursSum } = getRowApiTotals(row, groupByClient);
+    const hasLocalChanges = Boolean(hasChanges);
+    const shouldUseApiTotal = !hasLocalChanges && typeof apiWeeklyHours === "number";
+    const displayMainTotal = shouldUseApiTotal ? apiWeeklyHours : localRowTotal;
+    const roundedApiWeekly = typeof apiWeeklyHours === "number" ? parseFloat(apiWeeklyHours.toFixed(2)) : null;
+    const roundedWeekShiftSum = parseFloat(localRowTotal.toFixed(2));
+    const shouldHighlightApiMismatch = !hasLocalChanges &&
+        typeof apiWeeklyHours === "number" &&
+        roundedApiWeekly !== roundedWeekShiftSum;
 
     return (
         <React.Fragment key={row.id}>
@@ -219,10 +233,10 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                     {rowIdx === 0 && (
                         <>
                             <td
-                                className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap"
+                                className={`border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap ${shouldHighlightApiMismatch ? "bg-red-200" : ""}`}
                                 rowSpan={rowCount}
                             >
-                                {calculateRowTotal(row, groupByClient)}
+                                {displayMainTotal > 0 ? displayMainTotal : "-"}
                             </td>
                             <td
                                 className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"

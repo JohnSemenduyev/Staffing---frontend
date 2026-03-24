@@ -110,6 +110,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     calculateDayTotal,
     calculateGrandTotal,
     calculateUserDayTotal,
+    getRowApiTotals,
     hasTimeMismatch,
     findSessionForShift,
     isDraftShift,
@@ -180,6 +181,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 handleDeleteUser={handleDeleteUser}
                 calculateDayTotal={calculateDayTotal}
                 calculateUserDayTotal={calculateUserDayTotal}
+                getRowApiTotals={getRowApiTotals}
+                hasChanges={hasChanges}
                 findSessionForShift={findSessionForShift}
                 hasTimeMismatch={hasTimeMismatch}
                 isDraftShift={isDraftShift}
