@@ -423,9 +423,12 @@ export const Notification = () => {
       width: "250px",
       className: "min-w-[150px]",
        render: (_: any, row: any) => {
+        if (row?.subcategory === "worked_hours_discrepancy") {
+          return <div className="truncate" title="All Users Combined">All Users Combined</div>;
+        }
         const a = row;
         console.log(row)
-        const full = [a?.guardFirst.name??"" , a?.guardLast.name??""].filter(Boolean).join(" ");
+        const full = [a?.guardFirst?.name ?? "", a?.guardLast?.name ?? ""].filter(Boolean).join(" ");
         return <div className="truncate" title={full}>{full || "-"}</div>;
       }
     },
