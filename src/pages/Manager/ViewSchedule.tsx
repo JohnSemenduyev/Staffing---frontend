@@ -36,7 +36,8 @@ import {
   checkApiOverlap,
   shiftSpansNextDay,
   getAdjustedDate,
-  isOverflowShift
+  isOverflowShift,
+  shiftsOverlapInCalendar
 } from "./ViewSchedule/utils";
 import {
   FormData,
@@ -1425,7 +1426,16 @@ export const ViewSchedule = () => {
               .filter(shift => shiftSpansNextDay(shift.startTime, shift.endTime));
 
             hasLocalOverlap = prevDayShifts.some(existingShift => {
-              return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
+              // Compare in calendar time (date-aware) so consecutive overnight shifts like
+              // 23:03–11:03 on adjacent days don't get falsely flagged as overlapping.
+              return shiftsOverlapInCalendar(
+                dateStr,
+                form.starttime,
+                form.endtime,
+                prevDate,
+                existingShift.startTime,
+                existingShift.endTime
+              );
             });
           }
 
@@ -1438,7 +1448,16 @@ export const ViewSchedule = () => {
               .flatMap(item => item.shifts);
 
             hasLocalOverlap = nextDayShifts.some(existingShift => {
-              return doTimesOverlap(form.starttime, form.endtime, existingShift.startTime, existingShift.endTime);
+              // Same reasoning as prev-day check: compare only segments that actually fall
+              // on the same calendar day.
+              return shiftsOverlapInCalendar(
+                dateStr,
+                form.starttime,
+                form.endtime,
+                nextDate,
+                existingShift.startTime,
+                existingShift.endTime
+              );
             });
           }
 
