@@ -1426,8 +1426,6 @@ export const ViewSchedule = () => {
               .filter(shift => shiftSpansNextDay(shift.startTime, shift.endTime));
 
             hasLocalOverlap = prevDayShifts.some(existingShift => {
-              // Compare in calendar time (date-aware) so consecutive overnight shifts like
-              // 23:03–11:03 on adjacent days don't get falsely flagged as overlapping.
               return shiftsOverlapInCalendar(
                 dateStr,
                 form.starttime,
