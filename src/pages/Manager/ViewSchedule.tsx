@@ -1446,8 +1446,6 @@ export const ViewSchedule = () => {
               .flatMap(item => item.shifts);
 
             hasLocalOverlap = nextDayShifts.some(existingShift => {
-              // Same reasoning as prev-day check: compare only segments that actually fall
-              // on the same calendar day.
               return shiftsOverlapInCalendar(
                 dateStr,
                 form.starttime,
