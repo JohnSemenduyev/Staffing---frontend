@@ -129,6 +129,17 @@ export const useActualTimeTable = ({
         return map;
     }, [scheduleData]);
 
+    /** Calendar start date for a session (shift.date, else scheduleSessionId string, else shift lookup). */
+    const getSessionCalendarStartDate = (session: SessionItem): string => {
+        const raw = session.shift?.date ?? session.scheduleSessionId;
+        if (raw) return normDate(String(raw));
+        if (typeof session.shiftId === "number") {
+            const sh = shiftById.get(session.shiftId);
+            if (sh?.date) return normDate(String(sh.date));
+        }
+        return "";
+    };
+
     /** Visual shifts for one date from a subset of schedule items (e.g. one user or one group). Includes previous-day spanning on all days (including first day = overflow from previous week). */
     const getVisualShiftsFromScheduleItems = (
         scheduleItems: ScheduleItem[],
@@ -231,7 +242,13 @@ export const useActualTimeTable = ({
         if (sessions.length === 0) return [];
 
         if (date) {
-            sessions = sessions.filter(s => getSessionHoursOnDate(s, date) > 0);
+            const d = normDate(date);
+            sessions = sessions.filter(s => {
+                if (getSessionHoursOnDate(s, date) > 0) return true;
+                // Clock-in only: workedTime is often 0, so hours on date are 0 — still show in the cell for that day
+                if (!s.clockOut && s.clockIn && getSessionCalendarStartDate(s) === d) return true;
+                return false;
+            });
         }
         return sessions.sort((a, b) => (a.clockIn || '').localeCompare(b.clockIn || ''));
     };
@@ -448,8 +465,7 @@ export const useActualTimeTable = ({
 
     /** Hours of this session that fall on the given calendar date (splits overnight by date). */
     const getSessionHoursOnDate = (session: SessionItem, date: string): number => {
-        const sessionDateRaw = session.shift?.date ?? session.scheduleSessionId;
-        const sessionDate = sessionDateRaw ? normDate(String(sessionDateRaw)) : "";
+        const sessionDate = getSessionCalendarStartDate(session);
         const d = normDate(date);
         if (!session.clockIn) {
             return sessionDate === d ? (session.workedTime || 0) / 60 : 0;
