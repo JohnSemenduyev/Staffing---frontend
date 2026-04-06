@@ -18,6 +18,7 @@ import {
   DELETE_DRAFT_SCHEDULE,
 } from "../graphql/mutation";
 import { formatClockDateForApi, normalizeClockDateToYmd } from "../utils/sessionCalendar";
+import { getAdjustedDate, shiftSpansNextDay, timeToMinutes } from "../lib/utils";
 
 // ---------- Types ----------
 
@@ -423,11 +424,64 @@ export const ClientSessionProvider = ({
         throw new Error("No authentication token found");
       }
 
+      const shiftMetaById = new Map<number, { date?: string; startTime?: string; endTime?: string }>();
+      if (scheduleData) {
+        scheduleData.scheduleSessions.forEach((item) => {
+          item.shifts?.forEach((shift) => {
+            shiftMetaById.set(shift.id, {
+              date: shift.date,
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+            });
+          });
+          item.draftShifts?.forEach((shift) => {
+            shiftMetaById.set(shift.id, {
+              date: shift.date,
+              startTime: shift.startTime,
+              endTime: shift.endTime,
+            });
+          });
+        });
+      }
+
+      const sessionById = new Map<number, SessionItem>();
+      sessionData?.forEach((s) => sessionById.set(s.id, s));
+
       const transformedUpdates = sessionUpdates.map((update) => {
         const base: any = {
           shiftId: update.shiftId,
           scheduleSessionId: update.scheduleSessionId,
         };
+        const existingSession =
+          update.sessionId != null ? sessionById.get(update.sessionId) : undefined;
+        const shiftMeta = shiftMetaById.get(update.shiftId);
+
+        const anchorDate = normalizeClockDateToYmd(
+          shiftMeta?.date ??
+          existingSession?.clockInDate ??
+          existingSession?.shift?.date ??
+          existingSession?.clockOutDate
+        );
+
+        const explicitClockInDate = normalizeClockDateToYmd(update.clockInDate);
+        const explicitClockOutDate = normalizeClockDateToYmd(update.clockOutDate);
+        const effectiveClockInDate = explicitClockInDate || (update.clockIn ? anchorDate : "");
+
+        const hasOvernightShift =
+          !!shiftMeta?.startTime &&
+          !!shiftMeta?.endTime &&
+          shiftSpansNextDay(shiftMeta.startTime, shiftMeta.endTime);
+        const hasOvernightTimes =
+          !!update.clockIn &&
+          !!update.clockOut &&
+          timeToMinutes(update.clockOut) < timeToMinutes(update.clockIn);
+        const derivedClockOutDate =
+          update.clockOut && effectiveClockInDate
+            ? (hasOvernightShift || hasOvernightTimes
+              ? getAdjustedDate(effectiveClockInDate, 1)
+              : effectiveClockInDate)
+            : "";
+        const effectiveClockOutDate = explicitClockOutDate || derivedClockOutDate;
 
         if (update.sessionId !== undefined && update.sessionId !== null) {
           base.sessionId = update.sessionId;
@@ -438,16 +492,15 @@ export const ClientSessionProvider = ({
         if (update.clockOut) {
           base.clockOut = update.clockOut;
         }
-        if (update.clockInDate != null && String(update.clockInDate).trim() !== "") {
-          const api = formatClockDateForApi(update.clockInDate);
+        if (effectiveClockInDate) {
+          const api = formatClockDateForApi(effectiveClockInDate);
           if (api) base.clockInDate = api;
         }
         if (
           update.clockOut &&
-          update.clockOutDate != null &&
-          String(update.clockOutDate).trim() !== ""
+          effectiveClockOutDate
         ) {
-          const api = formatClockDateForApi(update.clockOutDate);
+          const api = formatClockDateForApi(effectiveClockOutDate);
           if (api) base.clockOutDate = api;
         }
 

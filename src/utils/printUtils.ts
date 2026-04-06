@@ -1,11 +1,12 @@
 import { getAdjustedDate, shiftSpansNextDay, calculateHours } from "../lib/utils";
 import type { Shift, SessionItem } from "../types/schedule";
+import { getSessionHoursOnDate as getSessionHoursOnDateFromCalendar } from "./sessionCalendar";
 import {
-  getSessionHoursOnDate as getSessionHoursOnDateFromCalendar,
-  getSessionDisplayRangeOnDate as getSessionDisplayRangeOnDateFromCalendar,
-  hasNoEffectiveClockOut,
-  isClockInOnlyVisibleOnDate,
-} from "./sessionCalendar";
+  buildSessionCalendarCtx,
+  getActualTimeCellContent,
+  getMaxShiftsPerDayForUser,
+  getWeekDateKeys,
+} from "./actualTimeExportLayout";
 // utils.ts
 export const toLocalYMD = (date: Date) => {
   const year = date.getFullYear(); // local year
@@ -432,13 +433,6 @@ export const generateActualTimePrintableTable = (
     `;
   }
 
-  const shiftById = new Map<number, Shift>();
-  scheduleData.forEach((si) => {
-    (si.shifts || []).forEach((sh: any) => {
-      if (sh?.id) shiftById.set(sh.id, sh as Shift);
-    });
-  });
-
   // Get unique users in scheduleData first-occurrence order (match Web UI row order)
   const uniqueUsers = new Map();
   scheduleData.forEach(item => {
@@ -452,75 +446,15 @@ export const generateActualTimePrintableTable = (
   });
   const usersInDisplayOrder = Array.from(uniqueUsers.values());
 
-  const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
-  const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
-  const sessionCtx = { shiftById, weekStartStr };
+  const sessionCtx = buildSessionCalendarCtx(scheduleData, currentWeekRange);
+  const dateKeysForWeek = currentWeekRange ? getWeekDateKeys(currentWeekRange) : [];
 
   const getSessionHoursOnDate = (session: SessionData, dateStr: string) =>
     getSessionHoursOnDateFromCalendar(session as unknown as SessionItem, dateStr, sessionCtx);
 
-  const getSessionDisplayRangeOnDate = (session: SessionData, dateStr: string) =>
-    getSessionDisplayRangeOnDateFromCalendar(session as unknown as SessionItem, dateStr, sessionCtx);
-
-  const getShiftsForUserDateActual = (userId: number, dateStr: string): any[] => {
-    const shifts: any[] = [];
-    scheduleData.forEach((item) => {
-      if (item.userId === userId && normDate(item.startDate) === dateStr) {
-        (item.shifts || []).forEach((s: any) => shifts.push(s));
-      }
-    });
-    return shifts;
-  };
-
-  // Visual shifts per (user, date): same as schedule table (current day + previous day spanning / overflow).
-  // Sort by display start so overnight continuation (00:00) appears first on next day, matching web column order.
-  const getVisualShiftsActual = (userId: number, dateStr: string): { shift: any; isContinuation: boolean; displayStart: string; displayEnd: string }[] => {
-    const currentShiftsList = getShiftsForUserDateActual(userId, dateStr);
-    const prevDateStr = getAdjustedDate(dateStr, -1);
-    const prevShiftsList = getShiftsForUserDateActual(userId, prevDateStr);
-    const currentShifts = currentShiftsList.filter((s: any) => !s.isDelete).map((s: any) => ({
-      shift: s, isContinuation: false, displayStart: s.startTime, displayEnd: s.endTime
-    }));
-    const prevSpanning = prevShiftsList
-      .filter((s: any) => !s.isDelete && shiftSpansNextDay(s.startTime, s.endTime))
-      .map((s: any) => ({ shift: s, isContinuation: true, displayStart: '00:00', displayEnd: s.endTime }));
-    const merged = [...currentShifts, ...prevSpanning].sort(
-      (a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart)
-    );
-    return merged;
-  };
-
   const getMaxShiftsPerDay = (userId: number) => {
-    let maxShifts = 1;
-    if (!currentWeekRange) return maxShifts;
-    const startDate = new Date(currentWeekRange.startOfWeek);
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      const dateStr = toLocalYMD(date);
-      const visual = getVisualShiftsActual(userId, dateStr);
-      maxShifts = Math.max(maxShifts, visual.length);
-    }
-    return maxShifts;
-  };
-
-  const calculateUserTotal = (userId: number) => {
-    if (!currentWeekRange) return 0;
-    const userSessions = sessionData.filter(item => {
-      const scheduleItem = scheduleData.find(si => si.shifts.some((shift: any) => shift.id === item.shiftId));
-      return scheduleItem && scheduleItem.userId === userId;
-    });
-    const startDate = new Date(currentWeekRange.startOfWeek);
-    let total = 0;
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      const dateStr = toLocalYMD(date);
-      userSessions.forEach(item => {
-        total += getSessionHoursOnDate(item, dateStr);
-      });
-    }
-    return parseFloat(total.toFixed(2));
+    if (!currentWeekRange || dateKeysForWeek.length === 0) return 1;
+    return getMaxShiftsPerDayForUser(scheduleData, userId, dateKeysForWeek);
   };
 
   const calculateDayTotal = (dateStr: string) => {
@@ -643,38 +577,15 @@ export const generateActualTimePrintableTable = (
           const date = new Date(startDate);
           date.setDate(startDate.getDate() + i);
           const dateStr = toLocalYMD(date);
-          const visual = getVisualShiftsActual(user.id, dateStr);
-          const visualEntry = visual[rowIdx];
-          let cellContent = '';
-          if (visualEntry) {
-            const sessionsInCell = sessionData.filter((s) => {
-              if (s.shiftId !== visualEntry.shift.id) return false;
-              if (getSessionHoursOnDate(s, dateStr) > 0) return true;
-              const se = s as unknown as SessionItem;
-              return Boolean(
-                s.clockIn?.trim() &&
-                  hasNoEffectiveClockOut(se) &&
-                  isClockInOnlyVisibleOnDate(se, dateStr, sessionCtx)
-              );
-            });
-            // Sort by display start so order matches web column sequence
-            sessionsInCell.sort((a, b) => {
-              const ra = getSessionDisplayRangeOnDate(a, dateStr);
-              const rb = getSessionDisplayRangeOnDate(b, dateStr);
-              const ta = ra ? timeToMinutes(ra.displayStart) : 0;
-              const tb = rb ? timeToMinutes(rb.displayStart) : 0;
-              return ta - tb;
-            });
-            cellContent = sessionsInCell
-              .map(s => {
-                const range = getSessionDisplayRangeOnDate(s, dateStr);
-                return range ? `${range.displayStart} - ${range.displayEnd}` : `${s.clockIn} - ${s.clockOut}`;
-              })
-              .join('\n');
-            sessionsInCell.forEach(session => {
-              rowTotal += getSessionHoursOnDate(session, dateStr);
-            });
-          }
+          const { label: cellContent, hours: cellHours } = getActualTimeCellContent(
+            sessionData as SessionItem[],
+            scheduleData,
+            sessionCtx,
+            user.id,
+            dateStr,
+            rowIdx
+          );
+          rowTotal += cellHours;
           cells.push(`
             <td style="border: 1px solid black !important; padding: 0px; text-align: center; font-size: 15px; ">
               ${cellContent}

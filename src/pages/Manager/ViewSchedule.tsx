@@ -12,6 +12,12 @@ import { RotateCcw, Calendar, ChevronLeft, ChevronRight, Send } from "lucide-rea
 import ToggleSwitch from "../../components/ui/toggle";
 import { useToast } from "../../hooks/use-toast";
 import { generateScheduleStyledExcel } from "../../utils/excel/excelGenerators";
+import {
+  buildActualTimeCellLookup,
+  buildSessionCalendarCtx,
+  calculateActualTimeGrandTotal,
+  getWeekDateKeys,
+} from "../../utils/actualTimeExportLayout";
 import { useSearchUsers } from "../../hooks/useSearchUser";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -47,8 +53,7 @@ import {
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 import { graphQLClient } from "../../GraphqlClient";
-import { formatClockDateForApi, hasExplicitClockDates, normalizeClockDateToYmd } from "../../utils/sessionCalendar";
-import type { SessionItem as SessionItemType } from "../../types/schedule";
+import { formatClockDateForApi, normalizeClockDateToYmd } from "../../utils/sessionCalendar";
 
 
 
@@ -3079,134 +3084,21 @@ const scheduleDataForExport = useMemo(() => {
       });
     }
   };
-  const calculateWorkedTimeForExcel = (session: any) => {
-    if (!session.clockIn || !session.clockOut) {
-      return 0;
-    }
-    if (session.clockIn === session.clockOut) {
-      return 24.0;
-    }
-    return calculateHours(session.clockIn, session.clockOut);
-  };
-
   const handleActualTimeDownloadExcel = async () => {
     try {
       if (!currentWeekRange) throw new Error("Missing week range");
       
       // Additional safeguard: ensure only users with non-empty schedule data from export
       const safeExportData = scheduleDataForExport.filter(item => item.shifts && item.shifts.length > 0);
-      const visibleUserIds = new Set(safeExportData.map((i) => i.userId));
-      const transformedData = [];
-      const uniqueUsers = new Map();
-      sessionData.forEach(item => {
-        const scheduleItem = scheduleData.find(si =>
-          si.shifts.some(shift => shift.id === item.shiftId)
-        );
-        if (scheduleItem && visibleUserIds.has(scheduleItem.userId) && !uniqueUsers.has(scheduleItem.userId)) {
-          uniqueUsers.set(scheduleItem.userId, {
-            id: scheduleItem.userId,
-            name: scheduleItem.userName
-          });
-        }
+      const { cellLookup, maxShiftsByUser } = buildActualTimeCellLookup(
+        sessionData,
+        safeExportData,
+        currentWeekRange
+      );
+      await generateScheduleStyledExcel(safeExportData, selectedClient, currentWeekRange, "actual", {
+        cellLookup,
+        maxShiftsByUser,
       });
-      const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
-      const getAdjustedDateStr = (dateStr: string, offset: number) => {
-        const d = new Date(dateStr + 'T00:00:00');
-        d.setDate(d.getDate() + offset);
-        return toLocalYMD(d);
-      };
-      uniqueUsers.forEach((user) => {
-        sessionData.forEach(session => {
-          const scheduleItem = scheduleData.find(si =>
-            si.shifts.some(shift => shift.id === session.shiftId)
-          );
-          if (!scheduleItem || scheduleItem.userId !== user.id) return;
-          const shift = scheduleItem.shifts.find(s => s.id === session.shiftId);
-          if (!shift) return;
-          let shiftDate: string;
-          if (shift.date.includes('T') && shift.date.includes('Z')) {
-            shiftDate = shift.date.split('T')[0];
-          } else if (shift.date.includes('T')) {
-            shiftDate = toLocalYMD(new Date(shift.date));
-          } else {
-            shiftDate = shift.date;
-          }
-          const hasCompleteTime = session.clockIn && session.clockOut;
-          if (!hasCompleteTime) {
-            transformedData.push({
-              userId: user.id,
-              userName: user.name,
-              startDate: shiftDate,
-              shifts: [{
-                id: session.shiftId,
-                startTime: session.clockIn || 'N/A',
-                endTime: session.clockOut || 'N/A',
-                hours: 'N/A'
-              }]
-            });
-            return;
-          }
-          const totalHours = calculateWorkedTimeForExcel(session);
-          const cin = session.clockIn!;
-          const cout = session.clockOut!;
-
-          if (hasExplicitClockDates(session as SessionItemType)) {
-            const cinD = normalizeClockDateToYmd((session as SessionItemType).clockInDate);
-            const coutD = normalizeClockDateToYmd((session as SessionItemType).clockOutDate);
-            if (cinD && coutD && cinD !== coutD) {
-              const hoursStart = calculateHours(cin, '24:00');
-              const hoursEnd = calculateHours('00:00', cout);
-              transformedData.push({
-                userId: user.id,
-                userName: user.name,
-                startDate: cinD,
-                shifts: [{ id: session.shiftId, startTime: cin, endTime: '24:00', hours: hoursStart }]
-              });
-              transformedData.push({
-                userId: user.id,
-                userName: user.name,
-                startDate: coutD,
-                shifts: [{ id: session.shiftId, startTime: '00:00', endTime: cout, hours: hoursEnd }]
-              });
-              return;
-            }
-          }
-
-          // clockOut "00:00" = end of day (midnight), NOT an overnight shift.
-          // Exclude it from midnight detection to avoid a spurious next-day entry with 24 extra hours.
-          const crossesMidnight = cout !== '00:00' && (cout < cin || (cin === cout && totalHours >= 24));
-          if (crossesMidnight) {
-            const hoursStart = calculateHours(cin, '24:00');
-            const hoursEnd = calculateHours('00:00', cout);
-            const nextDate = getAdjustedDateStr(shiftDate, 1);
-            transformedData.push({
-              userId: user.id,
-              userName: user.name,
-              startDate: shiftDate,
-              shifts: [{ id: session.shiftId, startTime: cin, endTime: '24:00', hours: hoursStart }]
-            });
-            transformedData.push({
-              userId: user.id,
-              userName: user.name,
-              startDate: nextDate,
-              shifts: [{ id: session.shiftId, startTime: '00:00', endTime: cout, hours: hoursEnd }]
-            });
-          } else {
-            transformedData.push({
-              userId: user.id,
-              userName: user.name,
-              startDate: shiftDate,
-              shifts: [{
-                id: session.shiftId,
-                startTime: cin,
-                endTime: cout,
-                hours: totalHours
-              }]
-            });
-          }
-        });
-      });
-      await generateScheduleStyledExcel(transformedData, selectedClient, currentWeekRange, 'actual');
 
       toast({
         title: "Success",
@@ -3231,12 +3123,9 @@ const scheduleDataForExport = useMemo(() => {
       const safeExportData = scheduleDataForExport.filter(item => item.shifts && item.shifts.length > 0);
       const tableContent = generateActualTimePrintableTable(sessionData, safeExportData, currentWeekRange, selectedClient);
       const totalEmployees = new Set(safeExportData.map(i => i.userId)).size;
-      const visibleUserIdsForPrint = new Set(safeExportData.map((i) => i.userId));
-      const totalHours = sessionData.reduce((sum, item) => {
-        const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === item.shiftId));
-        if (!scheduleItem || !visibleUserIdsForPrint.has(scheduleItem.userId)) return sum;
-        return sum + calculateWorkedTimeForExcel(item);
-      }, 0);
+      const sessionCtx = buildSessionCalendarCtx(safeExportData, currentWeekRange);
+      const dateKeys = getWeekDateKeys(currentWeekRange);
+      const totalHours = calculateActualTimeGrandTotal(sessionData, sessionCtx, dateKeys);
 
       await handlePrint(
         tableContent,

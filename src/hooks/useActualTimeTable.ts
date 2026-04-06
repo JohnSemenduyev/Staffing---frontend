@@ -418,16 +418,7 @@ export const useActualTimeTable = ({
             return !cinD || !r.clockIn || r.clockIn.trim() === "";
         });
         if (hasIncomplete) return;
-        const shift =
-            editShiftModal.shiftId != null
-                ? scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === editShiftModal.shiftId)
-                : undefined;
-        const def = shift?.date
-            ? normDate(shift.date.includes("T") ? shift.date.split("T")[0] : String(shift.date))
-            : editShiftModal.date
-              ? normDate(editShiftModal.date)
-              : "";
-        setEditSessions(prev => [...prev, { id: null, clockIn: "", clockOut: "", clockInDate: def, clockOutDate: "" }]);
+        setEditSessions(prev => [...prev, { id: null, clockIn: "", clockOut: "", clockInDate: "", clockOutDate: "" }]);
     };
 
     const removeEditSessionRow = (index: number) => {
@@ -737,6 +728,26 @@ export const useActualTimeTable = ({
         return shift ? isOverflowShift(shift.date, currentWeekRange.startOfWeek) : false;
     }, [editShiftModal.isOpen, editShiftModal.shiftId, scheduleData, currentWeekRange]);
 
+    // Keep calendar picker aligned with backend validation window:
+    // check-in/out can be at most 24h around shift start/end.
+    const editSessionDateLimits = useMemo(() => {
+        if (!editShiftModal.isOpen || editShiftModal.shiftId == null) {
+            return { minDate: "", maxDate: "" };
+        }
+        const shift = scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === editShiftModal.shiftId);
+        if (!shift?.date) return { minDate: "", maxDate: "" };
+
+        const shiftStartDate = normDate(String(shift.date));
+        const shiftEndDate = shiftSpansNextDay(shift.startTime, shift.endTime)
+            ? getAdjustedDate(shiftStartDate, 1)
+            : shiftStartDate;
+
+        return {
+            minDate: getAdjustedDate(shiftStartDate, -1),
+            maxDate: getAdjustedDate(shiftEndDate, 1),
+        };
+    }, [editShiftModal.isOpen, editShiftModal.shiftId, scheduleData]);
+
     const getRowRowCount = (row: RowGroup) => {
         const dateMap = buildGroupDateShifts.get(String(row.id));
         if (!dateMap) return 1;
@@ -790,5 +801,6 @@ export const useActualTimeTable = ({
         editSessions,
         setEditSessions, // for input changes
         isOverflowShiftForEdit,
+        editSessionDateLimits,
     };
 };

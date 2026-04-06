@@ -361,7 +361,7 @@ export function getSessionDisplayRangeOnDate(
         const a = normDate(anchor);
         const ds = normDate(dateStr);
         if (ds !== a) return null;
-        return { displayStart: session.clockIn || "N/A", displayEnd: "24:00" };
+        return { displayStart: session.clockIn || "N/A", displayEnd: "N/A" };
     }
 
     if (hasExplicitClockDates(session)) {
