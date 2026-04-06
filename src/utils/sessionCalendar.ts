@@ -129,6 +129,8 @@ export type EditSessionRow = {
     clockOut: string;
     clockInDate: string;
     clockOutDate: string;
+    clockInDateExplicit?: boolean;
+    clockOutDateExplicit?: boolean;
 };
 
 export type EditSessionRowState = EditSessionRow & { id: number | null };

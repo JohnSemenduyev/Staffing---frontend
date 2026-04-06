@@ -444,28 +444,16 @@ export const ClientSessionProvider = ({
         });
       }
 
-      const sessionById = new Map<number, SessionItem>();
-      sessionData?.forEach((s) => sessionById.set(s.id, s));
-
       const transformedUpdates = sessionUpdates.map((update) => {
         const base: any = {
           shiftId: update.shiftId,
           scheduleSessionId: update.scheduleSessionId,
         };
-        const existingSession =
-          update.sessionId != null ? sessionById.get(update.sessionId) : undefined;
         const shiftMeta = shiftMetaById.get(update.shiftId);
-
-        const anchorDate = normalizeClockDateToYmd(
-          shiftMeta?.date ??
-          existingSession?.clockInDate ??
-          existingSession?.shift?.date ??
-          existingSession?.clockOutDate
-        );
 
         const explicitClockInDate = normalizeClockDateToYmd(update.clockInDate);
         const explicitClockOutDate = normalizeClockDateToYmd(update.clockOutDate);
-        const effectiveClockInDate = explicitClockInDate || (update.clockIn ? anchorDate : "");
+        const effectiveClockInDate = explicitClockInDate || "";
 
         const hasOvernightShift =
           !!shiftMeta?.startTime &&

@@ -53,7 +53,12 @@ import {
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 import { graphQLClient } from "../../GraphqlClient";
-import { formatClockDateForApi, normalizeClockDateToYmd } from "../../utils/sessionCalendar";
+import {
+  formatClockDateForApi,
+  normalizeClockDateToYmd,
+  hasExplicitClockInDate,
+  hasExplicitClockOutDate,
+} from "../../utils/sessionCalendar";
 
 
 
@@ -2857,14 +2862,13 @@ export const ViewSchedule = () => {
           if (s.clockOut) {
             base.clockOut = s.clockOut;
           }
-          if (s.clockInDate != null && String(s.clockInDate).trim() !== "") {
+          if (hasExplicitClockInDate(s)) {
             const apiIn = formatClockDateForApi(s.clockInDate);
             if (apiIn) base.clockInDate = apiIn;
           }
           if (
             s.clockOut &&
-            s.clockOutDate != null &&
-            String(s.clockOutDate).trim() !== ""
+            hasExplicitClockOutDate(s)
           ) {
             const apiOut = formatClockDateForApi(s.clockOutDate);
             if (apiOut) base.clockOutDate = apiOut;

@@ -90,7 +90,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                                             <input
                                                 type="date"
                                                 value={row.clockInDate}
-                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockInDate: e.target.value } : r))}
+                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockInDate: e.target.value, clockInDateExplicit: true } : r))}
                                                 min={editSessionDateLimits?.minDate || undefined}
                                                 max={editSessionDateLimits?.maxDate || undefined}
                                                 readOnly={isOverflowShiftForEdit}
@@ -109,7 +109,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                                             <input
                                                 type="date"
                                                 value={row.clockOutDate}
-                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOutDate: e.target.value } : r))}
+                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOutDate: e.target.value, clockOutDateExplicit: e.target.value.trim() !== "" } : r))}
                                                 min={row.clockInDate || editSessionDateLimits?.minDate || undefined}
                                                 max={editSessionDateLimits?.maxDate || undefined}
                                                 className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"

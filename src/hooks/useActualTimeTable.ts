@@ -404,9 +404,11 @@ export const useActualTimeTable = ({
                 clockInDate: hasExplicitClockInDate(s)
                     ? normalizeClockDateToYmd(s.clockInDate)
                     : shiftDateNorm,
+                clockInDateExplicit: hasExplicitClockInDate(s),
                 clockOutDate: hasExplicitClockOutDate(s)
                     ? normalizeClockDateToYmd(s.clockOutDate)
                     : "",
+                clockOutDateExplicit: hasExplicitClockOutDate(s),
             }))
         );
         setEditShiftModal({ isOpen: true, userId, date, shiftId });
@@ -418,7 +420,15 @@ export const useActualTimeTable = ({
             return !cinD || !r.clockIn || r.clockIn.trim() === "";
         });
         if (hasIncomplete) return;
-        setEditSessions(prev => [...prev, { id: null, clockIn: "", clockOut: "", clockInDate: "", clockOutDate: "" }]);
+        setEditSessions(prev => [...prev, {
+            id: null,
+            clockIn: "",
+            clockOut: "",
+            clockInDate: "",
+            clockOutDate: "",
+            clockInDateExplicit: false,
+            clockOutDateExplicit: false,
+        }]);
     };
 
     const removeEditSessionRow = (index: number) => {
@@ -492,6 +502,8 @@ export const useActualTimeTable = ({
                 workedTime: 0,
             };
             if (r.clockOut?.trim() && cout) base.clockOutDate = cout;
+            if (!r.clockInDateExplicit) base.clockInDate = null;
+            if (!r.clockOutDateExplicit) base.clockOutDate = null;
             return base;
         };
 
@@ -567,6 +579,8 @@ export const useActualTimeTable = ({
                 workedTime: 0,
             };
             if (row.clockOut?.trim() && coutYmd) forHours.clockOutDate = coutYmd;
+            if (!row.clockInDateExplicit) forHours.clockInDate = null;
+            if (!row.clockOutDateExplicit) forHours.clockOutDate = null;
             return {
                 ...forHours,
                 id: row.id ?? Date.now() + Math.floor(Math.random() * 1000),
