@@ -18,6 +18,7 @@ import { Button } from "../../components/ui/button";
 import Pagination from "../../components/Pagination";
 import { toast } from "sonner";
 import { exportUniformComplianceToExcel, exportUniformComplianceToPDF } from "../../utils/exportUniformComplianceUtils";
+import { APP_CONFIG } from "../../config/appConfig";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -398,6 +399,36 @@ export const UniformCompliance = () => {
     return `${inputClasses} ${hasError ? 'border-red-500 focus:ring-red-500' : ''}`;
   };
 
+  const isBunnyUrl = (imageUrl?: string) =>
+    typeof imageUrl === "string" && imageUrl.toLowerCase().includes("bunny");
+
+  const buildImageUrl = (imageUrl?: string) => {
+    if (!imageUrl || !isBunnyUrl(imageUrl)) {
+      return imageUrl || "";
+    }
+
+    const buildFromPath = (rawPath: string) => {
+      const cleanPath = rawPath.replace(/^\/+/, "");
+      const segments = cleanPath.split("/").filter(Boolean);
+      const pathWithoutFirstSegment = segments.slice(1).join("/");
+      const finalPath = pathWithoutFirstSegment || cleanPath;
+      return `${APP_CONFIG.bunnyPullZoneUrl.replace(/\/+$/, "")}/${finalPath}`;
+    };
+
+    try {
+      const url = new URL(imageUrl);
+      return buildFromPath(url.pathname);
+    } catch {
+      const noQuery = imageUrl.split("?")[0] || "";
+      const normalizedPath = noQuery.replace(/^https?:\/\/[^/]+\/?/, "").replace(/^\/+/, "");
+      return buildFromPath(normalizedPath);
+    }
+  };
+
+  const getDisplayImageUrl = (imageUrl?: string) => {
+    return buildImageUrl(imageUrl);
+  };
+
   const tableColumns: TableColumn[] = [
     {
       key: "guardFirst.name",
@@ -551,7 +582,7 @@ export const UniformCompliance = () => {
                       {index === 0 ? "Top Image" : `Bottom Image`}
                     </h1>
                     <img
-                      src={image}
+                      src={getDisplayImageUrl(image)}
                       alt={`Guard image ${index + 1}`}
                       className="w-full h-64 object-contain bg-gray-50"
                       onError={(e) => {
