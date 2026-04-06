@@ -35,6 +35,8 @@ export const SESSIONS_BY_SCHEDULE_SESSION = gql`
       scheduleSessionId
       clockIn
       clockOut
+      clockInDate
+      clockOutDate
       workedTime
       shift {
         id
@@ -826,6 +828,8 @@ export const GET_SESSIONS_BY_SCHEDULE_SESSION = gql`
       scheduleSessionId
       clockIn
       clockOut
+      clockInDate
+      clockOutDate
       workedTime
       shift {
         id

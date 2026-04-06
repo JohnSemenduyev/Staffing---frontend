@@ -26,14 +26,21 @@ export const formatDateStringLocal = (dateString: string): string => {
   return formatDateLocal(new Date(dateString));
 };
 
-// Utility function to format time display for UI
-// Shows 24:00 instead of 00:00 for better UX
-export const formatTimeDisplay = (timeString: string): string => {
-  if (!timeString) return '';
+/** Default: end-of-day / wall-clock (00:00 → 24:00). segmentStart: start of a day segment (midnight stays 00:00). */
+export type FormatTimeDisplayRole = "default" | "segmentStart";
 
-  // If time is 00:00, display as 24:00 for better UX
-  if (timeString === '00:00') {
-    return '24:00';
+// Utility function to format time display for UI
+// Default role: 00:00 shows as 24:00 (end-of-day). segmentStart: 00:00/24:00 stay 00:00 (actual table split rows).
+export const formatTimeDisplay = (timeString: string, role: FormatTimeDisplayRole = "default"): string => {
+  if (!timeString) return "";
+
+  if (role === "segmentStart") {
+    if (timeString === "24:00" || timeString === "00:00") return "00:00";
+    return timeString;
+  }
+
+  if (timeString === "00:00") {
+    return "24:00";
   }
 
   return timeString;

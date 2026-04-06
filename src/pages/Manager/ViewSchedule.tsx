@@ -47,6 +47,8 @@ import {
 import { inputClasses } from "../../pages/Admin/GeoLocationSetup";
 import ResetButton from "../../components/ui/ResetButton";
 import { graphQLClient } from "../../GraphqlClient";
+import { formatClockDateForApi, hasExplicitClockDates, normalizeClockDateToYmd } from "../../utils/sessionCalendar";
+import type { SessionItem as SessionItemType } from "../../types/schedule";
 
 
 
@@ -2746,20 +2748,29 @@ export const ViewSchedule = () => {
   const sessionsEqual = (a: any[], b: any[]) => {
     if (a.length !== b.length) return false;
     const normalizeSession = (s: any) => ({
+      id: s.id ?? null,
       shiftId: s.shiftId || null,
       scheduleSessionId: s.scheduleSessionId || null,
       clockIn: s.clockIn || null,
       clockOut: s.clockOut || null,
+      clockInDate:
+        s.clockInDate != null && String(s.clockInDate).trim() !== ""
+          ? normalizeClockDateToYmd(s.clockInDate) || null
+          : null,
+      clockOutDate:
+        s.clockOutDate != null && String(s.clockOutDate).trim() !== ""
+          ? normalizeClockDateToYmd(s.clockOutDate) || null
+          : null,
+      workedTime: s.workedTime ?? null,
     });
-    const sortedA = [...a].sort((x, y) => {
+    const sessionSortKey = (x: any, y: any) => {
       if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
-      return (x.clockIn || '').localeCompare(y.clockIn || '');
-    }).map(normalizeSession);
-
-    const sortedB = [...b].sort((x, y) => {
-      if (x.shiftId !== y.shiftId) return (x.shiftId || 0) - (y.shiftId || 0);
-      return (x.clockIn || '').localeCompare(y.clockIn || '');
-    }).map(normalizeSession);
+      const c = (x.clockIn || "").localeCompare(y.clockIn || "");
+      if (c !== 0) return c;
+      return (x.id || 0) - (y.id || 0);
+    };
+    const sortedA = [...a].sort(sessionSortKey).map(normalizeSession);
+    const sortedB = [...b].sort(sessionSortKey).map(normalizeSession);
 
     return JSON.stringify(sortedA) === JSON.stringify(sortedB);
   };
@@ -2840,6 +2851,18 @@ export const ViewSchedule = () => {
           };
           if (s.clockOut) {
             base.clockOut = s.clockOut;
+          }
+          if (s.clockInDate != null && String(s.clockInDate).trim() !== "") {
+            const apiIn = formatClockDateForApi(s.clockInDate);
+            if (apiIn) base.clockInDate = apiIn;
+          }
+          if (
+            s.clockOut &&
+            s.clockOutDate != null &&
+            String(s.clockOutDate).trim() !== ""
+          ) {
+            const apiOut = formatClockDateForApi(s.clockOutDate);
+            if (apiOut) base.clockOutDate = apiOut;
           }
           return base;
         });
@@ -3126,6 +3149,29 @@ const scheduleDataForExport = useMemo(() => {
           const totalHours = calculateWorkedTimeForExcel(session);
           const cin = session.clockIn!;
           const cout = session.clockOut!;
+
+          if (hasExplicitClockDates(session as SessionItemType)) {
+            const cinD = normalizeClockDateToYmd((session as SessionItemType).clockInDate);
+            const coutD = normalizeClockDateToYmd((session as SessionItemType).clockOutDate);
+            if (cinD && coutD && cinD !== coutD) {
+              const hoursStart = calculateHours(cin, '24:00');
+              const hoursEnd = calculateHours('00:00', cout);
+              transformedData.push({
+                userId: user.id,
+                userName: user.name,
+                startDate: cinD,
+                shifts: [{ id: session.shiftId, startTime: cin, endTime: '24:00', hours: hoursStart }]
+              });
+              transformedData.push({
+                userId: user.id,
+                userName: user.name,
+                startDate: coutD,
+                shifts: [{ id: session.shiftId, startTime: '00:00', endTime: cout, hours: hoursEnd }]
+              });
+              return;
+            }
+          }
+
           // clockOut "00:00" = end of day (midnight), NOT an overnight shift.
           // Exclude it from midnight detection to avoid a spurious next-day entry with 24 extra hours.
           const crossesMidnight = cout !== '00:00' && (cout < cin || (cin === cout && totalHours >= 24));

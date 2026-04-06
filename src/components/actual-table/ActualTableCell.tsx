@@ -1,29 +1,14 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { FaRegEdit, FaRegTrashAlt } from "react-icons/fa";
-import { formatTimeDisplay, shiftSpansNextDay, timeToMinutes } from "../../lib/utils";
+import { formatTimeDisplay } from "../../lib/utils";
 import { Shift, SessionItem } from "../../types/schedule";
-
-/** Display range for a session in a cell: uses shift.splitSide and session span so overnight shows x–24:00 / 00:00–y. */
-function sessionDisplayRange(session: SessionItem, shift: Shift | null): { start: string; end: string } {
-    const ci = session.clockIn || "";
-    const co = session.clockOut || "";
-    if (!shift?.isSplit || !ci || !co) return { start: formatTimeDisplay(ci) || "N/A", end: formatTimeDisplay(co) || "N/A" };
-    if (shift.splitSide === "end") {
-        // For overnight shifts, the end-day cell may start at midnight (sessions that began before midnight)
-        // OR at the session's real clock-in time (sessions that began after midnight but still belong to this shift).
-        const shiftEnd = shift.endTime || "";
-        const ciM = timeToMinutes(ci);
-        const shiftEndM = shiftEnd ? timeToMinutes(shiftEnd) : 0;
-        const start = shiftEndM > 0 && ciM <= shiftEndM ? formatTimeDisplay(ci) : "00:00";
-        return { start, end: formatTimeDisplay(co) };
-    }
-    if (shift.splitSide === "start" && shiftSpansNextDay(ci, co)) return { start: formatTimeDisplay(ci), end: "24:00" };
-    return { start: formatTimeDisplay(ci), end: formatTimeDisplay(co) };
-}
+import { getSessionDisplayRangeOnDate, type SessionCalendarCtx } from "../../utils/sessionCalendar";
 
 interface ActualTableCellProps {
     shift: Shift | null;
+    cellDate: string;
+    sessionCtx: SessionCalendarCtx;
     sessions: SessionItem[];
     isEditMode: boolean;
     hasMismatch: boolean;
@@ -33,6 +18,8 @@ interface ActualTableCellProps {
 
 export const ActualTableCell: React.FC<ActualTableCellProps> = ({
     shift,
+    cellDate,
+    sessionCtx,
     sessions,
     isEditMode,
     hasMismatch,
@@ -78,9 +65,18 @@ export const ActualTableCell: React.FC<ActualTableCellProps> = ({
             {hasSessions ? (
                 <div className="flex flex-col items-center gap-1">
                     {sessions.map(s => {
-                        const range = sessionDisplayRange(s, shift);
-                        const displayStart = range.start === "24:00" ? "00:00" : range.start;
-                        const displayEnd = range.end === "24:00" ? "24:00" : range.end;
+                        const range = getSessionDisplayRangeOnDate(s, cellDate, sessionCtx);
+                        if (!range) {
+                            const ci = s.clockIn || "";
+                            const co = s.clockOut || "";
+                            return (
+                                <span key={s.id} className="text-xs px-2 py-0.5 rounded-md">
+                                    {formatTimeDisplay(ci, "segmentStart") || "N/A"} – {formatTimeDisplay(co) || "N/A"}
+                                </span>
+                            );
+                        }
+                        const displayStart = formatTimeDisplay(range.displayStart, "segmentStart");
+                        const displayEnd = range.displayEnd === "24:00" ? "24:00" : formatTimeDisplay(range.displayEnd);
                         return (
                             <span key={s.id} className="text-xs px-2 py-0.5 rounded-md">
                                 {displayStart} – {displayEnd}

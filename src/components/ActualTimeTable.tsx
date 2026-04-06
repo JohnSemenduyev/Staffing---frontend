@@ -54,6 +54,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     hasTimeMismatch,
     getUserRowCount,
     getRowRowCount,
+    sessionCtx,
     deleteAllModal,
     deleteUserModal,
     editModeConfirmModal,
@@ -98,6 +99,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                   setDeleteAllModal={setDeleteAllModal}
                   rowCount={getRowRowCount(row)}
                   buildGroupDateShifts={buildGroupDateShifts}
+                  sessionCtx={sessionCtx}
                 />
               ))
               : uniqueUsers.map((user) => (
@@ -119,6 +121,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                   setDeleteAllModal={setDeleteAllModal}
                   rowCount={getUserRowCount(user.id)}
                   buildUserDateShifts={buildUserDateShifts}
+                  sessionCtx={sessionCtx}
                 />
               ))}
 

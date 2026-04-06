@@ -17,6 +17,7 @@ import {
   CREATE_DRAFT_SCHEDULE_SESSIONS,
   DELETE_DRAFT_SCHEDULE,
 } from "../graphql/mutation";
+import { formatClockDateForApi, normalizeClockDateToYmd } from "../utils/sessionCalendar";
 
 // ---------- Types ----------
 
@@ -65,7 +66,9 @@ export type SessionItem = {
   shiftId?: number;
   scheduleSessionId: number;
   clockIn: string;
-  clockOut: string;
+  clockOut?: string | null;
+  clockInDate?: string | null;
+  clockOutDate?: string | null;
   workedTime: number;
   shift?: {
     id: number;
@@ -203,6 +206,8 @@ type ClientSessionContextType = {
     scheduleSessionId: number;
     clockIn?: string;
     clockOut?: string | null;
+    clockInDate?: string | null;
+    clockOutDate?: string | null;
   }>) => Promise<SessionItem[]>;
   checkScheduleSession: (
     clientId: number,
@@ -374,7 +379,19 @@ export const ClientSessionProvider = ({
         { Authorization: `Bearer ${token}` }
       );
 
-      setSessionData(response.sessionsByScheduleSession);
+      setSessionData(
+        response.sessionsByScheduleSession.map((s) => ({
+          ...s,
+          clockInDate:
+            s.clockInDate != null && String(s.clockInDate).trim() !== ""
+              ? normalizeClockDateToYmd(s.clockInDate) || null
+              : s.clockInDate,
+          clockOutDate:
+            s.clockOutDate != null && String(s.clockOutDate).trim() !== ""
+              ? normalizeClockDateToYmd(s.clockOutDate) || null
+              : s.clockOutDate,
+        }))
+      );
     } catch (err) {
       console.error("fetchSessionData:", err);
       setSessionError(genericError("fetchSessions", err));
@@ -397,6 +414,8 @@ export const ClientSessionProvider = ({
     scheduleSessionId: number;
     clockIn?: string;
     clockOut?: string | null;
+    clockInDate?: string | null;
+    clockOutDate?: string | null;
   }>) => {
     try {
       const token = sessionStorage.getItem("token");
@@ -418,6 +437,18 @@ export const ClientSessionProvider = ({
         }
         if (update.clockOut) {
           base.clockOut = update.clockOut;
+        }
+        if (update.clockInDate != null && String(update.clockInDate).trim() !== "") {
+          const api = formatClockDateForApi(update.clockInDate);
+          if (api) base.clockInDate = api;
+        }
+        if (
+          update.clockOut &&
+          update.clockOutDate != null &&
+          String(update.clockOutDate).trim() !== ""
+        ) {
+          const api = formatClockDateForApi(update.clockOutDate);
+          if (api) base.clockOutDate = api;
         }
 
         return base;

@@ -50,7 +50,10 @@ export interface SessionItem {
     shiftId?: number;
     scheduleSessionId: number;
     clockIn: string;
-    clockOut: string;
+    clockOut?: string | null;
+    /** YYYY-MM-DD when provided; legacy sessions may omit (shift-based inference). */
+    clockInDate?: string | null;
+    clockOutDate?: string | null;
     workedTime: number;
     shift?: {
         id: number;

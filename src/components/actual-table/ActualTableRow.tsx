@@ -2,6 +2,7 @@ import React from "react";
 import { ActualTableCell } from "./ActualTableCell";
 import { formatUSPhone, addressTwoLines } from "../../lib/utils";
 import { ScheduleItem, SessionItem, Shift, RowGroup, User } from "../../types/schedule";
+import type { SessionCalendarCtx } from "../../utils/sessionCalendar";
 
 interface ActualTableRowProps {
     mode: "user" | "group";
@@ -21,12 +22,14 @@ interface ActualTableRowProps {
 
     // Row Count helpers
     rowCount: number;
-    buildUserDateShifts?: Map<number, Map<string, Shift[]>>; // For user mode
-    buildGroupDateShifts?: Map<string, Map<string, Shift[]>>; // For group mode
+    buildUserDateShifts?: Map<number, Map<string, (Shift | null)[]>>; // For user mode
+    buildGroupDateShifts?: Map<string, Map<string, (Shift | null)[]>>; // For group mode
 
     // Actions
     openEditShift: (userId: number, date: string, shiftId: number) => void;
     setDeleteAllModal: (data: { isOpen: boolean; shiftId: number }) => void;
+
+    sessionCtx: SessionCalendarCtx;
 }
 
 export const ActualTableRow: React.FC<ActualTableRowProps> = ({
@@ -47,6 +50,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
     buildGroupDateShifts,
     openEditShift,
     setDeleteAllModal,
+    sessionCtx,
 }) => {
     const userId = data instanceof Object && 'userId' in data ? (data as RowGroup).userId : Number((data as User).id);
 
@@ -146,6 +150,8 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                             <ActualTableCell
                                 key={`${dateCol.date}-${rowIdx}-${colIdx}`}
                                 shift={shift}
+                                cellDate={dateCol.date}
+                                sessionCtx={sessionCtx}
                                 sessions={sessions}
                                 isEditMode={isEditMode}
                                 hasMismatch={hasMismatch}

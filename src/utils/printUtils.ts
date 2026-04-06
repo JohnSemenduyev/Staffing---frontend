@@ -1,4 +1,11 @@
 import { getAdjustedDate, shiftSpansNextDay, calculateHours } from "../lib/utils";
+import type { Shift, SessionItem } from "../types/schedule";
+import {
+  getSessionHoursOnDate as getSessionHoursOnDateFromCalendar,
+  getSessionDisplayRangeOnDate as getSessionDisplayRangeOnDateFromCalendar,
+  hasNoEffectiveClockOut,
+  isClockInOnlyVisibleOnDate,
+} from "./sessionCalendar";
 // utils.ts
 export const toLocalYMD = (date: Date) => {
   const year = date.getFullYear(); // local year
@@ -34,7 +41,10 @@ interface SessionData {
   scheduleSessionId: number;
   clockIn: string;
   clockOut?: string;
+  clockInDate?: string | null;
+  clockOutDate?: string | null;
   workedTime?: number;
+  shift?: { id: number; date: string; startTime?: string; endTime?: string };
 }
 
 interface PrintOptions {
@@ -422,26 +432,12 @@ export const generateActualTimePrintableTable = (
     `;
   }
 
-  // Helper function to calculate worked time with 24-hour logic
-  const calculateWorkedTimeWith24HourLogic = (session: SessionData) => {
-    if (!session.clockIn || !session.clockOut) {
-      return (session.workedTime || 0) / 60;
-    }
-
-    if (session.clockIn === session.clockOut) {
-      return 24.0;
-    }
-
-    const calculateHours = (start: string, end: string) => {
-      const [startH, startM] = start.split(":").map(Number);
-      const [endH, endM] = end.split(":").map(Number);
-      let hours = endH - startH + (endM - startM) / 60;
-      if (hours <= 0) hours += 24;
-      return parseFloat(hours.toFixed(2));
-    };
-
-    return calculateHours(session.clockIn, session.clockOut);
-  };
+  const shiftById = new Map<number, Shift>();
+  scheduleData.forEach((si) => {
+    (si.shifts || []).forEach((sh: any) => {
+      if (sh?.id) shiftById.set(sh.id, sh as Shift);
+    });
+  });
 
   // Get unique users in scheduleData first-occurrence order (match Web UI row order)
   const uniqueUsers = new Map();
@@ -458,6 +454,13 @@ export const generateActualTimePrintableTable = (
 
   const normDate = (d: string) => (d && d.includes('T')) ? d.split('T')[0] : (d || '');
   const weekStartStr = currentWeekRange ? toLocalYMD(new Date(currentWeekRange.startOfWeek)) : '';
+  const sessionCtx = { shiftById, weekStartStr };
+
+  const getSessionHoursOnDate = (session: SessionData, dateStr: string) =>
+    getSessionHoursOnDateFromCalendar(session as unknown as SessionItem, dateStr, sessionCtx);
+
+  const getSessionDisplayRangeOnDate = (session: SessionData, dateStr: string) =>
+    getSessionDisplayRangeOnDateFromCalendar(session as unknown as SessionItem, dateStr, sessionCtx);
 
   const getShiftsForUserDateActual = (userId: number, dateStr: string): any[] => {
     const shifts: any[] = [];
@@ -485,115 +488,6 @@ export const generateActualTimePrintableTable = (
       (a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart)
     );
     return merged;
-  };
-
-  // Hours of this session that fall on the given date (overnight/24h split). When start time = end time treat as 24-hour and split across two days.
-  const getSessionHoursOnDate = (session: SessionData, dateStr: string): number => {
-    const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === session.shiftId));
-    const shift = scheduleItem?.shifts.find((s: any) => s.id === session.shiftId);
-    if (!shift) return 0;
-    const sessionDate = normDate(shift.date);
-    if (!session.clockIn || !session.clockOut) {
-      return sessionDate === dateStr ? (session.workedTime || 0) / 60 : 0;
-    }
-    const shiftStart = shift.startTime || '';
-    const shiftEnd = shift.endTime || '';
-    const shiftIsOvernight = shiftSpansNextDay(shiftStart, shiftEnd);
-
-    const startDate = sessionDate;
-    const endDate = getAdjustedDate(sessionDate, 1);
-
-    const sInM = timeToMinutes(session.clockIn);
-    const sOutM = timeToMinutes(session.clockOut);
-
-    // Overnight scheduled shifts: infer which calendar date clockIn/clockOut belong to.
-    // This prevents sessions from disappearing when their time doesn't overlap the scheduled
-    // window (but they are still associated to the shift).
-    if (shiftIsOvernight) {
-      const shiftEndM = timeToMinutes(shiftEnd);
-
-      // Infer which calendar date the clockIn belongs to.
-      // AM clock-ins (within [00:00, shiftEnd]) belong to next day.
-      const inferredClockInDate = sInM <= shiftEndM ? getAdjustedDate(sessionDate, 1) : sessionDate;
-
-      // Infer which calendar date the clockOut belongs to.
-      // - If clockOut is "00:00", keep it on the same calendar day (end-of-day).
-      // - If clockOut <= clockIn, it crosses midnight into the next calendar day.
-      // - If clockIn == clockOut, treat as 24h.
-      let inferredClockOutDate: string;
-      if (session.clockIn === session.clockOut) {
-        inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
-      } else if (sOutM === 0) {
-        inferredClockOutDate = inferredClockInDate;
-      } else if (sOutM <= sInM) {
-        inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
-      } else {
-        inferredClockOutDate = inferredClockInDate;
-      }
-
-      // 24h special-case: clockIn=clockOut=00:00 should show 24h only on the start day cell.
-      const isMidnight24h = session.clockIn === "00:00" && session.clockOut === "00:00";
-
-      if (dateStr === inferredClockInDate && dateStr === inferredClockOutDate) {
-        return calculateHours(session.clockIn, session.clockOut);
-      }
-
-      if (dateStr === inferredClockInDate && dateStr !== inferredClockOutDate) {
-        return calculateHours(session.clockIn, "24:00");
-      }
-
-      if (dateStr === inferredClockOutDate && dateStr !== inferredClockInDate) {
-        if (isMidnight24h) return 0;
-        if (sOutM === 0) return 0;
-        return calculateHours("00:00", session.clockOut);
-      }
-
-      return 0;
-    }
-
-    // Non-overnight scheduled shifts: keep the existing time-of-day logic (do not split across two dates).
-    // Same-day: strictly start < end
-    if (sInM < sOutM) {
-      return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
-    }
-    // clockOut "00:00" = end of day (midnight). All hours on the session's start date; nothing on next day.
-    if (sOutM === 0) {
-      return sessionDate === dateStr ? calculateHours(session.clockIn, '24:00') : 0;
-    }
-
-    // Wrapped/24h times on a non-overnight shift: treat everything on the shift's start date cell.
-    if (session.clockIn === session.clockOut) {
-      return sessionDate === dateStr ? 24 : 0;
-    }
-    return sessionDate === dateStr ? calculateHours(session.clockIn, session.clockOut) : 0;
-  };
-
-  // Display time range for a session on a given date. When start = end (24h) split: day1 "clockIn-24:00", day2 "00:00-clockOut".
-  const getSessionDisplayRangeOnDate = (session: SessionData, dateStr: string): { displayStart: string; displayEnd: string } | null => {
-    if (getSessionHoursOnDate(session, dateStr) <= 0) return null;
-    const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === session.shiftId));
-    const shift = scheduleItem?.shifts.find((s: any) => s.id === session.shiftId);
-    if (!shift || !session.clockIn || !session.clockOut) {
-      return { displayStart: session.clockIn || 'N/A', displayEnd: session.clockOut || 'N/A' };
-    }
-    const sessionDate = normDate(shift.date);
-    const sIn = timeToMinutes(session.clockIn);
-    const sOut = timeToMinutes(session.clockOut);
-    // Same-day: strictly start < end
-    if (sIn < sOut) {
-      return { displayStart: session.clockIn, displayEnd: session.clockOut };
-    }
-    // clockOut "00:00" = end of day (midnight): show original times, no next-day split
-    if (sOut === 0) {
-      return dateStr === sessionDate ? { displayStart: session.clockIn, displayEnd: session.clockOut } : null;
-    }
-    // True overnight: first day clockIn-24:00, next day 00:00-clockOut
-    const endDate = getAdjustedDate(sessionDate, 1);
-    if (dateStr === sessionDate) return { displayStart: session.clockIn, displayEnd: '24:00' };
-    if (dateStr === endDate || (sessionDate < weekStartStr && dateStr === weekStartStr)) {
-      return { displayStart: '00:00', displayEnd: session.clockOut };
-    }
-    return { displayStart: session.clockIn, displayEnd: session.clockOut };
   };
 
   const getMaxShiftsPerDay = (userId: number) => {
@@ -753,9 +647,16 @@ export const generateActualTimePrintableTable = (
           const visualEntry = visual[rowIdx];
           let cellContent = '';
           if (visualEntry) {
-            const sessionsInCell = sessionData.filter(
-              s => s.shiftId === visualEntry.shift.id && getSessionHoursOnDate(s, dateStr) > 0
-            );
+            const sessionsInCell = sessionData.filter((s) => {
+              if (s.shiftId !== visualEntry.shift.id) return false;
+              if (getSessionHoursOnDate(s, dateStr) > 0) return true;
+              const se = s as unknown as SessionItem;
+              return Boolean(
+                s.clockIn?.trim() &&
+                  hasNoEffectiveClockOut(se) &&
+                  isClockInOnlyVisibleOnDate(se, dateStr, sessionCtx)
+              );
+            });
             // Sort by display start so order matches web column sequence
             sessionsInCell.sort((a, b) => {
               const ra = getSessionDisplayRangeOnDate(a, dateStr);

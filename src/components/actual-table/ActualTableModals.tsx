@@ -1,6 +1,7 @@
 import React from "react";
 import { FaRegTrashAlt, FaRegEdit } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
+import type { EditSessionRowState } from "../../utils/sessionCalendar";
 
 interface ActualTableModalsProps {
     deleteAllModal: { isOpen: boolean; shiftId: number | null };
@@ -8,8 +9,8 @@ interface ActualTableModalsProps {
     cancelDeleteAllForShift: () => void;
 
     editShiftModal: { isOpen: boolean; userId: number | null; date: string | null; shiftId: number | null };
-    editSessions: Array<{ id: number | null; clockIn: string; clockOut: string }>;
-    setEditSessions: React.Dispatch<React.SetStateAction<Array<{ id: number | null; clockIn: string; clockOut: string }>>>;
+    editSessions: EditSessionRowState[];
+    setEditSessions: React.Dispatch<React.SetStateAction<EditSessionRowState[]>>;
     addEditSessionRow: () => void;
     removeEditSessionRow: (index: number) => void;
     saveEditShiftSessions: () => void;
@@ -66,7 +67,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
             {/* Edit Shift Sessions Modal */}
             {editShiftModal.isOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-xl w-full mx-4">
+                    <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="mb-4 flex items-center justify-between">
                             <h3 className="text-lg font-medium text-gray-900">Edit Sessions</h3>
                         </div>
@@ -78,19 +79,43 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                         {editSessions.length === 0 && (
                             <div className="text-sm text-gray-500 mb-3">No sessions yet. Click "Add Session" to create one.</div>
                         )}
-                        <div className="space-y-3 max-h-[50vh] overflow-auto pr-1">
+                        <div className="space-y-4 max-h-[50vh] overflow-auto pr-1">
                             {editSessions.map((row, idx) => (
-                                <div key={idx} className="grid grid-cols-11 gap-2 items-end">
-                                    <div className="col-span-5">
-                                        <label className="block text-xs text-gray-600 mb-1">Check In</label>
-                                        <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} readOnly={isOverflowShiftForEdit} disabled={isOverflowShiftForEdit} className={`w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175] ${isOverflowShiftForEdit ? "bg-gray-100 cursor-not-allowed" : ""}`} />
+                                <div key={idx} className="border border-gray-100 rounded-lg p-3 space-y-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Check-in date</label>
+                                            <input
+                                                type="date"
+                                                value={row.clockInDate}
+                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockInDate: e.target.value } : r))}
+                                                readOnly={isOverflowShiftForEdit}
+                                                disabled={isOverflowShiftForEdit}
+                                                className={`w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175] ${isOverflowShiftForEdit ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Check-in time</label>
+                                            <input type="time" value={row.clockIn} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockIn: e.target.value } : r))} readOnly={isOverflowShiftForEdit} disabled={isOverflowShiftForEdit} className={`w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175] ${isOverflowShiftForEdit ? "bg-gray-100 cursor-not-allowed" : ""}`} />
+                                        </div>
                                     </div>
-                                    <div className="col-span-5">
-                                        <label className="block text-xs text-gray-600 mb-1">Check Out</label>
-                                        <input type="time" value={row.clockOut} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOut: e.target.value } : r))} className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Check-out date</label>
+                                            <input
+                                                type="date"
+                                                value={row.clockOutDate}
+                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOutDate: e.target.value } : r))}
+                                                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Check-out time</label>
+                                            <input type="time" value={row.clockOut} onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOut: e.target.value } : r))} className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]" />
+                                        </div>
                                     </div>
-                                    <div className="col-span-1 flex justify-end">
-                                        <button onClick={() => removeEditSessionRow(idx)} className="text-red-600 inline-flex items-center px-2 py-2 hover:bg-red-50 rounded-md" title="Delete this session">
+                                    <div className="flex justify-end">
+                                        <button type="button" onClick={() => removeEditSessionRow(idx)} className="text-red-600 inline-flex items-center px-2 py-2 hover:bg-red-50 rounded-md" title="Delete this session">
                                             <FaRegTrashAlt className="w-4 h-4" />
                                         </button>
                                     </div>

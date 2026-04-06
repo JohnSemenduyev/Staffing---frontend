@@ -507,6 +507,8 @@ export const UPDATE_MANY_SESSION_TIMES = gql`
       scheduleSessionId
       clockIn
       clockOut
+      clockInDate
+      clockOutDate
       workedTime
     }
   }

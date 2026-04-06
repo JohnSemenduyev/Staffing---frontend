@@ -1,8 +1,21 @@
 import { useState, useMemo } from "react";
-import { ScheduleItem, SessionItem, Shift, RowGroup, User } from "../types/schedule";
-import { formatDateLocal, formatDateStringLocal, formatTimeDisplay, calculateHours, minutesDiffWithWrap, doTimesOverlap, timeToMinutes, shiftSpansNextDay, getAdjustedDate } from "../lib/utils";
+import { ScheduleItem, SessionItem, Shift, RowGroup } from "../types/schedule";
+import { formatDateLocal, formatDateStringLocal, calculateHours, minutesDiffWithWrap, timeToMinutes, shiftSpansNextDay, getAdjustedDate } from "../lib/utils";
 import { useToast } from "./use-toast";
 import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
+import {
+    getSessionCalendarStartDate as getSessionCalendarStartDateUtil,
+    getSessionHoursOnDate as getSessionHoursOnDateUtil,
+    getSessionTotalWorkedHours,
+    isClockInOnlyVisibleOnDate,
+    hasExplicitClockInDate,
+    hasExplicitClockOutDate,
+    hasNoEffectiveClockOut,
+    normalizeClockDateToYmd,
+    sessionToDaySegments,
+    validateSessionClockAgainstShift,
+    type EditSessionRowState,
+} from "../utils/sessionCalendar";
 
 /**
  * Actual table grid = schedule visual shifts (current-day + previous-day spanning, including overflow from previous week on first day).
@@ -10,6 +23,29 @@ import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
  */
 
 const normDate = (d: string): string => (d && d.includes("T") ? d.split("T")[0] : d || "");
+
+/** When injecting a shift for explicit-date hours, prefer the row where this shiftId appears elsewhere in the week; if that slot is taken by another shift on this day, use the next free row or append. */
+function placeInjectedShiftCell(
+    arr: (Shift | null)[],
+    sid: number,
+    enriched: Shift,
+    preferredRow: number
+): { placed: boolean; row: number } {
+    if (arr.some(sh => sh != null && sh.id === sid)) return { placed: false, row: -1 };
+    while (arr.length <= preferredRow) arr.push(null);
+    if (arr[preferredRow] == null || arr[preferredRow]!.id === sid) {
+        arr[preferredRow] = enriched;
+        return { placed: true, row: preferredRow };
+    }
+    for (let i = 0; i < arr.length; i++) {
+        if (arr[i] == null || arr[i]!.id === sid) {
+            arr[i] = enriched;
+            return { placed: true, row: i };
+        }
+    }
+    arr.push(enriched);
+    return { placed: true, row: arr.length - 1 };
+}
 
 interface UseActualTimeTableProps {
     scheduleData: ScheduleItem[];
@@ -37,7 +73,7 @@ export const useActualTimeTable = ({
     const [deleteUserModal, setDeleteUserModal] = useState({ isOpen: false, userId: null as number | null });
     const [editModeConfirmModal, setEditModeConfirmModal] = useState({ isOpen: false });
     const [editShiftModal, setEditShiftModal] = useState({ isOpen: false, userId: null as number | null, date: null as string | null, shiftId: null as number | null });
-    const [editSessions, setEditSessions] = useState<Array<{ id: number | null; clockIn: string; clockOut: string }>>([]);
+    const [editSessions, setEditSessions] = useState<EditSessionRowState[]>([]);
 
     // Generate date columns
     const dateColumns = useMemo(() => {
@@ -129,16 +165,17 @@ export const useActualTimeTable = ({
         return map;
     }, [scheduleData]);
 
+    const sessionCtx = useMemo(
+        () => ({ shiftById, weekStartStr: firstDayOfWeek ?? undefined }),
+        [shiftById, firstDayOfWeek]
+    );
+
     /** Calendar start date for a session (shift.date, else scheduleSessionId string, else shift lookup). */
-    const getSessionCalendarStartDate = (session: SessionItem): string => {
-        const raw = session.shift?.date ?? session.scheduleSessionId;
-        if (raw) return normDate(String(raw));
-        if (typeof session.shiftId === "number") {
-            const sh = shiftById.get(session.shiftId);
-            if (sh?.date) return normDate(String(sh.date));
-        }
-        return "";
-    };
+    const getSessionCalendarStartDate = (session: SessionItem): string =>
+        getSessionCalendarStartDateUtil(session, shiftById);
+
+    const getSessionHoursOnDate = (session: SessionItem, date: string): number =>
+        getSessionHoursOnDateUtil(session, date, sessionCtx);
 
     /** Visual shifts for one date from a subset of schedule items (e.g. one user or one group). Includes previous-day spanning on all days (including first day = overflow from previous week). */
     const getVisualShiftsFromScheduleItems = (
@@ -174,9 +211,49 @@ export const useActualTimeTable = ({
         return s;
     };
 
-    /** User mode: grid keyed by userId. Schedule-only, no sessionData. */
+    /** User mode: grid keyed by userId. Schedule visual shifts + injected rows for explicit-date sessions on days with no scheduled cell for that shiftId. */
     const buildUserDateShifts = useMemo(() => {
-        const map = new Map<number, Map<string, Shift[]>>();
+        const map = new Map<number, Map<string, (Shift | null)[]>>();
+
+        const findShiftRowInWeek = (dateMap: Map<string, (Shift | null)[]>, shiftId: number): number => {
+            for (const dc of dateColumns) {
+                const arr = dateMap.get(dc.date) ?? [];
+                const i = arr.findIndex(sh => sh != null && sh.id === shiftId);
+                if (i >= 0) return i;
+            }
+            return 0;
+        };
+
+        const sessionNeedsCellOnDate = (session: SessionItem, dateStr: string): boolean => {
+            if (getSessionHoursOnDateUtil(session, dateStr, sessionCtx) > 0) return true;
+            return Boolean(
+                hasNoEffectiveClockOut(session) &&
+                    session.clockIn?.trim() &&
+                    isClockInOnlyVisibleOnDate(session, dateStr, sessionCtx)
+            );
+        };
+
+        const injectExplicitShiftsForUser = (userId: number, dateMap: Map<string, (Shift | null)[]>) => {
+            const userSessions = sessionData.filter(s => {
+                if (!hasExplicitClockInDate(s) || !s.shiftId) return false;
+                const si = scheduleData.find(item => item.shifts?.some(sh => sh.id === s.shiftId));
+                return si?.userId === userId;
+            });
+            for (const session of userSessions) {
+                const sid = session.shiftId!;
+                const baseShift = shiftById.get(sid);
+                if (!baseShift) continue;
+                const preferredRow = findShiftRowInWeek(dateMap, sid);
+                const enriched = enrichShiftForCell({ ...baseShift, isContinuation: false } as Shift & { isContinuation?: boolean });
+                for (const dc of dateColumns) {
+                    if (!sessionNeedsCellOnDate(session, dc.date)) continue;
+                    const arr = dateMap.get(dc.date);
+                    if (!arr) continue;
+                    placeInjectedShiftCell(arr, sid, enriched, preferredRow);
+                }
+            }
+        };
+
         const userIds = Array.from(new Map(scheduleData.map(item => [item.userId, item.userId])).values());
         userIds.forEach(userId => {
             const userItems = scheduleData.filter(item => item.userId === userId);
@@ -186,13 +263,58 @@ export const useActualTimeTable = ({
                 const visual = getVisualShiftsFromScheduleItems(userItems, dc.date, firstDayOfWeek);
                 dateMap.set(dc.date, visual.map(enrichShiftForCell));
             });
+            injectExplicitShiftsForUser(userId, dateMap);
         });
         return map;
-    }, [scheduleData, dateColumns, firstDayOfWeek]);
+    }, [scheduleData, dateColumns, firstDayOfWeek, sessionData, sessionCtx, shiftById]);
 
-    /** Group mode: grid keyed by group id (userId-clientId-addressId). Same visual-shift logic. */
+    /** Group mode: grid keyed by group id (userId-clientId-addressId). Same visual-shift logic + explicit-date inject. */
     const buildGroupDateShifts = useMemo(() => {
-        const map = new Map<string, Map<string, Shift[]>>();
+        const map = new Map<string, Map<string, (Shift | null)[]>>();
+
+        const findShiftRowInWeek = (dateMap: Map<string, (Shift | null)[]>, shiftId: number): number => {
+            for (const dc of dateColumns) {
+                const arr = dateMap.get(dc.date) ?? [];
+                const i = arr.findIndex(sh => sh != null && sh.id === shiftId);
+                if (i >= 0) return i;
+            }
+            return 0;
+        };
+
+        const sessionNeedsCellOnDate = (session: SessionItem, dateStr: string): boolean => {
+            if (getSessionHoursOnDateUtil(session, dateStr, sessionCtx) > 0) return true;
+            return Boolean(
+                hasNoEffectiveClockOut(session) &&
+                    session.clockIn?.trim() &&
+                    isClockInOnlyVisibleOnDate(session, dateStr, sessionCtx)
+            );
+        };
+
+        const injectExplicitShiftsForGroup = (group: RowGroup, dateMap: Map<string, (Shift | null)[]>) => {
+            const groupSessions = sessionData.filter(s => {
+                if (!hasExplicitClockInDate(s) || !s.shiftId) return false;
+                const si = scheduleData.find(item => item.shifts?.some(sh => sh.id === s.shiftId));
+                return (
+                    si?.userId === group.userId &&
+                    si.clientId === group.clientId &&
+                    si.addressId === group.addressId
+                );
+            });
+            for (const session of groupSessions) {
+                const sid = session.shiftId!;
+                const baseShift = shiftById.get(sid);
+                if (!baseShift) continue;
+                const preferredRow = findShiftRowInWeek(dateMap, sid);
+                const enriched = enrichShiftForCell({ ...baseShift, isContinuation: false } as Shift & { isContinuation?: boolean });
+                for (const dc of dateColumns) {
+                    if (!sessionNeedsCellOnDate(session, dc.date)) continue;
+                    const arr = dateMap.get(dc.date);
+                    if (!arr) continue;
+                    placeInjectedShiftCell(arr, sid, enriched, preferredRow);
+                }
+            }
+        };
+
         rowGroups.forEach(group => {
             const groupItems = scheduleData.filter(
                 item => item.userId === group.userId && item.clientId === group.clientId && item.addressId === group.addressId
@@ -204,9 +326,10 @@ export const useActualTimeTable = ({
                 const visual = getVisualShiftsFromScheduleItems(groupItems, dc.date, firstDayOfWeek);
                 dateMap.set(dc.date, visual.map(enrichShiftForCell));
             });
+            injectExplicitShiftsForGroup(group, dateMap);
         });
         return map;
-    }, [scheduleData, dateColumns, firstDayOfWeek, rowGroups]);
+    }, [scheduleData, dateColumns, firstDayOfWeek, rowGroups, sessionData, sessionCtx, shiftById]);
 
     // Helper functions
     /** Sessions for a shift. When date is provided, only sessions with hours on that date (getSessionHoursOnDate > 0). Display clipping is done in the cell. */
@@ -229,7 +352,7 @@ export const useActualTimeTable = ({
         // Fallback when shiftId is missing but we have scheduleSessionId + date + userId (e.g. Whole Column edge case)
         if (!actualShiftId && sessions.length === 0 && scheduleSessionId && date && typeof userId === 'number') {
             const shiftsOnDate = buildUserDateShifts.get(userId)?.get(date) || [];
-            if (shiftsOnDate.length > 0) {
+            if (shiftsOnDate.some(s => s != null)) {
                 const bySessionIdAndDate = sessionData.filter(s => {
                     const d = s.shift?.date || s.scheduleSessionId;
                     const sDate = d ? formatDateStringLocal(String(d)) : '';
@@ -242,11 +365,10 @@ export const useActualTimeTable = ({
         if (sessions.length === 0) return [];
 
         if (date) {
-            const d = normDate(date);
             sessions = sessions.filter(s => {
                 if (getSessionHoursOnDate(s, date) > 0) return true;
-                // Clock-in only: workedTime is often 0, so hours on date are 0 — still show in the cell for that day
-                if (!s.clockOut && s.clockIn && getSessionCalendarStartDate(s) === d) return true;
+                // Clock-in only: workedTime is often 0, so hours on date are 0 — still show on check-in (anchor) day
+                if (hasNoEffectiveClockOut(s) && s.clockIn?.trim() && isClockInOnlyVisibleOnDate(s, date, sessionCtx)) return true;
                 return false;
             });
         }
@@ -271,16 +393,41 @@ export const useActualTimeTable = ({
         const scheduleSessionId = shift?.scheduleSessionId;
         const isOvernight = shift && shiftSpansNextDay(shift.startTime, shift.endTime);
         const sessions = getSessionsForShift(shiftId, scheduleSessionId, isOvernight ? undefined : date, userId);
+        const shiftDateNorm = shift?.date
+            ? normDate(shift.date.includes("T") ? shift.date.split("T")[0] : String(shift.date))
+            : normDate(date);
         setEditSessions(
-            sessions.map(s => ({ id: s.id, clockIn: s.clockIn || "", clockOut: s.clockOut || "" }))
+            sessions.map(s => ({
+                id: s.id,
+                clockIn: s.clockIn || "",
+                clockOut: s.clockOut || "",
+                clockInDate: hasExplicitClockInDate(s)
+                    ? normalizeClockDateToYmd(s.clockInDate)
+                    : shiftDateNorm,
+                clockOutDate: hasExplicitClockOutDate(s)
+                    ? normalizeClockDateToYmd(s.clockOutDate)
+                    : "",
+            }))
         );
         setEditShiftModal({ isOpen: true, userId, date, shiftId });
     };
 
     const addEditSessionRow = () => {
-        const hasIncomplete = editSessions.some(r => !r.clockIn || r.clockIn.trim() === "");
+        const hasIncomplete = editSessions.some(r => {
+            const cinD = normalizeClockDateToYmd(r.clockInDate);
+            return !cinD || !r.clockIn || r.clockIn.trim() === "";
+        });
         if (hasIncomplete) return;
-        setEditSessions(prev => [...prev, { id: null, clockIn: "", clockOut: "" }]);
+        const shift =
+            editShiftModal.shiftId != null
+                ? scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === editShiftModal.shiftId)
+                : undefined;
+        const def = shift?.date
+            ? normDate(shift.date.includes("T") ? shift.date.split("T")[0] : String(shift.date))
+            : editShiftModal.date
+              ? normDate(editShiftModal.date)
+              : "";
+        setEditSessions(prev => [...prev, { id: null, clockIn: "", clockOut: "", clockInDate: def, clockOutDate: "" }]);
     };
 
     const removeEditSessionRow = (index: number) => {
@@ -302,10 +449,25 @@ export const useActualTimeTable = ({
             return;
         }
 
-        // 1) Basic validation
+        // 1) Basic validation + shift window (dates required)
+        const shiftForDate = scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === shiftId);
+        if (!shiftForDate) {
+            toast({ title: "Error", description: "Shift not found.", variant: "destructive" });
+            return;
+        }
+
         for (const row of editSessions) {
-            if (!row.clockIn) {
-                toast({ title: "Validation Error", description: "Clock-in is required for every session.", variant: "destructive" });
+            if (!normalizeClockDateToYmd(row.clockInDate)) {
+                toast({ title: "Validation Error", description: "Check-in date is required for every session.", variant: "destructive" });
+                return;
+            }
+            if (!row.clockIn || !row.clockIn.trim()) {
+                toast({ title: "Validation Error", description: "Clock-in time is required for every session.", variant: "destructive" });
+                return;
+            }
+            const v = validateSessionClockAgainstShift(row, shiftForDate);
+            if (v) {
+                toast({ title: "Validation Error", description: v, variant: "destructive" });
                 return;
             }
             if (row.clockOut) {
@@ -321,54 +483,55 @@ export const useActualTimeTable = ({
         const userId = editShiftModal.userId!;
         const prevDate = getAdjustedDate(date, -1);
         const nextDate = getAdjustedDate(date, 1);
-        const shiftForDate = scheduleData.flatMap(s => s.shifts || []).find(sh => sh.id === shiftId);
         const editedSessionStartDate = shiftForDate?.date ? (shiftForDate.date.includes("T") ? shiftForDate.date.split("T")[0] : shiftForDate.date) : date;
         const editedSessionIds = new Set(editSessions.map(r => r.id).filter((id): id is number => id != null));
 
-        // Helper: two sessions overlap only if they overlap on the same calendar date (handles overnight / 24h)
-        const sessionsOverlapInCalendar = (
-            date1: string, clockIn1: string, clockOut1: string,
-            date2: string, clockIn2: string, clockOut2: string
-        ): boolean => {
-            const norm = (d: string) => d.includes("T") ? d.split("T")[0] : d;
-            const d1 = norm(date1);
-            const d2 = norm(date2);
-            const segs = (d: string, inT: string, outT: string): Array<{ date: string; startM: number; endM: number }> => {
-                const startM = timeToMinutes(inT);
-                const endM = timeToMinutes(outT);
-                // Treat start >= end as overnight/24h (split across days)
-                if (startM >= endM) {
-                    return [
-                        { date: d, startM, endM: 24 * 60 },
-                        { date: getAdjustedDate(d, 1), startM: 0, endM },
-                    ];
-                }
-                return [{ date: d, startM, endM }];
+        const scheduleSessionIdResolved = (scheduleData.find(si => si.shifts.some(sh => sh.id === shiftId))?.shifts.find(sh => sh.id === shiftId)?.scheduleSessionId)!;
+
+        const rowToProbeSession = (r: EditSessionRowState): SessionItem => {
+            const cin = normalizeClockDateToYmd(r.clockInDate);
+            const cout = r.clockOut?.trim() ? normalizeClockDateToYmd(r.clockOutDate) : "";
+            const base: SessionItem = {
+                id: r.id ?? 0,
+                shiftId,
+                scheduleSessionId: scheduleSessionIdResolved,
+                clockIn: r.clockIn,
+                clockOut: r.clockOut || null,
+                clockInDate: cin,
+                workedTime: 0,
             };
-            const segs1 = segs(d1, clockIn1, clockOut1);
-            const segs2 = segs(d2, clockIn2, clockOut2);
-            for (const a of segs1) {
-                for (const b of segs2) {
-                    if (a.date !== b.date) continue;
-                    if (a.startM < b.endM && b.startM < a.endM) return true;
+            if (r.clockOut?.trim() && cout) base.clockOutDate = cout;
+            return base;
+        };
+
+        const segmentsOverlap = (
+            a: Array<{ date: string; startM: number; endM: number }>,
+            b: Array<{ date: string; startM: number; endM: number }>
+        ): boolean => {
+            for (const x of a) {
+                for (const y of b) {
+                    if (x.date !== y.date) continue;
+                    if (x.startM < y.endM && y.startM < x.endM) return true;
                 }
             }
             return false;
         };
 
-        // 2) Same‑shift overlap: no overlaps among sessions of the same shift (including 24h / overnight)
+        // 2) Same‑shift overlap
         const sorted = [...editSessions].sort((a, b) => a.clockIn.localeCompare(b.clockIn));
         for (let i = 0; i < sorted.length; i++) {
             for (let j = i + 1; j < sorted.length; j++) {
-                if (!sorted[i].clockOut || !sorted[j].clockOut) continue; // open‑ended: empty end time, not 24:00
-                if (sessionsOverlapInCalendar(editedSessionStartDate, sorted[i].clockIn, sorted[i].clockOut, editedSessionStartDate, sorted[j].clockIn, sorted[j].clockOut)) {
+                if (!sorted[i].clockOut || !sorted[j].clockOut) continue;
+                const a = sessionToDaySegments(rowToProbeSession(sorted[i]) as SessionItem, editedSessionStartDate, sessionCtx);
+                const b = sessionToDaySegments(rowToProbeSession(sorted[j]) as SessionItem, editedSessionStartDate, sessionCtx);
+                if (segmentsOverlap(a, b)) {
                     toast({ title: "Overlap", description: "Sessions overlap within the same shift.", variant: "destructive" });
                     return;
                 }
             }
         }
 
-        // 3) Same‑day / previous‑day / next‑day overlap with other sessions for this user
+        // 3) Adjacent-day overlap with other sessions for this user
         const otherSessionsSameUserAndAdjacentDays = sessionData.filter(s => {
             if (s.shiftId === shiftId) return false;
             if (editedSessionIds.has(s.id)) return false;
@@ -383,10 +546,11 @@ export const useActualTimeTable = ({
         for (const row of editSessions) {
             for (const s of otherSessionsSameUserAndAdjacentDays) {
                 if (!s.clockIn) continue;
-                if (!row.clockOut || !s.clockOut) continue; // open‑ended: empty end time — skip overlap check
-                const otherDateRaw = s.shift?.date || s.scheduleSessionId;
-                const otherDate = otherDateRaw ? formatDateStringLocal(String(otherDateRaw)) : "";
-                if (sessionsOverlapInCalendar(editedSessionStartDate, row.clockIn, row.clockOut, otherDate, s.clockIn, s.clockOut)) {
+                if (!row.clockOut || !s.clockOut) continue;
+                const otherAnchor = getSessionCalendarStartDateUtil(s, shiftById);
+                const a = sessionToDaySegments(rowToProbeSession(row), editedSessionStartDate, sessionCtx);
+                const b = sessionToDaySegments(s, otherAnchor, sessionCtx);
+                if (segmentsOverlap(a, b)) {
                     toast({ title: "Overlap", description: "Edited sessions overlap with another session on this date or an adjacent day (same user).", variant: "destructive" });
                     return;
                 }
@@ -395,20 +559,30 @@ export const useActualTimeTable = ({
 
         const remaining = sessionData.filter(s => s.shiftId !== shiftId);
         const sessionDate = shiftForDate?.date ? (shiftForDate.date.includes("T") ? shiftForDate.date.split("T")[0] : shiftForDate.date) : date;
-        // Use shift's start date (sessionDate) so the shift stays on the current day column after edit.
         const withClockOut = editSessions.filter(r => r.clockOut);
         const minClockIn = editSessions.length ? editSessions.reduce((min, r) => (r.clockIn && (!min || r.clockIn < min)) ? r.clockIn : min, "" as string) : "";
         const maxClockOut = withClockOut.length ? withClockOut.reduce((max, r) => (r.clockOut && (!max || r.clockOut > max)) ? r.clockOut : max, "" as string) : "";
         const shiftTimes = (minClockIn && maxClockOut) ? { startTime: minClockIn, endTime: maxClockOut } : {};
-        const toAdd = editSessions.map(row => ({
-            id: row.id ?? Date.now() + Math.floor(Math.random() * 1000),
-            shiftId,
-            scheduleSessionId: (scheduleData.find(si => si.shifts.some(sh => sh.id === shiftId))?.shifts.find(sh => sh.id === shiftId)?.scheduleSessionId)!,
-            clockIn: row.clockIn,
-            clockOut: row.clockOut || null,
-            workedTime: row.clockOut ? calculateHours(row.clockIn, row.clockOut) : 0,
-            shift: { id: shiftId, date: sessionDate, ...shiftTimes }
-        })) as unknown as SessionItem[];
+        const toAdd = editSessions.map(row => {
+            const cinYmd = normalizeClockDateToYmd(row.clockInDate);
+            const coutYmd = row.clockOut?.trim() ? normalizeClockDateToYmd(row.clockOutDate) : "";
+            const forHours: SessionItem = {
+                id: row.id ?? 0,
+                shiftId,
+                scheduleSessionId: scheduleSessionIdResolved,
+                clockIn: row.clockIn,
+                clockOut: row.clockOut || null,
+                clockInDate: cinYmd,
+                workedTime: 0,
+            };
+            if (row.clockOut?.trim() && coutYmd) forHours.clockOutDate = coutYmd;
+            return {
+                ...forHours,
+                id: row.id ?? Date.now() + Math.floor(Math.random() * 1000),
+                workedTime: Math.round(getSessionTotalWorkedHours(forHours, sessionCtx) * 60),
+                shift: { id: shiftId, date: sessionDate, ...shiftTimes },
+            } as SessionItem;
+        });
 
         onSessionDataChange([...remaining, ...toAdd]);
         setEditShiftModal({ isOpen: false, userId: null, date: null, shiftId: null });
@@ -453,108 +627,8 @@ export const useActualTimeTable = ({
 
 
     // Calculations
-    const calculateWorkedTimeWith24HourLogic = (session: SessionItem) => {
-        if (!session.clockIn || !session.clockOut) {
-            return (session.workedTime || 0) / 60;
-        }
-        if (session.clockIn === session.clockOut) {
-            return 24.0;
-        }
-        return calculateHours(session.clockIn, session.clockOut);
-    };
-
-    /** Hours of this session that fall on the given calendar date (splits overnight by date). */
-    const getSessionHoursOnDate = (session: SessionItem, date: string): number => {
-        const sessionDate = getSessionCalendarStartDate(session);
-        const d = normDate(date);
-        if (!session.clockIn) {
-            return sessionDate === d ? (session.workedTime || 0) / 60 : 0;
-        }
-        if (!session.clockOut) {
-            return sessionDate === d ? (session.workedTime || 0) / 60 : 0;
-        }
-        const scheduledShift = typeof session.shiftId === "number" ? shiftById.get(session.shiftId) : undefined;
-
-        // For overnight scheduled shifts, decide which calendar date the session contributes to
-        // using only `clockIn`/`clockOut` and the shift window split at midnight.
-        //
-        // Key requirement from the UI: when a session is associated to an overnight shift, an AM
-        // clock-in (within [00:00, shiftEnd]) should appear in the NEXT day column, even if
-        // `clockIn < clockOut` time-of-day.
-        if (scheduledShift && shiftSpansNextDay(scheduledShift.startTime, scheduledShift.endTime)) {
-            const shiftStartM = timeToMinutes(scheduledShift.startTime);
-            const shiftEndM = timeToMinutes(scheduledShift.endTime);
-            const sInM = timeToMinutes(session.clockIn);
-            const sOutM = timeToMinutes(session.clockOut);
-
-            // Infer which calendar date the clockIn belongs to.
-            // If clockIn is in the overnight "end" part [00:00, shiftEnd], it belongs to next day.
-            const inferredClockInDate = sInM <= shiftEndM ? getAdjustedDate(sessionDate, 1) : sessionDate;
-
-            // Infer which calendar date the clockOut belongs to.
-            // - If clockOut is "00:00", keep it on the same calendar day (end-of-day).
-            // - If clockOut <= clockIn, it crosses midnight into the next calendar day.
-            // - If clockIn == clockOut, treat as 24h.
-            let inferredClockOutDate: string;
-            if (session.clockIn === session.clockOut) {
-                inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
-            } else if (sOutM === 0) {
-                inferredClockOutDate = inferredClockInDate;
-            } else if (sOutM <= sInM) {
-                inferredClockOutDate = getAdjustedDate(inferredClockInDate, 1);
-            } else {
-                inferredClockOutDate = inferredClockInDate;
-            }
-
-            // 24h special-case: clockIn=clockOut=00:00 should show 24h only on the start day cell.
-            const isMidnight24h = session.clockIn === "00:00" && session.clockOut === "00:00";
-
-            if (d === inferredClockInDate && d === inferredClockOutDate) {
-                // Same calendar day.
-                return calculateHours(session.clockIn, session.clockOut);
-            }
-
-            if (d === inferredClockInDate && d !== inferredClockOutDate) {
-                // First day portion.
-                return calculateHours(session.clockIn, "24:00");
-            }
-
-            if (d === inferredClockOutDate && d !== inferredClockInDate) {
-                // Second day portion. If clockOut is 00:00, this portion is 0.
-                if (isMidnight24h) return 0;
-                if (sOutM === 0) return 0;
-                return calculateHours("00:00", session.clockOut);
-            }
-
-            return 0;
-        }
-
-        // Non-overnight / unknown shift: keep the existing time-of-day logic.
-        const sIn = timeToMinutes(session.clockIn);
-        const sOut = timeToMinutes(session.clockOut);
-        // Same-day: strictly start < end.
-        if (sIn < sOut) {
-            return sessionDate === d ? calculateHours(session.clockIn, session.clockOut) : 0;
-        }
-        // clockOut "00:00" = end of day (midnight). All hours on the session's start date; nothing on next day.
-        // Without this, calculateHours("00:00","00:00") on the next day wrongly returns 24.
-        if (sOut === 0) {
-            return sessionDate === d ? calculateHours(session.clockIn, "24:00") : 0;
-        }
-        // True overnight (clockOut > "00:00").
-        // Split across two days ONLY when the scheduled shift itself spans midnight.
-        // If the scheduled shift is same-day, keep all actual time on the shift's start date (same cell).
-        const shouldSplitByDate = scheduledShift ? shiftSpansNextDay(scheduledShift.startTime, scheduledShift.endTime) : true;
-        if (!shouldSplitByDate) {
-            return sessionDate === d ? calculateWorkedTimeWith24HourLogic(session) : 0;
-        }
-        // Shift spans midnight: split hours across two calendar dates.
-        const startDate = sessionDate;
-        const endDate = sessionDate ? getAdjustedDate(sessionDate, 1) : "";
-        if (d === startDate) return calculateHours(session.clockIn, "24:00");
-        if (d === endDate) return calculateHours("00:00", session.clockOut);
-        return 0;
-    };
+    const calculateWorkedTimeWith24HourLogic = (session: SessionItem) =>
+        getSessionTotalWorkedHours(session, sessionCtx);
 
     const calculateDayTotal = (date: string, sessions: SessionItem[]) => {
         const total = sessions.reduce((sum, item) => sum + getSessionHoursOnDate(item, date), 0);
@@ -566,6 +640,7 @@ export const useActualTimeTable = ({
         let total = 0;
         const shiftsOnDate = buildUserDateShifts.get(userId)?.get(date) ?? [];
         shiftsOnDate.forEach(shift => {
+            if (!shift) return;
             const cellSessions = getSessionsForShift(shift, shift.scheduleSessionId, date, userId);
             cellSessions.forEach(session => {
                 total += getSessionHoursOnDate(session, date);
@@ -706,6 +781,7 @@ export const useActualTimeTable = ({
         hasTimeMismatch,
         getUserRowCount,
         getRowRowCount,
+        sessionCtx,
         // State exposed
         deleteAllModal,
         deleteUserModal,
