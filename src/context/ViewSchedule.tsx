@@ -380,19 +380,18 @@ export const ClientSessionProvider = ({
         { Authorization: `Bearer ${token}` }
       );
 
-      setSessionData(
-        response.sessionsByScheduleSession.map((s) => ({
-          ...s,
-          clockInDate:
-            s.clockInDate != null && String(s.clockInDate).trim() !== ""
-              ? normalizeClockDateToYmd(s.clockInDate) || null
-              : s.clockInDate,
-          clockOutDate:
-            s.clockOutDate != null && String(s.clockOutDate).trim() !== ""
-              ? normalizeClockDateToYmd(s.clockOutDate) || null
-              : s.clockOutDate,
-        }))
-      );
+      const mappedSessions = response.sessionsByScheduleSession.map((s) => ({
+        ...s,
+        clockInDate:
+          s.clockInDate != null && String(s.clockInDate).trim() !== ""
+            ? normalizeClockDateToYmd(s.clockInDate) || null
+            : s.clockInDate,
+        clockOutDate:
+          s.clockOutDate != null && String(s.clockOutDate).trim() !== ""
+            ? normalizeClockDateToYmd(s.clockOutDate) || null
+            : s.clockOutDate,
+      }));
+      setSessionData(mappedSessions);
     } catch (err) {
       console.error("fetchSessionData:", err);
       setSessionError(genericError("fetchSessions", err));

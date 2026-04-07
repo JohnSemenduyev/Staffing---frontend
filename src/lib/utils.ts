@@ -13,6 +13,14 @@ export const formatDateLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+/** Calendar YYYY-MM-DD in UTC (for instants that encode a date as UTC midnight from the API). */
+export const formatDateUTC = (date: Date): string => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Utility function to format date string in local timezone (YYYY-MM-DD)
 export const formatDateStringLocal = (dateString: string): string => {
   if (!dateString) return '';

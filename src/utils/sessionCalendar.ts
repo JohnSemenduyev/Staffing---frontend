@@ -3,6 +3,7 @@ import {
     calculateHours,
     formatDateLocal,
     formatDateStringLocal,
+    formatDateUTC,
     getAdjustedDate,
     parseLocalYMD,
     shiftSpansNextDay,
@@ -28,7 +29,8 @@ export function normalizeClockDateToYmd(raw: unknown): string {
     if (raw == null || raw === "") return "";
     if (typeof raw === "number" && Number.isFinite(raw)) {
         const d = new Date(raw);
-        return Number.isNaN(d.getTime()) ? "" : formatDateLocal(d);
+        const out = Number.isNaN(d.getTime()) ? "" : formatDateUTC(d);
+        return out;
     }
     const s = String(raw).trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -48,7 +50,7 @@ export function normalizeClockDateToYmd(raw: unknown): string {
         const n = Number(s);
         const ms = s.length <= 10 ? n * 1000 : n;
         const d = new Date(ms);
-        return Number.isNaN(d.getTime()) ? "" : formatDateLocal(d);
+        return Number.isNaN(d.getTime()) ? "" : formatDateUTC(d);
     }
     return normalizeClockDateString(s);
 }
