@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import DatePicker from "react-datepicker";
 import { Calendar } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
@@ -26,6 +27,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   fieldName = "date"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 });
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // selected date from value (YYYY-MM-DD)
   const selectedDate = value ? parseLocalYMD(value) : null;
@@ -44,24 +47,40 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
     setTimeout(() => setIsOpen(false), 100);
   };
 
+  const updateCalendarPosition = () => {
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    setCalendarPosition({
+      top: rect.bottom + 4,
+      left: rect.left,
+    });
+  };
+
   // Handle click outside to close calendar
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const datePickerElement = (event.target as Element).closest('.custom-date-picker');
+      const datePickerElement = (event.target as Element).closest(".custom-date-picker");
+      const portalElement = (event.target as Element).closest(".custom-date-picker-portal");
       if (isOpen && !datePickerElement) {
+        if (portalElement) return;
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
+      updateCalendarPosition();
       // Use a small delay to prevent interference with date selection
       const timeoutId = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
       }, 100);
+      window.addEventListener("resize", updateCalendarPosition);
+      window.addEventListener("scroll", updateCalendarPosition, true);
 
       return () => {
         clearTimeout(timeoutId);
-        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener("mousedown", handleClickOutside);
+        window.removeEventListener("resize", updateCalendarPosition);
+        window.removeEventListener("scroll", updateCalendarPosition, true);
       };
     }
   }, [isOpen]);
@@ -72,7 +91,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   `;
 
   return (
-    <div className="relative w-full cursor-pointer custom-date-picker" onClick={() => !disabled && setIsOpen(true)}>
+    <div ref={wrapperRef} className="relative w-full cursor-pointer custom-date-picker" onClick={() => !disabled && setIsOpen(true)}>
       <input
         type="text"
         value={formatDateForDisplay(selectedDate)}
@@ -100,8 +119,11 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         />
       </div>
       
-      {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1">
+      {isOpen && !disabled && createPortal(
+        <div
+          className="custom-date-picker-portal z-[9999]"
+          style={{ position: "fixed", top: calendarPosition.top, left: calendarPosition.left }}
+        >
           <DatePicker
             selected={selectedDate}
             onChange={handleDateChange}
@@ -114,7 +136,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
             yearDropdownItemNumber={15}
             onCalendarClose={() => setIsOpen(false)}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

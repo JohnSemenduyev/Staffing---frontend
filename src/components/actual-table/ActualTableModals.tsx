@@ -2,6 +2,7 @@ import React from "react";
 import { FaRegTrashAlt, FaRegEdit } from "react-icons/fa";
 import { GoPlus } from "react-icons/go";
 import type { EditSessionRowState } from "../../utils/sessionCalendar";
+import { CustomDatePicker } from "../CustomDatePicker";
 
 interface ActualTableModalsProps {
     deleteAllModal: { isOpen: boolean; shiftId: number | null };
@@ -69,7 +70,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
             {/* Edit Shift Sessions Modal */}
             {editShiftModal.isOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden">
                         <div className="mb-4 flex items-center justify-between">
                             <h3 className="text-lg font-medium text-gray-900">Edit Sessions</h3>
                         </div>
@@ -81,21 +82,21 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                         {editSessions.length === 0 && (
                             <div className="text-sm text-gray-500 mb-3">No sessions yet. Click "Add Session" to create one.</div>
                         )}
-                        <div className="space-y-4 max-h-[50vh] overflow-auto pr-1">
+                        <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
                             {editSessions.map((row, idx) => (
                                 <div key={idx} className="border border-gray-100 rounded-lg p-3 space-y-3">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                                         <div>
                                             <label className="block text-xs text-gray-600 mb-1">Check-in date</label>
-                                            <input
-                                                type="date"
+                                            <CustomDatePicker
                                                 value={row.clockInDate}
-                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockInDate: e.target.value, clockInDateExplicit: true } : r))}
-                                                min={editSessionDateLimits?.minDate || undefined}
-                                                max={editSessionDateLimits?.maxDate || undefined}
-                                                readOnly={isOverflowShiftForEdit}
+                                                onChange={(_, value) =>
+                                                    setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockInDate: value, clockInDateExplicit: true } : r))
+                                                }
+                                                minDate={editSessionDateLimits?.minDate || undefined}
+                                                maxDate={editSessionDateLimits?.maxDate || undefined}
                                                 disabled={isOverflowShiftForEdit}
-                                                className={`w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175] ${isOverflowShiftForEdit ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                fieldName="clockInDate"
                                             />
                                         </div>
                                         <div>
@@ -106,13 +107,14 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                                         <div>
                                             <label className="block text-xs text-gray-600 mb-1">Check-out date</label>
-                                            <input
-                                                type="date"
+                                            <CustomDatePicker
                                                 value={row.clockOutDate}
-                                                onChange={(e) => setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOutDate: e.target.value, clockOutDateExplicit: e.target.value.trim() !== "" } : r))}
-                                                min={row.clockInDate || editSessionDateLimits?.minDate || undefined}
-                                                max={editSessionDateLimits?.maxDate || undefined}
-                                                className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#004175] focus:border-[#004175]"
+                                                onChange={(_, value) =>
+                                                    setEditSessions(prev => prev.map((r, i) => i === idx ? { ...r, clockOutDate: value, clockOutDateExplicit: value.trim() !== "" } : r))
+                                                }
+                                                minDate={row.clockInDate || editSessionDateLimits?.minDate || undefined}
+                                                maxDate={editSessionDateLimits?.maxDate || undefined}
+                                                fieldName="clockOutDate"
                                             />
                                         </div>
                                         <div>
@@ -128,7 +130,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                                 </div>
                             ))}
                         </div>
-                        <div className="flex space-x-3 justify-end mt-6">
+                        <div className="flex space-x-3 justify-end mt-4 pt-4 border-t border-gray-200 bg-white">
                             <button onClick={addEditSessionRow} className="text-blue-600 inline-flex items-center text-sm">
                                 <GoPlus className="w-4 h-4 mr-1" /> Add Session
                             </button>
