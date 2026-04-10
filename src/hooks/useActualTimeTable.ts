@@ -392,7 +392,9 @@ export const useActualTimeTable = ({
         
         const scheduleSessionId = shift?.scheduleSessionId;
         const isOvernight = shift && shiftSpansNextDay(shift.startTime, shift.endTime);
-        const sessions = getSessionsForShift(shiftId, scheduleSessionId, isOvernight ? undefined : date, userId);
+        // Always load all sessions for this shiftId into Edit modal.
+        // Session rows may belong to adjacent calendar dates by explicit clock dates.
+        const sessions = getSessionsForShift(shiftId, scheduleSessionId, undefined, userId);
         const shiftDateNorm = shift?.date
             ? normDate(shift.date.includes("T") ? shift.date.split("T")[0] : String(shift.date))
             : normDate(date);
