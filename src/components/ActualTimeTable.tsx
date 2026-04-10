@@ -65,6 +65,19 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     editSessionDateLimits,
   } = useActualTimeTable(props);
 
+  const editShiftInfo = React.useMemo(() => {
+    if (!editShiftModal.isOpen || editShiftModal.shiftId == null) return null;
+    const shift = props.scheduleData
+      .flatMap((item) => item.shifts || [])
+      .find((s) => s.id === editShiftModal.shiftId);
+    if (!shift) return null;
+    return {
+      date: shift.date,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+    };
+  }, [editShiftModal.isOpen, editShiftModal.shiftId, props.scheduleData]);
+
   return (
     <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
       {props.loading && (
@@ -179,6 +192,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
         confirmDeleteAllForShift={confirmDeleteAllForShift}
         cancelDeleteAllForShift={cancelDeleteAllForShift}
         editShiftModal={editShiftModal}
+        editShiftInfo={editShiftInfo}
         editSessions={editSessions}
         setEditSessions={setEditSessions}
         addEditSessionRow={addEditSessionRow}

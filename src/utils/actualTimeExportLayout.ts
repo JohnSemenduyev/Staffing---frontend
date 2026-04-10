@@ -23,6 +23,18 @@ export interface ActualTimeScheduleRow {
 
 const normDate = (d: string) => (d && d.includes("T") ? d.split("T")[0] : d || "");
 
+function sortVisualEntriesStable(
+    a: { shift: { id: number; startTime: string }; displayStart: string },
+    b: { shift: { id: number; startTime: string }; displayStart: string }
+): number {
+    const aid = Number(a.shift?.id ?? 0);
+    const bid = Number(b.shift?.id ?? 0);
+    if (aid !== bid) return aid - bid;
+    const as = a.shift?.startTime || a.displayStart;
+    const bs = b.shift?.startTime || b.displayStart;
+    return timeToMinutes(as) - timeToMinutes(bs);
+}
+
 export function getWeekDateKeys(currentWeekRange: { startOfWeek: Date }): string[] {
     const keys: string[] = [];
     const startDate = new Date(currentWeekRange.startOfWeek);
@@ -102,9 +114,7 @@ export function getVisualShiftsForUserDate(
             displayStart: "00:00",
             displayEnd: s.endTime,
         }));
-    const merged = [...currentShifts, ...prevSpanning].sort(
-        (a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart)
-    );
+    const merged = [...currentShifts, ...prevSpanning].sort(sortVisualEntriesStable);
     return merged;
 }
 
@@ -145,7 +155,7 @@ function getVisualShiftsForUserDateWithInjected(
         byShiftId.add(s.shiftId);
     });
 
-    return [...base, ...injected].sort((a, b) => timeToMinutes(a.displayStart) - timeToMinutes(b.displayStart));
+    return [...base, ...injected].sort(sortVisualEntriesStable);
 }
 
 export function getMaxShiftsPerDayForUser(
@@ -219,7 +229,6 @@ export function getActualTimeCellContent(
     sessionsInCell.forEach((session) => {
         hours += getSessionHoursOnDateLocal(session, dateStr);
     });
-
     return { label, hours };
 }
 

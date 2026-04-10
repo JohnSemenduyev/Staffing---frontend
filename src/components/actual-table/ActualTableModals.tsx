@@ -10,6 +10,7 @@ interface ActualTableModalsProps {
     cancelDeleteAllForShift: () => void;
 
     editShiftModal: { isOpen: boolean; userId: number | null; date: string | null; shiftId: number | null };
+    editShiftInfo?: { date?: string | null; startTime?: string | null; endTime?: string | null } | null;
     editSessions: EditSessionRowState[];
     setEditSessions: React.Dispatch<React.SetStateAction<EditSessionRowState[]>>;
     addEditSessionRow: () => void;
@@ -33,6 +34,7 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
     confirmDeleteAllForShift,
     cancelDeleteAllForShift,
     editShiftModal,
+    editShiftInfo,
     editSessions,
     setEditSessions,
     addEditSessionRow,
@@ -48,6 +50,29 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
     confirmEditModeToggle,
     cancelEditModeToggle,
 }) => {
+    const formatShiftDate = (raw?: string | null) => {
+        if (!raw) return "";
+        const ymd = raw.includes("T") ? raw.split("T")[0] : raw;
+        const d = new Date(`${ymd}T00:00:00`);
+        if (Number.isNaN(d.getTime())) return ymd;
+        return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+    };
+
+    const shiftDateLabel = formatShiftDate(editShiftInfo?.date);
+    const shiftTimeLabel =
+        editShiftInfo?.startTime && editShiftInfo?.endTime
+            ? `${editShiftInfo.startTime} - ${editShiftInfo.endTime}`
+            : "";
+    const toMinutes = (t?: string | null) => {
+        if (!t) return 0;
+        if (t === "24:00") return 24 * 60;
+        const [h, m] = t.split(":").map(Number);
+        return (h || 0) * 60 + (m || 0);
+    };
+    const isOvernightShift =
+        Boolean(editShiftInfo?.startTime && editShiftInfo?.endTime) &&
+        toMinutes(editShiftInfo?.endTime) <= toMinutes(editShiftInfo?.startTime);
+
     return (
         <>
             {/* Delete All Sessions for Shift */}
@@ -73,6 +98,21 @@ export const ActualTableModals: React.FC<ActualTableModalsProps> = ({
                     <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden">
                         <div className="mb-4 flex items-center justify-between">
                             <h3 className="text-lg font-medium text-gray-900">Edit Sessions</h3>
+                            {(shiftDateLabel || shiftTimeLabel) && (
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium text-gray-700">
+                                        Shift: {[shiftDateLabel, shiftTimeLabel].filter(Boolean).join(" | ")}
+                                    </p>
+                                    <span
+                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isOvernightShift
+                                                ? "bg-amber-100 text-amber-800"
+                                                : "bg-emerald-100 text-emerald-800"
+                                            }`}
+                                    >
+                                        {isOvernightShift ? "Overnight" : "Same-day"}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         {isOverflowShiftForEdit && (
                             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3">

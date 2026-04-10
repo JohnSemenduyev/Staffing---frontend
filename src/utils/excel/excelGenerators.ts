@@ -534,22 +534,20 @@ export async function generateScheduleStyledExcel(
       dateKeys.forEach((dateKey, dayIndex) => {
         const visual = getVisualShifts(data, dateKey);
         const entry = visual[shiftIndex];
-        if (entry) {
-          if (reportType === 'actual' && actualOptions?.cellLookup) {
-            const key = actualTimeCellLookupKey(userId, dateKey, shiftIndex);
-            const cell = actualOptions.cellLookup.get(key);
-            rowValues[3 + dayIndex] = cell?.label ?? '';
-            const eff = cell?.hours ?? 0;
-            weeklyTotalForThisShift += eff;
-            if (entry.shift.id) shiftIdsInRow.push(entry.shift.id);
-          } else {
+        if (reportType === 'actual' && actualOptions?.cellLookup) {
+          const key = actualTimeCellLookupKey(userId, dateKey, shiftIndex);
+          const cell = actualOptions.cellLookup.get(key);
+          rowValues[3 + dayIndex] = cell?.label ?? '';
+          const eff = cell?.hours ?? 0;
+          weeklyTotalForThisShift += eff;
+          if (entry?.shift?.id) shiftIdsInRow.push(entry.shift.id);
+        } else if (entry) {
             rowValues[3 + dayIndex] = `${entry.displayStart} - ${entry.displayEnd}`;
             const eff = reportType === 'actual'
               ? (typeof entry.shift.hours === 'number' ? entry.shift.hours : 0)
               : calculateEffectiveHours(entry.shift, entry.shiftStartDate, dateKey);
             weeklyTotalForThisShift += eff;
             if (reportType === 'actual' && entry.shift.id) shiftIdsInRow.push(entry.shift.id);
-          }
         }
       });
       currentShiftId = shiftIdsInRow.length > 0 ? shiftIdsInRow[0] : null;

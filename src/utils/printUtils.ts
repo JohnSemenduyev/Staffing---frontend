@@ -454,7 +454,13 @@ export const generateActualTimePrintableTable = (
 
   const getMaxShiftsPerDay = (userId: number) => {
     if (!currentWeekRange || dateKeysForWeek.length === 0) return 1;
-    return getMaxShiftsPerDayForUser(scheduleData, userId, dateKeysForWeek);
+    return getMaxShiftsPerDayForUser(
+      scheduleData,
+      userId,
+      dateKeysForWeek,
+      sessionData as SessionItem[],
+      sessionCtx
+    );
   };
 
   const calculateDayTotal = (dateStr: string) => {
