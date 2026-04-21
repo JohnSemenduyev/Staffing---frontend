@@ -2849,10 +2849,62 @@ export const ViewSchedule = () => {
 
     try {
       setIsActualTimePublishing(true);
-      const updatedItems = sessionData
-        .filter(s => s.clockIn)
+      const EXISTING_SESSION_ID_THRESHOLD = 1700000000000;
+      const normalizeForPublishComparison = (s: any) => ({
+        shiftId: s.shiftId ?? null,
+        scheduleSessionId: s.scheduleSessionId ?? null,
+        clockIn: s.clockIn && String(s.clockIn).trim() !== "" ? s.clockIn : null,
+        clockOut: s.clockOut && String(s.clockOut).trim() !== "" ? s.clockOut : null,
+        clockInDate:
+          s.clockInDate != null && String(s.clockInDate).trim() !== ""
+            ? normalizeClockDateToYmd(s.clockInDate) || null
+            : null,
+        clockOutDate:
+          s.clockOutDate != null && String(s.clockOutDate).trim() !== ""
+            ? normalizeClockDateToYmd(s.clockOutDate) || null
+            : null,
+      });
+
+      const originalSessionById = new Map<number, any>(
+        originalSessionData
+          .filter((s: any) => s?.id != null)
+          .map((s: any) => [s.id, s])
+      );
+
+      const changedSessionsToPublish = sessionData.filter((s: any) => {
+        if (!s.clockIn || !String(s.clockIn).trim()) return false;
+        const isNew = s.id > EXISTING_SESSION_ID_THRESHOLD;
+        if (isNew) return true;
+        const original = originalSessionById.get(s.id);
+        if (!original) return true;
+        return (
+          JSON.stringify(normalizeForPublishComparison(s)) !==
+          JSON.stringify(normalizeForPublishComparison(original))
+        );
+      });
+
+      const invalidDateRows = changedSessionsToPublish.filter((s) => {
+        const missingClockInDate = !s.clockInDate || !String(s.clockInDate).trim();
+        const hasClockOut = !!(s.clockOut && String(s.clockOut).trim());
+        const missingClockOutDate =
+          hasClockOut && (!s.clockOutDate || !String(s.clockOutDate).trim());
+        return missingClockInDate || missingClockOutDate;
+      });
+
+      if (invalidDateRows.length > 0) {
+        toast({
+          title: "Validation Error",
+          description:
+            "Each session with check-in time needs a check-in date, and each session with check-out time needs a check-out date.",
+          variant: "destructive",
+        });
+        setActualTimePublishModal({ isOpen: false });
+        return;
+      }
+
+      const updatedItems = changedSessionsToPublish
         .map(s => {
-          const isNew = s.id > 1700000000000;
+          const isNew = s.id > EXISTING_SESSION_ID_THRESHOLD;
           const base: any = {
             sessionId: isNew ? null : s.id,
             shiftId: s.shiftId,
@@ -2879,15 +2931,25 @@ export const ViewSchedule = () => {
       if (isActualTimeEditMode && originalSessionData.length > 0) {
         const currentSessionIds = new Set(sessionData.map(s => s.id));
         originalSessionData.forEach(originalSession => {
-          if (originalSession.id <= 1700000000000 && !currentSessionIds.has(originalSession.id)) {
+          if (originalSession.id <= EXISTING_SESSION_ID_THRESHOLD && !currentSessionIds.has(originalSession.id)) {
             deletedItems.push({
+              sessionId: originalSession.id,
               shiftId: originalSession.shiftId,
               scheduleSessionId: originalSession.scheduleSessionId,
+              isDelete: true,
             });
           }
         });
       }
       const items = [...updatedItems, ...deletedItems];
+      if (items.length === 0) {
+        toast({
+          title: "Info",
+          description: "No changed sessions to publish.",
+        });
+        setActualTimePublishModal({ isOpen: false });
+        return;
+      }
       await updateSessionTimes(items);
       toast({
         title: "Success",

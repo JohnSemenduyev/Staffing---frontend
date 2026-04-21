@@ -209,6 +209,7 @@ type ClientSessionContextType = {
     clockOut?: string | null;
     clockInDate?: string | null;
     clockOutDate?: string | null;
+    isDelete?: boolean;
   }>) => Promise<SessionItem[]>;
   checkScheduleSession: (
     clientId: number,
@@ -416,6 +417,7 @@ export const ClientSessionProvider = ({
     clockOut?: string | null;
     clockInDate?: string | null;
     clockOutDate?: string | null;
+    isDelete?: boolean;
   }>) => {
     try {
       const token = sessionStorage.getItem("token");
@@ -489,6 +491,9 @@ export const ClientSessionProvider = ({
         ) {
           const api = formatClockDateForApi(effectiveClockOutDate);
           if (api) base.clockOutDate = api;
+        }
+        if (update.isDelete === true) {
+          base.isDelete = true;
         }
 
         return base;
