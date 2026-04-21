@@ -395,9 +395,6 @@ export const useActualTimeTable = ({
         // Always load all sessions for this shiftId into Edit modal.
         // Session rows may belong to adjacent calendar dates by explicit clock dates.
         const sessions = getSessionsForShift(shiftId, scheduleSessionId, undefined, userId);
-        const shiftDateNorm = shift?.date
-            ? normDate(shift.date.includes("T") ? shift.date.split("T")[0] : String(shift.date))
-            : normDate(date);
         setEditSessions(
             sessions.map(s => ({
                 id: s.id,
@@ -405,7 +402,7 @@ export const useActualTimeTable = ({
                 clockOut: s.clockOut || "",
                 clockInDate: hasExplicitClockInDate(s)
                     ? normalizeClockDateToYmd(s.clockInDate)
-                    : shiftDateNorm,
+                    : "",
                 clockInDateExplicit: hasExplicitClockInDate(s),
                 clockOutDate: hasExplicitClockOutDate(s)
                     ? normalizeClockDateToYmd(s.clockOutDate)
