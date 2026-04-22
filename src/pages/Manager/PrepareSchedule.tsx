@@ -40,6 +40,7 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { SearchResultItem, SearchResultsDropdown } from "../../components/ui/search-result-item";
 import { useToast } from "../../hooks/use-toast";
 import ResetButton from "../../components/ui/ResetButton";
+import { useLocation } from "react-router-dom";
 
 // Local utility functions
 // Time utils moved to src/lib/utils.ts
@@ -227,6 +228,7 @@ interface FormData {
 
 export const PrepareSchedule = () => {
   const { toast } = useToast();
+  const location = useLocation();
   const [form, setForm] = useState<FormData>({
     clientId: "",
     addressId: "",
@@ -343,6 +345,9 @@ export const PrepareSchedule = () => {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
+
+  useEffect(() => {
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const savedData = sessionStorage.getItem('scheduleData');
@@ -618,6 +623,10 @@ export const PrepareSchedule = () => {
 
         userSchedules.forEach(schedule => {
           schedule.shifts.forEach(shift => {
+            // Exclude deleted local shifts from publish payload.
+            if ((shift as any).isDelete) {
+              return;
+            }
             // Skip draft shifts - cannot create sessions for draft shifts
             if ((shift as any).draftShiftId || (shift as any).draftScheduleSessionId) {
               return;
@@ -782,6 +791,10 @@ export const PrepareSchedule = () => {
 
         userSchedules.forEach(schedule => {
           schedule.shifts.forEach(shift => {
+            // Exclude locally deleted shifts from publish payload.
+            if ((shift as any).isDelete) {
+              return;
+            }
             // Skip draft shifts - cannot create sessions for draft shifts
             if ((shift as any).draftShiftId || (shift as any).draftScheduleSessionId) {
               return;
@@ -1034,7 +1047,8 @@ export const PrepareSchedule = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    const isValid = validate();
+    if (!isValid) return;
     setSubmitLoader(true);
 
     try {
@@ -1059,6 +1073,7 @@ export const PrepareSchedule = () => {
       setHasOverlapError(false);
       const newShiftWraps = shiftSpansNextDay(form.starttime, form.endtime);
       const newInterval = buildShiftInterval(form.date, form.starttime, form.endtime);
+      let addedShiftCount = 0;
 
       // Check for local overlap before proceeding
       const localCandidates = getLocalShiftCandidates(
@@ -1195,6 +1210,7 @@ export const PrepareSchedule = () => {
               ...updatedScheduleData[existingScheduleIndex],
               shifts: sortShiftsByTime(newShifts)
             };
+            addedShiftCount += 1;
           } else {
             // Create new schedule for this day
             newScheduleItems.push({
@@ -1223,9 +1239,9 @@ export const PrepareSchedule = () => {
               userPhone: selectedUserPhone || selectedUser?.phone || '',
 
             });
+            addedShiftCount += 1;
           }
         }
-
         // Update the schedule data with merged shifts
         setScheduleData(updatedScheduleData);
       } else {
@@ -1321,6 +1337,7 @@ export const PrepareSchedule = () => {
             shifts: sortShiftsByTime(newShifts)
           };
           setScheduleData(updatedScheduleData);
+          addedShiftCount += 1;
         } else {
           // Create new schedule
           newScheduleItems.push({
@@ -1347,7 +1364,17 @@ export const PrepareSchedule = () => {
             userName: userSearch || selectedUser?.name || "Unknown User",
             userPhone: selectedUserPhone || selectedUser?.phone || '',
           });
+          addedShiftCount += 1;
         }
+      }
+
+      if (addedShiftCount === 0) {
+        toast({
+          title: "No shifts added",
+          description: "All selected shifts overlap with existing shifts for this user/week.",
+          variant: "destructive",
+        });
+        return;
       }
 
       setScheduleData(prev => [...prev, ...newScheduleItems]);
@@ -1389,6 +1416,24 @@ export const PrepareSchedule = () => {
       setSubmitLoader(false);
     }
   };
+
+  useEffect(() => {
+    const totalSchedules = scheduleData.length;
+    const totalShifts = scheduleData.reduce((acc, item) => acc + item.shifts.length, 0);
+    const totalHours = Number(
+      scheduleData
+        .reduce(
+          (acc, item) =>
+            acc + item.shifts.reduce((shiftAcc, shift) => shiftAcc + Number(shift.hours || 0), 0),
+          0
+        )
+        .toFixed(2)
+    );
+
+  }, [scheduleData]);
+
+  useEffect(() => {
+  }, [submitLoader, publishLoader, isSavingDraft]);
 
   const formatDateUTC = (d: Date) =>
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
