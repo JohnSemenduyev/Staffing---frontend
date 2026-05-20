@@ -77,6 +77,7 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
     currentWeekRange
 }) => {
     const rowCount = getMaxShiftsPerDay(row, groupByClient);
+    const totalRowShadeClass = "bg-gray-100";
     const localRowTotal = calculateRowTotal(row, groupByClient);
     const { apiWeeklyHours, apiShiftHoursSum } = getRowApiTotals(row, groupByClient);
     const hasLocalChanges = Boolean(hasChanges);
@@ -98,7 +99,7 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                 >
                     {rowIdx === 0 && (
                         <td
-                            className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                            className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap w-[160px] min-w-[160px] max-w-[160px]"
                             rowSpan={rowCount}
                         >
                             <div className="font-medium text-gray-800">
@@ -233,13 +234,13 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                     {rowIdx === 0 && (
                         <>
                             <td
-                                className={`border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap ${shouldHighlightApiMismatch ? "bg-red-200" : ""}`}
+                                className={`border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px] ${shouldHighlightApiMismatch ? "bg-red-200" : ""}`}
                                 rowSpan={rowCount}
                             >
                                 {displayMainTotal > 0 ? displayMainTotal : "-"}
                             </td>
                             <td
-                                className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
+                                className="border border-gray-300 px-4 py-3 text-center w-[72px] min-w-[72px] max-w-[72px] align-middle whitespace-nowrap"
                                 rowSpan={rowCount}
                             >
                                 <div className="flex items-center justify-center">
@@ -270,14 +271,19 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                                     />
                                 </div>
                             </td>
+                            {isEditMode && (
+                                <td
+                                    className="border border-gray-300 px-4 py-3 text-center w-16 min-w-16 max-w-16 align-middle whitespace-nowrap"
+                                    rowSpan={rowCount}
+                                />
+                            )}
                         </>
                     )}
                 </tr>
             ))}
 
             <tr
-                className={`transition-colors ${rowIndex % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
-                    }`}
+                className={`transition-colors ${totalRowShadeClass}`}
             >
                 <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
                     Total
@@ -296,28 +302,30 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                                 return (
                                     <td
                                         key={dateColumns[i].date}
-                                        className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                                        className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap w-[120px] min-w-[120px] max-w-[120px]"
                                     >
                                         {rounded > 0 ? rounded : "-"}
                                     </td>
                                 );
                             })}
-                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]">
                                 {rowTotalFromColumns > 0 ? rowTotalFromColumns : "-"}
                             </td>
                         </>
                     );
                 })()}
-                <td className="border border-gray-300 px-4 py-3 text-center w-16" />
+                <td className="border border-gray-300 px-4 py-3 text-center w-[72px] min-w-[72px] max-w-[72px]" />
                 {isEditMode && (
-                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap flex items-center justify-center">
-                        <button
-                            onClick={() => handleDeleteUser(row.userId)}
-                            className="text-red-600 hover:text-red-800 p-1"
-                            title="Delete all data for this user"
-                        >
-                            <FaRegTrashAlt className="w-4 h-4" />
-                        </button>
+                    <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16 min-w-16 max-w-16 text-center">
+                        <div className="flex items-center justify-center">
+                            <button
+                                onClick={() => handleDeleteUser(row.userId)}
+                                className="text-red-600 hover:text-red-800 p-1"
+                                title="Delete all data for this user"
+                            >
+                                <FaRegTrashAlt className="w-4 h-4" />
+                            </button>
+                        </div>
                     </td>
                 )}
             </tr>

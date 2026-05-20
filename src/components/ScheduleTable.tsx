@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ScheduleItem, SessionItem, Shift } from "../types/schedule";
 import { useScheduleTable } from "../hooks/useScheduleTable";
 import { ScheduleTableHeader } from "./schedule-table/ScheduleTableHeader";
@@ -65,6 +65,13 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onSave,
   isSaving,
 }) => {
+  const TABLE_MAX_HEIGHT = 600;
+  const HEADER_HEIGHT = 41;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerTableRef = useRef<HTMLTableElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [headerScrollbarCompensation, setHeaderScrollbarCompensation] = React.useState(0);
+
   const {
     dateColumns,
     rowGroups,
@@ -136,6 +143,33 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   });
 
   const groupByClient = Boolean(selectedUserId);
+  const fixedColumnWidths = {
+    name: 160,
+    day: 120,
+    total: 90,
+    auto: 72,
+    actions: 64,
+  };
+
+  const renderColumnGroup = () => (
+    <colgroup>
+      <col style={{ width: `${fixedColumnWidths.name}px` }} />
+      {dateColumns.map((dateCol) => (
+        <col key={`col-${dateCol.date}`} style={{ width: `${fixedColumnWidths.day}px` }} />
+      ))}
+      <col style={{ width: `${fixedColumnWidths.total}px` }} />
+      <col style={{ width: `${fixedColumnWidths.auto}px` }} />
+      {isEditMode && <col style={{ width: `${fixedColumnWidths.actions}px` }} />}
+    </colgroup>
+  );
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const scrollbarWidth = container.offsetWidth - container.clientWidth;
+    setHeaderScrollbarCompensation(scrollbarWidth);
+  }, [dateColumns.length, rowGroups.length, isEditMode, loading]);
 
   return (
     <div className="relative w-full border border-gray-200 shadow-xl rounded-2xl overflow-hidden">
@@ -145,13 +179,28 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         </div>
       )}
 
-      <div className="w-full overflow-auto custom-scrollbar" style={{ maxHeight: "600px" }}>
-        <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
+      <div className="w-full overflow-x-auto custom-scrollbar">
+        <div style={{ minWidth: "max-content" }}>
+          <table
+            ref={headerTableRef}
+            className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse"
+            style={{ marginRight: `${headerScrollbarCompensation}px` }}
+          >
+          {renderColumnGroup()}
           <ScheduleTableHeader
             selectedUserId={selectedUserId}
             dateColumns={dateColumns}
             isEditMode={isEditMode}
           />
+          </table>
+
+          <div
+            ref={scrollContainerRef}
+            className="w-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+            style={{ maxHeight: `${TABLE_MAX_HEIGHT - HEADER_HEIGHT}px` }}
+          >
+            <table ref={tableRef} className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
+          {renderColumnGroup()}
           <tbody className="relative">
             {rowGroups.map((row, rowIndex) => (
               <ScheduleTableRow
@@ -191,8 +240,8 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 currentWeekRange={currentWeekRange}
               />
             ))}
-            <tr className="bg-gray-50 font-medium">
-              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
+            <tr className="bg-gray-100 font-medium">
+              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-[160px] min-w-[160px] max-w-[160px]">
                 Grand Total
               </td>
               {(() => {
@@ -205,22 +254,24 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                     {dayTotals.map((dayTotal, i) => (
                       <td
                         key={dateColumns[i].date}
-                        className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
+                        className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap w-[120px] min-w-[120px] max-w-[120px]"
                       >
                         {dayTotal > 0 ? dayTotal : "-"}
                       </td>
                     ))}
-                    <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
+                    <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]">
                       {grandTotalFromColumns > 0 ? grandTotalFromColumns : "-"}
                     </td>
                   </>
                 );
               })()}
-              <td className="border border-gray-300 px-4 py-3 text-center w-16"></td>
-              {isEditMode && <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16"></td>}
+              <td className="border border-gray-300 px-4 py-3 text-center w-[72px] min-w-[72px] max-w-[72px]"></td>
+              {isEditMode && <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16 min-w-16 max-w-16"></td>}
             </tr>
           </tbody>
-        </table>
+            </table>
+          </div>
+        </div>
       </div>
 
       <ScheduleTableControls

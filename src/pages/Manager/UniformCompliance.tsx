@@ -18,7 +18,7 @@ import { Button } from "../../components/ui/button";
 import Pagination from "../../components/Pagination";
 import { toast } from "sonner";
 import { exportUniformComplianceToExcel, exportUniformComplianceToPDF } from "../../utils/exportUniformComplianceUtils";
-import { APP_CONFIG } from "../../config/appConfig";
+const UNIFORM_COMPLIANCE_BUNNY_PULL_ZONE = "https://maximal-scheduling-app.b-cdn.net";
 
 export const UniformCompliance = () => {
   const [form, setForm] = useState({
@@ -412,7 +412,8 @@ export const UniformCompliance = () => {
       const segments = cleanPath.split("/").filter(Boolean);
       const pathWithoutFirstSegment = segments.slice(1).join("/");
       const finalPath = pathWithoutFirstSegment || cleanPath;
-      return `${APP_CONFIG.bunnyPullZoneUrl.replace(/\/+$/, "")}/${finalPath}`;
+      const resolvedUrl = `${UNIFORM_COMPLIANCE_BUNNY_PULL_ZONE.replace(/\/+$/, "")}/${finalPath}`;
+      return resolvedUrl;
     };
 
     try {

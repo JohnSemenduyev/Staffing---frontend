@@ -61,7 +61,7 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
 
     return (
         <td
-            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${!readOnly &&
+            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap w-[120px] min-w-[120px] max-w-[120px] ${!readOnly &&
                 dragOverCell?.userId === rowUserId &&
                 dragOverCell?.date === dateCol.date
                 ? "bg-blue-50 border-blue-300"

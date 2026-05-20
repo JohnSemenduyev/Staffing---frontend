@@ -366,6 +366,24 @@ export const useScheduleTable = ({
         });
     }, [scheduleData]);
 
+    const removeShiftCompletely = useCallback((
+        userId: number,
+        date: string,
+        shiftId: number
+    ): ScheduleItem[] => {
+        return scheduleData
+            .map((item) => {
+                if (item.userId === userId && item.startDate === date) {
+                    return {
+                        ...item,
+                        shifts: item.shifts.filter((shift) => shift.id !== shiftId),
+                    };
+                }
+                return item;
+            })
+            .filter((item) => item.shifts.length > 0);
+    }, [scheduleData]);
+
     // Overlap checking helpers
     const isExcludedShiftById = useCallback((s: Shift, excludeShiftId?: number) =>
         excludeShiftId != null && excludeShiftId !== undefined && Number(s.id) === Number(excludeShiftId), []);
@@ -502,6 +520,14 @@ export const useScheduleTable = ({
 
         if (!shiftToDelete) return;
 
+        const isLocalOnlyShift = !((shiftToDelete as any)?.scheduleSessionId) && !((shiftToDelete as any)?.draftShiftId);
+        if (isLocalOnlyShift) {
+            const updatedData = removeShiftCompletely(userId, itemDate, shiftId);
+            onScheduleDataChange(updatedData);
+            setDeleteModal({ isOpen: false });
+            return;
+        }
+
         const isDraftShiftFlag = isDraftShift(shiftToDelete) || shiftToDelete.id > 2000000000000;
 
         if (isDraftShiftFlag && onDraftShiftDeletion) {
@@ -551,7 +577,7 @@ export const useScheduleTable = ({
         const updatedData = markShiftAsDeleted(userId, itemDate, shiftId);
         onScheduleDataChange(updatedData);
         setDeleteModal({ isOpen: false });
-    }, [deleteModal, scheduleData, currentWeekRange, isDraftShift, markShiftAsDeleted, onDraftShiftDeletion, onScheduleDataChange, onDeleteSuccess, hookToast]);
+    }, [deleteModal, scheduleData, currentWeekRange, isDraftShift, markShiftAsDeleted, removeShiftCompletely, onDraftShiftDeletion, onScheduleDataChange, onDeleteSuccess, hookToast]);
 
     const confirmDeleteLastShift = useCallback(async () => {
         setDeletingLastShift(true);

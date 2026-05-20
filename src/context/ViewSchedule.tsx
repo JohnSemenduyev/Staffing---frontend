@@ -147,27 +147,29 @@ export type ScheduleDataItem = ScheduleSessionWithDraft;
 
 // New input type for mutation
 export type ShiftInput = {
-  date: string;
+  shiftId: number | null;
+  date?: string;
   startTime: string;
   endTime: string;
   hours: number;
-  shiftId?: number;
-  auto?: boolean | null;
+  auto: boolean;
+  confirm: boolean;
+  reject: boolean;
   guardPrepared?: boolean | null;
 };
 
 export type ScheduleSessionInputExtended = {
-  scheduleSessionId?: number | null;
-  clientId: number | null;
-  addressId: number | null;
-  userId: number | null;
-  startDate: string | null;
-  endDate: string | null;
-  auto: boolean | null;
-  weeklyHours: number | null;
-  NextWeekHours?: number | null;
+  scheduleSessionId: number | null;
+  clientId?: number | null;
+  addressId?: number | null;
+  userId?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  auto: boolean;
+  checkScheduleSessionId: number | null;
+  weeklyHours: number;
+  NextWeekHours: number;
   shifts: ShiftInput[];
-  change?: boolean | null;
 };
 
 // ---------- Context type ----------

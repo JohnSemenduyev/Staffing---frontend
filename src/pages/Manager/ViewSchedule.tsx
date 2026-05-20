@@ -1571,7 +1571,7 @@ export const ViewSchedule = () => {
       }
       setScheduleData(updatedScheduleData);
 
-      // resetAddGuardForm();
+      resetAddGuardForm();
       if (applyAllWeek && currentWeekRange) {
         if (addedDays > 0 && skippedDays > 0) {
           toast({
@@ -1869,6 +1869,19 @@ export const ViewSchedule = () => {
 
       scheduleData.forEach(item => {
         const userId = item.userId;
+        const originalShiftsForGroup = originalScheduleData
+          .filter((origItem: any) =>
+            origItem.userId === item.userId &&
+            origItem.clientId === item.clientId &&
+            origItem.addressId === item.addressId
+          )
+          .flatMap((origItem: any) => origItem.shifts || []);
+        const originalShiftById = new Map<number, any>();
+        originalShiftsForGroup.forEach((origShift: any) => {
+          if (origShift?.id != null) {
+            originalShiftById.set(origShift.id, origShift);
+          }
+        });
         const baseSessionData = {
           clientId: item.clientId,
           addressId: item.addressId,
@@ -1895,9 +1908,6 @@ export const ViewSchedule = () => {
         };
 
         item.shifts.forEach((shift: any) => {
-          // Skip shifts marked for delete (handled elsewhere or implicit)
-          if (shift.isDelete) return;
-
           // Skip overflow shifts (captured in first loop)
           if (isOverflowShift(shift.date, weekRange.startOfWeek)) return;
 
@@ -1928,6 +1938,7 @@ export const ViewSchedule = () => {
               })?.scheduleSessionId;
             targetSessionId = siblingSessionId || null;
           }
+          const isExistingSession = targetSessionId != null;
 
           const groupKey = `${userId}-${targetSessionId || 'new'}`;
 
@@ -1947,6 +1958,35 @@ export const ViewSchedule = () => {
           const shiftKey = `${formattedDate}-${shift.startTime}-${shift.endTime}`;
           const isClientGeneratedId = shift.id > 1000000000000;
           const isDraftShift = !!shift?.draftShiftId;
+          const normalizedShiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
+          const originalShift = normalizedShiftId != null ? originalShiftById.get(normalizedShiftId) : null;
+          const normalizeCompareDate = (raw: string) => {
+            if (!raw) return "";
+            const s = String(raw);
+            if (s.includes("T")) return s.split("T")[0];
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+            if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+              const [mm, dd, yyyy] = s.split("-");
+              return `${yyyy}-${mm}-${dd}`;
+            }
+            return formatDateLocal(new Date(s));
+          };
+          const shiftDateCompare = normalizeCompareDate(shift.date);
+          const originalDateCompare = normalizeCompareDate(originalShift?.date || "");
+          const isDeleted = shift.isDelete === true;
+          const isChangedVsOriginal =
+            !originalShift ||
+            shiftDateCompare !== originalDateCompare ||
+            String(shift.startTime || "") !== String(originalShift.startTime || "") ||
+            String(shift.endTime || "") !== String(originalShift.endTime || "") ||
+            Number(shift.hours || 0) !== Number(originalShift.hours || 0) ||
+            Boolean(shift.auto) !== Boolean(originalShift.auto) ||
+            Boolean(shift.confirm) !== Boolean(originalShift.confirm) ||
+            Boolean(shift.reject) !== Boolean(originalShift.reject) ||
+            (shift as any)?.guardPrepared !== (originalShift as any)?.guardPrepared;
+          const shouldIncludeShift = !isExistingSession || normalizedShiftId == null || isDeleted || isChangedVsOriginal;
+
+          if (!shouldIncludeShift) return;
 
           if (!group.shifts.has(shiftKey)) {
             group.shifts.set(shiftKey, {
@@ -1954,9 +1994,12 @@ export const ViewSchedule = () => {
               startTime: shift.startTime,
               endTime: shift.endTime,
               hours: shift.hours,
-              shiftId: (isClientGeneratedId || isDraftShift) ? null : shift.id,
-              auto: shift.auto ?? null,
-              guardPrepared: (shift as any)?.guardPrepared ?? false,
+              shiftId: normalizedShiftId,
+              auto: shift.auto ?? false,
+              confirm: shift.confirm ?? false,
+              reject: shift.reject ?? false,
+              guardPrepared: (shift as any)?.guardPrepared,
+              isDelete: isDeleted,
               // Carry over session ID just in case
               scheduleSessionId: targetSessionId
             });
@@ -1966,6 +2009,25 @@ export const ViewSchedule = () => {
 
       const scheduleInput = Array.from(sessionGroupMap.values()).map(group => {
         const shiftsArray = Array.from(group.shifts.values());
+        const groupAllCurrentWeekShifts = scheduleData
+          .filter((item: any) =>
+            item.userId === group.userId &&
+            item.clientId === group.clientId &&
+            item.addressId === group.addressId
+          )
+          .flatMap((item: any) => item.shifts || [])
+          .filter((shift: any) => {
+            if (isOverflowShift(shift.date, weekRange.startOfWeek)) return false;
+            const raw = String(shift.date || "");
+            const norm = raw.includes("T")
+              ? raw.split("T")[0]
+              : /^\d{4}-\d{2}-\d{2}$/.test(raw)
+                ? raw
+                : /^\d{2}-\d{2}-\d{4}$/.test(raw)
+                  ? `${raw.split("-")[2]}-${raw.split("-")[0]}-${raw.split("-")[1]}`
+                  : formatDateLocal(new Date(raw));
+            return !!norm && norm >= startDate && norm <= endDate && !shift.isDelete;
+          });
 
         // Calculate weekly hours and next-week hours SPECIFIC to this session group
         const mapKey = `${group.clientId}-${group.addressId}-${group.userId}`;
@@ -2009,115 +2071,119 @@ export const ViewSchedule = () => {
 
         groupWeeklyHours = parseFloat(groupWeeklyHours.toFixed(2));
         groupNextWeekHours = parseFloat(groupNextWeekHours.toFixed(2));
+        let fullScheduleWeeklyHours = overflowContributionByGroup.get(mapKey) || 0;
+        let fullScheduleNextWeekHours = 0;
+        groupAllCurrentWeekShifts.forEach((shift: any) => {
+          let dateYMD = shift.date;
+          if (shift.date && String(shift.date).match(/^\d{2}-\d{2}-\d{4}$/)) {
+            const [month, day, year] = String(shift.date).split("-");
+            dateYMD = `${year}-${month}-${day}`;
+          } else if (shift.date && !/^\d{4}-\d{2}-\d{2}$/.test(String(shift.date))) {
+            dateYMD = formatDateLocal(new Date(shift.date));
+          }
+          const spansNext = shiftSpansNextDay(shift.startTime, shift.endTime);
+          if (!spansNext) {
+            fullScheduleWeeklyHours += shift.hours || 0;
+            return;
+          }
+          if (dateYMD !== endDate) {
+            fullScheduleWeeklyHours += shift.hours || 0;
+            return;
+          }
+          const totalMins = minutesDiffWithWrap(shift.startTime, shift.endTime);
+          const currentMins = (24 * 60) - timeToMinutes(shift.startTime);
+          const currentPart = currentMins / 60;
+          const nextPart = (totalMins - currentMins) / 60;
+          fullScheduleWeeklyHours += currentPart;
+          fullScheduleNextWeekHours += nextPart;
+        });
+        fullScheduleWeeklyHours = parseFloat(fullScheduleWeeklyHours.toFixed(2));
+        fullScheduleNextWeekHours = parseFloat(fullScheduleNextWeekHours.toFixed(2));
 
-        // Recalculate auto based on shifts in this group to ensure split rows are handled
-        const groupAuto = shiftsArray.some((s: any) => s.auto === true);
-
-        // Change detection: compare shifts for this specific group (clientId + addressId + userId)
-        let changed = false;
-
-        // Get original shifts for this specific group - ONLY within the current week window.
-        // The outer loop already filters currentSet to [startDate, endDate]; we must apply the
-        // SAME date filter to originalGroupShifts so the set-size comparison is apples-to-apples.
-        // Without this filter, a user with shifts from ANY other week would always appear changed.
-        const normShiftDateForCompare = (raw: string): string => {
-          if (!raw) return "";
-          if (raw.includes("T")) return raw.split("T")[0];
-          // YYYY-MM-DD already
-          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-          // MM-DD-YYYY → YYYY-MM-DD
-          const parts = raw.split("-");
-          if (parts.length === 3 && parts[2].length === 4) return `${parts[2]}-${parts[0]}-${parts[1]}`;
-          return formatDateLocal(new Date(raw));
-        };
-
-        const originalGroupShifts = originalScheduleData
-          .filter(item =>
+        // Recalculate session auto from the effective full session shifts:
+        // unchanged shifts from scheduleData + changed payload shifts (as overrides).
+        const groupAutoFromNonDeletedShifts = shiftsArray
+          .filter((s: any) => s.isDelete !== true)
+          .some((s: any) => s.auto === true);
+        const fullSessionSourceItems = scheduleData.filter(
+          (item: any) =>
             item.userId === group.userId &&
             item.clientId === group.clientId &&
-            item.addressId === group.addressId
-          )
-          .flatMap(item => item.shifts)
-          .filter((s: any) => {
-            if (s.isDelete) return false;
-            // Only include shifts that fall inside the current week range
-            const d = normShiftDateForCompare(s.date);
-            return d >= startDate && d <= endDate;
-          });
-
-        // Create sets of shift keys for comparison
-        const originalSet = new Set<string>();
-        originalGroupShifts.forEach((s: any) => {
-          originalSet.add(makeShiftKey(s));
-        });
-
-        const currentSet = new Set<string>();
-        shiftsArray.forEach((s: any) => {
-          // Convert MM-DD-YYYY back to YYYY-MM-DD format for makeShiftKey
-          // makeShiftKey expects YYYY-MM-DD format or a parseable date string
-          let normalizedDate = s.date;
-          if (s.date && s.date.match(/^\d{2}-\d{2}-\d{4}$/)) {
-            // MM-DD-YYYY format - convert to YYYY-MM-DD
-            const [month, day, year] = s.date.split('-');
-            normalizedDate = `${year}-${month}-${day}`;
-          }
-          const shiftForKey = {
-            date: normalizedDate,
-            startTime: s.startTime,
-            endTime: s.endTime
-          };
-          currentSet.add(makeShiftKey(shiftForKey));
-        });
-
-        // Check if sets are different (different number of shifts or different shift keys)
-        if (originalSet.size !== currentSet.size) {
-          changed = true;
-        } else {
-          // Check if all current shifts exist in original set
-          for (const key of currentSet) {
-            if (!originalSet.has(key) ) {
-              changed = true;
-              break;
+            item.addressId === group.addressId &&
+            (
+              group.scheduleSessionId == null ||
+              (item.shifts || []).some(
+                (s: any) => s?.scheduleSessionId === group.scheduleSessionId
+              )
+            )
+        );
+        const effectiveShiftAutoMap = new Map<string, boolean>();
+        fullSessionSourceItems
+          .flatMap((item: any) => item.shifts || [])
+          .filter((s: any) => s.isDelete !== true)
+          .forEach((s: any) => {
+            if (s?.id != null) {
+              effectiveShiftAutoMap.set(`id:${s.id}`, s.auto === true);
             }
+          });
+        shiftsArray.forEach((s: any, index: number) => {
+          const key = s?.shiftId != null ? `id:${s.shiftId}` : `new:${index}`;
+          if (s.isDelete === true) {
+            effectiveShiftAutoMap.delete(key);
+            return;
           }
-        }
-
-        // Also check for draft shifts and auto changes.
-        // autoChangedForUser is scoped to ONLY the current-week items for this specific group
-        // (userId + clientId + addressId) so that an auto-toggle on one guard does not mark
-        // every other guard's group as changed.
-        if (group.hasDraftShifts) changed = true;
-        // If any shift in this session group is newly-created (shiftId === null),
-        // treat the group as changed so that new shifts are sent to the server.
-        if (!changed && shiftsArray.some((s: any) => s.shiftId == null)) {
-          changed = true;
-        }
-        if (!changed) {
-          const groupCurrentItems = scheduleData.filter(
-            i => i.userId === group.userId && i.clientId === group.clientId && i.addressId === group.addressId
-          );
-          const groupOriginalItems = originalScheduleData.filter(
-            i => i.userId === group.userId && i.clientId === group.clientId && i.addressId === group.addressId
-          );
-          if (autoChangedForUser(group.userId, groupCurrentItems, groupOriginalItems)) changed = true;
-        }
+          effectiveShiftAutoMap.set(key, s.auto === true);
+        });
+        const fullSessionShiftAuto = fullSessionSourceItems
+          .flatMap((item: any) => item.shifts || [])
+          .filter((s: any) => s.isDelete !== true)
+          .some((s: any) => s.auto === true);
+        const groupAuto = Array.from(effectiveShiftAutoMap.values()).some((isAuto) => isAuto === true);
 
         const mappedCheckScheduleSessionId = checkScheduleSessionIdMap.get(mapKey) || null;
+        const isNewSession = group.scheduleSessionId == null;
+        const normalizedShifts = shiftsArray.map((s: any) => {
+          if (s.isDelete === true && (s.shiftId == null || s.shiftId === undefined)) {
+            return null;
+          }
+          const shiftPayload: any = {
+            shiftId: s.shiftId ?? null,
+            date: s.date,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            hours: s.hours,
+            auto: s.auto ?? false,
+            confirm: s.confirm ?? false,
+            reject: s.reject ?? false,
+          };
+          if (s.guardPrepared !== undefined && s.guardPrepared !== null) {
+            shiftPayload.guardPrepared = s.guardPrepared;
+          }
+          if (s.isDelete === true) {
+            shiftPayload.isDelete = true;
+          }
+          return shiftPayload;
+        }).filter(Boolean);
 
-        const { hasDraftShifts, shifts, ...rest } = group;
-
-        return {
-          ...rest,
+        const payload: any = {
+          scheduleSessionId: group.scheduleSessionId ?? null,
+          checkScheduleSessionId: mappedCheckScheduleSessionId ?? group.scheduleSessionId ?? null,
           auto: groupAuto,
-          shifts: shiftsArray.map(({ scheduleSessionId, ...s }: any) => s), // Remove scheduleSessionId
-          weeklyHours: groupWeeklyHours,
-          NextWeekHours: groupNextWeekHours,
-          change: changed,
-          // Only include checkScheduleSessionId when schedule exists for current week and user; else omit (do not send in API)
-          ...(mappedCheckScheduleSessionId != null ? { checkScheduleSessionId: mappedCheckScheduleSessionId } : {}),
+          weeklyHours: fullScheduleWeeklyHours,
+          NextWeekHours: fullScheduleNextWeekHours,
+          shifts: normalizedShifts,
         };
-      });
 
+        if (isNewSession) {
+          payload.clientId = group.clientId;
+          payload.addressId = group.addressId;
+          payload.userId = group.userId;
+          payload.startDate = group.startDate;
+          payload.endDate = group.endDate;
+        }
+
+        return payload;
+      });
       await bulkUpsertScheduleSessions(scheduleInput);
 
       const draftDeletePayload: any[] = [];

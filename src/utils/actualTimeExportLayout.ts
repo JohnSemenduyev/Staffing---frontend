@@ -23,16 +23,16 @@ export interface ActualTimeScheduleRow {
 
 const normDate = (d: string) => (d && d.includes("T") ? d.split("T")[0] : d || "");
 
+/** Match web Actual Time grid: sort by display start time, not shift id. */
 function sortVisualEntriesStable(
     a: { shift: { id: number; startTime: string }; displayStart: string },
     b: { shift: { id: number; startTime: string }; displayStart: string }
 ): number {
-    const aid = Number(a.shift?.id ?? 0);
-    const bid = Number(b.shift?.id ?? 0);
-    if (aid !== bid) return aid - bid;
-    const as = a.shift?.startTime || a.displayStart;
-    const bs = b.shift?.startTime || b.displayStart;
-    return timeToMinutes(as) - timeToMinutes(bs);
+    const as = a.displayStart || a.shift?.startTime || "00:00";
+    const bs = b.displayStart || b.shift?.startTime || "00:00";
+    const byTime = timeToMinutes(as) - timeToMinutes(bs);
+    if (byTime !== 0) return byTime;
+    return Number(a.shift?.id ?? 0) - Number(b.shift?.id ?? 0);
 }
 
 export function getWeekDateKeys(currentWeekRange: { startOfWeek: Date }): string[] {
