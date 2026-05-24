@@ -76,7 +76,7 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
   const [isSaving, setIsSaving] = useState(false);
 
   // Client editing state
-  const [editingClientId, setEditingClientId] = useState<number | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
   const [editClientForm, setEditClientForm] = useState({
     name: "",
     lastName: "",
@@ -297,7 +297,7 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
   // Handle edit client (inline editing)
   const handleEditClient = (clientData: any) => {
     console.log("Edit client clicked:", clientData);
-    setEditingClientId(clientData.client?.id);
+    setEditingAddressId(clientData.id);
     setEditClientForm({
       name: clientData.client?.name || "",
       lastName: clientData.client?.lastName || "",
@@ -414,7 +414,7 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
       });
 
       // Reset editing state
-      setEditingClientId(null);
+      setEditingAddressId(null);
       setEditClientForm({
         name: "",
         lastName: "",
@@ -467,7 +467,7 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
   };
 
   const confirmCancelEdit = () => {
-    setEditingClientId(null);
+    setEditingAddressId(null);
     setEditClientForm({
       name: "",
       lastName: "",
@@ -1169,7 +1169,7 @@ const [deleteClientModal, setDeleteClientModal] = useState<{ isOpen: boolean; cl
                     )}
 
                     {filteredAndSortedData.map((record, index) => {
-                      const isEditing = editingClientId === getNestedValue(record, "client.id");
+                      const isEditing = editingAddressId === getNestedValue(record, "id");
 
                       return (
                         <tr
