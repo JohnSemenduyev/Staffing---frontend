@@ -109,7 +109,9 @@ export const Notification = () => {
   const validate = () => {
     const e: any = {};
     // Client and address are now optional - no validation required
-    if (form.Startdate && form.Enddate && new Date(form.Enddate) < new Date(form.Startdate)) {
+    if (form.Startdate && !form.Enddate) {
+      e.Enddate = "Please enter end date also";
+    } else if (form.Startdate && form.Enddate && new Date(form.Enddate) < new Date(form.Startdate)) {
       e.Enddate = "End date must be after start date";
     }
 
@@ -221,10 +223,12 @@ export const Notification = () => {
     setSubmitLoader(true);
     setErrors({});
     console.log({notificatoinFormData: form})
+    const payloadStart = toMDY(form.Startdate);
+    const payloadEnd = toMDY(form.Enddate);
     try {
       await fetchNotifications({
-        startDate: toMDY(form.Startdate),
-        endDate: toMDY(form.Enddate),
+        startDate: payloadStart,
+        endDate: payloadEnd,
         ...(form.clientId && { clientId: Number(form.clientId) }),
         ...(form.addressId && { addressId: Number(form.addressId) }),
         userId: Number(form.userId),
