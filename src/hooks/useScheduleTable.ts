@@ -4,7 +4,6 @@ import { useToast } from "./use-toast";
 import {
     formatDateLocal,
     timeToMinutes,
-    doTimesOverlap,
     shiftSpansNextDay,
     getAdjustedDate
 } from "../lib/utils";
@@ -14,7 +13,7 @@ import {
     DELETE_SCHEDULE_SESSION,
     UPDATE_SHIFT_END_TIME,
 } from "../graphql/mutation";
-import { isOverflowShift } from "../pages/Manager/ViewSchedule/utils";
+import { isOverflowShift, shiftsOverlapInCalendar } from "../pages/Manager/ViewSchedule/utils";
 
 interface UseScheduleTableProps {
     scheduleData: ScheduleItem[];
@@ -150,12 +149,20 @@ export const useScheduleTable = ({
         }
     }, []);
 
-    // Optimized overlap checking
-    const checkShiftOverlap = useCallback((
+    const checkShiftOverlapByDate = useCallback((
+        date1: string,
         shift1: { startTime: string; endTime: string },
+        date2: string,
         shift2: { startTime: string; endTime: string }
     ): boolean => {
-        return doTimesOverlap(shift1.startTime, shift1.endTime, shift2.startTime, shift2.endTime);
+        return shiftsOverlapInCalendar(
+            date1,
+            shift1.startTime,
+            shift1.endTime,
+            date2,
+            shift2.startTime,
+            shift2.endTime
+        );
     }, []);
 
     const checkOverlapWithApiShifts = useCallback((
@@ -200,7 +207,7 @@ export const useScheduleTable = ({
             const shiftDate = normalizeShiftDate(shift);
             if (shiftDate !== date) return false;
             if (isExcludedApiShift(shift, shiftDate)) return false;
-            return checkShiftOverlap({ startTime, endTime }, shift);
+            return checkShiftOverlapByDate(date, { startTime, endTime }, shift.date, shift);
         });
 
         // Check previous day overlap for shifts that span to next day
@@ -242,7 +249,7 @@ export const useScheduleTable = ({
             return true;
         }
         return false;
-    }, [apiExistingShiftsData, checkShiftOverlap, overlapsWithPrevDayShift, overlapsWithNextDayShift, hookToast]);
+    }, [apiExistingShiftsData, checkShiftOverlapByDate, overlapsWithPrevDayShift, overlapsWithNextDayShift, hookToast]);
 
     // Memoized computations
     const dateColumns = useMemo(() => {
@@ -396,9 +403,9 @@ export const useScheduleTable = ({
         excludeShiftId?: number
     ): boolean => {
         const localShifts = scheduleData
-            .filter(item => item.userId === userId && item.startDate === date)
-            .flatMap(item => item.shifts)
-            .filter(s => !(s as any).isDelete && !isExcludedShiftById(s, excludeShiftId));
+            .filter((item) => item.userId === userId && item.startDate === date)
+            .flatMap((item) => item.shifts)
+            .filter((shift) => !(shift as any).isDelete && !isExcludedShiftById(shift, excludeShiftId));
 
         console.log("[Overlap] checkLocalOverlaps", {
             userId,
@@ -411,7 +418,7 @@ export const useScheduleTable = ({
         });
 
         const hasOverlap = localShifts.some((existingShift) => {
-            const overlaps = checkShiftOverlap({ startTime, endTime }, existingShift);
+            const overlaps = checkShiftOverlapByDate(date, { startTime, endTime }, existingShift.date, existingShift);
             if (overlaps) {
                 console.log("[Overlap] Local overlap detected (same day)", {
                     newTimes: `${startTime}-${endTime}`,
@@ -421,7 +428,7 @@ export const useScheduleTable = ({
             return overlaps;
         });
         return hasOverlap;
-    }, [scheduleData, checkShiftOverlap, isExcludedShiftById]);
+    }, [scheduleData, checkShiftOverlapByDate, isExcludedShiftById]);
 
     const checkAdjacentDayOverlaps = useCallback((
         userId: number,
@@ -475,7 +482,7 @@ export const useScheduleTable = ({
             });
             return hasOverlap;
         }
-    }, [scheduleData, checkShiftOverlap, overlapsWithPrevDayShift, overlapsWithNextDayShift, isExcludedShiftById]);
+    }, [scheduleData, overlapsWithPrevDayShift, overlapsWithNextDayShift, isExcludedShiftById]);
 
     // Handlers
     const handleDeleteShift = useCallback((userId: number, date: string, shiftId: number) => {
@@ -912,7 +919,7 @@ export const useScheduleTable = ({
                 : backendShift.date;
             if (shiftDateStr !== date) return false;
             if (backendShift.id == shift.id) return false;
-            return checkShiftOverlap({ startTime: starttime, endTime: endtime }, backendShift);
+            return checkShiftOverlapByDate(date, { startTime: starttime, endTime: endtime }, backendShift.date, backendShift);
         });
 
         if (hasBackendOverlap) {
@@ -951,7 +958,7 @@ export const useScheduleTable = ({
         setEditForm({ starttime: "", endtime: "" });
     }, [editModal, editForm, checkLocalOverlaps, checkAdjacentDayOverlaps,
         getScheduleItem, checkOverlapWithApiShifts, existingShifts,
-        checkShiftOverlap, scheduleData, calculateShiftHours, onScheduleDataChange, hookToast]);
+        checkShiftOverlapByDate, scheduleData, calculateShiftHours, onScheduleDataChange, hookToast]);
 
     const handleDragStart = useCallback((
         e: React.DragEvent,
@@ -1062,7 +1069,7 @@ export const useScheduleTable = ({
                     : existingShift.date;
 
                 if (shiftDateStr === targetDate) {
-                    return checkShiftOverlap(shift, existingShift);
+                    return checkShiftOverlapByDate(targetDate, shift, existingShift.date, existingShift);
                 }
 
                 // Check previous day
@@ -1074,7 +1081,7 @@ export const useScheduleTable = ({
                 // Check next day
                 if (shiftSpansNextDay(shift.startTime, shift.endTime) &&
                     shiftDateStr === getAdjustedDate(targetDate, 1)) {
-                    return checkShiftOverlap(shift, existingShift);
+                    return checkShiftOverlapByDate(targetDate, shift, existingShift.date, existingShift);
                 }
 
                 return false;
@@ -1178,7 +1185,7 @@ export const useScheduleTable = ({
 
         hookToast({ title: "Success", description: "Shift copied successfully!" });
 
-    }, [draggedShift, getScheduleItem, existingShifts, checkShiftOverlap, overlapsWithPrevDayShift,
+    }, [draggedShift, getScheduleItem, existingShifts, checkShiftOverlapByDate, overlapsWithPrevDayShift,
         checkOverlapWithApiShifts, checkAdjacentDayOverlaps, scheduleData, selectedUserId,
         currentWeekRange, rowGroups, sortShiftsByTime, onScheduleDataChange, hookToast]);
 
