@@ -129,10 +129,18 @@ export const Summary = () => {
     setSelectedAddressText(fullAddress);
   };
 
+  const formatSummaryFilterDateString = (dateString: string): string => {
+    if (!dateString) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    return formatDateStringLocal(dateString);
+  };
+
   const formatDateForAPI = (rawDate: string | Date): string => {
     if (typeof rawDate === 'string') {
       // Convert to MM-DD-YYYY for API
-      const yyyyMMdd = formatDateStringLocal(rawDate);
+      const yyyyMMdd = formatSummaryFilterDateString(rawDate);
       const [year, month, day] = yyyyMMdd.split('-');
       return `${month}-${day}-${year}`;
     }
