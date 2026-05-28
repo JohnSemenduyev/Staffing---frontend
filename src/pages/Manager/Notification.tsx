@@ -19,11 +19,12 @@ import { notificationCategories } from "../Admin/AssignmentNew";
 import { NOTIFICATION_MAP } from "../../utils/notificationMap";
 
 
-const notificationOptions = ["Geolocation", "Time Clock", "Weekly Hours", "Scheduling", 'Schedule'] as any;
+const notificationOptions = ["Geolocation", "Time Clock", "Time Deviation", "Weekly Hours", "Scheduling", 'Schedule'] as any;
 type NotificationOption = (typeof notificationOptions)[number];
 const notificationTypeMap: Record<NotificationOption, string> = {
   "Geolocation": "geo_location",
   "Time Clock": "time_clock",
+  "Time Deviation": "time_deviation",
   "Weekly Hours": "weekly_Hours",
   "Scheduling": "schedule",
   "Schedule": "schedule",
@@ -63,6 +64,13 @@ export const Notification = () => {
   const [exportLoading, setExportLoading] = useState<{ pdf: boolean; excel: boolean }>({ pdf: false, excel: false });
 
   const fieldInputClasses = inputClasses;
+
+  const getMappedNotificationTypes = (selectedNotifications: string[]) => {
+    const mapped = selectedNotifications
+      .map((n) => (notificationTypeMap as Record<string, string | undefined>)[n])
+      .filter((v): v is string => Boolean(v));
+    return mapped;
+  };
 
   // Date format conversion utility
   const toMDY = (ymd?: string) => {
@@ -178,11 +186,18 @@ export const Notification = () => {
   }, []);
 
   const handleCheckbox = (option: NotificationOption) => {
-    setForm(f =>
-      f.notification.includes(option)
-        ? { ...f, notification: f.notification.filter(n => n !== option) }
-        : { ...f, notification: [...f.notification, option] }
-    );
+    setForm(f => {
+      const wasSelected = f.notification.includes(option);
+      const categorySubCategories =
+        notificationCategories.find((cat) => cat.value === option)?.subCategories.map((sub) => sub.value) ?? [];
+      const nextNotification = wasSelected
+        ? f.notification.filter(n => n !== option)
+        : [...f.notification, option];
+      const nextNotificationSubCat = wasSelected
+        ? f.notificationSubCat.filter((sub) => !categorySubCategories.includes(sub))
+        : f.notificationSubCat;
+      return { ...f, notification: nextNotification, notificationSubCat: nextNotificationSubCat };
+    });
     setErrors(prev => ({ ...prev, notification: undefined }));
     setShowErrors(false);
   };
@@ -232,7 +247,7 @@ export const Notification = () => {
         ...(form.clientId && { clientId: Number(form.clientId) }),
         ...(form.addressId && { addressId: Number(form.addressId) }),
         userId: Number(form.userId),
-        notificationType: form.notification.map(n => notificationTypeMap[n]),
+        notificationType: getMappedNotificationTypes(form.notification as unknown as string[]),
         subcategory: form.notificationSubCat,
         page: currentPage,
       });
@@ -255,7 +270,7 @@ export const Notification = () => {
         ...(form.clientId && { clientId: Number(form.clientId) }),
         ...(form.addressId && { addressId: Number(form.addressId) }),
         ...(form.userId && { userId: Number(form.userId) }),
-        notificationType: form.notification.map(n => notificationTypeMap[n]),
+        notificationType: getMappedNotificationTypes(form.notification as unknown as string[]),
         subcategory: form.notificationSubCat,
         page: 1,
         export: true,
@@ -935,7 +950,7 @@ const handleSubCategoryToggle = (
                   ...(form.clientId && { clientId: Number(form.clientId) }),
                   ...(form.addressId && { addressId: Number(form.addressId) }),
                   userId: Number(form.userId),
-                  notificationType: form.notification.map(n => notificationTypeMap[n]),
+                  notificationType: getMappedNotificationTypes(form.notification as unknown as string[]),
                   page: page,
                 });
               }}
