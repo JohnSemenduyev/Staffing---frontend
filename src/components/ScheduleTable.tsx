@@ -68,9 +68,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   const TABLE_MAX_HEIGHT = 600;
   const HEADER_HEIGHT = 41;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerWrapperRef = useRef<HTMLDivElement>(null);
   const headerTableRef = useRef<HTMLTableElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
-  const [headerScrollbarCompensation, setHeaderScrollbarCompensation] = React.useState(0);
+  const [headerRightCompensation, setHeaderRightCompensation] = React.useState(0);
 
   const {
     dateColumns,
@@ -168,7 +169,20 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     if (!container) return;
 
     const scrollbarWidth = container.offsetWidth - container.clientWidth;
-    setHeaderScrollbarCompensation(scrollbarWidth);
+    setHeaderRightCompensation(scrollbarWidth);
+    const rafId = window.requestAnimationFrame(() => {
+      const updatedScrollbarWidth = container.offsetWidth - container.clientWidth;
+      setHeaderRightCompensation(updatedScrollbarWidth);
+    });
+    const handleResize = () => {
+      const resizeScrollbarWidth = container.offsetWidth - container.clientWidth;
+      setHeaderRightCompensation(resizeScrollbarWidth);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handleResize);
+    };
   }, [dateColumns.length, rowGroups.length, isEditMode, loading]);
 
   return (
@@ -181,10 +195,14 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
 
       <div className="w-full overflow-x-auto custom-scrollbar">
         <div style={{ minWidth: "max-content" }}>
+          <div
+            ref={headerWrapperRef}
+            style={{ paddingRight: `${headerRightCompensation}px` }}
+          >
           <table
             ref={headerTableRef}
             className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse"
-            style={{ marginRight: `${headerScrollbarCompensation}px` }}
+            style={{ marginRight: `${headerRightCompensation}px` }}
           >
           {renderColumnGroup()}
           <ScheduleTableHeader
@@ -193,6 +211,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
             isEditMode={isEditMode}
           />
           </table>
+          </div>
 
           <div
             ref={scrollContainerRef}
