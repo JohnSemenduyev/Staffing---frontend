@@ -232,6 +232,46 @@ export function getActualTimeCellContent(
     return { label, hours };
 }
 
+/** Hours for one user on one date — sum of grid cells only (matches Actual Time table / print row totals). */
+export function calculateActualTimeUserDayTotalFromGrid(
+    sessionData: SessionItem[],
+    scheduleData: ActualTimeScheduleRow[],
+    sessionCtx: SessionCalendarCtx,
+    userId: number,
+    dateStr: string,
+    maxShiftsOnDate: number
+): number {
+    let total = 0;
+    for (let rowIdx = 0; rowIdx < maxShiftsOnDate; rowIdx++) {
+        total += getActualTimeCellContent(sessionData, scheduleData, sessionCtx, userId, dateStr, rowIdx).hours;
+    }
+    return parseFloat(total.toFixed(2));
+}
+
+/** Day column total — sum of grid cells for all listed users (matches Actual Time grand total row). */
+export function calculateActualTimeDayTotalFromGrid(
+    sessionData: SessionItem[],
+    scheduleData: ActualTimeScheduleRow[],
+    sessionCtx: SessionCalendarCtx,
+    dateStr: string,
+    dateKeys: string[],
+    userIds: number[]
+): number {
+    let total = 0;
+    for (const userId of userIds) {
+        const maxShifts = getMaxShiftsPerDayForUser(scheduleData, userId, dateKeys, sessionData, sessionCtx);
+        total += calculateActualTimeUserDayTotalFromGrid(
+            sessionData,
+            scheduleData,
+            sessionCtx,
+            userId,
+            dateStr,
+            maxShifts
+        );
+    }
+    return parseFloat(total.toFixed(2));
+}
+
 export const actualTimeCellLookupKey = (userId: number, dateKey: string, shiftRowIndex: number) =>
     `${userId}|${dateKey}|${shiftRowIndex}`;
 
@@ -280,12 +320,8 @@ export function buildActualTimeCellLookup(
     }
 
     let grandTotalHours = 0;
-    for (const dateKey of dateKeys) {
-        let daySum = 0;
-        for (const s of sessionData) {
-            daySum += getSessionHoursOnDate(s, dateKey, sessionCtx);
-        }
-        grandTotalHours += daySum;
+    for (const { hours } of cellLookup.values()) {
+        grandTotalHours += hours;
     }
     grandTotalHours = parseFloat(grandTotalHours.toFixed(2));
 
@@ -299,17 +335,24 @@ export function buildActualTimeCellLookup(
     };
 }
 
-/** Week total hours (matches grand total row in print). */
+/** Week total hours (matches grand total row in print / Actual Time table). */
 export function calculateActualTimeGrandTotal(
     sessionData: SessionItem[],
+    scheduleData: ActualTimeScheduleRow[],
     sessionCtx: SessionCalendarCtx,
     dateKeys: string[]
 ): number {
+    const userIds = getUsersInScheduleOrder(scheduleData).map((u) => u.id);
     let total = 0;
     for (const dateKey of dateKeys) {
-        for (const s of sessionData) {
-            total += getSessionHoursOnDate(s, dateKey, sessionCtx);
-        }
+        total += calculateActualTimeDayTotalFromGrid(
+            sessionData,
+            scheduleData,
+            sessionCtx,
+            dateKey,
+            dateKeys,
+            userIds
+        );
     }
     return parseFloat(total.toFixed(2));
 }

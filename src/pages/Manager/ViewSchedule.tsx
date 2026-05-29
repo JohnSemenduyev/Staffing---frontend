@@ -3257,7 +3257,7 @@ const scheduleDataForExport = useMemo(() => {
       const totalEmployees = new Set(safeExportData.map(i => i.userId)).size;
       const sessionCtx = buildSessionCalendarCtx(safeExportData, currentWeekRange);
       const dateKeys = getWeekDateKeys(currentWeekRange);
-      const totalHours = calculateActualTimeGrandTotal(sessionData, sessionCtx, dateKeys);
+      const totalHours = calculateActualTimeGrandTotal(sessionData, safeExportData, sessionCtx, dateKeys);
 
       await handlePrint(
         tableContent,

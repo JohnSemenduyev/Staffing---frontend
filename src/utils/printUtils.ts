@@ -1,8 +1,9 @@
 import { getAdjustedDate, shiftSpansNextDay, calculateHours } from "../lib/utils";
 import type { Shift, SessionItem } from "../types/schedule";
-import { getSessionHoursOnDate as getSessionHoursOnDateFromCalendar } from "./sessionCalendar";
 import {
   buildSessionCalendarCtx,
+  calculateActualTimeDayTotalFromGrid,
+  calculateActualTimeUserDayTotalFromGrid,
   getActualTimeCellContent,
   getMaxShiftsPerDayForUser,
   getWeekDateKeys,
@@ -449,9 +450,6 @@ export const generateActualTimePrintableTable = (
   const sessionCtx = buildSessionCalendarCtx(scheduleData, currentWeekRange);
   const dateKeysForWeek = currentWeekRange ? getWeekDateKeys(currentWeekRange) : [];
 
-  const getSessionHoursOnDate = (session: SessionData, dateStr: string) =>
-    getSessionHoursOnDateFromCalendar(session as unknown as SessionItem, dateStr, sessionCtx);
-
   const getMaxShiftsPerDay = (userId: number) => {
     if (!currentWeekRange || dateKeysForWeek.length === 0) return 1;
     return getMaxShiftsPerDayForUser(
@@ -463,34 +461,27 @@ export const generateActualTimePrintableTable = (
     );
   };
 
-  const calculateDayTotal = (dateStr: string) => {
-    const total = sessionData.reduce((sum, item) => sum + getSessionHoursOnDate(item, dateStr), 0);
-    return parseFloat(total.toFixed(2));
-  };
+  const userIdsInOrder = usersInDisplayOrder.map((u) => u.id);
 
-  const calculateGrandTotal = () => {
-    // Final total = sum of day totals in the grand total row (so it matches the displayed day columns)
-    let total = 0;
-    if (currentWeekRange) {
-      const startDate = new Date(currentWeekRange.startOfWeek);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        total += calculateDayTotal(toLocalYMD(date));
-      }
-    }
-    return parseFloat(total.toFixed(2));
-  };
+  const calculateDayTotal = (dateStr: string) =>
+    calculateActualTimeDayTotalFromGrid(
+      sessionData as SessionItem[],
+      scheduleData,
+      sessionCtx,
+      dateStr,
+      dateKeysForWeek,
+      userIdsInOrder
+    );
 
-  const calculateUserDayTotal = (userId: number, dateStr: string) => {
-    const total = sessionData
-      .filter(item => {
-        const scheduleItem = scheduleData.find(si => si.shifts.some((s: any) => s.id === item.shiftId));
-        return scheduleItem && scheduleItem.userId === userId;
-      })
-      .reduce((sum, item) => sum + getSessionHoursOnDate(item, dateStr), 0);
-    return parseFloat(total.toFixed(2));
-  };
+  const calculateUserDayTotal = (userId: number, dateStr: string) =>
+    calculateActualTimeUserDayTotalFromGrid(
+      sessionData as SessionItem[],
+      scheduleData,
+      sessionCtx,
+      userId,
+      dateStr,
+      getMaxShiftsPerDay(userId)
+    );
 
   // Table headers
   const headers = ['Officer Name', '']; // Add empty column after Officer Name
