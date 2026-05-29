@@ -197,7 +197,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         <div style={{ minWidth: "max-content" }}>
           <div
             ref={headerWrapperRef}
-            style={{ paddingRight: `${headerRightCompensation}px` }}
+            style={{ paddingRight: `${headerRightCompensation}px` ,backgroundColor: "#004175" }}
           >
           <table
             ref={headerTableRef}

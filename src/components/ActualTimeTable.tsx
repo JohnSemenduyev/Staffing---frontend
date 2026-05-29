@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ScheduleItem, SessionItem } from "../types/schedule";
 import { useActualTimeTable } from "../hooks/useActualTimeTable";
 import { ActualTableHeader } from "./actual-table/ActualTableHeader";
@@ -25,6 +25,14 @@ interface ActualTimeTableProps {
 }
 
 export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
+  const TABLE_MAX_HEIGHT = 600;
+  const HEADER_HEIGHT = 41;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerWrapperRef = useRef<HTMLDivElement>(null);
+  const headerTableRef = useRef<HTMLTableElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [headerRightCompensation, setHeaderRightCompensation] = React.useState(0);
+
   const {
     dateColumns,
     uniqueUsers,
@@ -65,6 +73,80 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     editSessionDateLimits,
   } = useActualTimeTable(props);
 
+  const fixedColumnWidths = {
+    name: 160,
+    day: 120,
+    total: 90,
+    actions: 64,
+  };
+
+  const renderColumnGroup = () => (
+    <colgroup>
+      <col style={{ width: `${fixedColumnWidths.name}px` }} />
+      {dateColumns.map((dateCol) => (
+        <col key={`col-${dateCol.date}`} style={{ width: `${fixedColumnWidths.day}px` }} />
+      ))}
+      <col style={{ width: `${fixedColumnWidths.total}px` }} />
+      <col style={{ width: `${fixedColumnWidths.actions}px` }} />
+    </colgroup>
+  );
+
+  const bodyRowCount = props.selectedUserId ? rowGroups.length : uniqueUsers.length;
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const measure = (phase: string) => {
+      const scrollbarWidth = container.offsetWidth - container.clientWidth;
+      const hasVerticalOverflow = container.scrollHeight > container.clientHeight;
+      const headerWidth = headerTableRef.current?.offsetWidth ?? null;
+      const bodyWidth = tableRef.current?.offsetWidth ?? null;
+      // #region agent log
+      fetch("http://127.0.0.1:7723/ingest/d012d376-170a-4068-8060-beb44985de13", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c94eaa" },
+        body: JSON.stringify({
+          sessionId: "c94eaa",
+          runId: "pre-fix",
+          hypothesisId: phase === "sync" ? "H1" : phase === "raf" ? "H2" : "H3",
+          location: "ActualTimeTable.tsx:useEffect",
+          message: "scrollbar alignment measure",
+          data: {
+            phase,
+            scrollbarWidth,
+            headerRightCompensation: scrollbarWidth,
+            hasVerticalOverflow,
+            containerOffsetWidth: container.offsetWidth,
+            containerClientWidth: container.clientWidth,
+            headerTableWidth: headerWidth,
+            bodyTableWidth: bodyWidth,
+            widthDelta: headerWidth != null && bodyWidth != null ? headerWidth - bodyWidth : null,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      return scrollbarWidth;
+    };
+
+    const scrollbarWidth = measure("sync");
+    setHeaderRightCompensation(scrollbarWidth);
+    const rafId = window.requestAnimationFrame(() => {
+      const updatedScrollbarWidth = measure("raf");
+      setHeaderRightCompensation(updatedScrollbarWidth);
+    });
+    const handleResize = () => {
+      const resizeScrollbarWidth = measure("resize");
+      setHeaderRightCompensation(resizeScrollbarWidth);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [dateColumns.length, bodyRowCount, props.isEditMode, props.loading, props.selectedUserId]);
+
   const editShiftInfo = React.useMemo(() => {
     if (!editShiftModal.isOpen || editShiftModal.shiftId == null) return null;
     const shift = props.scheduleData
@@ -79,100 +161,127 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
   }, [editShiftModal.isOpen, editShiftModal.shiftId, props.scheduleData]);
 
   return (
-    <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl">
+    <div className="relative w-full rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
       {props.loading && (
         <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
-      <div className="w-full overflow-auto custom-scrollbar rounded-2xl" style={{ maxHeight: "600px" }}>
-        {/* Table */}
-        <table className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse">
-          <ActualTableHeader
-            selectedUserId={props.selectedUserId}
-            dateColumns={dateColumns}
-          />
-          <tbody className="relative">
-            {props.selectedUserId
-              ? rowGroups.map((row) => (
-                <ActualTableRow
-                  key={row.id}
-                  mode="group"
-                  data={row}
-                  scheduleData={props.scheduleData}
-                  sessionData={props.sessionData}
-                  dateColumns={dateColumns}
-                  isEditMode={props.isEditMode}
-                  getSessionsForShift={getSessionsForShift}
-                  hasTimeMismatch={hasTimeMismatch}
-                  calculateRowTotal={calculateRowTotal}
-                  calculateDayTotal={calculateDayTotal}
-                  calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
-                  calculateUserTotal={calculateUserTotal}
-                  openEditShift={openEditShift}
-                  setDeleteAllModal={setDeleteAllModal}
-                  rowCount={getRowRowCount(row)}
-                  buildGroupDateShifts={buildGroupDateShifts}
-                  sessionCtx={sessionCtx}
-                />
-              ))
-              : uniqueUsers.map((user) => (
-                <ActualTableRow
-                  key={user.id}
-                  mode="user"
-                  data={user}
-                  scheduleData={props.scheduleData}
-                  sessionData={props.sessionData}
-                  dateColumns={dateColumns}
-                  isEditMode={props.isEditMode}
-                  getSessionsForShift={getSessionsForShift}
-                  hasTimeMismatch={hasTimeMismatch}
-                  calculateRowTotal={calculateRowTotal}
-                  calculateDayTotal={calculateDayTotal}
-                  calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
-                  calculateUserTotal={calculateUserTotal}
-                  openEditShift={openEditShift}
-                  setDeleteAllModal={setDeleteAllModal}
-                  rowCount={getUserRowCount(user.id)}
-                  buildUserDateShifts={buildUserDateShifts}
-                  sessionCtx={sessionCtx}
-                />
-              ))}
 
-            {/* Grand Total Row: column totals = sum of displayed hours per day (grid-only); grand total = sum of column totals */}
-            <tr className="bg-gray-50 font-medium">
-              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">Grand Total</td>
-              {(() => {
-                const users = props.selectedUserId ? rowGroups : uniqueUsers;
-                const dayTotals = dateColumns.map((dateCol) =>
-                  users.reduce(
-                    (sum, u) => sum + calculateUserDayTotalFromGrid((u as any).userId ?? (u as any).id, dateCol.date),
-                    0
-                  )
-                );
-                const grandTotalFromColumns = parseFloat(
-                  dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
-                );
-                return (
-                  <>
-                    {dayTotals.map((dayTotal, i) => (
-                      <td
-                        key={dateColumns[i].date}
-                        className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap"
-                      >
-                        {dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-"}
-                      </td>
+      <div className="w-full overflow-x-auto custom-scrollbar">
+        <div style={{ minWidth: "max-content" }}>
+          <div
+            ref={headerWrapperRef}
+            style={{ paddingRight: `${headerRightCompensation}px`, backgroundColor: "#004175" }}
+          >
+            <table
+              ref={headerTableRef}
+              className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse"
+              style={{ marginRight: `${headerRightCompensation}px` }}
+            >
+              {renderColumnGroup()}
+              <ActualTableHeader
+                selectedUserId={props.selectedUserId}
+                dateColumns={dateColumns}
+              />
+            </table>
+          </div>
+
+          <div
+            ref={scrollContainerRef}
+            className="w-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+            style={{ maxHeight: `${TABLE_MAX_HEIGHT - HEADER_HEIGHT}px` }}
+          >
+            <table
+              ref={tableRef}
+              className="w-auto min-w-full table-fixed text-sm text-gray-800 font-sans border-collapse"
+            >
+              {renderColumnGroup()}
+              <tbody className="relative">
+                {props.selectedUserId
+                  ? rowGroups.map((row) => (
+                      <ActualTableRow
+                        key={row.id}
+                        mode="group"
+                        data={row}
+                        scheduleData={props.scheduleData}
+                        sessionData={props.sessionData}
+                        dateColumns={dateColumns}
+                        isEditMode={props.isEditMode}
+                        getSessionsForShift={getSessionsForShift}
+                        hasTimeMismatch={hasTimeMismatch}
+                        calculateRowTotal={calculateRowTotal}
+                        calculateDayTotal={calculateDayTotal}
+                        calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
+                        calculateUserTotal={calculateUserTotal}
+                        openEditShift={openEditShift}
+                        setDeleteAllModal={setDeleteAllModal}
+                        rowCount={getRowRowCount(row)}
+                        buildGroupDateShifts={buildGroupDateShifts}
+                        sessionCtx={sessionCtx}
+                      />
+                    ))
+                  : uniqueUsers.map((user) => (
+                      <ActualTableRow
+                        key={user.id}
+                        mode="user"
+                        data={user}
+                        scheduleData={props.scheduleData}
+                        sessionData={props.sessionData}
+                        dateColumns={dateColumns}
+                        isEditMode={props.isEditMode}
+                        getSessionsForShift={getSessionsForShift}
+                        hasTimeMismatch={hasTimeMismatch}
+                        calculateRowTotal={calculateRowTotal}
+                        calculateDayTotal={calculateDayTotal}
+                        calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
+                        calculateUserTotal={calculateUserTotal}
+                        openEditShift={openEditShift}
+                        setDeleteAllModal={setDeleteAllModal}
+                        rowCount={getUserRowCount(user.id)}
+                        buildUserDateShifts={buildUserDateShifts}
+                        sessionCtx={sessionCtx}
+                      />
                     ))}
-                    <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap">
-                      {grandTotalFromColumns > 0 ? grandTotalFromColumns.toFixed(2) : "-"}
-                    </td>
-                  </>
-                );
-              })()}
-              <td className="border border-gray-300 px-4 py-3 whitespace-nowrap"></td>
-            </tr>
-          </tbody>
-        </table>
+
+                <tr className="bg-gray-50 font-medium">
+                  <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-[160px] min-w-[160px] max-w-[160px]">
+                    Grand Total
+                  </td>
+                  {(() => {
+                    const users = props.selectedUserId ? rowGroups : uniqueUsers;
+                    const dayTotals = dateColumns.map((dateCol) =>
+                      users.reduce(
+                        (sum, u) =>
+                          sum + calculateUserDayTotalFromGrid((u as any).userId ?? (u as any).id, dateCol.date),
+                        0
+                      )
+                    );
+                    const grandTotalFromColumns = parseFloat(
+                      dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
+                    );
+                    return (
+                      <>
+                        {dayTotals.map((dayTotal, i) => (
+                          <td
+                            key={dateColumns[i].date}
+                            className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap w-[120px] min-w-[120px] max-w-[120px]"
+                          >
+                            {dayTotal > 0 ? parseFloat(dayTotal.toFixed(2)) : "-"}
+                          </td>
+                        ))}
+                        <td className="border border-gray-300 px-4 py-3 text-center whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]">
+                          {grandTotalFromColumns > 0 ? grandTotalFromColumns.toFixed(2) : "-"}
+                        </td>
+                      </>
+                    );
+                  })()}
+                  <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16 min-w-16 max-w-16"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <ActualTableControls
