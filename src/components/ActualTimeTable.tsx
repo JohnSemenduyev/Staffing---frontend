@@ -56,6 +56,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     cancelEditModeToggle,
     calculateDayTotal,
     calculateUserDayTotalFromGrid,
+    calculateGroupDayTotalFromGrid,
     calculateUserTotal,
     calculateRowTotal,
     calculateGrandTotal,
@@ -178,6 +179,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                         calculateRowTotal={calculateRowTotal}
                         calculateDayTotal={calculateDayTotal}
                         calculateUserDayTotalFromGrid={calculateUserDayTotalFromGrid}
+                        calculateGroupDayTotalFromGrid={calculateGroupDayTotalFromGrid}
                         calculateUserTotal={calculateUserTotal}
                         openEditShift={openEditShift}
                         setDeleteAllModal={setDeleteAllModal}
@@ -214,14 +216,20 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                     Grand Total
                   </td>
                   {(() => {
-                    const users = props.selectedUserId ? rowGroups : uniqueUsers;
-                    const dayTotals = dateColumns.map((dateCol) =>
-                      users.reduce(
-                        (sum, u) =>
-                          sum + calculateUserDayTotalFromGrid((u as any).userId ?? (u as any).id, dateCol.date),
+                    const dayTotals = dateColumns.map((dateCol) => {
+                      if (props.selectedUserId) {
+                        return rowGroups.reduce(
+                          (sum, g) =>
+                            sum +
+                            calculateGroupDayTotalFromGrid(String(g.id), g.userId, dateCol.date),
+                          0
+                        );
+                      }
+                      return uniqueUsers.reduce(
+                        (sum, u) => sum + calculateUserDayTotalFromGrid(u.id, dateCol.date),
                         0
-                      )
-                    );
+                      );
+                    });
                     const grandTotalFromColumns = parseFloat(
                       dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
                     );

@@ -653,6 +653,20 @@ export const useActualTimeTable = ({
         return parseFloat(total.toFixed(2));
     };
 
+    /** Hours for one client group on one date (employee view). Matches grid cells for that group only. */
+    const calculateGroupDayTotalFromGrid = (groupId: string, userId: number, date: string): number => {
+        let total = 0;
+        const shiftsOnDate = buildGroupDateShifts.get(groupId)?.get(date) ?? [];
+        shiftsOnDate.forEach(shift => {
+            if (!shift) return;
+            const cellSessions = getSessionsForShift(shift, shift.scheduleSessionId, date, userId);
+            cellSessions.forEach(session => {
+                total += getSessionHoursOnDate(session, date);
+            });
+        });
+        return parseFloat(total.toFixed(2));
+    };
+
     const calculateUserTotal = (
         userId: number,
         sessions: SessionItem[],
@@ -799,6 +813,7 @@ export const useActualTimeTable = ({
         cancelEditModeToggle: () => setEditModeConfirmModal({ isOpen: false }),
         calculateDayTotal,
         calculateUserDayTotalFromGrid,
+        calculateGroupDayTotalFromGrid,
         calculateUserTotal,
         calculateRowTotal,
         calculateGrandTotal,

@@ -18,6 +18,7 @@ interface ActualTableRowProps {
     calculateRowTotal: (userId: number, rowIdx: number, sessions: SessionItem[], schedule: ScheduleItem[], dateCols: { date: string }[], groupId?: string) => number;
     calculateDayTotal: (date: string, sessions: SessionItem[]) => number;
     calculateUserDayTotalFromGrid: (userId: number, date: string) => number;
+    calculateGroupDayTotalFromGrid?: (groupId: string, userId: number, date: string) => number;
     calculateUserTotal: (userId: number, sessions: SessionItem[], schedule: ScheduleItem[]) => number;
 
     // Row Count helpers
@@ -43,6 +44,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
     calculateRowTotal,
     calculateDayTotal,
     calculateUserDayTotalFromGrid,
+    calculateGroupDayTotalFromGrid,
     calculateUserTotal,
     rowCount,
     buildUserDateShifts,
@@ -181,8 +183,14 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                     Total
                 </td>
                 {(() => {
-                    const dayTotals = dateColumns.map(dateCol =>
-                        calculateUserDayTotalFromGrid(userId, dateCol.date)
+                    const dayTotals = dateColumns.map((dateCol) =>
+                        mode === "group" && calculateGroupDayTotalFromGrid
+                            ? calculateGroupDayTotalFromGrid(
+                                  String((data as RowGroup).id),
+                                  userId,
+                                  dateCol.date
+                              )
+                            : calculateUserDayTotalFromGrid(userId, dateCol.date)
                     );
                     const rowTotalFromColumns = parseFloat(
                         dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
