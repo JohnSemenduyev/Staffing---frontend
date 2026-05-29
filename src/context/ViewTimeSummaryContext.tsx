@@ -1,36 +1,36 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { graphQLClient } from "../GraphqlClient";
-import { GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK } from "../graphql/queries";
-import { formatDateStringLocal } from "../lib/utils";
-
-// Types from backend
-type Shift = {
-  date: string;
-  hours: number;
-};
+import { VIEW_TIME_SUMMARY } from "../graphql/queries";
 
 export const formatToMMDDYYYY = (dateStr: string): string => {
   if (!dateStr) return "";
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    return dateStr;
+  }
   const [year, month, day] = dateStr.split("-");
   return `${month}-${day}-${year}`;
 };
 
-type RawScheduleSession = {
-  client: {
-    lastName: any; name: string 
-};
-  address: { address: string , city: string, state: string, pincode: string};
-  user: { name: string; lastName: string };
-  shifts: Shift[];
+type ViewTimeSummaryRow = {
+  guardFirstName: string;
+  guardLastName: string;
+  date: string;
+  clientName: string;
+  clientLastName: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  actualHours: number;
+  scheduleSessionId?: number;
 };
 
-// Final frontend format
 export type TimeSummaryEntry = {
   guardFirst: { name: string };
   guardLast: { name: string };
   date: string;
-  Client: { name: string , lastName: string};
-  address: { address: string , city: string, state: string, pincode: string};
+  Client: { name: string; lastName: string };
+  address: { address: string; city: string; state: string; pincode: string };
   time: number;
 };
 
@@ -54,44 +54,37 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
     try {
       const token = sessionStorage.getItem("token");
 
-      const variables: any = { date, endDate };
+      const variables: Record<string, unknown> = {};
       if (clientId) variables.clientId = clientId;
       if (addressId) variables.addressId = addressId;
-      
-      const response = await graphQLClient.request<{ 
-        ScheduleSessionsByClientWeek: RawScheduleSession[];
-      }>(
-        GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK,
-        variables,
-        { Authorization: `Bearer ${token}` }
+      if (date) variables.date = date;
+      if (endDate) variables.endDate = endDate;
+
+      const response = await graphQLClient.request<{
+        viewTimeSummary: { data: ViewTimeSummaryRow[] };
+      }>(VIEW_TIME_SUMMARY, variables, { Authorization: `Bearer ${token}` });
+
+      const transformed: TimeSummaryEntry[] = (response.viewTimeSummary?.data ?? []).map(
+        (row) => ({
+          guardFirst: { name: row.guardFirstName ?? "" },
+          guardLast: { name: row.guardLastName ?? "" },
+          date: formatToMMDDYYYY(row.date),
+          Client: {
+            name: row.clientName ?? "",
+            lastName: row.clientLastName ?? "",
+          },
+          address: {
+            address: row.address ?? "",
+            city: row.city ?? "",
+            state: row.state ?? "",
+            pincode: row.pincode ?? "",
+          },
+          time: row.actualHours ?? 0,
+        }),
       );
 
-      const rawData = response.ScheduleSessionsByClientWeek;
-   const transformed: TimeSummaryEntry[] = rawData.flatMap((session) =>
-  session.shifts.map((shift) => {
-    const formattedDate = formatDateStringLocal(shift.date);
-    return {
-      guardFirst: { name: session.user.name },
-      guardLast: { name: session.user.lastName },
-      date: formatToMMDDYYYY(formattedDate),
-      Client: {
-        name: session.client?.name ?? "",
-        lastName: session.client?.lastName ?? "",
-      },
-      address: {
-        address: session.address?.address ?? "",
-        city: session.address?.city ?? "",
-        state: session.address?.state ?? "",
-        pincode: session.address?.pincode ?? "",
-      },
-      time: shift.hours,
-    };
-  })
-);
-
-
       setData(transformed);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching summary:", err);
       setError("Failed to fetch time summary.");
     } finally {
@@ -100,11 +93,11 @@ export const ViewTimeSummaryProvider = ({ children }: { children: ReactNode }) =
   };
 
   return (
-    <ViewTimeSummaryContext.Provider value={{ 
-      data, 
-      loading, 
-      error, 
-      fetchSummary 
+    <ViewTimeSummaryContext.Provider value={{
+      data,
+      loading,
+      error,
+      fetchSummary,
     }}>
       {children}
     </ViewTimeSummaryContext.Provider>
