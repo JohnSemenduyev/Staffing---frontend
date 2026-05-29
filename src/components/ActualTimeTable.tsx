@@ -97,47 +97,14 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const measure = (phase: string) => {
-      const scrollbarWidth = container.offsetWidth - container.clientWidth;
-      const hasVerticalOverflow = container.scrollHeight > container.clientHeight;
-      const headerWidth = headerTableRef.current?.offsetWidth ?? null;
-      const bodyWidth = tableRef.current?.offsetWidth ?? null;
-      // #region agent log
-      fetch("http://127.0.0.1:7723/ingest/d012d376-170a-4068-8060-beb44985de13", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c94eaa" },
-        body: JSON.stringify({
-          sessionId: "c94eaa",
-          runId: "pre-fix",
-          hypothesisId: phase === "sync" ? "H1" : phase === "raf" ? "H2" : "H3",
-          location: "ActualTimeTable.tsx:useEffect",
-          message: "scrollbar alignment measure",
-          data: {
-            phase,
-            scrollbarWidth,
-            headerRightCompensation: scrollbarWidth,
-            hasVerticalOverflow,
-            containerOffsetWidth: container.offsetWidth,
-            containerClientWidth: container.clientWidth,
-            headerTableWidth: headerWidth,
-            bodyTableWidth: bodyWidth,
-            widthDelta: headerWidth != null && bodyWidth != null ? headerWidth - bodyWidth : null,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-      return scrollbarWidth;
-    };
-
-    const scrollbarWidth = measure("sync");
+    const scrollbarWidth = container.offsetWidth - container.clientWidth;
     setHeaderRightCompensation(scrollbarWidth);
     const rafId = window.requestAnimationFrame(() => {
-      const updatedScrollbarWidth = measure("raf");
+      const updatedScrollbarWidth = container.offsetWidth - container.clientWidth;
       setHeaderRightCompensation(updatedScrollbarWidth);
     });
     const handleResize = () => {
-      const resizeScrollbarWidth = measure("resize");
+      const resizeScrollbarWidth = container.offsetWidth - container.clientWidth;
       setHeaderRightCompensation(resizeScrollbarWidth);
     };
     window.addEventListener("resize", handleResize);
