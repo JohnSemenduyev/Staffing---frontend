@@ -25,7 +25,6 @@ interface ActualTableRowProps {
     buildUserDateShifts?: Map<number, Map<string, (Shift | null)[]>>; // For user mode
     buildGroupDateShifts?: Map<string, Map<string, (Shift | null)[]>>; // For group mode
 
-    // Actions
     openEditShift: (userId: number, date: string, shiftId: number) => void;
     setDeleteAllModal: (data: { isOpen: boolean; shiftId: number }) => void;
 
@@ -171,14 +170,6 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                             mode === "group" ? String((data as RowGroup).id) : undefined
                         )}
                     </td>
-                    {rowIdx === 0 && (
-                        <td
-                            className="border border-gray-300 px-4 py-3 text-center w-16 align-middle whitespace-nowrap"
-                            rowSpan={rowCount}
-                        >
-                            {/* reserved for future row actions */}
-                        </td>
-                    )}
                 </tr>
             ))}
 
@@ -212,8 +203,6 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                         </>
                     );
                 })()}
-                <td className="border border-gray-300 px-4 py-3 whitespace-nowrap">
-                </td>
             </tr>
         </React.Fragment>
     );

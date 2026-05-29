@@ -77,7 +77,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
     name: 160,
     day: 120,
     total: 90,
-    actions: 64,
   };
 
   const renderColumnGroup = () => (
@@ -87,7 +86,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
         <col key={`col-${dateCol.date}`} style={{ width: `${fixedColumnWidths.day}px` }} />
       ))}
       <col style={{ width: `${fixedColumnWidths.total}px` }} />
-      <col style={{ width: `${fixedColumnWidths.actions}px` }} />
     </colgroup>
   );
 
@@ -243,7 +241,6 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
                       </>
                     );
                   })()}
-                  <td className="border border-gray-300 px-4 py-3 whitespace-nowrap w-16 min-w-16 max-w-16"></td>
                 </tr>
               </tbody>
             </table>

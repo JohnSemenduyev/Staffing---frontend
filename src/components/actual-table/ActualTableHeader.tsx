@@ -26,9 +26,6 @@ export const ActualTableHeader: React.FC<ActualTableHeaderProps> = ({
                 <th className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]">
                     Total
                 </th>
-                <th className="px-4 py-2 text-center border border-gray-300 whitespace-nowrap w-16 min-w-16 max-w-16">
-                    Actions
-                </th>
             </tr>
         </thead>
     );
