@@ -537,6 +537,26 @@ export const UNIFORM_COMPLIANCES_BY_SCHEDULE_FILTER = gql`
   }
 `;
 
+export const VIEW_TIME_SUMMARY = gql`
+  query ViewTimeSummary($clientId: Int, $addressId: Int, $date: String, $endDate: String, $role: String) {
+    viewTimeSummary(clientId: $clientId, addressId: $addressId, date: $date, endDate: $endDate, role: $role) {
+      data {
+        guardFirstName
+        guardLastName
+        date
+        clientName
+        clientLastName
+        address
+        city
+        state
+        pincode
+        actualHours
+        scheduleSessionId
+      }
+    }
+  }
+`;
+
 export const GET_SCHEDULE_SESSIONS_BY_CLIENT_WEEK = gql`
   query GetScheduleSessionsByClientWeek($clientId: Int, $addressId: Int, $timeZone: String, $endDate: String, $date: String) {
     ScheduleSessionsByClientWeek(clientId: $clientId, addressId: $addressId, timeZone: $timeZone, endDate: $endDate, date: $date) {
