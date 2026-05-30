@@ -54,11 +54,29 @@ export const formatTimeDisplay = (timeString: string, role: FormatTimeDisplayRol
   return timeString;
 };
 
-export function getWeekRangeFromDateLocal(base: any) {
-  base = new Date(base);
-  const day = base.getDay();
+/** Coerce Date, YYYY-MM-DD, or MM-DD-YYYY to a local-midnight Date (Safari-safe). */
+export function coerceToLocalDate(base: Date | string): Date {
+  if (base instanceof Date) {
+    return Number.isNaN(base.getTime()) ? new Date(NaN) : base;
+  }
+  const trimmed = String(base).trim();
+  if (!trimmed) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return parseLocalYMD(trimmed);
+  }
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    const [month, day, year] = trimmed.split("-").map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? new Date(NaN) : parsed;
+}
+
+export function getWeekRangeFromDateLocal(base: Date | string) {
+  const date = coerceToLocalDate(base);
+  const day = date.getDay();
   const daysSinceThursday = (day + 3) % 7; // Thu..Wed week
-  const start = new Date(base);
+  const start = new Date(date);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - daysSinceThursday);
   const end = new Date(start);

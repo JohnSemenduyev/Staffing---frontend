@@ -9,7 +9,6 @@ import { ErrorMessage } from "../../components/ui/error-message";
 import { useClientSummary } from "../../context/ViewClientSummaryContext";
 import { useNavigate } from "react-router-dom";
 import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
-import { formatToMMDDYYYY } from "../../context/ViewTimeSummaryContext";
 import { DateNavigation } from "./ViewSchedule";
 import { getWeekRangeFromDateLocal, toLocalYMD, parseLocalYMD } from "../../lib/utils";
 import { graphQLClient } from "../../GraphqlClient";
@@ -324,7 +323,7 @@ export const ViewClientSummary = () => {
   }, [showFilterDropdown]);
 
   useEffect(() => {
-    const { startOfWeek } = getWeekRangeFromDateLocal(formatToMMDDYYYY(today));
+    const { startOfWeek } = getWeekRangeFromDateLocal(parseLocalYMD(today));
     const weekStartStr = toLocalYMD(startOfWeek);
     setDate(weekStartStr);
     setSelectedDate(weekStartStr);

@@ -4,7 +4,6 @@ import { FaFilePdf, FaFileExport } from "react-icons/fa";
 import { Button } from "../../components/ui/button";
 import { ErrorMessage } from "../../components/ui/error-message";
 import { useEmployeeSummary, type EmployeeHoursSummary } from "../../context/ViewEmployeeSummaryContext";
-import { formatToMMDDYYYY } from "../../context/ViewTimeSummaryContext";
 import { PeriodEndDateModal } from "../../components/ui/PeriodEndDateModal";
 import { useNavigate } from "react-router-dom";
 import {
@@ -80,9 +79,7 @@ export const ViewEmployeeSummary: React.FC = () => {
 
   // initial load
   useEffect(() => {
-    const { startOfWeek } = getWeekRangeFromDateLocal(
-      formatToMMDDYYYY(today)
-    );
+    const { startOfWeek } = getWeekRangeFromDateLocal(parseLocalYMD(today));
     const weekStartStr = toLocalYMD(startOfWeek);
     setDate(startOfWeek);
     setSelectedDate(weekStartStr);

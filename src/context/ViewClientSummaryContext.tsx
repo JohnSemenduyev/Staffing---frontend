@@ -36,6 +36,16 @@ const ViewClientSummaryContext =
 const toApiDate = (value?: string) => {
   if (!value) return undefined;
   const [year, month, day] = value.split("-");
+  if (
+    !year ||
+    !month ||
+    !day ||
+    Number.isNaN(Number(year)) ||
+    Number.isNaN(Number(month)) ||
+    Number.isNaN(Number(day))
+  ) {
+    return undefined;
+  }
   return `${month}-${day}-${year}`;
 };
 
