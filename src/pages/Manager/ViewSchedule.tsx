@@ -2871,6 +2871,14 @@ export const ViewSchedule = () => {
   };
 
   const toggleScheduleEditMode = () => {
+    if (!isScheduleEditMode && isActualTimeEditMode) {
+      toast({
+        title: "Cannot edit schedule",
+        description: "Exit actual time edit mode before editing the schedule.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isScheduleEditMode) {
       setOriginalScheduleData(JSON.parse(JSON.stringify(scheduleData)));
       fetchApiExistingShifts();
@@ -2888,6 +2896,14 @@ export const ViewSchedule = () => {
   };
 
   const toggleActualTimeEditMode = () => {
+    if (!isActualTimeEditMode && isScheduleEditMode) {
+      toast({
+        title: "Cannot edit actual time",
+        description: "Exit schedule edit mode before editing actual time.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isActualTimeEditMode) {
       setOriginalSessionData(JSON.parse(JSON.stringify(sessionData)));
     } else {
@@ -3635,6 +3651,7 @@ const scheduleDataForExport = useMemo(() => {
                 onShiftAutoToggle={handleShiftAutoToggle}
                 apiExistingShiftsData={apiExistingShifts}
                 hasChanges={hasScheduleChanges}
+                editBlocked={isActualTimeEditMode}
                 selectedUserId={selectedUserId}
               />
             </div>
@@ -3659,6 +3676,7 @@ const scheduleDataForExport = useMemo(() => {
                 isPrinting={isPrinting}
                 loading={sessionLoading}
                 hasChanges={hasSessionChanges}
+                editBlocked={isScheduleEditMode}
                 selectedUserId={selectedUserId}
               />
             </div>

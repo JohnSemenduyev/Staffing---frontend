@@ -38,6 +38,8 @@ interface ScheduleTableProps {
   existingShifts?: Shift[];
   apiExistingShiftsData?: Map<string, any[]>;
   hasChanges?: boolean;
+  /** When true, entering edit mode is blocked (other table is in edit mode). */
+  editBlocked?: boolean;
 }
 
 export const ScheduleTable: React.FC<ScheduleTableProps> = ({
@@ -69,6 +71,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   existingShifts = [],
   apiExistingShiftsData = new Map(),
   hasChanges,
+  editBlocked = false,
   selectedUserId,
   onSave,
   isSaving,
@@ -313,6 +316,7 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         isSaving={isSaving}
         isPrinting={isPrinting}
         hasChanges={hasChanges}
+        editBlocked={editBlocked}
         hasDraftData={hasDraftData}
         hideActionButtons={hideActionButtons}
         hidePrintButton={hidePrintButton}

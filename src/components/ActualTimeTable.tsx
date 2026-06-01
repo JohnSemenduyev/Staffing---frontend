@@ -21,6 +21,8 @@ interface ActualTimeTableProps {
   isPrinting: boolean;
   loading?: boolean;
   hasChanges?: boolean;
+  /** When true, entering edit mode is blocked (other table is in edit mode). */
+  editBlocked?: boolean;
   selectedUserId?: number;
 }
 
@@ -259,6 +261,7 @@ export const ActualTimeTable: React.FC<ActualTimeTableProps> = (props) => {
       <ActualTableControls
         isEditMode={props.isEditMode}
         hasChanges={props.hasChanges}
+        editBlocked={props.editBlocked}
         isPublishing={props.isPublishing}
         isPrinting={props.isPrinting}
         onPublish={props.onPublish}

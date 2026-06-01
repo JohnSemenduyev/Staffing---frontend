@@ -13,6 +13,7 @@ interface ActualTableControlsProps {
     onToggleEditMode: () => void;
     handleEditModeToggle: () => void;
     logEditableCells?: () => void;
+    editBlocked?: boolean;
 }
 
 export const ActualTableControls: React.FC<ActualTableControlsProps> = ({
@@ -25,7 +26,8 @@ export const ActualTableControls: React.FC<ActualTableControlsProps> = ({
     onDownloadExcel,
     onToggleEditMode,
     handleEditModeToggle,
-    logEditableCells
+    logEditableCells,
+    editBlocked = false,
 }) => {
     return (
         <div className="flex justify-between items-center gap-2 p-4 border-t bg-gray-50 rounded-b-2xl">
@@ -101,11 +103,14 @@ export const ActualTableControls: React.FC<ActualTableControlsProps> = ({
                         logEditableCells?.();
                         handleEditModeToggle();
                     }}
-                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEditMode
+                    disabled={!isEditMode && editBlocked}
+                    className={`inline-flex items-center px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${!isEditMode && editBlocked
+                        ? 'text-gray-400 cursor-not-allowed opacity-50'
+                        : isEditMode
                         ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500'
                         : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500'
                         }`}
-                    title={isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
+                    title={!isEditMode && editBlocked ? "Exit schedule edit mode first" : isEditMode ? "Exit Edit Mode" : "Enter Edit Mode"}
                 >
                     <FaRegEdit className="w-5 h-5" color={isEditMode ? "blue" : undefined} />
                 </button>
