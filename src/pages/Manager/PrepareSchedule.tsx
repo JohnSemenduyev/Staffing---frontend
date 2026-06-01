@@ -1754,7 +1754,10 @@ export const PrepareSchedule = () => {
             onUserAutoToggle={handleUserAutoToggle}
             onShiftAutoToggle={handleShiftAutoToggle}
             onScheduleAutoToggle={handleScheduleAutoToggle}
-            hideActionButtons={false}
+            hidePrintButton={true}
+            hideExcelButton={true}
+            hideEditButton={true}
+            hideCancelButton={true}
             existingShifts={existingShifts}
             hasChanges={true}
           />

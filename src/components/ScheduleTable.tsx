@@ -31,6 +31,10 @@ interface ScheduleTableProps {
   onShiftAutoToggle?: (userId: number, date: string, shiftId: number, enabled: boolean) => void;
   onScheduleAutoToggle?: (enabled: boolean) => void;
   hideActionButtons?: boolean;
+  hidePrintButton?: boolean;
+  hideExcelButton?: boolean;
+  hideEditButton?: boolean;
+  hideCancelButton?: boolean;
   existingShifts?: Shift[];
   apiExistingShiftsData?: Map<string, any[]>;
   hasChanges?: boolean;
@@ -58,6 +62,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
   onShiftAutoToggle,
   onScheduleAutoToggle,
   hideActionButtons = false,
+  hidePrintButton = false,
+  hideExcelButton = false,
+  hideEditButton = false,
+  hideCancelButton = false,
   existingShifts = [],
   apiExistingShiftsData = new Map(),
   hasChanges,
@@ -307,6 +315,10 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
         hasChanges={hasChanges}
         hasDraftData={hasDraftData}
         hideActionButtons={hideActionButtons}
+        hidePrintButton={hidePrintButton}
+        hideExcelButton={hideExcelButton}
+        hideEditButton={hideEditButton}
+        hideCancelButton={hideCancelButton}
       />
 
       <ScheduleTableModals
