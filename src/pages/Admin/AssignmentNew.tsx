@@ -1249,16 +1249,8 @@ export default function AssignmentNew() {
 							<div
 								className={`${getFieldClasses(
 									"access",
-								)} cursor-pointer flex items-center justify-between ${
-									form.role === "Guard"
-										? "bg-gray-100 text-gray-400 cursor-not-allowed"
-										: ""
-								}`}
-								onClick={() => {
-									if (form.role === "Guard") return;
-									setShowAccessDropdown(!showAccessDropdown);
-								}}
-								aria-disabled={form.role === "Guard"}
+								)} cursor-pointer flex items-center justify-between`}
+								onClick={() => setShowAccessDropdown(!showAccessDropdown)}
 							>
 								<div className='flex-1'>
 									{form.access === "" ? (
