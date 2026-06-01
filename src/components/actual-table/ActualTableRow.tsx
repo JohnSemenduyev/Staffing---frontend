@@ -162,7 +162,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                         );
                     })}
 
-                    <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                    <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]">
                         {calculateRowTotal(
                             userId,
                             rowIdx,
@@ -200,12 +200,12 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                             {dayTotals.map((dayTotal, i) => (
                                 <td
                                     key={dateColumns[i].date}
-                                    className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap"
+                                    className="border border-gray-300 px-4 py-3 text-center text-sm font-medium whitespace-nowrap w-[120px] min-w-[120px] max-w-[120px]"
                                 >
                                     {dayTotal > 0 ? dayTotal : "-"}
                                 </td>
                             ))}
-                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap">
+                            <td className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]">
                                 {rowTotalFromColumns > 0 ? rowTotalFromColumns : "-"}
                             </td>
                         </>

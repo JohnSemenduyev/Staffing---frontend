@@ -30,7 +30,7 @@ export const ActualTableCell: React.FC<ActualTableCellProps> = ({
 
     return (
         <td
-            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap ${hasMismatch ? "bg-red-100 border-red-300" : ""
+            className={`border border-gray-300 px-4 py-3 text-center text-sm whitespace-nowrap w-[120px] min-w-[120px] max-w-[120px] ${hasMismatch ? "bg-red-100 border-red-300" : ""
                 }`}
             title={
                 hasMismatch
