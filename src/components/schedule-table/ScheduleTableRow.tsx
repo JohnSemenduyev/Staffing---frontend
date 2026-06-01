@@ -99,14 +99,14 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                 >
                     {rowIdx === 0 && (
                         <td
-                            className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap w-[160px] min-w-[160px] max-w-[160px]"
+                            className="border border-gray-300 px-4 py-3 text-center align-middle w-[160px] min-w-[160px] max-w-[160px]"
                             rowSpan={rowCount}
                         >
-                            <div className="font-medium text-gray-800">
+                            <div className="font-medium text-gray-800 whitespace-normal break-words max-w-[20ch] mx-auto">
                                 {selectedUserId ? row.clientName : row.name}
                             </div>
 
-                            <div className="text-xs text-gray-500 whitespace-normal">
+                            <div className="text-xs text-gray-500 whitespace-normal break-words max-w-[20ch] mx-auto">
                                 {selectedUserId ? (
                                     (() => {
                                         const { line1, line2 } = addressTwoLines(row.address);
@@ -285,7 +285,7 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
             <tr
                 className={`transition-colors ${totalRowShadeClass}`}
             >
-                <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+                <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap w-[160px] min-w-[160px] max-w-[160px]">
                     Total
                 </td>
                 {(() => {

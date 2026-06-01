@@ -98,15 +98,15 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                 >
                     {rowIdx === 0 && (
                         <td
-                            className="border border-gray-300 px-4 py-3 text-center align-middle whitespace-nowrap"
+                            className="border border-gray-300 px-4 py-3 text-center align-middle w-[160px] min-w-[160px] max-w-[160px]"
                             rowSpan={rowCount}
                         >
                             {mode === "group" ? (
                                 <>
-                                    <div className="font-medium text-gray-800">
+                                    <div className="font-medium text-gray-800 whitespace-normal break-words max-w-[20ch] mx-auto">
                                         {(data as RowGroup).clientName}
                                     </div>
-                                    <div className="text-xs text-gray-500 whitespace-normal">
+                                    <div className="text-xs text-gray-500 whitespace-normal break-words max-w-[20ch] mx-auto">
                                         {(() => {
                                             const { line1, line2 } = addressTwoLines((data as RowGroup).address);
                                             return (
@@ -121,10 +121,10 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
                                 </>
                             ) : (
                                 <>
-                                    <div className="font-medium text-gray-800">
+                                    <div className="font-medium text-gray-800 whitespace-normal break-words max-w-[20ch] mx-auto">
                                         {(data as User).name}
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 whitespace-normal break-words max-w-[20ch] mx-auto">
                                         {formatUSPhone((data as User).phone)}
                                     </div>
                                 </>
@@ -179,7 +179,7 @@ export const ActualTableRow: React.FC<ActualTableRowProps> = ({
             <tr
                 className={`transition-colors bg-gray-100`} // Simplification
             >
-                <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap">
+                <td className="border border-gray-300 px-4 py-3 text-sm text-gray-600 text-center whitespace-nowrap w-[160px] min-w-[160px] max-w-[160px]">
                     Total
                 </td>
                 {(() => {
