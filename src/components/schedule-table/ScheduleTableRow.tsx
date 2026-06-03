@@ -14,7 +14,6 @@ interface ScheduleTableRowProps {
     selectedUserId?: number;
     groupByClient: boolean;
     getMaxShiftsPerDay: (row: RowGroup, groupByClient: boolean) => number;
-    calculateRowTotal: (row: RowGroup, groupByClient: boolean) => number;
     isEditMode: boolean;
     readOnly?: boolean;
     dragOverCell: any;
@@ -31,8 +30,6 @@ interface ScheduleTableRowProps {
     handleDeleteUser: (userId: number) => void;
     calculateDayTotal: (date: string) => number;
     calculateUserDayTotal: (row: RowGroup, date: string, groupByClient: boolean) => number;
-    getRowApiTotals: (row: RowGroup, groupByClient: boolean) => { apiWeeklyHours: number | null; apiShiftHoursSum: number | null };
-    hasChanges?: boolean;
     findSessionForShift: (shiftId: number) => SessionItem | null;
     hasTimeMismatch: (shift: any, session?: any, tolerance?: number) => boolean;
     isDraftShift: (shift: any) => boolean;
@@ -50,7 +47,6 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
     selectedUserId,
     groupByClient,
     getMaxShiftsPerDay,
-    calculateRowTotal,
     isEditMode,
     readOnly,
     dragOverCell,
@@ -67,8 +63,6 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
     handleDeleteUser,
     calculateDayTotal,
     calculateUserDayTotal,
-    getRowApiTotals,
-    hasChanges,
     findSessionForShift,
     hasTimeMismatch,
     isDraftShift,
@@ -78,16 +72,12 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
 }) => {
     const rowCount = getMaxShiftsPerDay(row, groupByClient);
     const totalRowShadeClass = "bg-gray-100";
-    const localRowTotal = calculateRowTotal(row, groupByClient);
-    const { apiWeeklyHours, apiShiftHoursSum } = getRowApiTotals(row, groupByClient);
-    const hasLocalChanges = Boolean(hasChanges);
-    const shouldUseApiTotal = !hasLocalChanges && typeof apiWeeklyHours === "number";
-    const displayMainTotal = shouldUseApiTotal ? apiWeeklyHours : localRowTotal;
-    const roundedApiWeekly = typeof apiWeeklyHours === "number" ? parseFloat(apiWeeklyHours.toFixed(2)) : null;
-    const roundedWeekShiftSum = parseFloat(localRowTotal.toFixed(2));
-    const shouldHighlightApiMismatch = !hasLocalChanges &&
-        typeof apiWeeklyHours === "number" &&
-        roundedApiWeekly !== roundedWeekShiftSum;
+    const rowTotalFromColumns = parseFloat(
+        dateColumns
+            .map((dateCol) => calculateUserDayTotal(row, dateCol.date, groupByClient))
+            .reduce((sum, value) => sum + value, 0)
+            .toFixed(2)
+    );
 
     return (
         <React.Fragment key={row.id}>
@@ -234,10 +224,10 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                     {rowIdx === 0 && (
                         <>
                             <td
-                                className={`border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px] ${shouldHighlightApiMismatch ? "bg-red-200" : ""}`}
+                                className="border border-gray-300 px-4 py-3 text-center font-medium whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px]"
                                 rowSpan={rowCount}
                             >
-                                {displayMainTotal > 0 ? displayMainTotal : "-"}
+                                {rowTotalFromColumns > 0 ? rowTotalFromColumns : "-"}
                             </td>
                             <td
                                 className="border border-gray-300 px-4 py-3 text-center w-[72px] min-w-[72px] max-w-[72px] align-middle whitespace-nowrap"
@@ -291,9 +281,6 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                 {(() => {
                     const dayTotals = dateColumns.map((dateCol) =>
                         calculateUserDayTotal(row, dateCol.date, groupByClient)
-                    );
-                    const rowTotalFromColumns = parseFloat(
-                        dayTotals.reduce((s, v) => s + v, 0).toFixed(2)
                     );
                     return (
                         <>

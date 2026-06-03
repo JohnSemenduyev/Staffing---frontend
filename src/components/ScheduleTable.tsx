@@ -125,11 +125,9 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
     handleUserAutoToggle,
     handleShiftAutoToggleLocal,
     getMaxShiftsPerDay,
-    calculateRowTotal,
     calculateDayTotal,
     calculateGrandTotal,
     calculateUserDayTotal,
-    getRowApiTotals,
     hasTimeMismatch,
     findSessionForShift,
     isDraftShift,
@@ -243,7 +241,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 selectedUserId={selectedUserId}
                 groupByClient={groupByClient}
                 getMaxShiftsPerDay={getMaxShiftsPerDay}
-                calculateRowTotal={calculateRowTotal}
                 isEditMode={isEditMode}
                 readOnly={readOnly}
                 dragOverCell={dragOverCell}
@@ -260,8 +257,6 @@ export const ScheduleTable: React.FC<ScheduleTableProps> = ({
                 handleDeleteUser={handleDeleteUser}
                 calculateDayTotal={calculateDayTotal}
                 calculateUserDayTotal={calculateUserDayTotal}
-                getRowApiTotals={getRowApiTotals}
-                hasChanges={hasChanges}
                 findSessionForShift={findSessionForShift}
                 hasTimeMismatch={hasTimeMismatch}
                 isDraftShift={isDraftShift}
