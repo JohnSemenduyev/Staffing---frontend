@@ -417,10 +417,16 @@ export const ViewSchedule = () => {
           })
         );
       }
-      setApiExistingShifts(newApiShifts);
+      setApiExistingShifts((prev) => {
+        const merged = new Map(prev);
+        newApiShifts.forEach((shifts, key) => merged.set(key, shifts));
+        return merged;
+      });
       console.log("Fetched API existing shifts:", newApiShifts);
+      return newApiShifts;
     } catch (error) {
       console.error("Failed to fetch API existing shifts:", error);
+      return null;
     }
   };
   const [tableLoading, setTableLoading] = useState(false);
@@ -1363,12 +1369,12 @@ export const ViewSchedule = () => {
   const onSubmitAddGuard = async (e) => {
     e.preventDefault();
     setSubmitLoader(true)
-    const guardExistsInSchedule = scheduleData.some(item => item.userId === Number(form.userId));
     const result = await fetchApiExistingShifts(Number(form.userId));
     if (result === null) {
       setSubmitLoader(false);
       return;
     }
+    const freshApiShifts = result instanceof Map ? result : apiExistingShifts;
     if (applyAllWeek && currentWeekRange) {
       const weekErrors: { [key: string]: string } = {};
       if (!form.userId) weekErrors.userId = "Required";
@@ -1383,7 +1389,14 @@ export const ViewSchedule = () => {
       setErrors(weekErrors);
       if (Object.keys(weekErrors).length > 0) return;
     } else {
-      const formErrors = validateForm(form, scheduleData, undefined, apiExistingShifts);
+      const formErrors = validateForm(
+        form,
+        scheduleData,
+        undefined,
+        freshApiShifts,
+        selectedClient?.clientId,
+        selectedClient?.addressId,
+      );
       setErrors(formErrors);
       if (Object.keys(formErrors).length > 0) {
         setSubmitLoader(false);
@@ -1478,7 +1491,7 @@ export const ViewSchedule = () => {
               form.endtime,
               selectedClient.clientId,
               selectedClient.addressId,
-              apiExistingShifts
+              freshApiShifts
             );
           }
 
@@ -1953,12 +1966,15 @@ export const ViewSchedule = () => {
 
           const group = sessionGroupMap.get(groupKey);
 
-          // Deduplicate shifts within group using key
+          // Deduplicate shifts within group by identity (not date+time alone).
+          // A deleted published shift and a newly added shift on the same cell often share
+          // the same date/times and must both appear in the bulk upsert payload.
           const formattedDate = convertDateFormat(shift.date);
-          const shiftKey = `${formattedDate}-${shift.startTime}-${shift.endTime}`;
           const isClientGeneratedId = shift.id > 1000000000000;
           const isDraftShift = !!shift?.draftShiftId;
           const normalizedShiftId = (isClientGeneratedId || isDraftShift) ? null : shift.id;
+          const shiftIdentity = normalizedShiftId ?? `new-${shift.id}`;
+          const shiftKey = `${formattedDate}-${shift.startTime}-${shift.endTime}-${shiftIdentity}`;
           const originalShift = normalizedShiftId != null ? originalShiftById.get(normalizedShiftId) : null;
           const normalizeCompareDate = (raw: string) => {
             if (!raw) return "";

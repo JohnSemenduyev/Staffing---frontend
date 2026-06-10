@@ -12,6 +12,13 @@ import {
   doTimesOverlap as sharedDoTimesOverlap,
   calculateHours as sharedCalculateHours
 } from "../../../lib/utils";
+import { normalizeClockDateToYmd } from "../../../utils/sessionCalendar";
+
+/** Normalize CheckScheduleSession shift dates to YYYY-MM-DD for comparison with form dates. */
+export const normalizeApiShiftDate = (raw: string | null | undefined): string => {
+  if (!raw) return "";
+  return normalizeClockDateToYmd(raw);
+};
 
 
 export const getWeekRangeFromDateUTC = getWeekRangeFromDateLocal;
@@ -195,7 +202,9 @@ export const validateForm = (
   formData: FormData,
   scheduleData: SharedScheduleItem[],
   editingShiftId?: number,
-  apiExistingShifts?: Map<string, any[]>
+  apiExistingShifts?: Map<string, any[]>,
+  clientIdOverride?: number,
+  addressIdOverride?: number,
 ): { [key: string]: string } => {
   const e: { [key: string]: string } = {};
   if (!formData.userId) e.userId = "Required";
@@ -312,16 +321,16 @@ export const validateForm = (
 
     // Check API existing shifts overlaps if provided
     if (apiExistingShifts && !e.overlap) {
-      const clientId = scheduleData.find(item => item.userId === Number(formData.userId))?.clientId;
-      const addressId = scheduleData.find(item => item.userId === Number(formData.userId))?.addressId;
+      const scheduleItem = scheduleData.find(item => item.userId === Number(formData.userId));
+      const clientId = scheduleItem?.clientId ?? clientIdOverride;
+      const addressId = scheduleItem?.addressId ?? addressIdOverride;
 
       if (clientId && addressId) {
         const combinationKey = `${clientId}-${addressId}-${formData.userId}`;
         const apiShifts = apiExistingShifts.get(combinationKey) || [];
 
         for (const apiShift of apiShifts) {
-          // Check if the API shift is for the same date
-          const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+          const apiShiftDate = normalizeApiShiftDate(apiShift.date);
           if (apiShiftDate === formData.date) {
             if (shiftsOverlapInCalendar(formData.date, formData.starttime, formData.endtime, apiShiftDate, apiShift.startTime, apiShift.endTime)) {
               console.log("[Overlap] validateForm – overlap detected (API same day)", {
@@ -341,7 +350,7 @@ export const validateForm = (
         if (!e.overlap) {
           const prevDate = getAdjustedDate(formData.date, -1);
           for (const apiShift of apiShifts) {
-            const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+            const apiShiftDate = normalizeApiShiftDate(apiShift.date);
             if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
               if (shiftsOverlapInCalendar(
                 formData.date,
@@ -369,7 +378,7 @@ export const validateForm = (
         if (!e.overlap && shiftSpansNextDay(formData.starttime, formData.endtime)) {
           const nextDate = getAdjustedDate(formData.date, 1);
           for (const apiShift of apiShifts) {
-            const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+            const apiShiftDate = normalizeApiShiftDate(apiShift.date);
             if (apiShiftDate === nextDate) {
               if (shiftsOverlapInCalendar(
                 formData.date,
@@ -413,7 +422,7 @@ export const checkApiOverlap = (
 
   // Check same day shifts
   for (const apiShift of apiShifts) {
-    const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+    const apiShiftDate = normalizeApiShiftDate(apiShift.date);
     if (apiShiftDate === date) {
       if (shiftsOverlapInCalendar(date, startTime, endTime, apiShiftDate, apiShift.startTime, apiShift.endTime)) {
         return true;
@@ -426,7 +435,7 @@ export const checkApiOverlap = (
   const prevDate = getAdjustedDate(date, -1);
   const newEndCurrentDay = shiftSpansNextDay(startTime, endTime) ? "24:00" : endTime;
   for (const apiShift of apiShifts) {
-    const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+    const apiShiftDate = normalizeApiShiftDate(apiShift.date);
     if (apiShiftDate === prevDate && shiftSpansNextDay(apiShift.startTime, apiShift.endTime)) {
       if (doTimesOverlap(startTime, newEndCurrentDay, "00:00", apiShift.endTime)) {
         return true;
@@ -438,7 +447,7 @@ export const checkApiOverlap = (
   if (shiftSpansNextDay(startTime, endTime)) {
     const nextDate = getAdjustedDate(date, 1);
     for (const apiShift of apiShifts) {
-      const apiShiftDate = apiShift.date.includes('T') ? apiShift.date.split('T')[0] : apiShift.date;
+      const apiShiftDate = normalizeApiShiftDate(apiShift.date);
       if (apiShiftDate === nextDate) {
         if (doTimesOverlap("00:00", endTime, apiShift.startTime, apiShift.endTime)) {
           return true;
