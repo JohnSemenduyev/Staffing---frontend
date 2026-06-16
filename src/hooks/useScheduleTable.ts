@@ -491,7 +491,6 @@ export const useScheduleTable = ({
         const isOverflow = shift && currentWeekRange?.startOfWeek && isOverflowShift(shift.date, currentWeekRange.startOfWeek);
 
         if (isOverflow) {
-            setDeleteModal({ isOpen: true, shiftId, userId, date });
             return;
         }
 
@@ -849,9 +848,12 @@ export const useScheduleTable = ({
     }, []);
 
     const handleEditShift = useCallback((userId: number, date: string, shift: Shift) => {
+        if (currentWeekRange?.startOfWeek && isOverflowShift(shift.date, currentWeekRange.startOfWeek)) {
+            return;
+        }
         setEditModal({ isOpen: true, shift, userId, date });
         setEditForm({ starttime: shift.startTime, endtime: shift.endTime });
-    }, []);
+    }, [currentWeekRange]);
 
     const cancelEditShift = useCallback(() => {
         setEditModal({ isOpen: false });
@@ -1193,18 +1195,22 @@ export const useScheduleTable = ({
         if (onUserAutoToggle) {
             onUserAutoToggle(userId, enabled);
         } else {
+            const weekStart = currentWeekRange?.startOfWeek;
             const updatedData = scheduleData.map(item =>
                 item.userId === userId
                     ? {
                         ...item,
                         auto: enabled,
-                        shifts: item.shifts.map(s => ({ ...s, auto: enabled, confirm: false, reject: false }))
+                        shifts: item.shifts.map(s => {
+                            if (weekStart && isOverflowShift(s.date, weekStart)) return s;
+                            return { ...s, auto: enabled, confirm: false, reject: false };
+                        })
                     }
                     : item
             );
             onScheduleDataChange(updatedData);
         }
-    }, [scheduleData, onUserAutoToggle, onScheduleDataChange]);
+    }, [scheduleData, onUserAutoToggle, onScheduleDataChange, currentWeekRange]);
 
     const handleShiftAutoToggleLocal = useCallback((
         userId: number,
@@ -1212,20 +1218,27 @@ export const useScheduleTable = ({
         shiftId: number,
         enabled: boolean
     ) => {
+        const weekStart = currentWeekRange?.startOfWeek;
         const updated = scheduleData.map((item) => {
             if (item.userId === userId && item.startDate === date) {
+                const targetShift = item.shifts.find((s) => s.id === shiftId);
+                if (targetShift && weekStart && isOverflowShift(targetShift.date, weekStart)) {
+                    return item;
+                }
                 const newShifts = item.shifts.map((s) =>
                     s.id === shiftId
                         ? { ...s, auto: enabled, confirm: false, reject: false }
                         : s
                 );
-                const anyOn = newShifts.some((s) => s.auto === true);
+                const anyOn = newShifts.some(
+                    (s) => s.auto === true && !(weekStart && isOverflowShift(s.date, weekStart))
+                );
                 return { ...item, auto: anyOn, shifts: newShifts };
             }
             return item;
         });
         onScheduleDataChange(updated);
-    }, [scheduleData, onScheduleDataChange]);
+    }, [scheduleData, onScheduleDataChange, currentWeekRange]);
 
     const getMaxShiftsPerDay = useCallback((row: RowGroup, groupByClient: boolean): number => {
         const userDays = scheduleData.filter((i) => {

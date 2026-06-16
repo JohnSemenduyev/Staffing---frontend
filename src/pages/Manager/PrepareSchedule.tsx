@@ -28,6 +28,7 @@ import {
   Address,
   User
 } from "../../types/schedule";
+import { isOverflowShift } from "./ViewSchedule/utils";
 
 // Local type definitions for PrepareSchedule
 // Types moved to src/types/schedule.ts
@@ -499,12 +500,16 @@ export const PrepareSchedule = () => {
 
   // Updated handleUserAutoToggle - updates user's schedule and all their shifts
   const handleUserAutoToggle = (userId: number, enabled: boolean) => {
+    const weekStart = currentWeekRange?.startOfWeek;
     setScheduleData(prev => prev.map(item => {
       if (item.userId === userId) {
         return {
           ...item,
           auto: enabled,
-          shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+          shifts: item.shifts.map(shift => {
+            if (weekStart && isOverflowShift(shift.date, weekStart)) return shift;
+            return { ...shift, auto: enabled };
+          })
         };
       }
       return item;
@@ -518,8 +523,13 @@ export const PrepareSchedule = () => {
 
   // Updated handleShiftAutoToggle - updates individual shift and schedule auto with proper logic
   const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
+    const weekStart = currentWeekRange?.startOfWeek;
     setScheduleData(prev => prev.map(item => {
       if (item.userId === userId && item.startDate === date) {
+        const targetShift = item.shifts.find(s => s.id === shiftId);
+        if (targetShift && weekStart && isOverflowShift(targetShift.date, weekStart)) {
+          return item;
+        }
         const updatedShifts = item.shifts.map(s =>
           s.id === shiftId ? { ...s, auto: enabled } : s
         );
@@ -527,11 +537,11 @@ export const PrepareSchedule = () => {
         // Logic for schedule auto:
         let scheduleAuto;
         if (enabled) {
-          // When enabling a shift, always enable schedule auto (or keep it enabled if already enabled)
           scheduleAuto = true;
         } else {
-          // When disabling a shift, check if any other shifts still have auto enabled
-          scheduleAuto = updatedShifts.some(shift => shift.auto === true);
+          scheduleAuto = updatedShifts.some(
+            shift => shift.auto === true && !(weekStart && isOverflowShift(shift.date, weekStart))
+          );
         }
 
         return {

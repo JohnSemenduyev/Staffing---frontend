@@ -74,20 +74,20 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                             : ""
                 }`}
             onDragOver={
-                !readOnly
+                !readOnly && !isOverflow
                     ? (e) => handleDragOver(e, rowUserId, dateCol.date, rowIdx)
                     : undefined
             }
-            onDragLeave={!readOnly ? handleDragLeave : undefined}
+            onDragLeave={!readOnly && !isOverflow ? handleDragLeave : undefined}
             onDrop={
-                !readOnly
+                !readOnly && !isOverflow
                     ? (e) => handleDrop(e, rowUserId, dateCol.date, rowIdx, rowClientId, rowAddressId)
                     : undefined
             }
         >
             {shift ? (
                 <div className="relative group">
-                    {isEditMode && !readOnly && (
+                    {isEditMode && !readOnly && !isOverflow && (
                         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity mb-1 justify-center">
                             <div
                                 className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
@@ -152,9 +152,9 @@ export const ScheduleTableCell: React.FC<ScheduleTableCellProps> = ({
                             <ToggleSwitch
                                 size="small"
                                 enabled={Boolean(shift.auto)}
-                                disabled={!isEditMode || readOnly}
+                                disabled={!isEditMode || readOnly || isOverflow}
                                 onToggle={(enabled) => {
-                                    if (readOnly || !isEditMode) return;
+                                    if (readOnly || !isEditMode || isOverflow) return;
                                     // Use original date if it's a continuation shift, so we update the correct record
                                     const targetDate = (shift as any).originalDate || dateCol.date;
 

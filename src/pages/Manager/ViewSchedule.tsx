@@ -2778,12 +2778,16 @@ export const ViewSchedule = () => {
 
 
   const handleUserAutoToggle = async (userId: number, enabled: boolean) => {
+    const weekStart = currentWeekRange?.startOfWeek;
     setScheduleData(prev => prev.map(item =>
       item.userId === userId
         ? {
           ...item,
           auto: enabled,
-          shifts: item.shifts.map(shift => ({ ...shift, auto: enabled }))
+          shifts: item.shifts.map(shift => {
+            if (weekStart && isOverflowShift(shift.date, weekStart)) return shift;
+            return { ...shift, auto: enabled };
+          })
         }
         : item
     ));
@@ -2795,10 +2799,17 @@ export const ViewSchedule = () => {
   };
 
   const handleShiftAutoToggle = (userId: number, date: string, shiftId: number, enabled: boolean) => {
+    const weekStart = currentWeekRange?.startOfWeek;
     setScheduleData(prev => prev.map(item => {
       if (item.userId === userId && item.startDate === date) {
+        const targetShift = item.shifts.find(s => s.id === shiftId);
+        if (targetShift && weekStart && isOverflowShift(targetShift.date, weekStart)) {
+          return item;
+        }
         const updatedShifts = item.shifts.map(s => (s.id === shiftId ? { ...s, auto: enabled } : s));
-        const scheduleAuto = enabled ? true : updatedShifts.some(s => s.auto === true);
+        const scheduleAuto = enabled
+          ? true
+          : updatedShifts.some(s => s.auto === true && !(weekStart && isOverflowShift(s.date, weekStart)));
         return { ...item, auto: scheduleAuto, shifts: updatedShifts };
       }
       return item;

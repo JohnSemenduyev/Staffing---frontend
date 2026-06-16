@@ -4,6 +4,7 @@ import ToggleSwitch from "../ui/toggle";
 import { ScheduleItem, SessionItem, RowGroup } from "../../types/schedule";
 import { ScheduleTableCell } from "./ScheduleTableCell";
 import { addressTwoLines, formatUSPhone, shiftSpansNextDay } from "../../lib/utils";
+import { isOverflowShift } from "../../pages/Manager/ViewSchedule/utils";
 
 interface ScheduleTableRowProps {
     row: RowGroup;
@@ -243,12 +244,15 @@ export const ScheduleTableRow: React.FC<ScheduleTableRowProps> = ({
                                                 : item.startDate;
                                             const currentWeekDates = dateColumns.map((col) => col.date);
                                             if (!currentWeekDates.includes(itemDate)) return false;
+                                            const weekStart = currentWeekRange?.startOfWeek;
+                                            const isEditableAuto = (s: { date?: string; auto?: boolean }) =>
+                                                s.auto === true && !(weekStart && s.date && isOverflowShift(s.date, weekStart));
                                             if (!groupByClient)
-                                                return item.shifts.some((s) => s.auto);
+                                                return item.shifts.some(isEditableAuto);
                                             return (
                                                 item.clientId === row.clientId &&
                                                 item.addressId === row.addressId &&
-                                                item.shifts.some((s) => s.auto)
+                                                item.shifts.some(isEditableAuto)
                                             );
                                         })}
                                         disabled={!isEditMode || readOnly}
