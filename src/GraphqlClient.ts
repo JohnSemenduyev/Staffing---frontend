@@ -7,5 +7,5 @@ export function setGraphQLToken(token: string | null) {
 }
 import { GraphQLClient } from "graphql-request";
 
-const endpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const endpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || "https://staffing-backend-4nm9.onrender.com/";
 export const graphQLClient = new GraphQLClient(endpoint);
