@@ -5,8 +5,7 @@ export function setGraphQLToken(token: string | null) {
 		graphQLClient.setHeaders({});
 	}
 }
-// src/graphqlClient.ts
 import { GraphQLClient } from "graphql-request";
-export const graphQLClient = new GraphQLClient("https://staffing-backend-4nm9.onrender.com/");
 
-// https://securitywebappbackend.onrender.com/ssss
+const endpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+export const graphQLClient = new GraphQLClient(endpoint);
